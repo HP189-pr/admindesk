@@ -1,0 +1,26 @@
+.clock-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: 'Arial', sans-serif;
+    color: #2c3e50;
+    font-size: 1.5rem;
+    margin: 20px 0;
+    background-color: #ffffffdd;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .date {
+    font-size: 1.2rem;
+    margin-bottom: 5px;
+    color: #34495e;
+  }
+  
+  .time {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #4b0082;
+  }
+  

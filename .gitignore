@@ -1,1 +1,14 @@
+# Node modules and build files
 node_modules/
+dist/
+.vite/
+
+# Python/Django files
+backend/__pycache__/
+backend/db.sqlite3
+backend/.env
+venv/
+
+# VS Code and OS-specific files
+.vscode/
+.DS_Store

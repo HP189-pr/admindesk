@@ -1,0 +1,29 @@
+{
+  "kind": "collectionType",
+  "collectionName": "holiday",  
+  "info": {
+    "singularName": "holiday",
+    "pluralName": "holidays",
+    "displayName": "Holidays"
+  },
+  "options": {
+    "draftAndPublish": false,
+    "idAttribute": "hdid"  
+  },
+  "attributes": {
+    "hdid": {
+      "type": "integer",
+      "unique": true,
+      "configurable": false
+    },
+    "holiday_date": {
+      "type": "date"
+    },
+    "holiday_name": {
+      "type": "string"
+    },
+    "holiday_day": {
+      "type": "string"
+    }
+  }
+}

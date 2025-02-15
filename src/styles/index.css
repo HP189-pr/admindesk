@@ -1,0 +1,23 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+/* ===== Peacock Theme (Login Page) ===== */
+.peacock-background {
+  @apply bg-gradient-to-br from-peacockTeal via-peacockGreen to-peacockPurple;
+  background-size: 200% 200%;
+  animation: gradientAnimation 5s ease infinite;
+}
+
+/* ===== Dashboard Theme ===== */
+.dashboard-background {
+  @apply bg-dashboardDark text-dashboardText;
+}
+
+.sidebar {
+  @apply bg-dashboardPrimary text-white w-64 min-h-screen p-5;
+}
+
+.topbar {
+  @apply bg-dashboardAccent text-white p-4 flex justify-between items-center;
+}

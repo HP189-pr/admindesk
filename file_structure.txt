@@ -24,7 +24,7 @@
 │       ├── 0
 │       ├── 1
 │       └── 2
-├── strapi-backend
+├── strapi
 │   ├── api
 │   ├── config
 │   └── database
