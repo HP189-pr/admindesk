@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Clock from "../components/Clock";
 import MenuIcon from "@mui/icons-material/Menu";
-from .views import LoginView
+
 
 const API_BASE_URL = "http://127.0.0.1:8000";
 const Login = () => {
@@ -54,7 +54,7 @@ const Login = () => {
     setLoginError("");
     setLoading(true);
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/local`, form);
+      const response = await axios.post(`${API_BASE_URL}/login/`, form);
       console.log("Login successful:", response.data);
 
       // Save token and user data
@@ -105,7 +105,7 @@ const Login = () => {
               <div className="space-y-2">
                 {holidays.map((holiday) => (
                   <div
-                    key={holiday.id}
+                  key={holiday.id || index}
                     className="bg-gradient-to-r from-peacockTeal to-peacockGreen 
                    text-white p-2 rounded-md text-center shadow-md"
                   >
