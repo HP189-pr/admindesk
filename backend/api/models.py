@@ -19,7 +19,7 @@ class User(models.Model):
     username = models.CharField(max_length=255)
     usrpassword = models.CharField(max_length=255)  # Store hashed passwords, renamed for clarity
     usertype = models.CharField(max_length=50)
-    updatedby = models.ForeignKey("self", null=True, blank=True, on_delete=models.SET_NULL)  # Optional auditing reference
+    updatedby = models.CharField(max_length=255, null=True, blank=True)
     createdat = models.DateTimeField(auto_now_add=True)
     updatedat = models.DateTimeField(auto_now=True)
 

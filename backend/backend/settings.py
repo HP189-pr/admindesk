@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -58,7 +60,10 @@ ROOT_URLCONF = 'backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates',  # for global templates
+         BASE_DIR / 'backend' / 'api' / 'templates',  # for app-specific templates
+        ],
+
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -135,3 +140,21 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 CORS_ALLOW_CREDENTIALS = True  # Allow credentials (cookies, sessions)
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',  # JWT authentication
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',  # Require authentication for all views by default
+    ],
+}
+
+# Optional: JWT settings (for token expiration, etc.)
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),  # Access token expiration (1 hour)
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),  # Refresh token expiration (7 days)
+    'ROTATE_REFRESH_TOKENS': False,  # Whether to rotate refresh tokens on access
+    'BLACKLIST_AFTER_ROTATION': False,  # Whether to blacklist old refresh tokens after rotation
+    'UPDATE_LAST_LOGIN': False,  # Update the user's last login time when using JWT
+}

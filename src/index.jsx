@@ -1,18 +1,11 @@
 import React from "react";
-import ReactDOM from "react-dom/client";
+import ReactDOM from "react-dom/client";  // ✅ Use "react-dom/client" in React 18
 import App from "./App";
-import "./index.css";  // Optional global styles
+import "./index.css";  // Optional CSS import
 
-console.log("✅ React is running!");
-
-const rootElement = document.getElementById("root");
-if (!rootElement) throw new Error("❌ Root element not found!");
-
-const root = ReactDOM.createRoot(rootElement);
+const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <React.StrictMode>
     <App />
   </React.StrictMode>
 );
-
-console.log("✅ App rendered successfully!");

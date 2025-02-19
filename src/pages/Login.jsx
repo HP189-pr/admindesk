@@ -3,41 +3,42 @@ import axios from "axios";
 import Clock from "../components/Clock";
 import MenuIcon from "@mui/icons-material/Menu";
 
-
 const API_BASE_URL = "http://127.0.0.1:8000";
+
 const Login = () => {
-  const [form, setForm] = useState({ identifier: "", password: "" });
+  const [form, setForm] = useState({ identifier: "", usrpassword: "" });
   const [loginError, setLoginError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showHolidays, setShowHolidays] = useState(false);
   const [holidays, setHolidays] = useState([]);
   const [holidaysLoading, setHolidaysLoading] = useState(false);
 
-  // Fetch holidays from Strapi
+  // Fetch holidays from API
   useEffect(() => {
-  const fetchHolidays = async () => {
-    setHolidaysLoading(true);
-    try {
-      const response = await axios.get(`${API_BASE_URL}/holidays/`);
-      setHolidays(response.data); // No `.data.data`, since Django returns a direct JSON response
-    } catch (error) {
-      console.error("Error fetching holidays:", error);
-    } finally {
-      setHolidaysLoading(false);
-    }
-  };
+    const fetchHolidays = async () => {
+      setHolidaysLoading(true);
+      try {
+        const response = await axios.get(`${API_BASE_URL}/holidays/`);
+        setHolidays(response.data);
+      } catch (error) {
+        console.error("Error fetching holidays:", error);
+      } finally {
+        setHolidaysLoading(false);
+      }
+    };
+    fetchHolidays();
+  }, []);
 
-  fetchHolidays();
-}, []);
-
-    const formatDate = (dateString) => {
-      const date = new Date(dateString);
-      return date.toLocaleDateString("en-GB", {
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date
+      .toLocaleDateString("en-GB", {
         day: "2-digit",
         month: "short",
         year: "numeric",
-      }).replace(" ", "-");  // Replace space with '-' for correct format
-    };
+      })
+      .replace(" ", "-");
+  };
 
   const handleChange = (e) => {
     const { id, value } = e.target;
@@ -46,7 +47,7 @@ const Login = () => {
 
   const handleLogin = async () => {
     console.log("Logging in with:", form);
-    if (!form.identifier || !form.password) {
+    if (!form.identifier || !form.usrpassword) {
       setLoginError("Both fields are required.");
       return;
     }
@@ -54,18 +55,20 @@ const Login = () => {
     setLoginError("");
     setLoading(true);
     try {
-      const response = await axios.post(`${API_BASE_URL}/login/`, form);
+      const response = await axios.post(`${API_BASE_URL}/userlogin/`, form);
       console.log("Login successful:", response.data);
 
       // Save token and user data
-      localStorage.setItem("token", response.data.jwt);
+      localStorage.setItem("token", response.data.token);
       localStorage.setItem("user", JSON.stringify(response.data.user));
 
       // Redirect to dashboard
       window.location.href = "/dashboard";
     } catch (error) {
       console.error("Login error:", error);
-      setLoginError("Invalid username or password.");
+      setLoginError(
+        error.response?.data?.detail || "Invalid username or password."
+      );
     } finally {
       setLoading(false);
     }
@@ -75,7 +78,6 @@ const Login = () => {
     <div className="h-screen w-screen flex items-center justify-center 
     bg-gradient-to-r from-dashboardDark to-dashboardPrimary 
     animate-gradient">
-
 
       {/* Clock (Top Right Corner) */}
       <div className="absolute top-1 right-2 ">
@@ -103,11 +105,11 @@ const Login = () => {
               <p className="text-center text-peacockPurple">Loading...</p>
             ) : (
               <div className="space-y-2">
-                {holidays.map((holiday) => (
+                {holidays.map((holiday, index) => (
                   <div
-                  key={holiday.id || index}
+                    key={holiday.id || index}
                     className="bg-gradient-to-r from-peacockTeal to-peacockGreen 
-                   text-white p-2 rounded-md text-center shadow-md"
+                             text-white p-2 rounded-md text-center shadow-md"
                   >
                     {formatDate(holiday.holiday_date)}, {holiday.holiday_day.slice(0, 3)} - {holiday.holiday_name}
                   </div>
@@ -133,7 +135,7 @@ const Login = () => {
           <input
             id="identifier"
             type="text"
-            placeholder="Username"
+            placeholder="Username or ID"
             value={form.identifier}
             onChange={handleChange}
             className="w-full p-3 border rounded-md mb-3 focus:ring-4 focus:ring-[#009966] transition outline-none"
@@ -141,10 +143,10 @@ const Login = () => {
 
           {/* Password Input */}
           <input
-            id="password"
+            id="usrpassword"
             type="password"
             placeholder="Password"
-            value={form.password}
+            value={form.usrpassword}
             onChange={handleChange}
             className="w-full p-3 border rounded-md mb-3 focus:ring-4 focus:ring-[#009966] transition outline-none"
           />

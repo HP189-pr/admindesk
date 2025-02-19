@@ -1,53 +1,32 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import Cookies from "js-cookie";
-import axios from "axios";
+import React, { useState } from "react";
+import Sidebar from "../Menu/Sidebar";
+import TopMenu from "../Menu/Topbar";
 
 const Dashboard = () => {
-  const [user, setUser] = useState(null);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    // Fetch user data from JWT token
-    const token = Cookies.get("token");
-
-    if (!token) {
-      navigate("/login");
-      return;
-    }
-
-    axios
-      .get("http://localhost:1337/api/auth/me", {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      .then((response) => {
-        setUser(response.data.user);
-      })
-      .catch(() => {
-        Cookies.remove("token");
-        navigate("/login");
-      });
-  }, [navigate]);
-
-  const handleLogout = () => {
-    Cookies.remove("token");
-    navigate("/login");
-  };
+  const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [selectedMenuItem, setSelectedMenuItem] = useState(null);
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold">Welcome to Dashboard</h1>
-      {user ? (
-        <div className="mt-4">
-          <p><strong>User ID:</strong> {user.userid}</p>
-          <p><strong>User Code:</strong> {user.usercode}</p>
-          <p><strong>Username:</strong> {user.username}</p>
-          <p><strong>User Type:</strong> {user.usertype}</p>
+    <div className="flex h-screen w-screen">
+      {/* Sidebar (Fixed Left) */}
+      <Sidebar isOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} setSelectedMenuItem={setSelectedMenuItem} />
+
+      {/* Right Side - Top Menu & Work Area */}
+      <div className="flex flex-col flex-grow">
+        {/* Top Menu (Fixed on Top) */}
+        <div className="h-16">
+          <TopMenu selectedMenuItem={selectedMenuItem} />
         </div>
-      ) : (
-        <p>Loading user data...</p>
-      )}
-      <button onClick={handleLogout} className="bg-red-500 text-white p-2 mt-4 rounded">Logout</button>
+
+        {/* Work Area (Fills Remaining Space) */}
+        <div className="flex-grow p-4 overflow-auto bg-gray-100">
+          {selectedMenuItem ? (
+            <h1 className="text-xl font-bold">{selectedMenuItem} Page</h1>
+          ) : (
+            <h1 className="text-xl font-bold">Select a Menu Item</h1>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
