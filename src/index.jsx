@@ -1,7 +1,7 @@
 import React from "react";
-import ReactDOM from "react-dom/client";  // ✅ Use "react-dom/client" in React 18
+import ReactDOM from "react-dom/client";
 import App from "./App";
-import "./index.css";  // Optional CSS import
+import "./index.css";  // Import Tailwind CSS
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
