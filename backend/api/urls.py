@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import HolidayViewSet, LoginView, ChangePasswordView  # Import ChangePasswordView
+from .views import HolidayViewSet, LoginView, ChangePasswordView, UserProfileView    # Import ChangePasswordView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 # Create the router and register the HolidayViewSet
@@ -12,4 +12,5 @@ urlpatterns = [
     path('backlogin/', TokenObtainPairView.as_view(), name='backlogin'),
     path('userlogin/', LoginView.as_view(), name='userlogin'), 
     path('change-password/<str:userid>/', ChangePasswordView.as_view(), name='change-password'),  # New route for change password
+    path("profile/", UserProfileView.as_view(), name="user-profile"),
 ]

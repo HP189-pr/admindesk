@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 from datetime import timedelta
+import os
+
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -158,3 +160,5 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': False,  # Whether to blacklist old refresh tokens after rotation
     'UPDATE_LAST_LOGIN': False,  # Update the user's last login time when using JWT
 }
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")

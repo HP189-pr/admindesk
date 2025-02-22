@@ -1,16 +1,19 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, generics, viewsets
 from django.contrib.auth.hashers import check_password, make_password
 from django.shortcuts import render, redirect
-from .models import User,Holiday
-from .ChangePasswordForm import ChangePasswordForm
-from .serializers import HolidaySerializer, LoginSerializer, UserSerializer, ChangePasswordSerializer
+from django.conf import settings
+from rest_framework.permissions import IsAuthenticated, AllowAny
 import jwt
 import datetime
-from django.conf import settings
-from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated, AllowAny
+
+from .models import User, Holiday, UserProfile
+from .ChangePasswordForm import ChangePasswordForm
+from .serializers import (
+    HolidaySerializer, LoginSerializer, UserSerializer, 
+    ChangePasswordSerializer, UserProfileSerializer
+)
 
 
 class HolidayViewSet(viewsets.ModelViewSet):
@@ -29,6 +32,7 @@ class HolidayViewSet(viewsets.ModelViewSet):
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
+
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
@@ -44,34 +48,32 @@ class LoginView(APIView):
 
 
 class ChangePasswordView(APIView):
-    permission_classes = [AllowAny]  # Adjust if you want authenticated users only
+    permission_classes = [AllowAny]  # Adjust if you want only authenticated users
 
     def get(self, request, *args, **kwargs):
-        # Access 'userid' from self.kwargs (DRF handles URL parameters this way)
         userid = kwargs.get('userid')
         
         if not userid:
-            return Response({"error": "User ID is required"}, status=400)
+            return Response({"error": "User ID is required"}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
             user = User.objects.get(userid=userid)
         except User.DoesNotExist:
-            return Response({"error": "User not found"}, status=404)
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         
         form = ChangePasswordForm()  # Empty form for GET request
         return render(request, 'change-password.html', {'form': form, 'user': user})
 
     def post(self, request, *args, **kwargs):
-        # Access 'userid' from self.kwargs
         userid = kwargs.get('userid')
 
         if not userid:
-            return Response({"error": "User ID is required"}, status=400)
+            return Response({"error": "User ID is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             user = User.objects.get(userid=userid)
         except User.DoesNotExist:
-            return Response({"error": "User not found"}, status=404)
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
         form = ChangePasswordForm(request.POST)
         if form.is_valid():
@@ -79,3 +81,11 @@ class ChangePasswordView(APIView):
             return redirect('password_changed')  # Redirect to success page after password change
 
         return render(request, 'change-password.html', {'form': form, 'user': user})
+
+
+class UserProfileView(generics.RetrieveUpdateAPIView):
+    serializer_class = UserProfileSerializer
+    permission_classes = [AllowAny]  # Ensures only logged-in users can access profiles
+
+    def get_object(self):
+        return UserProfile.objects.get(user=self.request.user)

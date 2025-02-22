@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom Tailwind styles */
+
 /* ====== Peacock Theme for Login ====== */
 .peacock-background {
   @apply bg-gradient-to-br from-peacockTeal via-peacockGreen to-peacockPurple;
@@ -11,11 +13,11 @@
 
 /* ====== Dashboard Theme ====== */
 .dashboard-background {
-  @apply bg-dashboardDark text-dashboardText;
+  @apply bg-white text-dashboardText;
 }
 
 .sidebar {
-  @apply bg-dashboardPrimary text-white w-64 min-h-screen p-5;
+  @apply bg-white text-white w-64 min-h-screen p-5;
 }
 
 .topbar {

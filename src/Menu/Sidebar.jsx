@@ -1,137 +1,81 @@
-import React, { useState } from "react";
-import {
-  Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Avatar, Divider, Collapse
-} from "@mui/material";
-import {
-  Dashboard, People, Payment, CalendarToday, Settings, ExitToApp, School, Work, ExpandMore, ExpandLess
-} from "@mui/icons-material";
+import React, { useState, useEffect } from "react";
 
 const modules = [
-  { id: "student", name: "Student Module", icon: <School />, menu: ["Transcript", "Migration", "Attendance"] },
-  { id: "employee", name: "Employee Module", icon: <Work />, menu: ["Payroll", "Leave Management", "Projects"] },
+  { id: "student", name: "Student Module", icon: "📚", menu: ["Transcript", "Migration", "Attendance"] },
+  { id: "employee", name: "Employee Module", icon: "💼", menu: ["Payroll", "Leave Management", "Projects"] },
+  { id: "admin", name: "Admin Panel", icon: "👥", menu: ["User Management", "Settings"] }
 ];
 
-const Sidebar = ({ isOpen }) => {
-  const [active, setActive] = useState("dashboard");
+const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
   const [selectedModule, setSelectedModule] = useState(null);
-  const [moduleOpen, setModuleOpen] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [user, setUser] = useState(null); // ✅ FIX: Add useState for user
+
+  useEffect(() => {
+    const storedUser = JSON.parse(localStorage.getItem("user"));
+    setUser(storedUser);
+  }, []);
+
+  const handleModuleSelect = (moduleId) => {
+    setSelectedModule(moduleId);
+    setShowDropdown(false);
+  };
 
   return (
-    <Drawer
-      variant="permanent"
-      open={isOpen}
-      className="h-screen w-64 bg-gray-600 p-5 rounded-tl-[37px] rounded-bl-[37px]"
-    >
+    <div className={`h-screen bg-gray-800 text-white transition-all ${isOpen ? "w-64" : "w-20"} duration-300 p-4`}>
       {/* Profile Section */}
-      <div className="flex flex-col items-center mb-6">
-        <Avatar sx={{ width: 50, height: 50, bgcolor: "white" }} />
-        <span className="text-white mt-2 text-lg font-semibold">John Doe</span>
-        <ListItemButton className="text-white text-sm opacity-70">
-          <Settings className="mr-2" fontSize="small" /> Settings
-        </ListItemButton>
+      <div className="flex items-center mb-4">
+        <img 
+          src={user?.profilePicture || "/default-profile.png"} 
+          alt="Profile" 
+          className="w-10 h-10 rounded-full mr-2" 
+        />
+        {isOpen && <span className="text-lg font-semibold">{user?.username || "Guest"}</span>}
+        <button onClick={() => setSidebarOpen(!isOpen)} className="ml-auto">☰</button>
       </div>
-
-      <Divider className="bg-gray-500 my-3" />
+      <hr className="border-gray-600 mb-4" />
 
       {/* Dashboard */}
-      <ListItem disablePadding>
-        <ListItemButton
-          onClick={() => {
-            setActive("dashboard");
-            setSelectedModule(null);
-          }}
-          className={`p-3 rounded-md ${
-            active === "dashboard" ? "bg-white text-gray-600" : "text-white hover:bg-gray-500"
-          }`}
-        >
-          <ListItemIcon className={active === "dashboard" ? "text-gray-600" : "text-white"}>
-            <Dashboard />
-          </ListItemIcon>
-          <ListItemText primary="Dashboard" />
-        </ListItemButton>
-      </ListItem>
+      <button className="w-full text-left px-4 py-2 rounded hover:bg-gray-700">🏠 Dashboard</button>
+      <hr className="border-gray-600 my-4" />
 
-      <Divider className="bg-gray-500 my-3" />
-
-      {/* Module Selection (Dropdown Toggle) */}
-      <ListItem disablePadding>
-        <ListItemButton onClick={() => setModuleOpen(!moduleOpen)} className="text-white">
-          <ListItemText primary="Select Module" />
-          {moduleOpen ? <ExpandLess className="text-white" /> : <ExpandMore className="text-white" />}
-        </ListItemButton>
-      </ListItem>
-
-      {/* Module Options (Dropdown List) */}
-      <Collapse in={moduleOpen} timeout="auto" unmountOnExit>
-        <List className="ml-4">
-          {modules.map((mod) => (
-            <ListItem key={mod.id} disablePadding>
-              <ListItemButton
-                onClick={() => {
-                  setSelectedModule(selectedModule === mod.id ? null : mod.id);
-                  setActive(mod.id);
-                  setModuleOpen(false);
-                }}
-                className={`p-3 rounded-md ${
-                  active === mod.id ? "bg-white text-gray-600" : "text-white hover:bg-gray-500"
-                }`}
-              >
-                <ListItemIcon className={active === mod.id ? "text-gray-600" : "text-white"}>
-                  {mod.icon}
-                </ListItemIcon>
-                <ListItemText primary={mod.name} />
-              </ListItemButton>
-            </ListItem>
-          ))}
-        </List>
-      </Collapse>
-
-      <Divider className="bg-gray-500 my-3" />
+      {/* Module Dropdown Selector */}
+      <div className="relative">
+        <button onClick={() => setShowDropdown(!showDropdown)} className="w-full text-left px-4 py-2 rounded bg-gray-700 hover:bg-gray-600">
+          {selectedModule ? modules.find(m => m.id === selectedModule).name : "Select Module"}
+        </button>
+        {showDropdown && (
+          <div className="absolute left-0 w-full bg-gray-700 rounded shadow-lg z-10">
+            {modules.map((mod) => (
+              <button key={mod.id} onClick={() => handleModuleSelect(mod.id)} className="w-full text-left px-4 py-2 hover:bg-gray-600 flex items-center">
+                <span className="mr-2">{mod.icon}</span> {mod.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <hr className="border-gray-600 my-4" />
 
       {/* Dynamic Menu Box (Based on Selected Module) */}
       {selectedModule && (
-        <List className="ml-4">
-          {modules
-            .find((mod) => mod.id === selectedModule)
-            ?.menu.map((item) => (
-              <ListItem key={item} disablePadding>
-                <ListItemButton
-                  onClick={() => setActive(item)}
-                  className={`p-3 rounded-md ${
-                    active === item ? "bg-white text-gray-600" : "text-white hover:bg-gray-500"
-                  }`}
-                >
-                  <ListItemText primary={item} />
-                </ListItemButton>
-              </ListItem>
-            ))}
-        </List>
+        <div>
+          {modules.find((mod) => mod.id === selectedModule)?.menu.map((item) => (
+            <button key={item} onClick={() => setSelectedMenuItem(item)} className="w-full text-left px-4 py-2 hover:bg-gray-700">
+              {item}
+            </button>
+          ))}
+        </div>
       )}
 
-      <Divider className="bg-gray-500 my-3" />
+      <hr className="border-gray-600 my-4" />
 
-      {/* Admin Panel */}
-      <ListItem disablePadding>
-        <ListItemButton
-          onClick={() => setActive("admin")}
-          className={`p-3 rounded-md ${
-            active === "admin" ? "bg-white text-gray-600" : "text-white hover:bg-gray-500"
-          }`}
-        >
-          <ListItemIcon className={active === "admin" ? "text-gray-600" : "text-white"}>
-            <People />
-          </ListItemIcon>
-          <ListItemText primary="Admin Panel" />
-        </ListItemButton>
-      </ListItem>
+      {/* Admin Panel Button */}
+      <button onClick={() => console.log("Admin Panel Clicked!")} className="w-full text-left px-4 py-2 rounded hover:bg-gray-700">⚙️ Admin Panel</button>
+      <hr className="border-gray-600 my-4" />
 
-      {/* Logout Button */}
-      <div className="absolute bottom-5 w-full px-5">
-        <button className="w-full bg-white text-gray-600 font-medium py-3 rounded-lg flex items-center justify-center">
-          <ExitToApp className="mr-2" /> Logout
-        </button>
-      </div>
-    </Drawer>
+      {/* Logout */}
+      <button className="w-full text-left px-4 py-2 rounded hover:bg-gray-700">🚪 Logout</button>
+    </div>
   );
 };
 
