@@ -1,82 +1,83 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import axios from "axios";
 
-const modules = [
-  { id: "student", name: "Student Module", icon: "📚", menu: ["Transcript", "Migration", "Attendance"] },
-  { id: "employee", name: "Employee Module", icon: "💼", menu: ["Payroll", "Leave Management", "Projects"] },
-  { id: "admin", name: "Admin Panel", icon: "👥", menu: ["User Management", "Settings"] }
-];
+const API_BASE_URL = "http://127.0.0.1:8000";
 
-const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
-  const [selectedModule, setSelectedModule] = useState(null);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [user, setUser] = useState(null); // ✅ FIX: Add useState for user
+const useAuth = () => {
+  const [user, setUser] = useState(() => {
+    const storedUser = localStorage.getItem("user");
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = JSON.parse(localStorage.getItem("user"));
-    setUser(storedUser);
+    const fetchUser = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await axios.get(`${API_BASE_URL}/api/profile/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.status === 200) {
+          console.log("✅ User fetched:", response.data);
+          setUser(response.data);
+          localStorage.setItem("user", JSON.stringify(response.data));
+        } else {
+          throw new Error("Invalid response from server");
+        }
+      } catch (error) {
+        console.error("❌ Fetch User Error:", error.response?.data || error.message);
+        if (error.response?.status === 401) {
+          logout();
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
   }, []);
 
-  const handleModuleSelect = (moduleId) => {
-    setSelectedModule(moduleId);
-    setShowDropdown(false);
+  const login = async (identifier, password) => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/api/userlogin/`,
+        { identifier, usrpassword: password },
+        { headers: { "Content-Type": "application/json" } }
+      );
+
+      console.log("✅ Login API Response:", response.data);
+
+      if (response.data.token) {
+        localStorage.setItem("token", response.data.token);
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+
+        setUser(response.data.user);  // ✅ Ensure React re-renders immediately
+
+        return { success: true };
+      }
+
+      return { success: false, error: "Login failed. No token received." };
+    } catch (error) {
+      console.error("🔥 Login API Error:", error.response?.data || error.message);
+      return { success: false, error: error.response?.data?.detail || "Invalid credentials." };
+    }
   };
 
-  return (
-    <div className={`h-screen bg-gray-800 text-white transition-all ${isOpen ? "w-64" : "w-20"} duration-300 p-4`}>
-      {/* Profile Section */}
-      <div className="flex items-center mb-4">
-        <img 
-          src={user?.profilePicture || "/default-profile.png"} 
-          alt="Profile" 
-          className="w-10 h-10 rounded-full mr-2" 
-        />
-        {isOpen && <span className="text-lg font-semibold">{user?.username || "Guest"}</span>}
-        <button onClick={() => setSidebarOpen(!isOpen)} className="ml-auto">☰</button>
-      </div>
-      <hr className="border-gray-600 mb-4" />
+  const logout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setUser(null);
+    window.location.href = "/login";
+  };
 
-      {/* Dashboard */}
-      <button className="w-full text-left px-4 py-2 rounded hover:bg-gray-700">🏠 Dashboard</button>
-      <hr className="border-gray-600 my-4" />
-
-      {/* Module Dropdown Selector */}
-      <div className="relative">
-        <button onClick={() => setShowDropdown(!showDropdown)} className="w-full text-left px-4 py-2 rounded bg-gray-700 hover:bg-gray-600">
-          {selectedModule ? modules.find(m => m.id === selectedModule).name : "Select Module"}
-        </button>
-        {showDropdown && (
-          <div className="absolute left-0 w-full bg-gray-700 rounded shadow-lg z-10">
-            {modules.map((mod) => (
-              <button key={mod.id} onClick={() => handleModuleSelect(mod.id)} className="w-full text-left px-4 py-2 hover:bg-gray-600 flex items-center">
-                <span className="mr-2">{mod.icon}</span> {mod.name}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-      <hr className="border-gray-600 my-4" />
-
-      {/* Dynamic Menu Box (Based on Selected Module) */}
-      {selectedModule && (
-        <div>
-          {modules.find((mod) => mod.id === selectedModule)?.menu.map((item) => (
-            <button key={item} onClick={() => setSelectedMenuItem(item)} className="w-full text-left px-4 py-2 hover:bg-gray-700">
-              {item}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <hr className="border-gray-600 my-4" />
-
-      {/* Admin Panel Button */}
-      <button onClick={() => console.log("Admin Panel Clicked!")} className="w-full text-left px-4 py-2 rounded hover:bg-gray-700">⚙️ Admin Panel</button>
-      <hr className="border-gray-600 my-4" />
-
-      {/* Logout */}
-      <button className="w-full text-left px-4 py-2 rounded hover:bg-gray-700">🚪 Logout</button>
-    </div>
-  );
+  return { user, loading, login, logout };
 };
 
-export default Sidebar;
+export default useAuth;

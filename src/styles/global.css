@@ -11,11 +11,11 @@
 
 /* ====== Dashboard Theme ====== */
 .dashboard-background {
-  @apply bg-white text-dashboardText;
+  @apply bg-dashboardDark text-dashboardText;
 }
 
 .sidebar {
-  @apply bg-white text-white w-64 min-h-screen p-5;
+  @apply bg-dashboardPrimary text-white w-64 min-h-screen p-5;
 }
 
 .topbar {

@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.hashers import make_password
 
 class Holiday(models.Model):
     hdid = models.AutoField(primary_key=True)
@@ -15,19 +16,16 @@ class Holiday(models.Model):
 
 class User(models.Model):
     userid = models.AutoField(primary_key=True)
-    usercode = models.CharField(max_length=50, unique=True)
+    usercode = models.CharField(max_length=50, unique=True)  # Unique User Code
     username = models.CharField(max_length=255)
     usrpassword = models.CharField(max_length=255)  # Store hashed passwords
     usertype = models.CharField(max_length=50)
     updatedby = models.CharField(max_length=255, null=True, blank=True)
-    createdat = models.DateTimeField(auto_now_add=True)
+    createdat = models.DateTimeField(auto_now_add=True)  # ✅ Match existing column name
     updatedat = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "users"
-
-    def __str__(self):
-        return self.username
 
 
 class UserProfile(models.Model):
@@ -39,11 +37,13 @@ class UserProfile(models.Model):
     city = models.CharField(max_length=50, blank=True, null=True)
     state = models.CharField(max_length=50, blank=True, null=True)
     country = models.CharField(max_length=50, blank=True, null=True)
-    profile_picture = models.ImageField(upload_to="profilepic/", blank=True, null=True)  # Image upload path
+    profile_picture = models.ImageField(
+        upload_to="profilepic/", blank=True, null=True, default="profilepic/default.jpg"
+    )  # Default Profile Picture
     bio = models.TextField(blank=True, null=True)
-    social_links = models.JSONField(blank=True, null=True)  # Store JSON links
+    social_links = models.JSONField(blank=True, null=True)
 
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)  # Consistent Naming
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

@@ -16,7 +16,7 @@ const Login = () => {
     const fetchHolidays = async () => {
       setHolidaysLoading(true);
       try {
-        const response = await axios.get(`${API_BASE_URL}/holidays/`);
+        const response = await axios.get(`${API_BASE_URL}/api/holidays/`);
         setHolidays(response.data);
       } catch (error) {
         console.error("Error fetching holidays:", error);
@@ -52,7 +52,7 @@ const Login = () => {
     setLoginError("");
     setLoading(true);
     try {
-      const response = await axios.post(`${API_BASE_URL}/userlogin/`, form);
+      const response = await axios.post(`${API_BASE_URL}/api/userlogin/`, form);
       localStorage.setItem("token", response.data.token);
       localStorage.setItem("user", JSON.stringify(response.data.user));
       window.location.href = "/dashboard";
