@@ -145,7 +145,9 @@ CORS_ALLOW_CREDENTIALS = True  # Allow credentials (cookies, sessions)
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',  # JWT authentication
+       "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.BasicAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',  # Require authentication for all views by default
@@ -154,7 +156,7 @@ REST_FRAMEWORK = {
 
 # Optional: JWT settings (for token expiration, etc.)
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),  # Access token expiration (1 hour)
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=2),  # Access token expiration (1 hour)
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),  # Refresh token expiration (7 days)
     'ROTATE_REFRESH_TOKENS': False,  # Whether to rotate refresh tokens on access
     'BLACKLIST_AFTER_ROTATION': False,  # Whether to blacklist old refresh tokens after rotation

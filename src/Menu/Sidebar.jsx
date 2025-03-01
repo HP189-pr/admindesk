@@ -1,83 +1,136 @@
-import { useState, useEffect } from "react";
-import axios from "axios";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import useAuth from "../hooks/useAuth.jsx";
 
-const API_BASE_URL = "http://127.0.0.1:8000";
+const modules = [
+    { id: "student", name: "Student Module", icon: "📚", menu: ["Transcript", "Migration", "Attendance"] },
+    { id: "employee", name: "Employee Module", icon: "💼", menu: ["Payroll", "Leave Management", "Projects"] },
+    { id: "admin", name: "Admin Panel", icon: "👥", menu: ["User Management", "Settings"] },
+];
 
-const useAuth = () => {
-  const [user, setUser] = useState(() => {
-    const storedUser = localStorage.getItem("user");
-    return storedUser ? JSON.parse(storedUser) : null;
-  });
-  const [loading, setLoading] = useState(true);
+const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
+    const navigate = useNavigate();
+    const [selectedModule, setSelectedModule] = useState(null);
+    const [showDropdown, setShowDropdown] = useState(false);
+    const { user, logout, verifyPassword } = useAuth();
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const response = await axios.get(`${API_BASE_URL}/api/profile/`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (response.status === 200) {
-          console.log("✅ User fetched:", response.data);
-          setUser(response.data);
-          localStorage.setItem("user", JSON.stringify(response.data));
-        } else {
-          throw new Error("Invalid response from server");
+    const handleModuleSelect = (moduleId) => {
+        setSelectedModule(moduleId);
+        setShowDropdown(false);
+    };
+    const handleLogout = () => {
+      logout(navigate);  // Pass navigate function to logout
+  };
+    const handleSecureNavigation = async (menuItem) => {
+        const password = prompt("Please confirm your password:");
+        if (password) {
+            const isVerified = await verifyPassword(password);
+            if (isVerified) {
+                setSelectedMenuItem(menuItem);
+            } else {
+                alert("Password verification failed.");
+            }
         }
-      } catch (error) {
-        console.error("❌ Fetch User Error:", error.response?.data || error.message);
-        if (error.response?.status === 401) {
-          logout();
-        }
-      } finally {
-        setLoading(false);
-      }
     };
 
-    fetchUser();
-  }, []);
+    return (
+        <div className={`h-screen bg-gray-800 text-white transition-all ${isOpen ? "w-64" : "w-20"} duration-300 p-4`}>
+            <div className="flex items-center mb-4">
+                <img
+                    src={user?.profilePicture || "/default-profile.png"}
+                    alt="Profile"
+                    className="w-10 h-10 rounded-full mr-2"
+                />
+                {isOpen && (
+                    <div className="flex-1">
+                        <span className="text-lg font-semibold">{user?.username || "Guest"}</span>
+                    </div>
+                )}
 
-  const login = async (identifier, password) => {
-    try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/userlogin/`,
-        { identifier, usrpassword: password },
-        { headers: { "Content-Type": "application/json" } }
-      );
+                <div className="relative">
+                    <button
+                        onClick={() => handleSecureNavigation("Profile Settings")}
+                        className="text-white hover:text-gray-300"
+                    >
+                        ⚙️
+                    </button>
+                </div>
 
-      console.log("✅ Login API Response:", response.data);
+                <button onClick={() => setSidebarOpen(!isOpen)} className="ml-2">
+                    ☰
+                </button>
+            </div>
 
-      if (response.data.token) {
-        localStorage.setItem("token", response.data.token);
-        localStorage.setItem("user", JSON.stringify(response.data.user));
+            <hr className="border-gray-600 mb-4" />
 
-        setUser(response.data.user);  // ✅ Ensure React re-renders immediately
+            <button
+                onClick={() => setSelectedMenuItem("Dashboard")}
+                className="w-full text-left px-4 py-2 rounded hover:bg-gray-700"
+            >
+                🏠 Dashboard
+            </button>
 
-        return { success: true };
-      }
+            <hr className="border-gray-600 my-4" />
 
-      return { success: false, error: "Login failed. No token received." };
-    } catch (error) {
-      console.error("🔥 Login API Error:", error.response?.data || error.message);
-      return { success: false, error: error.response?.data?.detail || "Invalid credentials." };
-    }
-  };
+            <div className="relative">
+                <button
+                    onClick={() => setShowDropdown(!showDropdown)}
+                    className="w-full text-left px-4 py-2 rounded bg-gray-700 hover:bg-gray-600"
+                >
+                    {selectedModule ? modules.find(m => m.id === selectedModule).name : "Select Module"}
+                </button>
+                {showDropdown && (
+                    <div className="absolute left-0 w-full bg-gray-700 rounded shadow-lg z-10">
+                        {modules.map((mod) => (
+                            <button
+                                key={mod.id}
+                                onClick={() => handleModuleSelect(mod.id)}
+                                className="w-full text-left px-4 py-2 hover:bg-gray-600 flex items-center"
+                            >
+                                <span className="mr-2">{mod.icon}</span> {mod.name}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    setUser(null);
-    window.location.href = "/login";
-  };
+            <hr className="border-gray-600 my-4" />
 
-  return { user, loading, login, logout };
+            {selectedModule && (
+                <div>
+                    {modules
+                        .find((mod) => mod.id === selectedModule)
+                        ?.menu.map((item) => (
+                            <button
+                                key={item}
+                                onClick={() => setSelectedMenuItem(item)}
+                                className="w-full text-left px-4 py-2 hover:bg-gray-700"
+                            >
+                                {item}
+                            </button>
+                        ))}
+                </div>
+            )}
+
+            <hr className="border-gray-600 my-4" />
+
+            <button
+                onClick={() => handleSecureNavigation("Admin Panel")}
+                className="w-full text-left px-4 py-2 rounded hover:bg-gray-700"
+            >
+                ⚙️ Admin Panel
+            </button>
+
+            <hr className="border-gray-600 my-4" />
+
+            <button
+                onClick={() => handleLogout()}
+                className="w-full text-left px-4 py-2 rounded hover:bg-gray-700"
+            >
+                🚪 Logout
+            </button>
+        </div>
+    );
 };
 
-export default useAuth;
+export default Sidebar;

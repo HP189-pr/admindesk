@@ -1,5 +1,3 @@
-import React from "react";
-
 const menuActions = {
   Transcript: () => ["➕", "✏️", "🔍"],
   Migration: () => ["➕", "🔍"],
@@ -8,7 +6,8 @@ const menuActions = {
   "Leave Management": () => ["➕", "✏️"],
   Projects: () => ["🔍"],
   "User Management": () => ["➕", "✏️"],
-  Settings: () => ["✏️"]
+  Settings: () => ["✏️"],
+  "Admin Panel": () => ["➕", "🔍"]  
 };
 
 export default menuActions;

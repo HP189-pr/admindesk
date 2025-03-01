@@ -1,48 +1,30 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import Sidebar from "../Menu/Sidebar";
-import TopMenu from "../Menu/Topbar";
-import ProfileUpdate from "../components/ProfileUpdate";
-import useAuth from "../hooks/useAuth";
-
+import React, { useState } from "react";
+import Sidebar from "../Menu/Sidebar.jsx";
+import TopMenu from "../Menu/Topbar.jsx";
+import WorkArea from "./WorkArea.jsx"; 
 const Dashboard = () => {
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
-  const [isSidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
-  const [workArea, setWorkArea] = useState(null);
-
-  useEffect(() => {
-    console.log("🔍 Checking user state in Dashboard:", { user, loading });
-
-    if (!loading) {
-      if (!user) {
-        console.log("❌ No user found, redirecting to login");
-        navigate("/login");
-      } else {
-        console.log("✅ User is authenticated:", user);
-      }
-    }
-  }, [user, loading, navigate]);
-
-  if (loading) {
-    return <div className="flex h-screen w-screen items-center justify-center text-lg">Loading...</div>;
-  }
+  const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [selectedMenuItem, setSelectedMenuItem] = useState(null);
 
   return (
     <div className="flex h-screen w-screen">
-      <Sidebar isOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} setWorkArea={setWorkArea} />
+      {/* Sidebar */}
+      <Sidebar 
+        isOpen={isSidebarOpen} 
+        setSidebarOpen={setSidebarOpen} 
+        setSelectedMenuItem={setSelectedMenuItem} 
+      />
 
-      <div className="flex flex-col flex-grow p-4">
-        <div className="h-16 mb-4">
-          <TopMenu />
+      {/* Main Content Area */}
+      <div className="flex flex-col flex-grow">
+        {/* Top Menu */}
+        <div className="min-h-[4rem] bg-white shadow-md">
+          <TopMenu selectedMenuItem={selectedMenuItem} />
         </div>
 
-        <div className="flex-grow p-4 overflow-auto bg-gray-100 rounded-lg">
-          {workArea === "profile" ? (
-            <ProfileUpdate setWorkArea={setWorkArea} />
-          ) : (
-            <h1 className="text-xl font-bold text-center text-gray-700">Welcome to the Dashboard</h1>
-          )}
+        {/* Work Area - Load Content */}
+        <div className="flex-grow p-4 overflow-auto bg-gray-100">
+          <WorkArea selectedMenuItem={selectedMenuItem} />
         </div>
       </div>
     </div>

@@ -80,11 +80,35 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = "__all__"
+        extra_kwargs = {
+            'user': {'read_only': True},  # Prevent user from being updated
+        }
 
     def update(self, instance, validated_data):
-        # Ensure that only the owner can update their profile
         request_user = self.context.get("request").user
         if instance.user != request_user:
             raise serializers.ValidationError("You can only update your own profile.")
 
-        return super().update(instance, validated_data)
+        # Handle profile picture separately (optional)
+        profile_picture = validated_data.pop('profile_picture', None)
+        if profile_picture:
+            instance.profile_picture = profile_picture
+
+        # Update other fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return instance
+class VerifyPasswordSerializer(serializers.Serializer):
+    usrpassword = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        request = self.context.get('request')  # Get request from context
+        user = request.user  # This is the logged-in user (request.user)
+
+        if not check_password(data['usrpassword'], user.usrpassword):
+            raise serializers.ValidationError("Invalid password.")
+
+        return data
+    

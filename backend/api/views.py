@@ -1,7 +1,9 @@
+import traceback
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, generics, viewsets
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.parsers import MultiPartParser, FormParser
 from django.contrib.auth.hashers import check_password, make_password
 from django.conf import settings
 from django.shortcuts import get_object_or_404
@@ -11,7 +13,7 @@ import datetime
 from .models import User, Holiday, UserProfile
 from .serializers import (
     HolidaySerializer, LoginSerializer, UserSerializer, 
-    ChangePasswordSerializer, UserProfileSerializer
+    ChangePasswordSerializer, UserProfileSerializer,VerifyPasswordSerializer
 )
 
 
@@ -72,11 +74,22 @@ class ChangePasswordView(APIView):
 
 
 class UserProfileView(generics.RetrieveUpdateAPIView):
-    """Allows users to retrieve and update their profile"""
     serializer_class = UserProfileSerializer
-    permission_classes = [IsAuthenticated]  # Only logged-in users can access this
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]  # Required for image uploads
 
     def get_object(self):
-        """Returns the profile of the currently authenticated user"""
-        user_profile = get_object_or_404(UserProfile, user=self.request.user)
-        return user_profile
+        return get_object_or_404(UserProfile, user=self.request.user)
+class VerifyPasswordView(APIView):
+    """
+    API to verify the logged-in user's current password.
+    """
+    permission_classes = [IsAuthenticated]  # Ensure user is logged in
+
+    def post(self, request):
+        serializer = VerifyPasswordSerializer(data=request.data, context={'request': request})
+
+        if serializer.is_valid():
+            return Response({"message": "Password verified successfully."}, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)    
