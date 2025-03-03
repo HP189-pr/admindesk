@@ -67,14 +67,16 @@ const useAuth = () => {
 
     const verifyPassword = async (password) => {
         const token = localStorage.getItem("token");
+        console.log("🔑 Token being sent:", token);  // Debug to confirm token
+    
         try {
             const response = await axios.post(
-                `${API_BASE_URL}/api/verify-password`,
-                { password },
+                `${API_BASE_URL}/api/verify-password/`,
+                { usrpassword: password },   // Assuming backend expects `usrpassword`
                 {
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
+                        Authorization: `Bearer ${token}`,  // Ensure "Bearer " prefix
                     },
                 }
             );
