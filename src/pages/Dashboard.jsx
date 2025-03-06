@@ -1,42 +1,58 @@
 import React, { useState } from "react";
 import Sidebar from "../Menu/Sidebar.jsx";
-import TopMenu from "../Menu/Topbar.jsx";
+import Topbar from "../Menu/Topbar.jsx";
 import WorkArea from "./WorkArea.jsx";
 import ChatBox from "../components/ChatBox.jsx";
-import Topbar from "../Menu/Topbar.jsx";
+import { useAuth } from "../hooks/AuthContext";
 
 const Dashboard = () => {
-  const [isSidebarOpen, setSidebarOpen] = useState(true);
-  const [isChatboxOpen, setChatboxOpen] = useState(false); // Toggle for chatbox open/close
-  const [selectedMenuItem, setSelectedMenuItem] = useState(null);
-  const [chatNotificationCount, setChatNotificationCount] = useState(0); // New message count
+  const { verifyPassword } = useAuth();
+    const [isSidebarOpen, setSidebarOpen] = useState(true);
+    const [isChatboxOpen, setChatboxOpen] = useState(false);
+    const [selectedMenuItem, setSelectedMenuItem] = useState(null);
+    const [chatNotificationCount, setChatNotificationCount] = useState(0);
 
-  return (
-    <div className="flex h-screen w-screen">
-      {/* Sidebar (left) */}
-      <Sidebar 
-        isOpen={isSidebarOpen} 
-        setSidebarOpen={setSidebarOpen} 
-        setSelectedMenuItem={setSelectedMenuItem} 
-      />
+    const handleSecureNavigation = async (menuItem) => {
+      console.log(`Secure navigation triggered for ${menuItem}`);
+      const password = prompt("Please confirm your password to access this section:");
+  
+      if (password) {
+        const isVerified = await verifyPassword(password);
 
-      {/* Main content area (center) with left margin to create the space */}
-      <div className="flex-grow flex flex-col bg-white ml-[1rem]">
-        {/* Top menu */}
-        <Topbar
-            selectedMenuItem={selectedMenuItem} 
-        />
-        <div className="h-[1rem] bg-white"></div> 
-        {/* Work area */}
-        <div className="flex-grow p-4 overflow-auto bg-gray-100">
-          <WorkArea selectedMenuItem={selectedMenuItem} />
+          if (isVerified) {
+              console.log(`Password verified, navigating to ${menuItem}`);
+              setSelectedMenuItem(menuItem);
+          } else {
+              alert("Password verification failed.");
+          }
+      } else {
+          console.log("Password prompt cancelled");
+      }
+  };
+
+    return (
+        <div className="flex h-screen w-screen">
+            {/* Sidebar (left) */}
+            <Sidebar
+                isOpen={isSidebarOpen}
+                setSidebarOpen={setSidebarOpen}
+                setSelectedMenuItem={setSelectedMenuItem}
+                handleSecureNavigation={handleSecureNavigation} 
+            />
+
+            {/* Main content area (center) */}
+            <div className="flex-grow flex flex-col bg-white ml-[1rem]">
+                <Topbar selectedMenuItem={selectedMenuItem} />
+                <div className="h-[1rem] bg-white"></div>
+                <div className="flex-grow p-4 overflow-auto bg-gray-100">
+                    <WorkArea selectedMenuItem={selectedMenuItem} />
+                </div>
+            </div>
+
+            {/* Chatbox (right side) */}
+            <ChatBox />
         </div>
-      </div>
-
-      {/* Chatbox (right side) - Self-contained */}
-      <ChatBox />
-    </div>
-  );
+    );
 };
 
 export default Dashboard;

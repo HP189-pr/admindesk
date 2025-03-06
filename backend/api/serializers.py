@@ -1,57 +1,58 @@
 from rest_framework import serializers
-from django.contrib.auth.hashers import check_password, make_password
+from django.contrib.auth.hashers import check_password
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.utils import timezone
 from django.db import transaction
-from .models import Holiday, User, UserProfile
+from .models import Holiday, UserProfile, User
+from django.conf import settings
 
-
+# --- Holiday Serializer ---
 class HolidaySerializer(serializers.ModelSerializer):
     class Meta:
         model = Holiday
         fields = "__all__"
 
-
+# --- Login Serializer (Uses `username` as identifier) ---
 class LoginSerializer(serializers.Serializer):
-    identifier = serializers.CharField()  # Accepts either `userid` or `usercode`
-    usrpassword = serializers.CharField(write_only=True)
+    username = serializers.CharField()
+    password = serializers.CharField(write_only=True)
 
     def validate(self, data):
-        user = None
-        identifier = data["identifier"].strip().lower()  # ✅ Case-insensitive login
-
         try:
-            if identifier.isdigit():
-                user = User.objects.get(userid=identifier)
-            else:
-                user = User.objects.get(usercode__iexact=identifier)  # ✅ Case-insensitive match
+            user = User.objects.get(username__iexact=data["username"].strip())
         except User.DoesNotExist:
-            raise serializers.ValidationError("Invalid username or password.")  # ✅ Generic error
+            raise serializers.ValidationError("Invalid username or password.")  # Generic error
 
-        if not check_password(data["usrpassword"], user.usrpassword):
-            raise serializers.ValidationError("Invalid username or password.")  # ✅ Prevents user existence leak
+        if not user.check_password(data["password"]):  # Use the built-in `check_password`
+            raise serializers.ValidationError("Invalid username or password.")
 
-        return user
+        return {
+            "id": user.id,
+            "username": user.username,
+            "name": user.get_full_name(),  # Use the built-in `get_full_name` method
+            "usertype": user.usertype
+        }
 
-
+# --- User Serializer ---
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        exclude = ["usrpassword"]  # ✅ Never expose passwords
+        exclude = ["password"]  # Never expose passwords in API responses
 
-
+# --- Change Password Serializer ---
 class ChangePasswordSerializer(serializers.Serializer):
-    userid = serializers.IntegerField()
+    id = serializers.IntegerField()
     old_password = serializers.CharField(write_only=True)
     new_password = serializers.CharField(write_only=True)
 
     def validate(self, data):
         try:
-            user = User.objects.get(userid=data["userid"])
+            user = User.objects.get(id=data["id"])
         except User.DoesNotExist:
-            raise serializers.ValidationError("Invalid user credentials.")  # ✅ Generic error
+            raise serializers.ValidationError("Invalid user credentials.")
 
-        if not check_password(data["old_password"], user.usrpassword):
-            raise serializers.ValidationError("Invalid user credentials.")  # ✅ Prevents user enumeration
+        if not user.check_password(data["old_password"]):  # Use the built-in `check_password`
+            raise serializers.ValidationError("Invalid user credentials.")
 
         if len(data["new_password"]) < 8:
             raise serializers.ValidationError("New password must be at least 8 characters long.")
@@ -59,56 +60,78 @@ class ChangePasswordSerializer(serializers.Serializer):
         return data
 
     def save(self):
-        userid = self.validated_data["userid"]
-        new_password = self.validated_data["new_password"]
-
-        try:
-            user = User.objects.get(userid=userid)
-        except User.DoesNotExist:
-            raise serializers.ValidationError("User not found.")
-
-        user.usrpassword = make_password(new_password)
-        user.updated_at = timezone.now()  # ✅ Fix: Ensuring correct timestamp update
+        user = User.objects.get(id=self.validated_data["id"])
+        user.set_password(self.validated_data["new_password"])  # Use the built-in `set_password`
+        user.updated_at = timezone.now()
 
         with transaction.atomic():
             user.save()
 
         return user
 
-
+# --- User Profile Serializer (kept similar but adapted) ---
 class UserProfileSerializer(serializers.ModelSerializer):
+    first_name = serializers.CharField(source="user.first_name", required=False)
+    last_name = serializers.CharField(source="user.last_name", required=False)
+    email = serializers.EmailField(source="user.email", required=False)
+    profile_picture = serializers.SerializerMethodField()  # <--- Add this line
+
     class Meta:
         model = UserProfile
-        fields = "__all__"
+        fields = [
+            "first_name", "last_name", "email",
+            "phone", "address", "city", "profile_picture",
+            "state", "country", "bio", "social_links"
+        ]
         extra_kwargs = {
-            'user': {'read_only': True},  # Prevent user from being updated
+            "profile_picture": {"required": False},
         }
 
+    def get_profile_picture(self, obj):
+            if obj.profile_picture:
+                request = self.context.get('request')
+                if request:
+                    # Use settings.MEDIA_URL to stay flexible
+                    media_url = settings.MEDIA_URL  # usually "/media/"
+                    full_url = request.build_absolute_uri(f"{media_url}{obj.profile_picture}")
+                    return full_url
+                # Fallback if request is missing (rare)
+                return f"{settings.MEDIA_URL}{obj.profile_picture}"
+
+            return None
+
     def update(self, instance, validated_data):
-        request_user = self.context.get("request").user
-        if instance.user != request_user:
-            raise serializers.ValidationError("You can only update your own profile.")
+        user_data = validated_data.pop("user", {})
 
-        # Handle profile picture separately (optional)
-        profile_picture = validated_data.pop('profile_picture', None)
-        if profile_picture:
-            instance.profile_picture = profile_picture
+        # Update auth_user fields (first_name, last_name, email)
+        user = instance.user
+        for attr, value in user_data.items():
+            setattr(user, attr, value)
+        user.save()
 
-        # Update other fields
+        # Update UserProfile fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 
         instance.save()
         return instance
+
+# --- Verify Password Serializer ---
 class VerifyPasswordSerializer(serializers.Serializer):
-    usrpassword = serializers.CharField(write_only=True)
+    password = serializers.CharField(write_only=True)
 
     def validate(self, data):
-        request = self.context.get('request')  # Get request from context
-        user = request.user  # This is the logged-in user (request.user)
+        request = self.context.get('request')
+        user = request.user
 
-        if not check_password(data['usrpassword'], user.usrpassword):
+        if not user.check_password(data['password']):  # Use the built-in `check_password`
             raise serializers.ValidationError("Invalid password.")
 
         return data
-    
+
+# --- Custom TokenObtainPairSerializer (For JWT Login) ---
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        data['user_id'] = self.user.id  # Use `id` (not `userid`) for the user ID
+        return data

@@ -51,32 +51,34 @@ const useAuth = () => {
                 { identifier, usrpassword: password },
                 { headers: { "Content-Type": "application/json" } }
             );
-
-            if (response.data.token) {
-                localStorage.setItem("token", response.data.token);
+    
+            if (response.data.access_token) {
+                localStorage.setItem("access_token", response.data.access_token);
+                localStorage.setItem("refresh_token", response.data.refresh_token);  // Save both
                 localStorage.setItem("user", JSON.stringify(response.data.user));
                 setUser(response.data.user);
                 return { success: true };
             }
-
-            return { success: false, error: "Login failed. No token received." };
+    
+            return { success: false, error: "Login failed. No access token received." };
+    
         } catch (error) {
             return { success: false, error: error.response?.data?.detail || "Invalid credentials." };
         }
     };
 
     const verifyPassword = async (password) => {
-        const token = localStorage.getItem("token");
-        console.log("🔑 Token being sent:", token);  // Debug to confirm token
+        const token = localStorage.getItem("accessToken");  // Use the correct token
+        console.log("🔑 Token being sent:", token);
     
         try {
             const response = await axios.post(
                 `${API_BASE_URL}/api/verify-password/`,
-                { usrpassword: password },   // Assuming backend expects `usrpassword`
+                { password },  // Assume your backend expects `password` field, not `usrpassword`
                 {
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,  // Ensure "Bearer " prefix
+                        Authorization: `Bearer ${token}`,  // Token already identifies the user
                     },
                 }
             );
@@ -86,7 +88,8 @@ const useAuth = () => {
             return false;
         }
     };
-
+    
+    
     const logout = (navigate) => {
         localStorage.removeItem("token");
         localStorage.removeItem("user");

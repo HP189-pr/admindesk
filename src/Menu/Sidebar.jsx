@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import useAuth from "../hooks/useAuth.jsx";
+import { useAuth } from "../hooks/AuthContext";
 
 const modules = [
     { id: "student", name: "Student Module", icon: "📚", menu: ["Transcript", "Migration", "Attendance"] },
@@ -8,39 +8,47 @@ const modules = [
     { id: "admin", name: "Admin Panel", icon: "👥", menu: ["User Management", "Settings"] },
 ];
 
-const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
+const Sidebar = ({
+    isOpen,
+    setSidebarOpen,
+    setSelectedMenuItem,
+    handleSecureNavigation = () => {}  // <-- No-op default
+}) => {
     const navigate = useNavigate();
     const [selectedModule, setSelectedModule] = useState(null);
     const [showDropdown, setShowDropdown] = useState(false);
-    const { user, logout, verifyPassword } = useAuth();
+    const { user, logout } = useAuth();
 
     const handleModuleSelect = (moduleId) => {
         setSelectedModule(moduleId);
         setShowDropdown(false);
     };
+
     const handleLogout = () => {
-      logout(navigate);  // Pass navigate function to logout
-  };
-    const handleSecureNavigation = async (menuItem) => {
-        const password = prompt("Please confirm your password:");
-        if (password) {
-            const isVerified = await verifyPassword(password);
-            if (isVerified) {
-                setSelectedMenuItem(menuItem);
-            } else {
-                alert("Password verification failed.");
-            }
+        logout(navigate);
+    };
+
+    const handleMenuClick = (menuItem) => {
+        console.log(`Clicked: ${menuItem}`);
+        console.log(`handleSecureNavigation:`, handleSecureNavigation);
+    
+        if (menuItem === "Admin Panel" || menuItem === "Profile Settings") {
+            handleSecureNavigation(menuItem); 
+        } else {
+            setSelectedMenuItem(menuItem);
         }
     };
+    
 
     return (
         <div className={`h-screen bg-gray-800 text-white transition-all ${isOpen ? "w-64" : "w-20"} duration-300 p-4`}>
             <div className="flex items-center mb-4">
                 <img
-                    src={user?.profilePicture || "/default-profile.png"}
+                    src={profilePicture || "/profilepic/default-profile.png"}
                     alt="Profile"
-                    className="w-10 h-10 rounded-full mr-2"
+                    className="w-10 h-10 rounded-full mr-2 object-cover"
                 />
+
                 {isOpen && (
                     <div className="flex-1">
                         <span className="text-lg font-semibold">{user?.username || "Guest"}</span>
@@ -49,22 +57,25 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
 
                 <div className="relative">
                     <button
-                        onClick={() => handleSecureNavigation("Profile Settings")}
+                        onClick={() => handleMenuClick("Profile Settings")}
                         className="text-white hover:text-gray-300"
                     >
                         ⚙️
                     </button>
                 </div>
 
-                <button onClick={() => setSidebarOpen(!isOpen)} className="ml-2">
-                    ☰
-                </button>
+                <button
+                        onClick={() => setSidebarOpen(!isOpen)}
+                        className="p-2 rounded-lg bg-gray-800 text-white hover:bg-gray-600 transition"
+                    >
+                        {isOpen ? "«" : "»"}
+                    </button>
             </div>
 
             <hr className="border-gray-600 mb-4" />
 
             <button
-                onClick={() => setSelectedMenuItem("Dashboard")}
+                onClick={() => handleMenuClick("Dashboard")}
                 className="w-full text-left px-4 py-2 rounded hover:bg-gray-700"
             >
                 🏠 Dashboard
@@ -103,7 +114,7 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
                         ?.menu.map((item) => (
                             <button
                                 key={item}
-                                onClick={() => setSelectedMenuItem(item)}
+                                onClick={() => handleMenuClick(item)}
                                 className="w-full text-left px-4 py-2 hover:bg-gray-700"
                             >
                                 {item}
@@ -114,8 +125,9 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
 
             <hr className="border-gray-600 my-4" />
 
+            {/* Admin Panel - Secure */}
             <button
-                onClick={() => handleSecureNavigation("Admin Panel")}
+                onClick={() => handleMenuClick("Admin Panel")}
                 className="w-full text-left px-4 py-2 rounded hover:bg-gray-700"
             >
                 ⚙️ Admin Panel
@@ -124,7 +136,7 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
             <hr className="border-gray-600 my-4" />
 
             <button
-                onClick={() => handleLogout()}
+                onClick={handleLogout}
                 className="w-full text-left px-4 py-2 rounded hover:bg-gray-700"
             >
                 🚪 Logout
