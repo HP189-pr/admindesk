@@ -1,15 +1,16 @@
 import React from "react";
 import AdminDashboard from "../components/AdminDashboard.jsx";
 import ProfileUpdate from "../components/ProfileUpdate.jsx";
+import HomeDashboard from "./HomeDashboard.jsx"
 
-const WorkArea = ({ selectedMenuItem }) => {
+const WorkArea = ({ selectedMenuItem, selectedAdminMenuItem }) => {
   if (!selectedMenuItem) {
       return <h1 className="text-xl font-bold">🏠 Welcome to the Dashboard</h1>;
   }
 
   switch (selectedMenuItem) {
       case "Dashboard":
-          return <h1 className="text-xl font-bold">🏠 Welcome to the Dashboard</h1>;
+          return <HomeDashboard />;
       case "Profile Settings":
           return <ProfileUpdate />;
       case "Transcript":
@@ -21,7 +22,8 @@ const WorkArea = ({ selectedMenuItem }) => {
       case "Payroll":
           return <div>💰 Payroll Page</div>;
       case "Admin Panel":
-          return <AdminDashboard />;
+          // 🔥 Pass selectedAdminMenuItem to AdminDashboard
+          return <AdminDashboard selectedTopbarItem={selectedAdminMenuItem} />;
       default:
           console.warn(`Unhandled menu item: ${selectedMenuItem}`);
           return <h1 className="text-xl font-bold">Select a Menu Item</h1>;

@@ -1,13 +1,20 @@
 const menuActions = {
-  Transcript: () => ["➕", "✏️", "🔍"],
-  Migration: () => ["➕", "🔍"],
-  Attendance: () => ["🔍"],
-  Payroll: () => ["✏️", "🔍"],
-  "Leave Management": () => ["➕", "✏️"],
-  Projects: () => ["🔍"],
-  "User Management": () => ["➕", "✏️"],
-  Settings: () => ["✏️"],
-  "Admin Panel": () => ["➕", "🔍"]  
+  "📜 Transcript": () => ["➕", "✏️", "🔍"],
+  "🚀 Migration": () => ["➕", "🔍"],
+  "📄 Provisional": () => ["➕", "🔍"],
+  "🏅 Degree": () => ["➕", "🔍"],
+  "🏛️ Institutional Verification": () => ["🔍"],
+
+  "📥 Inward": () => ["➕", "✏️", "🔍"],
+  "📤 Outward": () => ["➕", "✏️", "🔍"],
+  "🏖️ Leave Management": () => ["➕", "✏️"],
+  "📦 Inventory": () => ["🔍"],
+
+  "📊 Daily Register": () => ["🔍"],
+  "💵 Student Fees": () => ["✏️", "🔍"],
+  "🔍 Payment Track": () => ["🔍"],
+
+  "Admin Panel": () => ["User Management", "User Rights", "Add College", "Add Course"]
 };
 
 export default menuActions;

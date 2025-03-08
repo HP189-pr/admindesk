@@ -1,67 +1,54 @@
-import React, { useState } from "react";
-import menuActions from "../Menu/menuActions.jsx"; // Import your existing menuActions file
+import React, { useState, useEffect } from "react";
 
-const AdminDashboard = () => {
-    const [currentSection, setCurrentSection] = useState("Admin Panel");
-    const [viewMode, setViewMode] = useState("list"); // "list", "add", "search"
-    const [searchQuery, setSearchQuery] = useState("");
+// Dynamic sidebar items based on topbar selection
+const sidebarMenus = {
+    "User Management": ["User List", "Add User", "User Rights", "User Logs"],
+    "User Rights": ["Role Permissions", "Department Rights"],
+    "Add College": ["Add New College", "Manage Colleges"],
+    "Add Course": ["Add New Course", "Manage Courses"],
+};
 
-    // Get buttons for current section from imported menuActions
-    const topMenuButtons = menuActions[currentSection]?.() || [];
+const AdminDashboard = ({ selectedTopbarItem }) => {
+    const [currentSidebarItem, setCurrentSidebarItem] = useState("");
 
-    const handleTopButtonClick = (icon) => {
-        if (icon === "➕") {
-            setViewMode("add");
-        } else if (icon === "🔍") {
-            setViewMode("search");
-        }
-    };
+    useEffect(() => {
+        // Reset inner sidebar selection when topbar item changes
+        setCurrentSidebarItem("");
+    }, [selectedTopbarItem]);
+
+    const sidebarItems = sidebarMenus[selectedTopbarItem] || [];
 
     return (
-        <div className="flex h-screen bg-gray-100">
-            {/* Sidebar */}
-            <aside className="w-60 bg-blue-800 text-white flex flex-col space-y-2 p-4">
-                <button 
-                    className="w-full text-left py-2 px-4 bg-blue-700 hover:bg-blue-600 rounded transition"
-                    onClick={() => {
-                        setCurrentSection("Admin Panel");
-                        setViewMode("list");
-                    }}
-                >
-                    Admin Panel
-                </button>
+        <div className="flex h-full">
+            {/* Inner Sidebar (Admin Dashboard level) */}
+            <aside className="w-60 bg-gray-200 text-black flex flex-col space-y-2 p-4">
+                {sidebarItems.map((item) => (
+                    <button
+                        key={item}
+                        className={`w-full text-left py-2 px-4 rounded transition ${
+                            currentSidebarItem === item ? "bg-blue-500 text-white" : "hover:bg-gray-300"
+                        }`}
+                        onClick={() => setCurrentSidebarItem(item)}
+                    >
+                        {item}
+                    </button>
+                ))}
             </aside>
 
-            {/* Main Content Area */}
-            <main className="flex-1 p-6 bg-gray-50 overflow-y-auto">
-                {/* Top Menu Buttons */}
-                <div className="flex space-x-2 mb-4">
-                    {topMenuButtons.map((icon, index) => (
-                        <button
-                            key={index}
-                            className="text-xl p-2 bg-white shadow rounded hover:bg-gray-200 transition"
-                            onClick={() => handleTopButtonClick(icon)}
-                        >
-                            {icon}
-                        </button>
-                    ))}
-                </div>
-
-                {/* Content Area */}
+            {/* Main Content Area (changes based on sidebar item selection) */}
+            <main className="flex-1 p-6 bg-gray-100">
                 <div className="bg-white shadow rounded p-6">
                     <h2 className="text-xl font-semibold mb-4">
-                        Admin Panel - {viewMode === "list" ? "User List" : viewMode === "add" ? "Add User" : "Search User"}
+                        {selectedTopbarItem} - {currentSidebarItem || "Please select an option"}
                     </h2>
 
-                    {/* Placeholder for view sections */}
-                    {viewMode === "list" && (
-                        <p>✅ User List will go here.</p>
+                    {/* Content placeholder */}
+                    {currentSidebarItem && (
+                        <p>✅ Content for <strong>{currentSidebarItem}</strong> will appear here.</p>
                     )}
-                    {viewMode === "add" && (
-                        <p>✅ Add User Form will go here.</p>
-                    )}
-                    {viewMode === "search" && (
-                        <p>✅ Search User Section will go here.</p>
+
+                    {!currentSidebarItem && (
+                        <p className="text-gray-500">Select an option from the sidebar to begin.</p>
                     )}
                 </div>
             </main>

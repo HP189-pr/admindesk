@@ -31,7 +31,7 @@ const Dashboard = () => {
   };
 
     return (
-        <div className="flex h-screen w-screen">
+        <div className={`flex h-screen w-screen transition-all duration-300 ${isSidebarOpen ? "pl-0" : "pl-1"}`}>
             {/* Sidebar (left) */}
             <Sidebar
                 isOpen={isSidebarOpen}
