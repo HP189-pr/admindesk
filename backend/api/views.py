@@ -13,13 +13,13 @@ import os
 from django.contrib.auth import get_user_model
 from django.conf import settings
 
-from .models import Holiday, UserProfile
+from .models import Holiday, UserProfile,User
 from .serializers import (
     HolidaySerializer, LoginSerializer, UserSerializer,
     ChangePasswordSerializer, UserProfileSerializer,
     VerifyPasswordSerializer, CustomTokenObtainPairSerializer
 )
-
+User = get_user_model()
 class HolidayViewSet(viewsets.ModelViewSet):
     """
     Returns holidays within the next 6 months.
@@ -47,28 +47,30 @@ class LoginView(APIView):
             if not username or not password:
                 return Response({"detail": "Both username and password are required."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Use default Django User model
-            user = get_user_model().objects.get(username__iexact=username.strip())
-
-            if not check_password(password, user.password):
+            # Get user
+            user = get_user_model().objects.filter(username__iexact=username.strip()).first()
+            if not user or not check_password(password, user.password):
                 return Response({"detail": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Concatenate first name and last name for full name
-            full_name = f"{user.first_name} {user.last_name}"
+                        
+            is_admin = user.groups.filter(id=1).exists()
+            is_super = user.groups.filter(id=2).exists()
+            is_restricted = user.groups.filter(id=3).exists()
 
-            # SimpleJWT handles the token creation via the serializer
-            tokens = {
-                'access': str(RefreshToken.for_user(user).access_token),
-                'refresh': str(RefreshToken.for_user(user))
-            }
+            # Generate JWT tokens only once
+            refresh = RefreshToken.for_user(user)
 
             return Response({
-                **tokens,
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
                 "user": {
                     "id": user.id,
                     "username": user.username,
-                    "name": full_name,  # Concatenate first name and last name
-                    "usertype": user.groups.first().name if user.groups.exists() else "No Group",  # Just an example
+                    "name": f"{user.first_name} {user.last_name}",
+                    "usertype": user.groups.first().name if user.groups.exists() else "No Group",
+                    "is_admin": is_admin,  # Send admin status
+                    "is_super": is_super,  # Super user flag
+                    "is_restricted": is_restricted,
                 }
             }, status=status.HTTP_200_OK)
 
@@ -175,3 +177,77 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     Custom token obtain pair to support login with `username` for default Django User model.
     """
     serializer_class = CustomTokenObtainPairSerializer
+
+class CheckAdminAccessView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            user = request.user
+            is_admin = user.groups.filter(id=1).exists()  # Check by group ID (Admin = 1)
+
+            return Response({"is_admin": is_admin}, status=status.HTTP_200_OK if is_admin else status.HTTP_403_FORBIDDEN)
+
+        except Exception as e:
+            return Response(
+                {"error": "Internal Server Error", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class UserAPIView(APIView):
+    """
+    API to list users and add new users.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """
+        Get a list of all users.
+        """
+        users = User.objects.all()
+        serializer = UserSerializer(users, many=True)
+        return Response(serializer.data, status=200)
+
+    def post(self, request):
+        """
+        Create a new user.
+        """
+        serializer = UserSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+
+class UserDetailAPIView(APIView):
+    """
+    API to update and delete a user.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        """
+        Get user details.
+        """
+        user = get_object_or_404(User, id=user_id)
+        serializer = UserSerializer(user)
+        return Response(serializer.data, status=200)
+
+    def put(self, request, user_id):
+        """
+        Update user details.
+        """
+        user = get_object_or_404(User, id=user_id)
+        serializer = UserSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=200)
+        return Response(serializer.errors, status=400)
+
+    def delete(self, request, user_id):
+        """
+        Delete a user.
+        """
+        user = get_object_or_404(User, id=user_id)
+        user.delete()
+        return Response({"message": "User deleted successfully."}, status=204)        

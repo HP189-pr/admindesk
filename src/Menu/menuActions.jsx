@@ -1,7 +1,7 @@
 const menuActions = {
   "📜 Transcript": () => ["➕", "✏️", "🔍"],
-  "🚀 Migration": () => ["➕", "🔍"],
-  "📄 Provisional": () => ["➕", "🔍"],
+  "📑 Migration": () => ["➕", "🔍"],
+  "📋 Provisional": () => ["➕", "🔍"],
   "🏅 Degree": () => ["➕", "🔍"],
   "🏛️ Institutional Verification": () => ["🔍"],
 

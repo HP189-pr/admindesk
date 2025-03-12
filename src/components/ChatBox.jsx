@@ -1,78 +1,145 @@
-import React, { useState, useEffect } from "react";
-import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
-
-const dummyUsers = [
-  { id: 1, name: "User1", unread: 3 },
-  { id: 2, name: "User2", unread: 1 },
-  { id: 3, name: "User3", unread: 0 },
-];
+import React, { useState, useEffect } from 'react';
+import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { useAuth } from '../hooks/AuthContext';
 
 const ChatBox = () => {
-  const [isOpen, setIsOpen] = useState(false); // Internal state to handle open/close
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
+  const { fetchUsers, isAuthenticated, user } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState({});
+  const [input, setInput] = useState('');
   const [file, setFile] = useState(null);
   const [chatNotificationCount, setChatNotificationCount] = useState(0);
+  const [users, setUsers] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
 
-  // Simulate incoming messages every 15 seconds
   useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const getUsers = async () => {
+      const userList = await fetchUsers();
+      if (userList) setUsers(userList);
+    };
+
+    getUsers();
+    const interval = setInterval(getUsers, 10000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated, fetchUsers]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !isOpen) return;
+
     const interval = setInterval(() => {
-      setMessages((prev) => [
+      setMessages((prev) => ({
         ...prev,
-        {
-          text: "New message from User1",
-          file: null,
-          sender: "User1",
-          time: new Date().toLocaleTimeString(),
-        },
-      ]);
+        User1: [
+          ...(prev['User1'] || []),
+          {
+            text: 'New message from User1',
+            file: null,
+            sender: 'User1',
+            time: new Date().toLocaleTimeString(),
+          },
+        ],
+      }));
       setChatNotificationCount((count) => count + 1);
     }, 15000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isAuthenticated, isOpen]);
 
   const sendMessage = () => {
-    const newMessage = {
-      text: input,
-      file: file,
-      sender: "Me",
-      time: new Date().toLocaleTimeString(),
-    };
-    setMessages([...messages, newMessage]);
-    setInput("");
+    if ((!input.trim() && !file) || !selectedUser) return;
+
+    setMessages((prev) => ({
+      ...prev,
+      [selectedUser.usercode]: [
+        ...(prev[selectedUser.usercode] || []),
+        {
+          text: input.trim() || '[File sent]',
+          file: file,
+          sender: user?.usercode || 'Me',
+          time: new Date().toLocaleTimeString(),
+        },
+      ],
+    }));
+
+    setInput('');
     setFile(null);
   };
 
   return (
-    <div className={`fixed top-0 right-0 h-full flex items-center transition-all duration-300 ease-in-out ${isOpen ? "w-64" : "w-14"}`}>
-      {/* Main Chatbox Container */}
-      <div className={`h-full bg-gray-800 text-white flex flex-col ${isOpen ? "w-64" : "w-14"}`}>
-        {/* Collapsed User List (shown when chat is closed) */}
+    <div
+      className={`fixed top-0 right-0 h-full flex items-center transition-all duration-300 ease-in-out ${
+        isOpen ? 'w-64' : 'w-14'
+      }`}
+    >
+      <div
+        className={`h-full bg-gray-800 text-white flex flex-col ${
+          isOpen ? 'w-64' : 'w-14'
+        }`}
+      >
         {!isOpen && (
           <div className="flex flex-col items-center py-2 space-y-3 overflow-auto mt-12">
-            {dummyUsers.map((user) => (
-              <div key={user.id} className="relative">
+            {users.map((user) => (
+              <div
+                key={user.userid}
+                className="relative cursor-pointer"
+                onClick={() => setSelectedUser(user)}
+              >
                 <div className="w-10 h-10 bg-gray-500 rounded-full"></div>
-                {user.unread > 0 && (
-                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-xs text-white flex items-center justify-center rounded-full">
-                    {user.unread}
-                  </div>
-                )}
+                <div
+                  className={`absolute bottom-0 right-0 w-3 h-3 rounded-full ${
+                    user.status === 'online' ? 'bg-white' : 'bg-gray-400'
+                  }`}
+                ></div>
               </div>
             ))}
           </div>
         )}
 
-        {/* Expanded Chat UI */}
-        {isOpen && (
+        {isOpen && !selectedUser && (
           <div className="flex-1 flex flex-col mt-12">
-            {/* Messages Area */}
+            <div className="p-2 border-b bg-gray-900 text-white">
+              <h3 className="text-lg font-semibold">Users</h3>
+              <ul>
+                {users.map((user) => (
+                  <li
+                    key={user.userid}
+                    className="flex items-center gap-2 p-1 cursor-pointer hover:bg-gray-700"
+                    onClick={() => setSelectedUser(user)}
+                  >
+                    <div
+                      className={`w-3 h-3 rounded-full ${
+                        user.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
+                      }`}
+                    ></div>
+                    <span>{user.usercode}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {selectedUser && (
+          <div className="flex-1 flex flex-col mt-12">
+            <div className="p-2 border-b bg-gray-900 text-white flex justify-between">
+              <h3 className="text-lg font-semibold">{selectedUser.usercode}</h3>
+              <button
+                onClick={() => setSelectedUser(null)}
+                className="text-red-400"
+              >
+                Close
+              </button>
+            </div>
+
             <div className="flex-1 overflow-auto p-2 space-y-2 bg-gray-100 text-black custom-scrollbar">
-              {messages.map((msg, index) => (
+              {(messages[selectedUser.usercode] || []).map((msg, index) => (
                 <div
                   key={index}
-                  className={`p-2 rounded ${msg.sender === "Me" ? "bg-blue-200" : "bg-gray-200"}`}
+                  className={`p-2 rounded ${
+                    msg.sender === user?.usercode ? 'bg-blue-200' : 'bg-gray-200'
+                  }`}
                 >
                   <strong>{msg.sender}</strong>
                   <div>{msg.text}</div>
@@ -85,12 +152,13 @@ const ChatBox = () => {
                       Download File
                     </a>
                   )}
-                  <small className="block text-xs text-gray-500">{msg.time}</small>
+                  <small className="block text-xs text-gray-500">
+                    {msg.time}
+                  </small>
                 </div>
               ))}
             </div>
 
-            {/* Input Area */}
             <div className="p-2 border-t flex items-center space-x-2 bg-gray-800">
               <input
                 type="text"
@@ -122,18 +190,11 @@ const ChatBox = () => {
         )}
       </div>
 
-      {/* Floating Expand/Collapse Button (on the LEFT of the chatbox) */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="absolute top-4 -left-6 w-10 h-10 bg-white border-2 border-blue-500 rounded-full flex items-center justify-center shadow-lg"
       >
-        {isOpen ? (
-          <FiChevronRight className="text-blue-500 text-xl" />
-        ) : (
-          <FiChevronLeft className="text-blue-500 text-xl" />
-        )}
-
-        {/* Notification Badge */}
+        {isOpen ? <FiChevronRight className="text-blue-500 text-xl" /> : <FiChevronLeft className="text-blue-500 text-xl" />}
         {chatNotificationCount > 0 && !isOpen && (
           <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs flex items-center justify-center rounded-full">
             {chatNotificationCount}

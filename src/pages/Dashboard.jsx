@@ -10,6 +10,7 @@ const Dashboard = () => {
     const [isSidebarOpen, setSidebarOpen] = useState(true);
     const [isChatboxOpen, setChatboxOpen] = useState(false);
     const [selectedMenuItem, setSelectedMenuItem] = useState(null);
+    const [selectedSubmenu, setSelectedSubmenu] = useState(null);
     const [chatNotificationCount, setChatNotificationCount] = useState(0);
 
     const handleSecureNavigation = async (menuItem) => {
@@ -42,10 +43,12 @@ const Dashboard = () => {
 
             {/* Main content area (center) */}
             <div className="flex-grow flex flex-col bg-white ml-[1rem]">
-                <Topbar selectedMenuItem={selectedMenuItem} />
+            <Topbar selectedMenuItem={selectedMenuItem} onSubmenuSelect={setSelectedSubmenu} />
+
                 <div className="h-[1rem] bg-white"></div>
                 <div className="flex-grow p-4 overflow-auto bg-gray-100">
-                    <WorkArea selectedMenuItem={selectedMenuItem} />
+                <WorkArea selectedMenuItem={selectedMenuItem} selectedSubmenu={selectedSubmenu} />
+
                 </div>
             </div>
 
