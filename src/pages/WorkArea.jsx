@@ -11,7 +11,7 @@ import menuActions from "../Menu/menuActions";
 
 const WorkArea = ({ selectedSubmenu }) => {
   const [topbarOptions, setTopbarOptions] = useState([]);
-  const [selectedTopbarMenu, setSelectedTopbarMenu] = useState(null); // Store the clicked top bar menu
+  const [selectedTopbarMenu, setSelectedTopbarMenu] = useState(null); // Store selected menu
 
   // Update topbar options when submenu changes
   useEffect(() => {
@@ -37,7 +37,7 @@ const WorkArea = ({ selectedSubmenu }) => {
       case "🏛️ Institutional Verification":
         return <InstitutionalVerification />;
       case "Admin Panel":
-        return <AdminDashboard selectedTopBarMenu={selectedTopbarMenu} />; // Pass selectedTopbarMenu
+        return <AdminDashboard selectedTopbarMenu={selectedTopbarMenu} />; // ✅ Fixed prop name
       case "Profile Settings":
         return <ProfileUpdate />;
       default:
@@ -66,7 +66,7 @@ const WorkArea = ({ selectedSubmenu }) => {
               key={index}
               style={{
                 padding: "8px 12px",
-                background: selectedTopbarMenu === option ? "#0056b3" : "#007bff", // Highlight selected
+                background: selectedTopbarMenu === option ? "#0056b3" : "#007bff",
                 color: "white",
                 border: "none",
                 borderRadius: "4px",

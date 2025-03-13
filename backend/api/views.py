@@ -13,11 +13,11 @@ import os
 from django.contrib.auth import get_user_model
 from django.conf import settings
 
-from .models import Holiday, UserProfile,User
+from .models import Holiday, UserProfile,User, Module, Menu, UserPermission
 from .serializers import (
     HolidaySerializer, LoginSerializer, UserSerializer,
     ChangePasswordSerializer, UserProfileSerializer,
-    VerifyPasswordSerializer, CustomTokenObtainPairSerializer
+    VerifyPasswordSerializer, CustomTokenObtainPairSerializer, ModuleSerializer, MenuSerializer, UserPermissionSerializer
 )
 User = get_user_model()
 class HolidayViewSet(viewsets.ModelViewSet):
@@ -251,3 +251,17 @@ class UserDetailAPIView(APIView):
         user = get_object_or_404(User, id=user_id)
         user.delete()
         return Response({"message": "User deleted successfully."}, status=204)        
+    # ✅ Module API View
+class ModuleViewSet(viewsets.ModelViewSet):
+    queryset = Module.objects.all()
+    serializer_class = ModuleSerializer
+
+# ✅ Menu API View
+class MenuViewSet(viewsets.ModelViewSet):
+    queryset = Menu.objects.all()
+    serializer_class = MenuSerializer
+
+# ✅ User Permission API View
+class UserPermissionViewSet(viewsets.ModelViewSet):
+    queryset = UserPermission.objects.all()
+    serializer_class = UserPermissionSerializer

@@ -3,7 +3,7 @@ from django.contrib.auth.hashers import check_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.utils import timezone
 from django.db import transaction
-from .models import Holiday, UserProfile, User
+from .models import Holiday, UserProfile, User, Module, Menu, UserPermission
 from django.conf import settings
 
 # --- Holiday Serializer ---
@@ -135,3 +135,26 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         data = super().validate(attrs)
         data['user_id'] = self.user.id  # Use `id` (not `userid`) for the user ID
         return data
+# ✅ Module Serializer
+class ModuleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Module
+        fields = "__all__"
+
+# ✅ Menu Serializer
+class MenuSerializer(serializers.ModelSerializer):
+    module_name = serializers.CharField(source="module.name", read_only=True)  # Fetch module name
+
+    class Meta:
+        model = Menu
+        fields = "__all__"
+
+# ✅ User Permission Serializer
+class UserPermissionSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source="user.username", read_only=True)
+    module_name = serializers.CharField(source="module.name", read_only=True)
+    menu_name = serializers.CharField(source="menu.name", read_only=True)
+
+    class Meta:
+        model = UserPermission
+        fields = "__all__"
