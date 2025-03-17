@@ -1,6 +1,7 @@
 from rest_framework_simplejwt.tokens import RefreshToken
 import traceback
 from rest_framework.views import APIView
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status, generics, viewsets
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -260,6 +261,14 @@ class ModuleViewSet(viewsets.ModelViewSet):
 class MenuViewSet(viewsets.ModelViewSet):
     queryset = Menu.objects.all()
     serializer_class = MenuSerializer
+
+    @action(detail=False, methods=['get'], url_path='module/(?P<module_id>[^/.]+)')
+    def menus_by_module(self, request, module_id=None):
+            """Fetch menus by module ID"""
+            module = get_object_or_404(Module, moduleid=module_id)  # ✅ Use moduleid instead of id
+            menus = Menu.objects.filter(module=module)
+            serializer = self.get_serializer(menus, many=True)
+            return Response(serializer.data)
 
 # ✅ User Permission API View
 class UserPermissionViewSet(viewsets.ModelViewSet):

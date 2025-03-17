@@ -55,7 +55,7 @@ const WorkArea = ({ selectedSubmenu }) => {
       {topbarOptions.length > 0 && (
         <div
           style={{
-            background: "#f5f5f5",
+            background: "#ffffff",
             padding: "10px",
             display: "flex",
             gap: "10px",
@@ -63,25 +63,18 @@ const WorkArea = ({ selectedSubmenu }) => {
         >
           {topbarOptions.map((option, index) => (
             <button
-              key={index}
-              style={{
-                padding: "8px 12px",
-                background: selectedTopbarMenu === option ? "#0056b3" : "#007bff",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-              }}
-              onClick={() => setSelectedTopbarMenu(option)} // Set selected menu
-            >
-              {option}
-            </button>
+            key={index}
+            className="px-4 py-2 bg-gray-800 text-white rounded hover:text-gray-300 hover:bg-gray-700"
+            onClick={() => setSelectedTopbarMenu(option)}
+          >
+            {option}
+          </button>
           ))}
         </div>
       )}
 
       {/* Main Work Area */}
-      <div style={{ padding: "20px" }}>{renderPage()}</div>
+      <div style={{ padding: "10px" }}>{renderPage()}</div>
     </div>
   );
 };

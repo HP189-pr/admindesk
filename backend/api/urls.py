@@ -48,4 +48,5 @@ urlpatterns = [
     # User API endpoints
     path("users/", UserAPIView.as_view(), name="user-list-create"),
     path("users/<int:user_id>/", UserDetailAPIView.as_view(), name="user-detail"),
+    path("modules/<int:module_id>/menus/", MenuViewSet.as_view({"get": "menus_by_module"}), name="menus-by-module"),
 ]

@@ -14,7 +14,7 @@ const menuActions = {
   "💵 Student Fees": () => ["✏️", "🔍"],
   "🔍 Payment Track": () => ["🔍"],
 
-  "Admin Panel": () => ["User Management", "User Rights", "Add College", "Add Course"]
+  "Admin Panel": () => ["User Management", "User Rights", "Add Module","Add College", "Add Course"]
 };
 
 export default menuActions;
