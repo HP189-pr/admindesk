@@ -66,41 +66,33 @@ const UserRights = ({ fetchUserPermissions, updateUserPermission }) => {
   };
 
   const handleModuleSelection = (moduleId) => {
-    setSelectedModules((prev) => {
-      if (prev.includes(moduleId)) {
-        return prev.filter((id) => id !== moduleId);
+    setSelectedModules((prevModules) => {
+      const isAlreadySelected = prevModules.includes(moduleId);
+      if (isAlreadySelected) {
+        return prevModules.filter((id) => id !== moduleId);
       } else {
-        return [...prev, moduleId];
+        return [...prevModules, moduleId];
       }
     });
   };
 
   const handlePermissionChange = (menuId, permissionType) => {
-    setSelectedMenus((prev) => {
-      const updated = { ...prev };
-
-      if (!updated[menuId]) {
-        updated[menuId] = { view: false, add: false, edit: false, delete: false, all: false };
-      }
+    setSelectedMenus((prevMenus) => {
+      const updatedMenu = { ...(prevMenus[menuId] || {}) };
 
       if (permissionType === "all") {
-        const isChecked = !updated[menuId].all;
-        updated[menuId] = {
-          all: isChecked,
-          view: isChecked,
-          add: isChecked,
-          edit: isChecked,
-          delete: isChecked,
-        };
+        const newValue = !updatedMenu.all;
+        updatedMenu.view = newValue;
+        updatedMenu.add = newValue;
+        updatedMenu.edit = newValue;
+        updatedMenu.delete = newValue;
+        updatedMenu.all = newValue;
       } else {
-        updated[menuId][permissionType] = !updated[menuId][permissionType];
-
-        // Only check "all" if all four permissions are selected
-        const { view, add, edit, delete: del } = updated[menuId];
-        updated[menuId].all = view && add && edit && del;
+        updatedMenu[permissionType] = !updatedMenu[permissionType];
+        updatedMenu.all = updatedMenu.view && updatedMenu.add && updatedMenu.edit && updatedMenu.delete;
       }
 
-      return { ...updated };
+      return { ...prevMenus, [menuId]: updatedMenu };
     });
   };
 
@@ -113,16 +105,19 @@ const UserRights = ({ fetchUserPermissions, updateUserPermission }) => {
     <div className="p-4">
       <h2 className="text-xl font-semibold mb-4">🔒 User Rights Management</h2>
 
-      {/* User Dropdown */}
-      <select className="p-2 border rounded" onChange={(e) => setSelectedUser(users.find((u) => u.userid === Number(e.target.value)))}>
+      <select
+        className="p-2 border rounded"
+        onChange={(e) => setSelectedUser(users.find((u) => u.userid === Number(e.target.value)))}
+      >
         <option value="">Select a user</option>
         {users.map((user) => (
-          <option key={user.userid} value={user.userid}>{user.username}</option>
+          <option key={user.userid} value={user.userid}>
+            {user.username}
+          </option>
         ))}
       </select>
 
       <div className="mt-4 flex">
-        {/* Module Selection (Left Side) */}
         <div className="w-1/3 border-r p-4">
           <h3 className="font-semibold mb-2">📌 Modules</h3>
           <table className="w-full border-collapse border">
@@ -137,7 +132,11 @@ const UserRights = ({ fetchUserPermissions, updateUserPermission }) => {
                 <tr key={module.id} className="border">
                   <td className="border p-2">{module.name}</td>
                   <td className="border p-2 text-center">
-                    <input type="checkbox" checked={selectedModules.includes(module.id)} onChange={() => handleModuleSelection(module.id)} />
+                    <input
+                      type="checkbox"
+                      checked={selectedModules.includes(module.id)}
+                      onChange={() => handleModuleSelection(module.id)}
+                    />
                   </td>
                 </tr>
               ))}
@@ -145,7 +144,6 @@ const UserRights = ({ fetchUserPermissions, updateUserPermission }) => {
           </table>
         </div>
 
-        {/* Menu Permissions (Right Side) */}
         <div className="w-2/3 p-4">
           <h3 className="font-semibold mb-2">📜 Menu Permissions</h3>
           <table className="w-full border-collapse border">
@@ -161,26 +159,46 @@ const UserRights = ({ fetchUserPermissions, updateUserPermission }) => {
             </thead>
             <tbody>
               {menus
-                .filter((menu) => selectedModules.includes(menu.module_id)) // Only show menus for selected modules
+                .filter((menu) => selectedModules.includes(menu.module_id))
                 .map((menu) => {
                   const menuPermissions = selectedMenus[menu.id] || {};
                   return (
                     <tr key={menu.id} className="border">
                       <td className="border p-2">{menu.name}</td>
                       <td className="border p-2 text-center">
-                        <input type="checkbox" checked={menuPermissions.all || false} onChange={() => handlePermissionChange(menu.id, "all")} />
+                        <input
+                          type="checkbox"
+                          checked={menuPermissions.all || false}
+                          onChange={() => handlePermissionChange(menu.id, "all")}
+                        />
                       </td>
                       <td className="border p-2 text-center">
-                        <input type="checkbox" checked={menuPermissions.view || false} onChange={() => handlePermissionChange(menu.id, "view")} />
+                        <input
+                          type="checkbox"
+                          checked={menuPermissions.view || false}
+                          onChange={() => handlePermissionChange(menu.id, "view")}
+                        />
                       </td>
                       <td className="border p-2 text-center">
-                        <input type="checkbox" checked={menuPermissions.add || false} onChange={() => handlePermissionChange(menu.id, "add")} />
+                        <input
+                          type="checkbox"
+                          checked={menuPermissions.add || false}
+                          onChange={() => handlePermissionChange(menu.id, "add")}
+                        />
                       </td>
                       <td className="border p-2 text-center">
-                        <input type="checkbox" checked={menuPermissions.edit || false} onChange={() => handlePermissionChange(menu.id, "edit")} />
+                        <input
+                          type="checkbox"
+                          checked={menuPermissions.edit || false}
+                          onChange={() => handlePermissionChange(menu.id, "edit")}
+                        />
                       </td>
                       <td className="border p-2 text-center">
-                        <input type="checkbox" checked={menuPermissions.delete || false} onChange={() => handlePermissionChange(menu.id, "delete")} />
+                        <input
+                          type="checkbox"
+                          checked={menuPermissions.delete || false}
+                          onChange={() => handlePermissionChange(menu.id, "delete")}
+                        />
                       </td>
                     </tr>
                   );
@@ -190,7 +208,9 @@ const UserRights = ({ fetchUserPermissions, updateUserPermission }) => {
         </div>
       </div>
 
-      <button onClick={savePermissions} className="bg-blue-500 text-white px-4 py-2 rounded mt-4">Save Permissions</button>
+      <button onClick={savePermissions} className="bg-blue-500 text-white px-4 py-2 rounded mt-4">
+        Save Permissions
+      </button>
     </div>
   );
 };

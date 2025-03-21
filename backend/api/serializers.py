@@ -3,7 +3,7 @@ from django.contrib.auth.hashers import check_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.utils import timezone
 from django.db import transaction
-from .models import Holiday, UserProfile, User, Module, Menu, UserPermission
+from .models import Holiday, UserProfile, User, Module, Menu, UserPermission,Enrollment, Institute, MainBranch, SubBranch
 from django.conf import settings
 
 # --- Holiday Serializer ---
@@ -158,3 +158,27 @@ class UserPermissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserPermission
         fields = "__all__"
+
+# ✅ Institute Serializer
+class InstituteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Institute
+        fields = '__all__'
+
+# ✅ Main Branch Serializer
+class MainBranchSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MainBranch
+        fields = '__all__'
+
+# ✅ Sub Branch Serializer
+class SubBranchSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubBranch
+        fields = '__all__'
+
+# ✅ Enrollment Serializer
+class EnrollmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Enrollment
+        fields = '__all__'

@@ -13,7 +13,12 @@ from .views import (
     ProfilePictureView,
     CheckAdminAccessView,
     UserAPIView,
-    UserDetailAPIView
+    UserDetailAPIView,
+    EnrollmentViewSet,
+    InstituteViewSet,
+    MainBranchViewSet,
+    SubBranchViewSet,
+
 )
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -23,6 +28,10 @@ router.register(r'holidays', HolidayViewSet, basename='holidays')
 router.register(r'modules', ModuleViewSet, basename='modules')  # ✅ Modules API
 router.register(r'menus', MenuViewSet, basename='menus')  # ✅ Menus API
 router.register(r'userpermissions', UserPermissionViewSet, basename='userpermissions')  # ✅ User Permissions API
+router.register(r'institutes', InstituteViewSet)
+router.register(r'main-branches', MainBranchViewSet)
+router.register(r'sub-branches', SubBranchViewSet)
+router.register(r'enrollments', EnrollmentViewSet)
 
 urlpatterns = [
     # Include all registered routes automatically

@@ -14,11 +14,12 @@ import os
 from django.contrib.auth import get_user_model
 from django.conf import settings
 
-from .models import Holiday, UserProfile,User, Module, Menu, UserPermission
+from .models import Holiday, UserProfile,User, Module, Menu, UserPermission, Enrollment, Institute, MainBranch, SubBranch
 from .serializers import (
     HolidaySerializer, LoginSerializer, UserSerializer,
     ChangePasswordSerializer, UserProfileSerializer,
-    VerifyPasswordSerializer, CustomTokenObtainPairSerializer, ModuleSerializer, MenuSerializer, UserPermissionSerializer
+    VerifyPasswordSerializer, CustomTokenObtainPairSerializer, ModuleSerializer, MenuSerializer, UserPermissionSerializer, 
+    EnrollmentSerializer, InstituteSerializer, MainBranchSerializer, SubBranchSerializer
 )
 User = get_user_model()
 class HolidayViewSet(viewsets.ModelViewSet):
@@ -274,3 +275,78 @@ class MenuViewSet(viewsets.ModelViewSet):
 class UserPermissionViewSet(viewsets.ModelViewSet):
     queryset = UserPermission.objects.all()
     serializer_class = UserPermissionSerializer
+# ✅ Institute ViewSet
+class InstituteViewSet(viewsets.ModelViewSet):
+    queryset = Institute.objects.all()
+    serializer_class = InstituteSerializer
+
+# ✅ Main Branch ViewSet
+class MainBranchViewSet(viewsets.ModelViewSet):
+    queryset = MainBranch.objects.all()
+    serializer_class = MainBranchSerializer
+
+# ✅ Sub Branch ViewSet
+class SubBranchViewSet(viewsets.ModelViewSet):
+    queryset = SubBranch.objects.all()
+    serializer_class = SubBranchSerializer
+
+# ✅ Enrollment ViewSet
+class EnrollmentViewSet(viewsets.ModelViewSet):
+    queryset = Enrollment.objects.all()
+    serializer_class = EnrollmentSerializer
+    parser_classes = (MultiPartParser, FormParser)
+
+    # ✅ Search Enrollment Records
+    @action(detail=False, methods=["GET"], url_path="search")
+    def search_enrollment(self, request):
+        query = request.GET.get("query", "")
+        enrollments = Enrollment.objects.filter(student_name__icontains=query)
+        serializer = self.get_serializer(enrollments, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # ✅ Upload Excel File & Get Sheet Names
+    @action(detail=False, methods=["POST"], url_path="upload-excel")
+    def upload_excel(self, request):
+        file = request.FILES.get("file")
+        if not file:
+            return Response({"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            df = pd.ExcelFile(file)
+            sheet_names = df.sheet_names  # ✅ Get available sheet names
+            return Response({"sheets": sheet_names}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    # ✅ Process Selected Sheet and Store in Database
+    @action(detail=False, methods=["POST"], url_path="process-sheet")
+    def process_sheet(self, request):
+        file = request.FILES.get("file")
+        sheet_name = request.data.get("sheet_name")
+        column_mapping = request.data.get("column_mapping")
+
+        if not file or not sheet_name or not column_mapping:
+            return Response({"error": "Missing required parameters"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # ✅ Convert JSON string to dictionary
+            column_mapping = json.loads(column_mapping)
+
+            df = pd.read_excel(file, sheet_name=sheet_name)
+
+            # ✅ Rename columns based on mapping
+            df.rename(columns=column_mapping, inplace=True)
+
+            # ✅ Drop columns that are not mapped
+            df = df[list(column_mapping.values())]
+
+            # ✅ Convert DataFrame to Dict for Bulk Insert
+            enrollment_records = df.to_dict(orient="records")
+
+            # ✅ Bulk Insert into Enrollment Table
+            enrollments = [Enrollment(**record) for record in enrollment_records]
+            Enrollment.objects.bulk_create(enrollments, ignore_conflicts=True)
+
+            return Response({"message": "Data uploaded successfully"}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

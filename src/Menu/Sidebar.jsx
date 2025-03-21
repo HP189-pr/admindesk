@@ -5,7 +5,7 @@ import { useAuth } from "../hooks/AuthContext";
 const modules = [
   {
     id: "student", name: "Student Module", icon: "🎓",
-    menu: ["📜 Transcript", "📑 Migration", "📋 Provisional", "🏅 Degree", "🏛️ Institutional Verification"]
+    menu: ["📑 Enrollment","📜 Transcript", "📑 Migration", "📋 Provisional", "🏅 Degree", "🏛️ Institutional Verification"]
   },
   {
     id: "office_management", name: "Office Management", icon: "🏢",

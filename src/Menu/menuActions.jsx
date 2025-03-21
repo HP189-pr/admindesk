@@ -1,4 +1,5 @@
 const menuActions = {
+  "📑 Enrollment": () => ["➕", "✏️", "🔍","📊 Excel Upload"],
   "📜 Transcript": () => ["➕", "✏️", "🔍"],
   "📑 Migration": () => ["➕", "🔍"],
   "📋 Provisional": () => ["➕", "🔍"],

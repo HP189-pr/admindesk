@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Transcript from "./Transcript";
 import Migration from "./Migration";
 import Provisional from "./Provisional";
+import Enrollment from "./Enrollment";
 import Degree from "./Degree";
 import InstitutionalVerification from "./InstitutionalVerification";
 import AdminDashboard from "../components/AdminDashboard";
@@ -26,6 +27,8 @@ const WorkArea = ({ selectedSubmenu }) => {
   // Function to render the selected page
   const renderPage = () => {
     switch (selectedSubmenu) {
+      case "📑 Enrollment":
+        return <Enrollment />  
       case "📜 Transcript":
         return <Transcript />;
       case "📑 Migration":
