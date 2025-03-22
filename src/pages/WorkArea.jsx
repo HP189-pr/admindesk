@@ -28,7 +28,7 @@ const WorkArea = ({ selectedSubmenu }) => {
   const renderPage = () => {
     switch (selectedSubmenu) {
       case "📑 Enrollment":
-        return <Enrollment />  
+        return <Enrollment selectedTopbarMenu={selectedTopbarMenu} />  
       case "📜 Transcript":
         return <Transcript />;
       case "📑 Migration":

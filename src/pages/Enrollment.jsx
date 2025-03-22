@@ -1,14 +1,24 @@
 import React, { useState, useEffect } from "react";
-import { getEnrollments, saveEnrollment, deleteEnrollment, uploadExcel, processSheet } from "../services/enrollmentservice";
+import { 
+  getEnrollments, 
+  saveEnrollment, 
+  deleteEnrollment, 
+  uploadExcel, 
+  processSheet 
+} from "../services/enrollmentservice";
 
 const Enrollment = ({ selectedTopbarMenu }) => {
   const [enrollments, setEnrollments] = useState([]);
+  const [filteredEnrollments, setFilteredEnrollments] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [file, setFile] = useState(null);
   const [sheets, setSheets] = useState([]);
   const [selectedSheet, setSelectedSheet] = useState("");
   const [columnMapping, setColumnMapping] = useState({});
   const [columns, setColumns] = useState([]);
+  const [selectedColumns, setSelectedColumns] = useState([]);
 
+  // 🔹 Fetch enrollments when search menu is selected
   useEffect(() => {
     if (selectedTopbarMenu === "🔍") {
       fetchEnrollments();
@@ -17,46 +27,108 @@ const Enrollment = ({ selectedTopbarMenu }) => {
 
   // 🔹 Fetch Enrollment Data
   const fetchEnrollments = async () => {
-    const data = await getEnrollments("");
-    setEnrollments(data);
+    try {
+      const data = await getEnrollments("");
+      setEnrollments(data);
+      setFilteredEnrollments(data); // Initialize filtered list
+    } catch (error) {
+      console.error("Error fetching enrollments:", error);
+    }
   };
 
-  // 🔹 Handle File Upload
-  const handleFileUpload = async (e) => {
-    const uploadedFile = e.target.files[0];
-    setFile(uploadedFile);
-    const data = await uploadExcel(uploadedFile);
-    setSheets(data.sheets);
+  // 🔹 Handle Search Input Change
+  useEffect(() => {
+    if (searchTerm.length >= 3) {
+      const filtered = enrollments.filter(enroll =>
+        enroll.enrollment_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        enroll.student_name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredEnrollments(filtered);
+    } else {
+      setFilteredEnrollments(enrollments);
+    }
+  }, [searchTerm, enrollments]);
+
+  // 🔹 Handle File Upload & Extract Sheets
+  const handleFileUpload = (e) => {
+    setFile(e.target.files[0]);
   };
 
-  // 🔹 Select Sheet
-  const handleSheetSelect = async (e) => {
-    setSelectedSheet(e.target.value);
-    const firstSheetData = await processSheet(file, e.target.value, {});
-    setColumns(Object.keys(firstSheetData[0]));
+  // Fetch Sheet Names from Excel
+  const handleFetchSheets = async () => {
+    if (!file) {
+      alert("Please select a file first.");
+      return;
+    }
+    try {
+      const data = await uploadExcel(file);
+      setSheets(data.sheets); // Store sheet names
+    } catch (error) {
+      console.error("Error fetching sheets:", error);
+    }
   };
 
-  // 🔹 Handle Column Mapping
-  const handleColumnMapping = (e, excelColumn) => {
-    setColumnMapping({ ...columnMapping, [excelColumn]: e.target.value });
+  // Fetch Columns from Selected Sheet
+  const handleSheetSelect = async (sheetName) => {
+    setSelectedSheet(sheetName);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("sheet_name", sheetName);
+      formData.append("column_mapping", JSON.stringify({})); // Empty mapping for now
+  
+      const response = await processSheet(formData);
+      const firstRow = response[0] || {}; // Get the first row to extract column names
+      const nonEmptyColumns = Object.keys(firstRow).filter(col => col.trim() !== "");
+      setColumns(nonEmptyColumns); // Store column names
+    } catch (error) {
+      console.error("Error processing sheet:", error);
+    }
   };
 
-  // 🔹 Process Sheet
-  const handleProcessSheet = async () => {
-    await processSheet(file, selectedSheet, columnMapping);
-    alert("Data Uploaded Successfully!");
+  // Handle Column Selection
+  const handleColumnSelection = (column) => {
+    setSelectedColumns((prev) =>
+      prev.includes(column) ? prev.filter(col => col !== column) : [...prev, column]
+    );
   };
 
-  // 🔹 Handle Add/Edit Enrollment
+  // Upload Data to Database
+  const handleUpload = async () => {
+    if (!selectedSheet || selectedColumns.length === 0) {
+      alert("Please select a worksheet and columns.");
+      return;
+    }
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("sheet_name", selectedSheet);
+      formData.append("column_mapping", JSON.stringify(selectedColumns));
+  
+      await processSheet(formData);
+      alert("Data uploaded successfully!");
+    } catch (error) {
+      console.error("Error uploading data:", error);
+    }
+  };
+  // 🔹 Handle Save (Add/Edit)
   const handleSave = async (enrollment) => {
-    await saveEnrollment(enrollment);
-    fetchEnrollments();
+    try {
+      await saveEnrollment(enrollment);
+      fetchEnrollments();
+    } catch (error) {
+      console.error("Error saving enrollment:", error);
+    }
   };
 
   // 🔹 Handle Delete
   const handleDelete = async (id) => {
-    await deleteEnrollment(id);
-    fetchEnrollments();
+    try {
+      await deleteEnrollment(id);
+      fetchEnrollments();
+    } catch (error) {
+      console.error("Error deleting enrollment:", error);
+    }
   };
 
   // 🔹 Render Content Based on Menu Selection
@@ -65,8 +137,11 @@ const Enrollment = ({ selectedTopbarMenu }) => {
       case "➕": // Add Enrollment
         return (
           <div>
-            <h2>Add/Edit Enrollment</h2>
-            <button onClick={() => handleSave({ enrollment_no: "12345", student_name: "John Doe" })}>
+            <h2 className="text-lg font-semibold">Add/Edit Enrollment</h2>
+            <button 
+              className="px-4 py-2 bg-blue-500 text-white rounded" 
+              onClick={() => handleSave({ enrollment_no: "12345", student_name: "John Doe" })}
+            >
               Save Enrollment
             </button>
           </div>
@@ -75,8 +150,11 @@ const Enrollment = ({ selectedTopbarMenu }) => {
       case "✏️": // Edit Enrollment
         return (
           <div>
-            <h2>Edit Enrollment</h2>
-            <button onClick={() => handleSave({ id: 1, enrollment_no: "67890", student_name: "Jane Doe" })}>
+            <h2 className="text-lg font-semibold">Edit Enrollment</h2>
+            <button 
+              className="px-4 py-2 bg-green-500 text-white rounded" 
+              onClick={() => handleSave({ id: 1, enrollment_no: "67890", student_name: "Jane Doe" })}
+            >
               Update Enrollment
             </button>
           </div>
@@ -85,22 +163,38 @@ const Enrollment = ({ selectedTopbarMenu }) => {
       case "🔍": // Search Enrollment
         return (
           <div>
-            <h2>Enrollment List</h2>
-            <table border="1">
+            <h2 className="text-lg font-semibold">Enrollment List</h2>
+            
+            {/* 🔎 Search Box */}
+            <input 
+                type="text" 
+                placeholder="🔍 Search Enrollment..." 
+                className="border border-gray-300 rounded-full px-4 py-2 w-1/3 shadow-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+
+            {/* 📄 Enrollment Table */}
+            <table className="w-full border-collapse border border-gray-300 mt-3">
               <thead>
-                <tr>
-                  <th>Enrollment No</th>
-                  <th>Student Name</th>
-                  <th>Actions</th>
+                <tr className="bg-gray-100">
+                  <th className="border p-2">Enrollment No</th>
+                  <th className="border p-2">Student Name</th>
+                  <th className="border p-2">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {enrollments.map((enroll) => (
-                  <tr key={enroll.id}>
-                    <td>{enroll.enrollment_no}</td>
-                    <td>{enroll.student_name}</td>
-                    <td>
-                      <button onClick={() => handleDelete(enroll.id)}>Delete</button>
+                {filteredEnrollments.map((enroll) => (
+                  <tr key={enroll.id} className="text-center">
+                    <td className="border p-2">{enroll.enrollment_no}</td>
+                    <td className="border p-2">{enroll.student_name}</td>
+                    <td className="border p-2">
+                      <button 
+                        className="px-3 py-1 bg-red-500 text-white rounded" 
+                        onClick={() => handleDelete(enroll.id)}
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -111,41 +205,53 @@ const Enrollment = ({ selectedTopbarMenu }) => {
 
       case "📊 Excel Upload": // Excel Upload
         return (
-          <div>
-            <h2>Upload Excel File</h2>
-            <input type="file" accept=".xlsx" onChange={handleFileUpload} />
-            {sheets.length > 0 && (
-              <div>
-                <label>Select Sheet:</label>
-                <select onChange={handleSheetSelect}>
-                  {sheets.map((sheet) => (
-                    <option key={sheet} value={sheet}>
-                      {sheet}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-            {columns.length > 0 && (
-              <div>
-                <h3>Map Excel Columns to Database Fields</h3>
-                {columns.map((col) => (
-                  <div key={col}>
-                    <label>{col} → </label>
-                    <select onChange={(e) => handleColumnMapping(e, col)}>
-                      <option value="">Select Field</option>
-                      {["enrollment_no", "student_name", "batch"].map((dbCol) => (
-                        <option key={dbCol} value={dbCol}>
-                          {dbCol}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
-                <button onClick={handleProcessSheet}>Upload Data</button>
-              </div>
-            )}
-          </div>
+          <div className="p-6 bg-gray-100">
+          <h2 className="text-lg font-semibold mb-4">Upload Excel File</h2>
+          <input type="file" accept=".xlsx" onChange={handleFileUpload} className="mb-3" />
+          <button onClick={handleFetchSheets} className="ml-3 px-4 py-2 bg-blue-500 text-white rounded">
+            Fetch Sheets
+          </button>
+    
+          {/* Display Sheet Names */}
+          {sheets.length > 0 && (
+            <div className="mt-4">
+              <h3 className="font-semibold">Select a Worksheet:</h3>
+              {sheets.map((sheet) => (
+                <div key={sheet}>
+                  <input
+                    type="radio"
+                    id={sheet}
+                    name="sheets"
+                    value={sheet}
+                    onChange={() => handleSheetSelect(sheet)}
+                  />
+                  <label htmlFor={sheet} className="ml-2">{sheet}</label>
+                </div>
+              ))}
+            </div>
+          )}
+    
+          {/* Display Column Checkboxes */}
+          {columns.length > 0 && (
+            <div className="mt-4">
+              <h3 className="font-semibold">Select Columns:</h3>
+              {columns.map((col) => (
+                <div key={col}>
+                  <input
+                    type="checkbox"
+                    id={col}
+                    checked={selectedColumns.includes(col)}
+                    onChange={() => handleColumnSelection(col)}
+                  />
+                  <label htmlFor={col} className="ml-2">{col}</label>
+                </div>
+              ))}
+              <button onClick={handleUpload} className="mt-4 px-4 py-2 bg-green-500 text-white rounded">
+                Upload Data
+              </button>
+            </div>
+          )}
+        </div>
         );
 
       default:

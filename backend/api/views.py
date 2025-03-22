@@ -296,11 +296,63 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
     serializer_class = EnrollmentSerializer
     parser_classes = (MultiPartParser, FormParser)
 
+    # ✅ Create Enrollment
+    def create(self, request, *args, **kwargs):
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        except Exception as e:
+            logger.error(f"Error creating enrollment: {str(e)}")
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    # ✅ Update Enrollment
+    def update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=False)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error updating enrollment: {str(e)}")
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    # ✅ Partial Update Enrollment
+    def partial_update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error partially updating enrollment: {str(e)}")
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    # ✅ Delete Enrollment
+    def destroy(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            self.perform_destroy(instance)
+            return Response({"message": "Enrollment deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            logger.error(f"Error deleting enrollment: {str(e)}")
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
     # ✅ Search Enrollment Records
     @action(detail=False, methods=["GET"], url_path="search")
     def search_enrollment(self, request):
         query = request.GET.get("query", "")
-        enrollments = Enrollment.objects.filter(student_name__icontains=query)
+
+        if query:
+            enrollments = Enrollment.objects.filter(
+                Q(enrollment_no__icontains=query) | Q(student_name__icontains=query)
+        else:
+            enrollments = Enrollment.objects.all()
+
         serializer = self.get_serializer(enrollments, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -313,7 +365,7 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
 
         try:
             df = pd.ExcelFile(file)
-            sheet_names = df.sheet_names  # ✅ Get available sheet names
+            sheet_names = df.sheet_names
             return Response({"sheets": sheet_names}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -329,21 +381,18 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
             return Response({"error": "Missing required parameters"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # ✅ Convert JSON string to dictionary
             column_mapping = json.loads(column_mapping)
-
             df = pd.read_excel(file, sheet_name=sheet_name)
 
-            # ✅ Rename columns based on mapping
-            df.rename(columns=column_mapping, inplace=True)
+            # Validate column mapping
+            missing_columns = [col for col in column_mapping.values() if col not in df.columns]
+            if missing_columns:
+                return Response({"error": f"The following columns are missing in the sheet: {missing_columns}"}, status=status.HTTP_400_BAD_REQUEST)
 
-            # ✅ Drop columns that are not mapped
+            df.rename(columns=column_mapping, inplace=True)
             df = df[list(column_mapping.values())]
 
-            # ✅ Convert DataFrame to Dict for Bulk Insert
             enrollment_records = df.to_dict(orient="records")
-
-            # ✅ Bulk Insert into Enrollment Table
             enrollments = [Enrollment(**record) for record in enrollment_records]
             Enrollment.objects.bulk_create(enrollments, ignore_conflicts=True)
 

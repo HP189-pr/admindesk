@@ -131,7 +131,7 @@ class UserPermission(models.Model):
 class Institute(models.Model):
     institute_id = models.AutoField(primary_key=True)
     institute_code = models.CharField(max_length=255, unique=True)
-    institute_name = models.CharField(max_length=255)
+    institute_name = models.CharField(max_length=255, null=True, blank=True) 
     created_at = models.DateTimeField(db_column="createdat", auto_now_add=True)
     updated_at = models.DateTimeField(db_column="updatedat", auto_now=True)
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column="updatedby")
@@ -140,7 +140,7 @@ class Institute(models.Model):
         db_table = "institute"
 
     def __str__(self):
-        return self.institute_name
+        return self.institute_name if self.institute_name else "Unnamed Institute"
 
 # ✅ Main Branch Model (Main Course)
 class MainBranch(models.Model):
