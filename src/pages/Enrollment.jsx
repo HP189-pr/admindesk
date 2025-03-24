@@ -6,6 +6,9 @@ import {
   uploadExcel, 
   processSheet 
 } from "../services/enrollmentservice";
+import { useAuth } from "../hooks/AuthContext";
+
+
 
 const Enrollment = ({ selectedTopbarMenu }) => {
   const [enrollments, setEnrollments] = useState([]);
@@ -17,6 +20,7 @@ const Enrollment = ({ selectedTopbarMenu }) => {
   const [columnMapping, setColumnMapping] = useState({});
   const [columns, setColumns] = useState([]);
   const [selectedColumns, setSelectedColumns] = useState([]);
+  const { auth } = useAuth();
 
   // 🔹 Fetch enrollments when search menu is selected
   useEffect(() => {
@@ -50,13 +54,14 @@ const Enrollment = ({ selectedTopbarMenu }) => {
   }, [searchTerm, enrollments]);
 
   // 🔹 Handle File Upload & Extract Sheets
-  const handleFileUpload = (e) => {
-    const uploadedFile = e.target.files[0];
-    setFile(uploadedFile);
-    setSheets([]);
-    setSelectedSheet("");
-    setColumns([]);
-    setSelectedColumns([]);
+  const handleFileUpload = (event) => {
+    const uploadedFile = event.target.files[0];
+    if (uploadedFile) {
+      setFile(uploadedFile);
+      setSheets([]);
+      setColumns([]);
+      setSelectedColumns([]);
+    }
   };
 
   // Fetch Sheet Names from Excel
@@ -66,7 +71,7 @@ const Enrollment = ({ selectedTopbarMenu }) => {
       return;
     }
     try {
-      const data = await uploadExcel(file);
+      const data = await uploadExcel(file); // Remove extra token param
       setSheets(data.sheets); // Store sheet names
     } catch (error) {
       console.error("Error fetching sheets:", error);
@@ -74,28 +79,47 @@ const Enrollment = ({ selectedTopbarMenu }) => {
   };
 
   // Fetch Columns from Selected Sheet
-  const handleSheetSelect = async (sheetName) => {
-    setSelectedSheet(sheetName);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("sheet_name", sheetName);
-      formData.append("column_mapping", JSON.stringify({})); // Empty mapping for now
-  
-      const response = await processSheet(formData);
-      const firstRow = response[0] || {}; // Get the first row to extract column names
-      const nonEmptyColumns = Object.keys(firstRow).filter(col => col.trim() !== "");
-      setColumns(nonEmptyColumns); // Store column names
-    } catch (error) {
-      console.error("Error processing sheet:", error);
+  // Fetch Columns from Selected Sheet
+const handleSheetSelect = async (selectedSheet) => {
+  console.log("📄 Selected Sheet:", selectedSheet);
+  setSelectedSheet(selectedSheet); // Update selected sheet
+
+  if (!file) {
+    alert("Please upload a file first.");
+    return;
+  }
+
+  try {
+    const response = await processSheet(file, selectedSheet); // Fetch columns
+    if (response && response.columns) {
+      setColumns(response.columns); // Update column names
+      setColumnMapping({});
+      setSelectedColumns([]);
+    } else {
+      console.error("❌ No columns received from API.");
     }
-  };
+  } catch (error) {
+    console.error("❌ Error fetching columns:", error.message);
+  }
+};
+
+  
 
   // Handle Column Selection
   const handleColumnSelection = (column) => {
-    setSelectedColumns((prev) =>
-      prev.includes(column) ? prev.filter(col => col !== column) : [...prev, column]
-    );
+    setSelectedColumns((prev) => {
+      const updatedColumns = prev.includes(column)
+        ? prev.filter(col => col !== column)
+        : [...prev, column];
+  
+      // Update column mapping dynamically
+      setColumnMapping((prevMapping) => ({
+        ...prevMapping,
+        [column]: column, // Assuming a direct mapping
+      }));
+  
+      return updatedColumns;
+    });
   };
 
   // Upload Data to Database
@@ -233,7 +257,7 @@ const Enrollment = ({ selectedTopbarMenu }) => {
                     id={sheet}
                     name="sheets"
                     value={sheet}
-                    onChange={() => handleSheetSelect(sheet)}
+                    onChange={(e) => handleSheetSelect(e.target.value, columnMapping)}
                   />
                   <label htmlFor={sheet} className="ml-2">{sheet}</label>
                 </div>
@@ -243,23 +267,23 @@ const Enrollment = ({ selectedTopbarMenu }) => {
     
           {/* Display Column Checkboxes */}
           {columns.length > 0 && (
-            <div className="mt-4">
-              <h3 className="font-semibold">Select Columns:</h3>
-              {columns.map((col) => (
-                <div key={col}>
-                  <input
-                    type="checkbox"
-                    id={col}
-                    checked={selectedColumns.includes(col)}
-                    onChange={() => handleColumnSelection(col)}
-                  />
-                  <label htmlFor={col} className="ml-2">{col}</label>
-                </div>
-              ))}
-              <button onClick={handleUpload} className="mt-4 px-4 py-2 bg-green-500 text-white rounded">
-                Upload Data
-              </button>
-            </div>
+                  <div className="mt-4 p-4 border border-gray-300 bg-white rounded">
+                    <h3 className="font-semibold">Select Columns to Upload:</h3>
+                    {columns.map((col) => (
+                      <div key={col} className="flex items-center mt-2">
+                        <input
+                          type="checkbox"
+                          id={col}
+                          checked={selectedColumns.includes(col)}
+                          onChange={() => handleColumnSelection(col)}
+                        />
+                        <label htmlFor={col} className="ml-2">{col}</label>
+                      </div>
+                    ))}
+                    <button onClick={handleUpload} className="mt-4 px-4 py-2 bg-green-500 text-white rounded">
+                      Upload Data
+                    </button>
+                  </div>
           )}
         </div>
         );
