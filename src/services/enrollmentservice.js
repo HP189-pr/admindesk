@@ -1,23 +1,32 @@
 import axios from "axios";
 
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/enrollment";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const getAuthHeader = () => {
   const token = localStorage.getItem("token");
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-const axiosConfig = {
+const axiosInstance = axios.create({
+  baseURL: API_URL,
   timeout: 10000, // 10 seconds
-};
+  headers: { "Content-Type": "application/json" },
+});
+axiosInstance.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers["Authorization"] = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => Promise.reject(error));
+
+export default axiosInstance;
 
 // ✅ Fetch all enrollments
 export const getEnrollments = async (query = "") => {
   try {
-    const response = await axios.get(`${API_URL}/search/`, {
+    const response = await axiosInstance.get("/api/enrollments/search/", {
       params: { query },
-      headers: { ...getAuthHeader() },
-      ...axiosConfig,
     });
     return response.data;
   } catch (error) {
@@ -34,16 +43,12 @@ export const saveEnrollment = async (enrollment) => {
 
   try {
     if (enrollment.id) {
-      const response = await axios.put(`${API_URL}/${enrollment.id}/`, enrollment, {
-        headers: { ...getAuthHeader() },
-        ...axiosConfig,
-      });
+      // Update existing enrollment (Use PUT method)
+      const response = await axiosInstance.put(`/api/enrollments/${enrollment.id}/`, enrollment);
       return response.data;
     } else {
-      const response = await axios.post(API_URL, enrollment, {
-        headers: { ...getAuthHeader() },
-        ...axiosConfig,
-      });
+      // Create new enrollment (Ensure correct API endpoint)
+      const response = await axiosInstance.post("/api/enrollments/", enrollment);
       return response.data;
     }
   } catch (error) {
@@ -55,10 +60,7 @@ export const saveEnrollment = async (enrollment) => {
 // ✅ Delete Enrollment
 export const deleteEnrollment = async (id) => {
   try {
-    const response = await axios.delete(`${API_URL}/${id}/`, {
-      headers: { ...getAuthHeader() },
-      ...axiosConfig,
-    });
+    const response = await axiosInstance.delete(`/api/enrollments/${id}/`);
     return response.data;
   } catch (error) {
     console.error("Error deleting enrollment:", error);
@@ -68,12 +70,12 @@ export const deleteEnrollment = async (id) => {
 
 // ✅ Upload Excel File
 export const uploadExcel = async (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+
   try {
-    const formData = new FormData();
-    formData.append("file", file);
-    const response = await axios.post(`${API_URL}/upload-excel/`, formData, {
-      headers: { ...getAuthHeader(), "Content-Type": "multipart/form-data" },
-      ...axiosConfig,
+    const response = await axiosInstance.post("/api/enrollments/upload-excel/", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
     });
     return response.data;
   } catch (error) {
@@ -90,9 +92,8 @@ export const processSheet = async (file, sheetName, columnMapping) => {
     formData.append("sheet_name", sheetName);
     formData.append("column_mapping", JSON.stringify(columnMapping));
 
-    const response = await axios.post(`${API_URL}/process-sheet/`, formData, {
-      headers: { ...getAuthHeader(), "Content-Type": "multipart/form-data" },
-      ...axiosConfig,
+    const response = await axiosInstance.post("/api/enrollments/process-sheet/", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
     });
     return response.data;
   } catch (error) {

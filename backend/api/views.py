@@ -13,6 +13,11 @@ import datetime
 import os
 from django.contrib.auth import get_user_model
 from django.conf import settings
+import logging
+from django.db.models import Q
+import pandas as pd
+
+
 
 from .models import Holiday, UserProfile,User, Module, Menu, UserPermission, Enrollment, Institute, MainBranch, SubBranch
 from .serializers import (
@@ -21,6 +26,10 @@ from .serializers import (
     VerifyPasswordSerializer, CustomTokenObtainPairSerializer, ModuleSerializer, MenuSerializer, UserPermissionSerializer, 
     EnrollmentSerializer, InstituteSerializer, MainBranchSerializer, SubBranchSerializer
 )
+
+logger = logging.getLogger(__name__)
+
+
 User = get_user_model()
 class HolidayViewSet(viewsets.ModelViewSet):
     """
@@ -116,17 +125,21 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
     def update(self, request, *args, **kwargs):
         profile = self.get_object()
 
+        # Handle profile picture update
         profile_picture_file = request.FILES.get("profile_picture")
         if profile_picture_file:
             # Delete old picture if exists
             if profile.profile_picture:
                 old_file_path = os.path.join(settings.MEDIA_ROOT, profile.profile_picture.name)
-                if os.path.exists(old_file_path):
-                    os.remove(old_file_path)
+                try:
+                    if os.path.exists(old_file_path):
+                        os.remove(old_file_path)
+                except Exception as e:
+                    print(f"⚠️ Error deleting old profile picture: {e}")
 
-            # Save new profile picture
+            # Save new profile picture with timestamp
             extension = profile_picture_file.name.split('.')[-1]
-            filename = f"{request.user.username}.{extension}"
+            filename = f"{request.user.username}_{int(time.time())}.{extension}"
             file_path = os.path.join(settings.MEDIA_ROOT, "profile_pictures", filename)
 
             # Ensure directory exists
@@ -146,7 +159,14 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "profile_picture": request.build_absolute_uri(profile.profile_picture.url),
+                "message": "Profile updated successfully",
+                "data": serializer.data
+            },
+            status=status.HTTP_200_OK
+        )
 class ProfilePictureView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -295,6 +315,7 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
     queryset = Enrollment.objects.all()
     serializer_class = EnrollmentSerializer
     parser_classes = (MultiPartParser, FormParser)
+    permission_classes = [IsAuthenticated]
 
     # ✅ Create Enrollment
     def create(self, request, *args, **kwargs):
@@ -347,11 +368,9 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
     def search_enrollment(self, request):
         query = request.GET.get("query", "")
 
-        if query:
-            enrollments = Enrollment.objects.filter(
-                Q(enrollment_no__icontains=query) | Q(student_name__icontains=query)
-        else:
-            enrollments = Enrollment.objects.all()
+        enrollments = Enrollment.objects.filter(
+            Q(enrollment_no__icontains=query) | Q(student_name__icontains=query)
+        ) if query else Enrollment.objects.all()
 
         serializer = self.get_serializer(enrollments, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -393,8 +412,13 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
             df = df[list(column_mapping.values())]
 
             enrollment_records = df.to_dict(orient="records")
-            enrollments = [Enrollment(**record) for record in enrollment_records]
-            Enrollment.objects.bulk_create(enrollments, ignore_conflicts=True)
+
+            # ✅ Handle unique constraint: Upsert instead of ignore_conflicts
+            for record in enrollment_records:
+                Enrollment.objects.update_or_create(
+                    enrollment_no=record.get("enrollment_no"),
+                    defaults=record
+                )
 
             return Response({"message": "Data uploaded successfully"}, status=status.HTTP_201_CREATED)
         except Exception as e:

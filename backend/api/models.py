@@ -176,8 +176,8 @@ class SubBranch(models.Model):
 
 # ✅ Enrollment Model
 class Enrollment(models.Model):
-    enrollment_no = models.AutoField(primary_key=True)
-    student_name = models.CharField(max_length=255)
+    enrollment_no = models.AutoField(primary_key=True,max_length=20, unique=True, db_index=True)
+    student_name = models.CharField(max_length=100, db_index=True)
     institute = models.ForeignKey(Institute, on_delete=models.CASCADE, db_column="institute_id")
     batch = models.IntegerField()
     enrollment_date = models.DateTimeField(db_column="enrollment_date", auto_now_add=True)

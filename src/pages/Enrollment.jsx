@@ -51,7 +51,12 @@ const Enrollment = ({ selectedTopbarMenu }) => {
 
   // 🔹 Handle File Upload & Extract Sheets
   const handleFileUpload = (e) => {
-    setFile(e.target.files[0]);
+    const uploadedFile = e.target.files[0];
+    setFile(uploadedFile);
+    setSheets([]);
+    setSelectedSheet("");
+    setColumns([]);
+    setSelectedColumns([]);
   };
 
   // Fetch Sheet Names from Excel
@@ -96,7 +101,7 @@ const Enrollment = ({ selectedTopbarMenu }) => {
   // Upload Data to Database
   const handleUpload = async () => {
     if (!selectedSheet || selectedColumns.length === 0) {
-      alert("Please select a worksheet and columns.");
+      alert("Please select a worksheet and at least one column.");
       return;
     }
     try {
@@ -105,10 +110,15 @@ const Enrollment = ({ selectedTopbarMenu }) => {
       formData.append("sheet_name", selectedSheet);
       formData.append("column_mapping", JSON.stringify(selectedColumns));
   
-      await processSheet(formData);
-      alert("Data uploaded successfully!");
+      const response = await processSheet(formData);
+      if (response.success) {
+        alert("Data uploaded successfully!");
+      } else {
+        alert(`Upload failed: ${response.message}`);
+      }
     } catch (error) {
       console.error("Error uploading data:", error);
+      alert("Failed to upload data. Please check your file and try again.");
     }
   };
   // 🔹 Handle Save (Add/Edit)
