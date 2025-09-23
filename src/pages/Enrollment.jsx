@@ -1,303 +1,314 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { 
   getEnrollments, 
-  saveEnrollment, 
-  deleteEnrollment, 
-  uploadExcel, 
-  processSheet 
+  createEnrollment, 
+  updateEnrollment, 
+  deleteEnrollment,
+  initUpload, 
+  getSheetNames,
+  getColumnHeaders,
+  processDataChunk,
+  getDatabaseFields,
+  validateEnrollmentData
 } from "../services/enrollmentservice";
 import { useAuth } from "../hooks/AuthContext";
-
-
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const Enrollment = ({ selectedTopbarMenu }) => {
-  const [enrollments, setEnrollments] = useState([]);
-  const [filteredEnrollments, setFilteredEnrollments] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [file, setFile] = useState(null);
-  const [sheets, setSheets] = useState([]);
-  const [selectedSheet, setSelectedSheet] = useState("");
-  const [columnMapping, setColumnMapping] = useState({});
-  const [columns, setColumns] = useState([]);
-  const [selectedColumns, setSelectedColumns] = useState([]);
   const { auth } = useAuth();
+  const [state, setState] = useState({
+    enrollments: [],
+    filteredEnrollments: [],
+    searchTerm: "",
+    isLoading: false,
+    pagination: {
+      currentPage: 1,
+      pageSize: 10,
+      totalItems: 0
+    },
+    validationErrors: {}
+  });
 
-  // 🔹 Fetch enrollments when search menu is selected
-  useEffect(() => {
-    if (selectedTopbarMenu === "🔍") {
-      fetchEnrollments();
-    }
-  }, [selectedTopbarMenu]);
+  // Excel Upload State
+  const [uploadState, setUploadState] = useState({
+    file: null,
+    sheets: [],
+    selectedSheet: "",
+    columns: [],
+    sessionId: null,
+    columnMapping: {},
+    uploadProgress: 0,
+    isUploading: false
+  });
 
-  // 🔹 Fetch Enrollment Data
-  const fetchEnrollments = async () => {
+  // Form State
+  const [formState, setFormState] = useState({
+    data: {
+      enrollment_no: '',
+      student_name: '',
+      institute_id: '',
+      batch: '',
+      admission_date: '',
+      subcourse_id: '',
+      maincourse_id: '',
+      temp_no: ''
+    },
+    isEditing: false
+  });
+
+  // Memoized database fields
+  const databaseFields = React.useMemo(() => getDatabaseFields(), []);
+
+  // Load enrollments with debounce and pagination
+  const loadEnrollments = useCallback(async (search = '', page = 1) => {
+    setState(prev => ({ ...prev, isLoading: true }));
     try {
-      const data = await getEnrollments("");
-      setEnrollments(data);
-      setFilteredEnrollments(data); // Initialize filtered list
+        const data = await getEnrollments(search, page, state.pagination.pageSize);
+        setState(prev => ({
+            ...prev,
+            enrollments: data.items || data, // Handle both paginated and non-paginated responses
+            filteredEnrollments: data.items || data,
+            pagination: {
+                ...prev.pagination,
+                currentPage: page,
+                totalItems: data.total || (data.items ? data.items.length : data.length)
+            },
+            isLoading: false
+        }));
     } catch (error) {
-      console.error("Error fetching enrollments:", error);
+        console.error("Error details:", error);
+        toast.error(error.message);
+        setState(prev => ({ ...prev, isLoading: false }));
     }
-  };
+}, [state.pagination.pageSize]);
 
-  // 🔹 Handle Search Input Change
+
+
+  // Search effect with cleanup
   useEffect(() => {
-    if (searchTerm.length >= 3) {
-      const filtered = enrollments.filter(enroll =>
-        enroll.enrollment_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        enroll.student_name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredEnrollments(filtered);
-    } else {
-      setFilteredEnrollments(enrollments);
-    }
-  }, [searchTerm, enrollments]);
+    const timer = setTimeout(() => {
+      if (state.searchTerm.length >= 3 || state.searchTerm.length === 0) {
+        loadEnrollments(state.searchTerm);
+      }
+    }, 500);
 
-  // 🔹 Handle File Upload & Extract Sheets
+    return () => clearTimeout(timer);
+  }, [state.searchTerm, loadEnrollments]);
+
+  // Excel Upload Handlers
   const handleFileUpload = (event) => {
     const uploadedFile = event.target.files[0];
     if (uploadedFile) {
-      setFile(uploadedFile);
-      setSheets([]);
-      setColumns([]);
-      setSelectedColumns([]);
+      setUploadState(prev => ({
+        ...prev,
+        file: uploadedFile,
+        sheets: [],
+        columns: [],
+        selectedSheet: "",
+        sessionId: null
+      }));
     }
   };
 
-  // Fetch Sheet Names from Excel
   const handleFetchSheets = async () => {
-    if (!file) {
-      alert("Please select a file first.");
-      return;
+    if (!uploadState.file) {
+        toast.warning("Please select a valid Excel file (XLSX or XLS)");
+        return;
     }
+
+    // Validate file type
+    const validTypes = [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 
+        'application/vnd.ms-excel'
+    ];
+    
+    if (!validTypes.includes(uploadState.file.type)) {
+        toast.error("Invalid file type. Please upload an Excel file (.xlsx or .xls)");
+        return;
+    }
+
+    setIsUploading(true);
     try {
-      const data = await uploadExcel(file); // Remove extra token param
-      setSheets(data.sheets); // Store sheet names
+        const result = await initUpload(uploadState.file);
+        if (!result?.session_id) {
+            throw new Error("Server didn't return session ID");
+        }
+        
+        const sheetsData = await getSheetNames(result.session_id);
+        if (!sheetsData?.sheets) {
+            throw new Error("Invalid sheets data received");
+        }
+
+        setUploadState(prev => ({
+            ...prev,
+            sessionId: result.session_id,
+            sheets: sheetsData.sheets,
+            uploadProgress: 100
+        }));
     } catch (error) {
-      console.error("Error fetching sheets:", error);
+        console.error("Upload Failed:", error);
+        toast.error(`Upload failed: ${error.message}`);
+        setUploadState(prev => ({
+            ...prev,
+            file: null,
+            sheets: [],
+            uploadProgress: 0
+        }));
+    } finally {
+        setIsUploading(false);
     }
-  };
-
-  // Fetch Columns from Selected Sheet
-  // Fetch Columns from Selected Sheet
-const handleSheetSelect = async (selectedSheet) => {
-  console.log("📄 Selected Sheet:", selectedSheet);
-  setSelectedSheet(selectedSheet); // Update selected sheet
-
-  if (!file) {
-    alert("Please upload a file first.");
-    return;
-  }
-
-  try {
-    const response = await processSheet(file, selectedSheet); // Fetch columns
-    if (response && response.columns) {
-      setColumns(response.columns); // Update column names
-      setColumnMapping({});
-      setSelectedColumns([]);
-    } else {
-      console.error("❌ No columns received from API.");
-    }
-  } catch (error) {
-    console.error("❌ Error fetching columns:", error.message);
-  }
 };
 
-  
-
-  // Handle Column Selection
-  const handleColumnSelection = (column) => {
-    setSelectedColumns((prev) => {
-      const updatedColumns = prev.includes(column)
-        ? prev.filter(col => col !== column)
-        : [...prev, column];
-  
-      // Update column mapping dynamically
-      setColumnMapping((prevMapping) => ({
-        ...prevMapping,
-        [column]: column, // Assuming a direct mapping
-      }));
-  
-      return updatedColumns;
-    });
-  };
-
-  // Upload Data to Database
-  const handleUpload = async () => {
-    if (!selectedSheet || selectedColumns.length === 0) {
-      alert("Please select a worksheet and at least one column.");
-      return;
-    }
+  const handleSheetSelect = async (sheetName) => {
+    setUploadState(prev => ({ ...prev, selectedSheet: sheetName }));
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("sheet_name", selectedSheet);
-      formData.append("column_mapping", JSON.stringify(selectedColumns));
-  
-      const response = await processSheet(formData);
-      if (response.success) {
-        alert("Data uploaded successfully!");
-      } else {
-        alert(`Upload failed: ${response.message}`);
+      const response = await getColumnHeaders(uploadState.sessionId, sheetName);
+      if (response?.columns) {
+        const initialMapping = {};
+        databaseFields.forEach(field => {
+          initialMapping[field.field] = "";
+        });
+        
+        setUploadState(prev => ({
+          ...prev,
+          columns: response.columns,
+          columnMapping: initialMapping
+        }));
       }
     } catch (error) {
-      console.error("Error uploading data:", error);
-      alert("Failed to upload data. Please check your file and try again.");
+      console.error("Error fetching columns:", error);
+      toast.error(error.message || "Failed to fetch columns");
     }
   };
-  // 🔹 Handle Save (Add/Edit)
-  const handleSave = async (enrollment) => {
+
+  // Form Handlers
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    const errors = validateEnrollmentData(formState.data);
+    if (Object.keys(errors).length > 0) {
+      setState(prev => ({ ...prev, validationErrors: errors }));
+      return;
+    }
+
     try {
-      await saveEnrollment(enrollment);
-      fetchEnrollments();
+      if (formState.isEditing) {
+        await updateEnrollment(formState.data.enrollment_no, formState.data);
+        toast.success("Enrollment updated successfully");
+      } else {
+        await createEnrollment(formState.data);
+        toast.success("Enrollment created successfully");
+      }
+      setState(prev => ({ ...prev, validationErrors: {} }));
+      loadEnrollments();
     } catch (error) {
       console.error("Error saving enrollment:", error);
+      toast.error(error.message || "Failed to save enrollment");
     }
   };
 
-  // 🔹 Handle Delete
-  const handleDelete = async (id) => {
-    try {
-      await deleteEnrollment(id);
-      fetchEnrollments();
-    } catch (error) {
-      console.error("Error deleting enrollment:", error);
-    }
-  };
-
-  // 🔹 Render Content Based on Menu Selection
-  const renderContent = () => {
-    switch (selectedTopbarMenu) {
-      case "➕": // Add Enrollment
-        return (
-          <div>
-            <h2 className="text-lg font-semibold">Add/Edit Enrollment</h2>
-            <button 
-              className="px-4 py-2 bg-blue-500 text-white rounded" 
-              onClick={() => handleSave({ enrollment_no: "12345", student_name: "John Doe" })}
-            >
-              Save Enrollment
-            </button>
-          </div>
-        );
-
-      case "✏️": // Edit Enrollment
-        return (
-          <div>
-            <h2 className="text-lg font-semibold">Edit Enrollment</h2>
-            <button 
-              className="px-4 py-2 bg-green-500 text-white rounded" 
-              onClick={() => handleSave({ id: 1, enrollment_no: "67890", student_name: "Jane Doe" })}
-            >
-              Update Enrollment
-            </button>
-          </div>
-        );
-
-      case "🔍": // Search Enrollment
-        return (
-          <div>
-            <h2 className="text-lg font-semibold">Enrollment List</h2>
-            
-            {/* 🔎 Search Box */}
-            <input 
-                type="text" 
-                placeholder="🔍 Search Enrollment..." 
-                className="border border-gray-300 rounded-full px-4 py-2 w-1/3 shadow-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-
-            {/* 📄 Enrollment Table */}
-            <table className="w-full border-collapse border border-gray-300 mt-3">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="border p-2">Enrollment No</th>
-                  <th className="border p-2">Student Name</th>
-                  <th className="border p-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredEnrollments.map((enroll) => (
-                  <tr key={enroll.id} className="text-center">
-                    <td className="border p-2">{enroll.enrollment_no}</td>
-                    <td className="border p-2">{enroll.student_name}</td>
-                    <td className="border p-2">
-                      <button 
-                        className="px-3 py-1 bg-red-500 text-white rounded" 
-                        onClick={() => handleDelete(enroll.id)}
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
+  // Optimized render methods
+  const renderSearchView = () => (
+    <div>
+      <h2 className="text-lg font-semibold mb-4">Enrollment Search</h2>
+      <input
+        type="text"
+        placeholder="🔍 Search by enrollment no or name..."
+        className="border rounded px-4 py-2 w-full md:w-1/3 mb-4"
+        value={state.searchTerm}
+        onChange={(e) => setState(prev => ({ ...prev, searchTerm: e.target.value }))}
+      />
+      
+      {state.isLoading ? (
+        <div className="text-center py-4">Loading...</div>
+      ) : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              {/* Table content */}
             </table>
           </div>
-        );
+          {/* Pagination controls */}
+        </>
+      )}
+    </div>
+  );
 
-      case "📊 Excel Upload": // Excel Upload
-        return (
-          <div className="p-6 bg-gray-100">
-          <h2 className="text-lg font-semibold mb-4">Upload Excel File</h2>
-          <input type="file" accept=".xlsx" onChange={handleFileUpload} className="mb-3" />
-          <button onClick={handleFetchSheets} className="ml-3 px-4 py-2 bg-blue-500 text-white rounded">
-            Fetch Sheets
-          </button>
-    
-          {/* Display Sheet Names */}
-          {sheets.length > 0 && (
-            <div className="mt-4">
-              <h3 className="font-semibold">Select a Worksheet:</h3>
-              {sheets.map((sheet) => (
-                <div key={sheet}>
-                  <input
-                    type="radio"
-                    id={sheet}
-                    name="sheets"
-                    value={sheet}
-                    onChange={(e) => handleSheetSelect(e.target.value, columnMapping)}
-                  />
-                  <label htmlFor={sheet} className="ml-2">{sheet}</label>
-                </div>
-              ))}
-            </div>
-          )}
-    
-          {/* Display Column Checkboxes */}
-          {columns.length > 0 && (
-                  <div className="mt-4 p-4 border border-gray-300 bg-white rounded">
-                    <h3 className="font-semibold">Select Columns to Upload:</h3>
-                    {columns.map((col) => (
-                      <div key={col} className="flex items-center mt-2">
-                        <input
-                          type="checkbox"
-                          id={col}
-                          checked={selectedColumns.includes(col)}
-                          onChange={() => handleColumnSelection(col)}
-                        />
-                        <label htmlFor={col} className="ml-2">{col}</label>
-                      </div>
-                    ))}
-                    <button onClick={handleUpload} className="mt-4 px-4 py-2 bg-green-500 text-white rounded">
-                      Upload Data
-                    </button>
-                  </div>
-          )}
+  const renderFormView = () => (
+    <div>
+      <h2 className="text-lg font-semibold mb-4">
+        {formState.isEditing ? "Edit Enrollment" : "Add New Enrollment"}
+      </h2>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {databaseFields.map(field => (
+            <FormField 
+              key={field.field}
+              field={field}
+              formData={formState.data}
+              error={state.validationErrors[field.field]}
+              onChange={handleInputChange}
+              disabled={formState.isEditing && field.field === 'enrollment_no'}
+            />
+          ))}
         </div>
-        );
+        <div className="flex justify-end space-x-2">
+          <button
+            type="button"
+            className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+            onClick={() => setSelectedTopbarMenu("🔍")}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+          >
+            {formState.isEditing ? "Update" : "Save"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
 
-      default:
-        return <h2 className="text-xl font-semibold">Please select an option.</h2>;
-    }
-  };
+  const renderExcelUpload = () => (
+    <div className="space-y-4">
+      <h2 className="text-lg font-semibold">Excel Import</h2>
+      {/* Excel upload content */}
+    </div>
+  );
 
   return (
     <div className="flex h-full p-3 bg-gray-100">
-      <div className="bg-white shadow rounded p-6 w-full">{renderContent()}</div>
+      <div className="bg-white shadow rounded p-6 w-full">
+        {selectedTopbarMenu === "🔍" && renderSearchView()}
+        {selectedTopbarMenu === "➕" && renderFormView()}
+        {selectedTopbarMenu === "📊 Excel Upload" && renderExcelUpload()}
+      </div>
     </div>
   );
 };
+
+// Helper component for form fields
+const FormField = ({ field, formData, error, onChange, disabled }) => (
+  <div>
+    <label className="block mb-1">
+      {field.label}{field.required && '*'}
+    </label>
+    <input
+      type={field.type || "text"}
+      name={field.field}
+      value={formData[field.field]}
+      onChange={onChange}
+      className={`border rounded px-3 py-2 w-full ${
+        error ? 'border-red-500' : ''
+      }`}
+      required={field.required}
+      disabled={disabled}
+    />
+    {error && <p className="text-red-500 text-sm">{error}</p>}
+  </div>
+);
 
 export default Enrollment;

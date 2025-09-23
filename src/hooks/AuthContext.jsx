@@ -12,77 +12,67 @@ export const AuthProvider = ({ children }) => {
 
     const [profilePicture, setProfilePicture] = useState("/profilepic/default-profile.png");
     const [loading, setLoading] = useState(true);
-    const [isAdmin, setIsAdmin] = useState(false); // ✅ Fixed: Separate admin state
+    const [isAdmin, setIsAdmin] = useState(false);
 
     // 🔹 Fetch user profile
     const fetchUserProfile = async () => {
         const token = localStorage.getItem("access_token");
+    
         if (!token) {
             logout();
             return;
         }
-
+    
+        // Validate token before making API request
         try {
-            const response = await axios.get(`${API_BASE_URL}/api/profile/`, {
+            await axios.post(`${API_BASE_URL}/api/token/verify/`, 
+                { token },
+                { headers: { "Content-Type": "application/json" } }
+            );
+        } catch (error) {
+            console.error("❌ Token Verification Failed:", error.response?.data || error.message);
+            await refreshToken();
+            return;
+        }
+    
+        // Fetch user profile
+        try {
+            const { data } = await axios.get(`${API_BASE_URL}/api/profile/`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
-
-            if (response.status === 200) {
-                const profileData = response.data;
-
-                const formattedUser = {
-                    username: profileData.username || "",
-                    first_name: profileData.first_name || "",
-                    last_name: profileData.last_name || "",
-                    email: profileData.email || "",
-                    phone: profileData.phone || "",
-                    address: profileData.address || "",
-                    city: profileData.city || "",
-                    profile_picture: profileData.profile_picture || "/profilepic/default-profile.png",
-                    state: profileData.state || "",
-                    country: profileData.country || "",
-                    bio: profileData.bio || "",
-                    social_links: profileData.social_links || {},
-                    is_admin: profileData.is_admin || false, // ✅ Fixed: Admin flag
-                };
-
-                setUser(formattedUser);
-                setProfilePicture(formattedUser.profile_picture);
-                setIsAdmin(formattedUser.is_admin); // ✅ Properly update admin state
-                localStorage.setItem("user", JSON.stringify(formattedUser));
-            } else {
-                throw new Error("Invalid response from server");
-            }
+    
+            setUser({
+                username: data.username || "",
+                first_name: data.first_name || "",
+                last_name: data.last_name || "",
+                email: data.email || "",
+                phone: data.phone || "",
+                address: data.address || "",
+                city: data.city || "",
+                profile_picture: data.profile_picture || "/profilepic/default-profile.png",
+                state: data.state || "",
+                country: data.country || "",
+                bio: data.bio || "",
+                social_links: data.social_links || {},
+                is_admin: data.is_admin || false,
+            });
+    
+            setProfilePicture(data.profile_picture || "/profilepic/default-profile.png");
+            setIsAdmin(data.is_admin || false);
+            localStorage.setItem("user", JSON.stringify(data));
         } catch (error) {
             console.error("❌ Fetch User Error:", error.response?.data || error.message);
-            if (error.response?.status === 401) {
-                await refreshToken();
-            }
+            if (error.response?.status === 401) await refreshToken();
         } finally {
             setLoading(false);
         }
     };
-
-    // 🔹 Check if user is an admin
-    const checkAdminAccess = async () => {
-        try {
-            const response = await axios.get(`${API_BASE_URL}/api/check-admin-access/`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
-            });
-
-            if (response.status === 200) {
-                setIsAdmin(response.data.is_admin);
-            }
-        } catch (error) {
-            console.error("❌ Admin Check Error:", error.response?.data || error.message);
-            setIsAdmin(false);
-        }
-    };
+    
 
     useEffect(() => {
         const token = localStorage.getItem("access_token");
         if (token) {
-            fetchUserProfile().then(() => checkAdminAccess()); // ✅ Call both functions
+            fetchUserProfile();
         } else {
             setUser(null);
             setProfilePicture("/profilepic/default-profile.png");
@@ -93,18 +83,16 @@ export const AuthProvider = ({ children }) => {
     // 🔹 Login function
     const login = async (identifier, password) => {
         try {
-            const response = await axios.post(
+            const { data } = await axios.post(
                 `${API_BASE_URL}/api/userlogin/`,
                 { username: identifier, password },
                 { headers: { "Content-Type": "application/json" } }
             );
 
-            if (response.data.access) {
-                localStorage.setItem("access_token", response.data.access);
-                localStorage.setItem("refresh_token", response.data.refresh);
-
-                await fetchUserProfile(); // ✅ Fetch updated profile data after login
-                await checkAdminAccess(); // ✅ Ensure admin status is updated
+            if (data.access) {
+                localStorage.setItem("access_token", data.access);
+                localStorage.setItem("refresh_token", data.refresh);
+                await fetchUserProfile();
                 return { success: true };
             }
             return { success: false, error: "Login failed. No access token received." };
@@ -115,20 +103,13 @@ export const AuthProvider = ({ children }) => {
 
     // 🔹 Verify password function
     const verifyPassword = async (password) => {
-        const token = localStorage.getItem("access_token");
-
         try {
-            const response = await axios.post(
+            const { status } = await axios.post(
                 `${API_BASE_URL}/api/verify-password/`,
                 { password },
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
+                { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }
             );
-            return response.status === 200;
+            return status === 200;
         } catch (error) {
             console.error("❌ Password Verification Error:", error.response?.data || error.message);
             return false;
@@ -144,11 +125,8 @@ export const AuthProvider = ({ children }) => {
         }
 
         try {
-            const response = await axios.post(`${API_BASE_URL}/api/token/refresh/`, {
-                refresh: refresh_token,
-            });
-
-            localStorage.setItem("access_token", response.data.access);
+            const { data } = await axios.post(`${API_BASE_URL}/api/token/refresh/`, { refresh: refresh_token });
+            localStorage.setItem("access_token", data.access);
             await fetchUserProfile();
             return true;
         } catch (error) {
@@ -160,23 +138,20 @@ export const AuthProvider = ({ children }) => {
 
     // 🔹 Logout function
     const logout = (navigate) => {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
-        localStorage.removeItem("user");
-
+        localStorage.clear();
         setUser(null);
         setProfilePicture("/profilepic/default-profile.png");
         setIsAdmin(false);
-
         if (navigate) navigate("/login");
     };
 
+    // 🔹 Fetch all users
     const fetchUsers = async () => {
         try {
-            const response = await axios.get(`${API_BASE_URL}/api/users/`, {
+            const { data } = await axios.get(`${API_BASE_URL}/api/users/`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
             });
-            return response.data; // Returns the list of users
+            return data;
         } catch (error) {
             console.error("❌ Fetch Users Error:", error.response?.data || error.message);
             return [];
@@ -186,10 +161,10 @@ export const AuthProvider = ({ children }) => {
     // 🔹 Fetch user details by ID
     const fetchUserDetail = async (userId) => {
         try {
-            const response = await axios.get(`${API_BASE_URL}/api/users/${userId}/`, {
+            const { data } = await axios.get(`${API_BASE_URL}/api/users/${userId}/`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
             });
-            return response.data; // Returns user details
+            return data;
         } catch (error) {
             console.error(`❌ Fetch User Detail Error (ID: ${userId}):`, error.response?.data || error.message);
             return null;
@@ -197,7 +172,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, isAdmin, profilePicture, loading, login, logout, refreshToken,verifyPassword,fetchUsers,fetchUserDetail }}>
+        <AuthContext.Provider value={{ user, isAdmin, profilePicture, loading, login, logout, refreshToken, verifyPassword, fetchUsers, fetchUserDetail }}>
             {children}
         </AuthContext.Provider>
     );

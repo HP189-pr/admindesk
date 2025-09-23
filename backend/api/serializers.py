@@ -179,6 +179,57 @@ class SubBranchSerializer(serializers.ModelSerializer):
 
 # ✅ Enrollment Serializer
 class EnrollmentSerializer(serializers.ModelSerializer):
+    # Write-only fields for IDs
+    institute_id = serializers.PrimaryKeyRelatedField(
+        queryset=Institute.objects.all(),
+        source='institute',
+        write_only=True
+    )
+    maincourse_id = serializers.PrimaryKeyRelatedField(
+        queryset=MainBranch.objects.all(),
+        source='maincourse',
+        write_only=True
+    )
+    subcourse_id = serializers.PrimaryKeyRelatedField(
+        queryset=SubBranch.objects.all(),
+        source='subcourse',
+        write_only=True
+    )
+    
     class Meta:
         model = Enrollment
-        fields = '__all__'
+        fields = [
+            'enrollment_no', 'student_name', 
+            'institute', 'institute_id',
+            'batch', 'enrollment_date', 'admission_date',
+            'subcourse', 'subcourse_id',
+            'maincourse', 'maincourse_id',
+            'updated_by', 'created_at', 'updated_at', 'temp_no'
+        ]
+        read_only_fields = [
+            'enrollment_date', 'created_at', 'updated_at',
+            'institute', 'subcourse', 'maincourse', 'updated_by'
+        ]
+        extra_kwargs = {
+            'enrollment_no': {'required': True},
+            'student_name': {'required': True},
+            'batch': {'required': True}
+        }
+
+    def to_representation(self, instance):
+        """Enhanced representation with related object details"""
+        data = super().to_representation(instance)
+        
+        # Add detailed representation of related objects
+        representation_map = {
+            'institute': lambda x: {'id': x.id, 'name': str(x)} if x else None,
+            'subcourse': lambda x: {'id': x.id, 'name': str(x)} if x else None,
+            'maincourse': lambda x: {'id': x.id, 'name': str(x)} if x else None,
+            'updated_by': lambda x: {'id': x.id, 'username': x.username} if x else None
+        }
+
+        for field, transform in representation_map.items():
+            if field in data:
+                data[field] = transform(getattr(instance, field))
+        
+        return data

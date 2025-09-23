@@ -1,0 +1,39 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<p>
+    <a href="{{ template_url }}" class="button">Download Sample Template</a>
+</p>
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {% if not preview %}
+        {{ form.as_p }}
+        <button type="submit" class="button default">Upload</button>
+    {% else %}
+        <h2>Preview Data</h2>
+        <table border="1" style="border-collapse: collapse; width: 100%;">
+            <thead>
+                <tr>
+                    {% for col in preview.columns %}
+                        <th>{{ col }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in preview.rows %}
+                    <tr>
+                        {% for cell in row %}
+                            <td>{{ cell }}</td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <input type="hidden" name="confirm" value="1">
+        <button type="submit" class="button default">Update Database</button>
+    {% endif %}
+</form>
+{% endblock %}

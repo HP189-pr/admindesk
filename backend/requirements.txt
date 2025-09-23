@@ -1,0 +1,7 @@
+# Add packages required by the Django backend
+Django
+djangorestframework
+pandas
+openpyxl
+psycopg2-binary
+python-dotenv

@@ -128,68 +128,122 @@ class UserPermission(models.Model):
         else:
             return f"{self.user.username} - {self.module.name} (Full Module Access)"
 # ✅ Institute Model
+from django.contrib.auth.models import User
+from django.db import models
+
+# Institute Model (as you shared earlier, looks fine)
 class Institute(models.Model):
     institute_id = models.AutoField(primary_key=True)
-    institute_code = models.CharField(max_length=255, unique=True)
-    institute_name = models.CharField(max_length=255, null=True, blank=True) 
+    institute_code = models.CharField(max_length=255, unique=True, db_index=True)
+    institute_name = models.CharField(max_length=255, null=True, blank=True)
+
     created_at = models.DateTimeField(db_column="createdat", auto_now_add=True)
     updated_at = models.DateTimeField(db_column="updatedat", auto_now=True)
-    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column="updatedby")
+    updated_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        db_column="updatedby", related_name="updated_institutes"
+    )
 
     class Meta:
         db_table = "institute"
 
     def __str__(self):
-        return self.institute_name if self.institute_name else "Unnamed Institute"
+        return self.institute_name or "Unnamed Institute"
+
 
 # ✅ Main Branch Model (Main Course)
 class MainBranch(models.Model):
-    maincourse_id = models.AutoField(primary_key=True)
-    course_code = models.CharField(max_length=255, unique=True)
-    course_name = models.CharField(max_length=255)
-    institute = models.ForeignKey(Institute, on_delete=models.CASCADE, db_column="institute_id")
+    id = models.AutoField(primary_key=True)
+    maincourse_id = models.CharField(max_length=255, unique=True, db_index=True)
+    course_name = models.CharField(max_length=255, null=True, blank=True)  # ✅ allow null
+
     created_at = models.DateTimeField(db_column="createdat", auto_now_add=True)
     updated_at = models.DateTimeField(db_column="updatedat", auto_now=True)
-    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column="updatedby")
+    updated_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, db_column="updatedby"
+    )
 
     class Meta:
         db_table = "main_branch"
 
     def __str__(self):
-        return self.course_name
+        return self.course_name or f"MainBranch {self.maincourse_id}"  # ✅ fallback
 
-# ✅ Sub Branch Model (Sub Course)
+
 class SubBranch(models.Model):
-    subcourse_id = models.CharField(max_length=50, primary_key=True)
-    subcourse_code = models.CharField(max_length=255, unique=True)
-    subcourse_name = models.CharField(max_length=255)
-    maincourse = models.ForeignKey(MainBranch, on_delete=models.CASCADE, db_column="maincourse_id")
+    id = models.AutoField(primary_key=True)
+    subcourse_id = models.CharField(max_length=255, unique=True, db_index=True)
+    subcourse_name = models.CharField(max_length=255, null=True, blank=True)
+
+    maincourse = models.ForeignKey(
+        MainBranch, on_delete=models.CASCADE, db_column="maincourse_id", related_name="sub_branches"
+    )
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column="updatedby")
-    created_at = models.TimeField(db_column="createdat", auto_now_add=True)
-    updated_at = models.TimeField(db_column="updatedat", auto_now=True)
+
+    created_at = models.DateTimeField(db_column="createdat", auto_now_add=True)
+    updated_at = models.DateTimeField(db_column="updatedat", auto_now=True)
 
     class Meta:
         db_table = "sub_branch"
 
     def __str__(self):
-        return self.subcourse_name
+        return self.subcourse_name or f"SubBranch {self.subcourse_id}"
 
-# ✅ Enrollment Model
+
 class Enrollment(models.Model):
-    enrollment_no = models.AutoField(primary_key=True,max_length=20, unique=True, db_index=True)
-    student_name = models.CharField(max_length=100, db_index=True)
-    institute = models.ForeignKey(Institute, on_delete=models.CASCADE, db_column="institute_id")
-    batch = models.IntegerField()
-    enrollment_date = models.DateTimeField(db_column="enrollment_date", auto_now_add=True)
-    admission_date = models.DateField()
-    subcourse = models.ForeignKey(SubBranch, on_delete=models.CASCADE, db_column="subcourse_id")
-    maincourse = models.ForeignKey(MainBranch, on_delete=models.CASCADE, db_column="maincourse_id")
-    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column="updatedby")
-    created_at = models.DateTimeField(db_column="createdat", auto_now_add=True)
-    updated_at = models.DateTimeField(db_column="updatedat", auto_now=True)
+    id = models.AutoField(primary_key=True, db_column="id")  # Matches existing table PK
+    student_name = models.CharField(max_length=100, db_index=True, verbose_name="Student Name")
+    institute = models.ForeignKey(
+        "Institute",
+        on_delete=models.CASCADE,
+        db_column="institute_id",
+        related_name="enrollments",
+        verbose_name="Institute"
+    )
+    batch = models.IntegerField(verbose_name="Batch")
+    subcourse = models.ForeignKey(
+        "SubBranch",
+        on_delete=models.CASCADE,
+        db_column="subcourse_id",
+        related_name="enrollments",
+        verbose_name="Subcourse"
+    )
+    maincourse = models.ForeignKey(
+        "MainBranch",
+        on_delete=models.CASCADE,
+        db_column="maincourse_id",
+        related_name="enrollments",
+        verbose_name="Main Course"
+    )
+    enrollment_no = models.CharField(
+        max_length=50,
+        unique=True,
+        null=True, blank=True,
+        db_column="enrollment_no",
+        verbose_name="Enrollment Number"
+    )
+    temp_enroll_no = models.CharField(
+        max_length=50,
+        null=True, blank=True,
+        db_column="temp_enroll_no",
+        verbose_name="Temporary Enrollment Number"
+    )
+    created_at = models.DateTimeField(db_column="created_at", auto_now_add=True, verbose_name="Created At")
+    updated_at = models.DateTimeField(db_column="updated_at", auto_now=True, verbose_name="Updated At")
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        db_column="updated_by",
+        related_name="updated_enrollments",
+        verbose_name="Updated By"
+    )
 
     class Meta:
         db_table = "enrollment"
+        indexes = [
+            models.Index(fields=["institute", "subcourse", "maincourse"]),
+        ]
 
     def __str__(self):
-        return f"{self.student_name} - {self.enrollment_no}"
+        return f"{self.student_name or 'Unknown'} - {self.enrollment_no or self.temp_enroll_no or 'No Number'}"
