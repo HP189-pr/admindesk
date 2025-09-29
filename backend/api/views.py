@@ -14,12 +14,16 @@ import os
 from django.contrib.auth import get_user_model
 from django.conf import settings
 import logging
+from django.db import models
+from django.db.models import Q
+from django.core.exceptions import ObjectDoesNotExist
 
-from .models import Holiday, UserProfile,User, Module, Menu, UserPermission
+from .models import Holiday, UserProfile,User, Module, Menu, UserPermission, InstituteCourseOffering, Institute, MainBranch, SubBranch, Enrollment
 from .serializers import (
     HolidaySerializer, LoginSerializer, UserSerializer,
     ChangePasswordSerializer, UserProfileSerializer,
-    VerifyPasswordSerializer, CustomTokenObtainPairSerializer, ModuleSerializer, MenuSerializer, UserPermissionSerializer
+    VerifyPasswordSerializer, CustomTokenObtainPairSerializer, ModuleSerializer, MenuSerializer, UserPermissionSerializer,
+    InstituteCourseOfferingSerializer, InstituteSerializer, MainBranchSerializer, SubBranchSerializer, EnrollmentSerializer
     
 )
 
@@ -59,10 +63,15 @@ class LoginView(APIView):
             if not user or not check_password(password, user.password):
                 return Response({"detail": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST)
 
-                        
-            is_admin = user.groups.filter(id=1).exists()
-            is_super = user.groups.filter(id=2).exists()
-            is_restricted = user.groups.filter(id=3).exists()
+            # Robust admin flags independent of specific group IDs
+            is_admin = (
+                getattr(user, "is_staff", False)
+                or getattr(user, "is_superuser", False)
+                or user.groups.filter(name__iexact="Admin").exists()
+            )
+            # Optional: other flags by name if you use them
+            is_super = user.groups.filter(name__iexact="Super").exists() or getattr(user, "is_superuser", False)
+            is_restricted = user.groups.filter(name__iexact="Restricted").exists()
 
             # Generate JWT tokens only once
             refresh = RefreshToken.for_user(user)
@@ -202,7 +211,12 @@ class CheckAdminAccessView(APIView):
     def get(self, request):
         try:
             user = request.user
-            is_admin = user.groups.filter(id=1).exists()  # Check by group ID (Admin = 1)
+            # Consider staff/superuser or group named "Admin" as admin
+            is_admin = (
+                getattr(user, "is_staff", False)
+                or getattr(user, "is_superuser", False)
+                or user.groups.filter(name__iexact="Admin").exists()
+            )
 
             return Response({"is_admin": is_admin}, status=status.HTTP_200_OK if is_admin else status.HTTP_403_FORBIDDEN)
 
@@ -211,6 +225,70 @@ class CheckAdminAccessView(APIView):
                 {"error": "Internal Server Error", "details": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class MyNavigationView(APIView):
+    """Return modules, menus and rights for the current user.
+
+    Shape:
+    {
+      "modules": [
+        {"id": 1, "name": "Student Module", "menus": [
+          {"id": 10, "name": "Enrollment", "rights": {"can_view": true, "can_create": false, "can_edit": false, "can_delete": false}}
+        ]}
+      ]
+    }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        # Shortcut: staff/superuser get full rights
+        is_admin_like = getattr(user, "is_staff", False) or getattr(user, "is_superuser", False)
+
+        modules = []
+        for mod in Module.objects.all().order_by("name"):
+            menus_payload = []
+            for mn in Menu.objects.filter(module=mod).order_by("name"):
+                rights = {"can_view": False, "can_create": False, "can_edit": False, "can_delete": False}
+                if is_admin_like:
+                    rights = {k: True for k in rights}
+                else:
+                    try:
+                        perm = UserPermission.objects.filter(user=user, module=mod, menu=mn).first()
+                        if perm:
+                            rights = {
+                                "can_view": bool(perm.can_view),
+                                "can_create": bool(perm.can_create),
+                                "can_edit": bool(perm.can_edit),
+                                "can_delete": bool(perm.can_delete),
+                            }
+                        else:
+                            # Optional: module-level perms where menu is NULL
+                            mod_perm = UserPermission.objects.filter(user=user, module=mod, menu__isnull=True).first()
+                            if mod_perm:
+                                rights = {
+                                    "can_view": bool(mod_perm.can_view),
+                                    "can_create": bool(mod_perm.can_create),
+                                    "can_edit": bool(mod_perm.can_edit),
+                                    "can_delete": bool(mod_perm.can_delete),
+                                }
+                    except ObjectDoesNotExist:
+                        pass
+
+                menus_payload.append({
+                    "id": mn.menuid if hasattr(mn, "menuid") else mn.id,
+                    "name": mn.name,
+                    "rights": rights,
+                })
+
+            modules.append({
+                "id": mod.moduleid if hasattr(mod, "moduleid") else mod.id,
+                "name": mod.name,
+                "menus": menus_payload,
+            })
+
+        return Response({"modules": modules})
 
 
 class UserAPIView(APIView):
@@ -292,4 +370,84 @@ class MenuViewSet(viewsets.ModelViewSet):
 class UserPermissionViewSet(viewsets.ModelViewSet):
     queryset = UserPermission.objects.all()
     serializer_class = UserPermissionSerializer
+
+# ✅ Main Branch (Main Course) ViewSet
+class MainBranchViewSet(viewsets.ModelViewSet):
+    queryset = MainBranch.objects.all()
+    serializer_class = MainBranchSerializer
+
+# ✅ Sub Branch (Sub Course) ViewSet
+class SubBranchViewSet(viewsets.ModelViewSet):
+    queryset = SubBranch.objects.all()
+    serializer_class = SubBranchSerializer
+
+    def get_queryset(self):
+        """Optionally filter sub-branches by maincourse_id query param.
+
+        Example: /api/subbranch/?maincourse_id=BCA
+        """
+        qs = super().get_queryset()
+        mcid = self.request.query_params.get("maincourse_id")
+        if mcid:
+            return qs.filter(maincourse_id__iexact=str(mcid).strip())
+        return qs
+
 # ✅ Institute ViewSet
+class InstituteViewSet(viewsets.ModelViewSet):
+    queryset = Institute.objects.all()
+    serializer_class = InstituteSerializer
+
+# ✅ Institute Course Offering ViewSet
+class InstituteCourseOfferingViewSet(viewsets.ModelViewSet):
+    queryset = InstituteCourseOffering.objects.all().select_related("institute", "maincourse", "subcourse", "updated_by")
+    serializer_class = InstituteCourseOfferingSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(updated_by=self.request.user if self.request.user.is_authenticated else None)
+
+    def perform_update(self, serializer):
+        serializer.save(updated_by=self.request.user if self.request.user.is_authenticated else None)
+# ✅ Institute ViewSet
+
+# ✅ Enrollment ViewSet
+class EnrollmentViewSet(viewsets.ModelViewSet):
+    queryset = Enrollment.objects.all().select_related("institute", "subcourse", "maincourse", "updated_by")
+    serializer_class = EnrollmentSerializer
+    lookup_field = "enrollment_no"
+    lookup_value_regex = r"[^/]+"  # allow string with dashes etc.
+
+    def get_queryset(self):
+        qs = super().get_queryset().order_by("-created_at")
+        search = self.request.query_params.get("search", "").strip()
+        if search:
+            qs = qs.filter(models.Q(enrollment_no__icontains=search) | models.Q(student_name__icontains=search))
+        return qs
+
+    def list(self, request, *args, **kwargs):
+        # Simple manual pagination to return { items, total }
+        queryset = self.get_queryset()
+        try:
+            limit = int(request.query_params.get("limit", 10))
+            page = int(request.query_params.get("page", 1))
+            if limit <= 0:
+                limit = 10
+            if page <= 0:
+                page = 1
+        except ValueError:
+            limit = 10
+            page = 1
+
+        total = queryset.count()
+        start = (page - 1) * limit
+        end = start + limit
+        page_items = queryset[start:end]
+
+        serializer = self.get_serializer(page_items, many=True)
+        return Response({"items": serializer.data, "total": total})
+
+    def perform_create(self, serializer):
+        serializer.save(updated_by=self.request.user if self.request.user.is_authenticated else None)
+
+    def perform_update(self, serializer):
+        serializer.save(updated_by=self.request.user if self.request.user.is_authenticated else None)
+    

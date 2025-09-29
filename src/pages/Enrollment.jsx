@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { FaChevronDown, FaChevronUp } from "react-icons/fa";
+import PageTopbar from "../components/PageTopbar";
 import { 
   getEnrollments, 
   createEnrollment, 
@@ -12,10 +14,11 @@ import {
   validateEnrollmentData
 } from "../services/enrollmentservice";
 import { useAuth } from "../hooks/AuthContext";
+import axios from "axios";
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-const Enrollment = ({ selectedTopbarMenu }) => {
+const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar, onToggleChatbox }) => {
   const { auth } = useAuth();
   const [state, setState] = useState({
     enrollments: [],
@@ -42,6 +45,9 @@ const Enrollment = ({ selectedTopbarMenu }) => {
     isUploading: false
   });
 
+  // Rights
+  const [rights, setRights] = useState({ can_view: true, can_create: true, can_edit: true, can_delete: true });
+
   // Form State
   const [formState, setFormState] = useState({
     data: {
@@ -56,6 +62,29 @@ const Enrollment = ({ selectedTopbarMenu }) => {
     },
     isEditing: false
   });
+  useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+    axios.get("http://127.0.0.1:8000/api/my-navigation/", {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(({ data }) => {
+      const mods = data.modules || [];
+      // Try to find Enrollment menu rights by name match
+      let r = { can_view: false, can_create: false, can_edit: false, can_delete: false };
+      for (const mod of mods) {
+        for (const mn of (mod.menus || [])) {
+          if ((mn.name || "").toLowerCase().includes("enrollment")) {
+            r = mn.rights || r;
+          }
+        }
+      }
+      // Default: if nothing found, assume view-only
+      setRights({ can_view: !!r.can_view, can_create: !!r.can_create, can_edit: !!r.can_edit, can_delete: !!r.can_delete });
+    }).catch(() => {
+      // Graceful fallback
+      setRights({ can_view: true, can_create: true, can_edit: true, can_delete: true });
+    });
+  }, []);
 
   // Memoized database fields
   const databaseFields = React.useMemo(() => getDatabaseFields(), []);
@@ -128,7 +157,7 @@ const Enrollment = ({ selectedTopbarMenu }) => {
         return;
     }
 
-    setIsUploading(true);
+  setUploadState(prev => ({ ...prev, isUploading: true }));
     try {
         const result = await initUpload(uploadState.file);
         if (!result?.session_id) {
@@ -155,8 +184,8 @@ const Enrollment = ({ selectedTopbarMenu }) => {
             sheets: [],
             uploadProgress: 0
         }));
-    } finally {
-        setIsUploading(false);
+  } finally {
+    setUploadState(prev => ({ ...prev, isUploading: false }));
     }
 };
 
@@ -208,6 +237,17 @@ const Enrollment = ({ selectedTopbarMenu }) => {
     }
   };
 
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormState((prev) => ({
+      ...prev,
+      data: {
+        ...prev.data,
+        [name]: value,
+      },
+    }));
+  };
+
   // Optimized render methods
   const renderSearchView = () => (
     <div>
@@ -225,8 +265,62 @@ const Enrollment = ({ selectedTopbarMenu }) => {
       ) : (
         <>
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              {/* Table content */}
+            <table className="w-full border-collapse border">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="border p-2 text-left">Enroll No</th>
+                  <th className="border p-2 text-left">Student</th>
+                  <th className="border p-2 text-left">Institute</th>
+                  <th className="border p-2 text-left">Main Course</th>
+                  <th className="border p-2 text-left">Sub Course</th>
+                  <th className="border p-2 text-left">Batch</th>
+                  <th className="border p-2 text-left">Admission</th>
+                  {rights.can_edit || rights.can_delete ? (<th className="border p-2 text-left">Actions</th>) : null}
+                </tr>
+              </thead>
+              <tbody>
+                {state.filteredEnrollments.map((enr) => (
+                  <tr key={enr.enrollment_no}>
+                    <td className="border p-2">{enr.enrollment_no}</td>
+                    <td className="border p-2">{enr.student_name}</td>
+                    <td className="border p-2">{enr.institute?.name || enr.institute_id}</td>
+                    <td className="border p-2">{enr.maincourse?.name || enr.maincourse_id}</td>
+                    <td className="border p-2">{enr.subcourse?.name || enr.subcourse_id}</td>
+                    <td className="border p-2">{enr.batch}</td>
+                    <td className="border p-2">{enr.admission_date || '-'}</td>
+                    {(rights.can_edit || rights.can_delete) && (
+                      <td className="border p-2">
+                        {rights.can_edit && (
+                          <button
+                            className="px-2 py-1 bg-yellow-500 text-white rounded mr-2"
+                            onClick={() => {
+                              setFormState({ data: { ...enr }, isEditing: true });
+                              setSelectedTopbarMenu && setSelectedTopbarMenu("➕");
+                            }}
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {rights.can_delete && (
+                          <button
+                            className="px-2 py-1 bg-red-600 text-white rounded"
+                            onClick={async () => {
+                              try {
+                                await deleteEnrollment(enr.enrollment_no);
+                                toast.success("Deleted");
+                                loadEnrollments(state.searchTerm, state.pagination.currentPage);
+                              } catch (err) {
+                                toast.error(err.message);
+                              }
+                            }}
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </td>
+                    )}
+                  </tr>) )}
+              </tbody>
             </table>
           </div>
           {/* Pagination controls */}
@@ -240,6 +334,12 @@ const Enrollment = ({ selectedTopbarMenu }) => {
       <h2 className="text-lg font-semibold mb-4">
         {formState.isEditing ? "Edit Enrollment" : "Add New Enrollment"}
       </h2>
+      {!rights.can_create && !formState.isEditing && (
+        <p className="text-sm text-red-600 mb-2">You do not have rights to create enrollments.</p>
+      )}
+      {!rights.can_edit && formState.isEditing && (
+        <p className="text-sm text-red-600 mb-2">You do not have rights to edit enrollments.</p>
+      )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {databaseFields.map(field => (
@@ -257,16 +357,18 @@ const Enrollment = ({ selectedTopbarMenu }) => {
           <button
             type="button"
             className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-            onClick={() => setSelectedTopbarMenu("🔍")}
+            onClick={() => setSelectedTopbarMenu && setSelectedTopbarMenu("🔍")}
           >
             Cancel
           </button>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-          >
-            {formState.isEditing ? "Update" : "Save"}
-          </button>
+          {(formState.isEditing ? rights.can_edit : rights.can_create) && (
+            <button
+              type="submit"
+              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+            >
+              {formState.isEditing ? "Update" : "Save"}
+            </button>
+          )}
         </div>
       </form>
     </div>
@@ -279,13 +381,88 @@ const Enrollment = ({ selectedTopbarMenu }) => {
     </div>
   );
 
+  // Collapsible action panel controls and unified top section
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [localSelected, setLocalSelected] = useState(null);
+  const actions = ["➕", "🔍", "📄 Report", "📊 Excel Upload"];
+
+  // Helpers to support controlled vs uncontrolled selection
+  const getSelected = () => (typeof selectedTopbarMenu !== 'undefined' ? selectedTopbarMenu : localSelected);
+  const setSelected = (val) => {
+    if (typeof setSelectedTopbarMenu === 'function') setSelectedTopbarMenu(val);
+    else setLocalSelected(val);
+  };
+
+  const handleTopbarSelect = (action) => {
+    const current = getSelected();
+    if (current === action) {
+      const nextOpen = !panelOpen;
+      setPanelOpen(nextOpen);
+      if (!nextOpen) {
+        // Deselect when collapsing via same action
+        setSelected(null);
+      }
+    } else {
+      setSelected(action);
+      if (!panelOpen) setPanelOpen(true);
+    }
+  };
+
   return (
-    <div className="flex h-full p-3 bg-gray-100">
-      <div className="bg-white shadow rounded p-6 w-full">
-        {selectedTopbarMenu === "🔍" && renderSearchView()}
-        {selectedTopbarMenu === "➕" && renderFormView()}
-        {selectedTopbarMenu === "📊 Excel Upload" && renderExcelUpload()}
+    <div className="p-4 md:p-6 space-y-4">
+      <PageTopbar
+        title="Enrollment"
+        actions={actions}
+        selected={getSelected()}
+        onSelect={handleTopbarSelect}
+        actionsOnLeft
+        leftSlot={
+          <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-indigo-600 text-white text-xl">
+            🧾
+          </div>
+        }
+        rightSlot={
+          <a href="/" className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 text-white ml-2">
+            🏠 Home
+          </a>
+        }
+      />
+
+      {/* Collapsible Action Box */}
+      <div className="border rounded-2xl overflow-hidden shadow-sm">
+        <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
+          <div className="font-semibold">
+            {getSelected() ? `${getSelected() === "➕" ? "ADD" : getSelected() === "🔍" ? "SEARCH" : getSelected() === "📄 Report" ? "REPORT" : "EXCEL"} Panel` : "Action Panel"}
+          </div>
+          <button
+            onClick={() => setPanelOpen((o) => !o)}
+            className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
+          >
+            {panelOpen ? <FaChevronUp /> : <FaChevronDown />} {panelOpen ? "Collapse" : "Expand"}
+          </button>
+        </div>
+        {panelOpen && getSelected() && (
+          <div className="p-4">
+            {getSelected() === "➕" && renderFormView()}
+            {getSelected() === "🔍" && (
+              <div className="space-y-4">
+                {renderSearchView()}
+              </div>
+            )}
+            {getSelected() === "📊 Excel Upload" && renderExcelUpload()}
+            {getSelected() === "📄 Report" && (
+              <div className="text-sm text-gray-600">Report view coming soon…</div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Records section */}
+      {getSelected() !== "➕" && (
+        <div className="bg-white shadow rounded-2xl p-4">
+          {renderSearchView()}
+        </div>
+      )}
     </div>
   );
 };

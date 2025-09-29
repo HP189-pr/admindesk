@@ -9,14 +9,20 @@ try:
         HolidayViewSet,
         ModuleViewSet,
         MenuViewSet,
-        UserPermissionViewSet,
+    UserPermissionViewSet,
+    InstituteCourseOfferingViewSet,
+    MainBranchViewSet,
+    SubBranchViewSet,
+    InstituteViewSet,
+    EnrollmentViewSet,
         LoginView,
         ChangePasswordView,
         UserProfileView,
         VerifyPasswordView,
         CustomTokenObtainPairView,
         ProfilePictureView,
-        CheckAdminAccessView,
+    CheckAdminAccessView,
+    MyNavigationView,
         UserAPIView,
         UserDetailAPIView,
     )
@@ -27,6 +33,11 @@ try:
     router.register(r'modules', ModuleViewSet, basename='modules')  # ✅ Modules API
     router.register(r'menus', MenuViewSet, basename='menus')  # ✅ Menus API
     router.register(r'userpermissions', UserPermissionViewSet, basename='userpermissions')  # ✅ User Permissions API
+    router.register(r'institute-course-offerings', InstituteCourseOfferingViewSet, basename='institute-course-offerings')
+    router.register(r'mainbranch', MainBranchViewSet, basename='mainbranch')
+    router.register(r'subbranch', SubBranchViewSet, basename='subbranch')
+    router.register(r'institutes', InstituteViewSet, basename='institutes')
+    router.register(r'enrollments', EnrollmentViewSet, basename='enrollments')
 
     urlpatterns = [
         # Include all registered routes automatically
@@ -49,6 +60,7 @@ try:
         path('profile/', UserProfileView.as_view(), name="user-profile"),
         path('verify-password/', VerifyPasswordView.as_view(), name='verify-password'),
         path('profile-picture/', ProfilePictureView.as_view(), name='profile-picture'),
+    path('my-navigation/', MyNavigationView.as_view(), name='my-navigation'),
 
         # User API endpoints
         path("users/", UserAPIView.as_view(), name="user-list-create"),

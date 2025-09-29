@@ -15,7 +15,8 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from openpyxl import load_workbook
 from .models import Institute, MainBranch, SubBranch, Enrollment
 from .serializers import (
-    InstituteSerializer, MainBranchSerializer, SubBranchSerializer, EnrollmentSerializer
+    InstituteSerializer, MainBranchSerializer, SubBranchSerializer, EnrollmentSerializer,
+    VerificationSerializer, EcaResendSerializer, ResubmitSerializer, AssignFinalSerializer, Verification
 )
 
 logger = logging.getLogger(__name__)
@@ -201,3 +202,106 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
                     errors.append({'row': _, 'error': str(e), 'data': dict(row.dropna())})
 
         return {'success_count': successes, 'errors': errors}
+class VerificationViewSet(viewsets.ModelViewSet):
+    """
+    Endpoints:
+      GET    /api/verification/              (list with ?q=&limit=)
+      POST   /api/verification/              (create)
+      GET    /api/verification/{id}/         (retrieve)
+      PATCH  /api/verification/{id}/         (partial update)
+      PUT    /api/verification/{id}/         (update)
+      POST   /api/verification/{id}/eca-resend/
+      POST   /api/verification/{id}/resubmit/
+      POST   /api/verification/{id}/assign-final/
+    """
+    serializer_class = VerificationSerializer
+    queryset = (Verification.objects
+                .select_related("enrollment", "second_enrollment", "updatedby")
+                .order_by("-id"))
+    permission_classes = [IsAuthenticated]  # or your custom permission
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        q = self.request.query_params.get("q")
+        if q:
+            qs = qs.filter(
+                Q(student_name__icontains=q) |
+                Q(final_no__icontains=q) |
+                Q(pay_rec_no__icontains=q) |
+                Q(eca_ref_no__icontains=q) |
+                Q(enrollment__enrollment_no__icontains=q) |
+                Q(second_enrollment__enrollment_no__icontains=q)
+            )
+        limit = self.request.query_params.get("limit")
+        if limit:
+            try:
+                n = int(limit)
+                if n > 0:
+                    qs = qs[:n]
+            except ValueError:
+                pass
+        return qs
+
+    def perform_create(self, serializer):
+        # updatedby audit
+        user = self.request.user if (self.request and self.request.user.is_authenticated) else None
+        serializer.save(updatedby=user)
+
+    def perform_update(self, serializer):
+        user = self.request.user if (self.request and self.request.user.is_authenticated) else None
+        serializer.save(updatedby=user)
+
+    # --- Custom Actions ---
+
+    @action(detail=True, methods=["post"], url_path="eca-resend")
+    def eca_resend(self, request, pk=None):
+        """
+        Append a RESEND to ECA history, update counters & mail status.
+        Body: { "to_email": "...", "notes": "..." }
+        """
+        instance: Verification = self.get_object()
+        ser = EcaResendSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+
+        to_email = ser.validated_data["to_email"]
+        notes = ser.validated_data.get("notes", "")
+
+        # Push to history (helper on model)
+        instance.eca_push_history(action="RESEND", to_email=to_email, notes=notes, mark_sent=True)
+
+        return Response(VerificationSerializer(instance, context={"request": request}).data)
+
+    @action(detail=True, methods=["post"], url_path="resubmit")
+    def resubmit(self, request, pk=None):
+        """
+        Mark a resubmission: stamp last_resubmit_* and set status back to IN_PROGRESS.
+        Body: { "status_note": "..." } (optional)
+        """
+        instance: Verification = self.get_object()
+        ser = ResubmitSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+
+        note = ser.validated_data.get("status_note")
+        instance.record_resubmit(status_note=note)
+
+        return Response(VerificationSerializer(instance, context={"request": request}).data)
+
+    @action(detail=True, methods=["post"], url_path="assign-final")
+    def assign_final(self, request, pk=None):
+        """
+        Assign/overwrite a final number on the SAME row and mark DONE.
+        Body: { "final_no": "TR-2025-000123" }
+        (If you ever need 'new number creates new row', we can add a different action.)
+        """
+        instance: Verification = self.get_object()
+        ser = AssignFinalSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+
+        final_no = ser.validated_data["final_no"]
+        instance.final_no = final_no
+        instance.status = VerificationStatus.DONE
+        instance.full_clean()   # apply model-level validation
+        instance.save(update_fields=["final_no", "status", "updatedat"])
+
+        return Response(VerificationSerializer(instance, context={"request": request}).data)
+

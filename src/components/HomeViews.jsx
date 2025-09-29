@@ -1,7 +1,7 @@
 import React from 'react';
 
 // Transcript View
-const Transcript = () => (
+const Verification = () => (
   <div className="p-4 bg-white shadow rounded">
     <h3 className="font-semibold">📄 Transcript View</h3>
     <p>This is the transcript section.</p>
@@ -42,7 +42,7 @@ const Attendance = () => (
 
 // Master Object - Key-Value mapping for views
 const HomeViews = {
-  transcript: Transcript,
+  verification: Verification,
   migration: Migration,
   birthdayReminder: BirthdayReminder,
   chatbox: ChatBox,

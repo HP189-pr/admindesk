@@ -1,13 +1,18 @@
 import axios from 'axios';
 
-const API_BASE = '/api/enrollments';
+const API_ROOT = 'http://127.0.0.1:8000/api';
 
 const api = axios.create({
-    baseURL: API_BASE,
-    withCredentials: true,  // For session/cookie auth
-    headers: {
-      'Content-Type': 'application/json',
+        baseURL: `${API_ROOT}/enrollments`,
+        headers: { 'Content-Type': 'application/json' }
+});
+
+api.interceptors.request.use((config) => {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
     }
+    return config;
 });
 
 // Response interceptor for error handling
@@ -45,7 +50,7 @@ export const getEnrollments = async (searchTerm = '', page = 1, pageSize = 10) =
 
 export const createEnrollment = async (enrollmentData) => {
     try {
-        const response = await api.post('/', enrollmentData);
+    const response = await api.post('/', enrollmentData);
         return response.data;
     } catch (error) {
         throw error;
@@ -54,7 +59,7 @@ export const createEnrollment = async (enrollmentData) => {
 
 export const updateEnrollment = async (enrollmentId, updatedData) => {
     try {
-        const response = await api.put(`/${enrollmentId}/`, updatedData);
+    const response = await api.put(`/${encodeURIComponent(enrollmentId)}/`, updatedData);
         return response.data;
     } catch (error) {
         throw error;
@@ -63,7 +68,7 @@ export const updateEnrollment = async (enrollmentId, updatedData) => {
 
 export const deleteEnrollment = async (enrollmentId) => {
     try {
-        const response = await api.delete(`/${enrollmentId}/`);
+    const response = await api.delete(`/${encodeURIComponent(enrollmentId)}/`);
         return response.data;
     } catch (error) {
         throw error;

@@ -1,20 +1,27 @@
 {% extends "admin/base_site.html" %}
+{% load static %}
 
 {% block content %}
 <h1>{{ title }}</h1>
 
+<!-- Download Sample File -->
 <p>
-    <a href="{{ template_url }}" class="button">Download Sample Template</a>
+    <a href="{{ download_url }}" class="button">Download Sample File</a>
 </p>
 
+<!-- Upload Form -->
 <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
-    {% if not preview %}
-        {{ form.as_p }}
-        <button type="submit" class="button default">Upload</button>
-    {% else %}
-        <h2>Preview Data</h2>
-        <table border="1" style="border-collapse: collapse; width: 100%;">
+    {{ form.as_p }}
+    <button type="submit" name="upload_preview" class="button">Upload & Preview</button>
+</form>
+
+<!-- Preview Section -->
+{% if preview %}
+    <h2>Preview Data</h2>
+    <form method="post">
+        {% csrf_token %}
+        <table class="adminlist">
             <thead>
                 <tr>
                     {% for col in preview.columns %}
@@ -32,8 +39,9 @@
                 {% endfor %}
             </tbody>
         </table>
-        <input type="hidden" name="confirm" value="1">
-        <button type="submit" class="button default">Update Database</button>
-    {% endif %}
-</form>
+        <br>
+        <button type="submit" name="confirm" class="button">Confirm Upload</button>
+    </form>
+{% endif %}
+
 {% endblock %}

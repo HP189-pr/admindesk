@@ -1,29 +1,54 @@
-import React from "react";
-import { FaPlus, FaSearch } from "react-icons/fa";
+import React, { useState } from "react";
+import PageTopbar from "../components/PageTopbar";
 
-const Migration = () => {
+const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
+  const [selectedTopbarMenu, setSelectedTopbarMenu] = useState("🔍");
+  const [panelOpen, setPanelOpen] = useState(true);
   const migrationData = [{ id: 2, name: "Jane Smith", status: "Approved" }];
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h1 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "16px" }}>
-        🚀 Migration
-      </h1>
-      <div style={{ marginBottom: "16px" }}>
-        <button style={{ padding: "8px 12px", marginRight: "8px", cursor: "pointer", background: "#28a745", color: "white", border: "none", borderRadius: "4px" }}>
-          <FaPlus /> Add
-        </button>
-        <button style={{ padding: "8px 12px", cursor: "pointer", background: "#007bff", color: "white", border: "none", borderRadius: "4px" }}>
-          <FaSearch /> Search
-        </button>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "16px" }}>
-        {migrationData.map((item) => (
-          <div key={item.id} style={{ border: "1px solid #ddd", padding: "16px", borderRadius: "8px", boxShadow: "2px 2px 10px rgba(0,0,0,0.1)" }}>
-            <p style={{ fontWeight: "bold" }}>Name: {item.name}</p>
-            <p>Status: {item.status}</p>
+    <div className="p-4 md:p-6 space-y-4">
+      <PageTopbar
+        title="Migration"
+        actions={["➕", "🔍", "📄 Report"]}
+        selected={selectedTopbarMenu}
+        onSelect={setSelectedTopbarMenu}
+        actionsOnLeft
+        rightSlot={
+          <a href="/" className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 text-white ml-2">
+            🏠 Home
+          </a>
+        }
+      />
+
+      {/* Collapsible Action Box */}
+      <div className="border rounded-2xl overflow-hidden shadow-sm">
+        <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
+          <div className="font-semibold">
+            {selectedTopbarMenu === "➕" ? "ADD" : selectedTopbarMenu === "🔍" ? "SEARCH" : "REPORT"} Panel
           </div>
-        ))}
+          <button
+            onClick={() => setPanelOpen((o) => !o)}
+            className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
+          >
+            {panelOpen ? "Collapse" : "Expand"}
+          </button>
+        </div>
+        {panelOpen && (
+          <div className="p-4 text-sm text-gray-700">Action panel content…</div>
+        )}
+      </div>
+
+      {/* Records Section */}
+      <div className="bg-white shadow rounded-2xl p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {migrationData.map((item) => (
+            <div key={item.id} className="border rounded-xl p-4 shadow-sm">
+              <p className="font-semibold">Name: {item.name}</p>
+              <p>Status: {item.status}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

@@ -105,13 +105,17 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 # Use environment variables; fallback to sqlite for local dev
-DB_ENGINE = os.getenv("DB_ENGINE", "django.db.backends.sqlite3")
-if DB_ENGINE == "django.db.backends.sqlite3":
+DB_ENGINE = os.getenv("DB_ENGINE", "django.db.backends.postgresql")
+if DB_ENGINE == "django.db.backends.postgresql":
     DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": os.getenv("SQLITE_NAME", os.path.join(BASE_DIR, "db.sqlite3")),
-        }
+        'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'frontdesk',       # or the DB you created
+        'USER': 'postgres',
+        'PASSWORD': 'Ksv@svkm2007',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
     }
 else:
     DATABASES = {

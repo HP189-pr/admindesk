@@ -2,15 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { useAuth } from '../hooks/AuthContext';
 
-const ChatBox = () => {
+const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
   const { fetchUsers, isAuthenticated, user } = useAuth();
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
   const [messages, setMessages] = useState({});
   const [input, setInput] = useState('');
   const [file, setFile] = useState(null);
   const [chatNotificationCount, setChatNotificationCount] = useState(0);
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
+
+  const isOpen = typeof controlledIsOpen === 'boolean' ? controlledIsOpen : internalIsOpen;
+  const setIsOpen = (val) => {
+    if (typeof onToggle === 'function') {
+      onToggle(val);
+    } else {
+      setInternalIsOpen(val);
+    }
+  };
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -70,13 +79,16 @@ const ChatBox = () => {
   return (
     <div
       className={`fixed top-0 right-0 h-full flex items-center transition-all duration-300 ease-in-out ${
-        isOpen ? 'w-64' : 'w-14'
+        isOpen ? '' : ''
       }`}
+      style={{
+        borderLeft: '1px solid rgba(0,0,0,0.1)',
+        width: isOpen ? 261 : 61 // 261 = 256 chat + 5 gutter; 61 = 56 rail + 5 gutter
+      }}
     >
       <div
-        className={`h-full bg-gray-800 text-white flex flex-col ${
-          isOpen ? 'w-64' : 'w-14'
-        }`}
+        className={`h-full bg-gray-800 text-white flex flex-col`}
+        style={{ width: isOpen ? 256 : 56 }}
       >
         {!isOpen && (
           <div className="flex flex-col items-center py-2 space-y-3 overflow-auto mt-12">

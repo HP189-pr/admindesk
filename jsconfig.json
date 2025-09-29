@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "*": ["src/*", "*" ]
+    }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "src/pages/Inst-Verification.jsx"
+  ]
+}
