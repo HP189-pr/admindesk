@@ -21,12 +21,12 @@ const Layout = () => {
     const [isChatboxOpen, setChatboxOpen] = useState(false);
 
     return (
-        <div className="flex items-stretch gap-[1px]">
+        <div className="h-screen overflow-hidden flex items-stretch gap-[1px]">
             {/* Left rail */}
             <Sidebar isOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} setSelectedMenuItem={setSelectedMenuItem} />
 
             {/* Work area (no side padding; gap is handled by parent flex gap + spacer) */}
-            <div className="flex-1 min-h-screen relative transition-all duration-300">
+            <div className="flex-1 h-screen relative transition-all duration-300 overflow-hidden">
                 <WorkArea
                   selectedSubmenu={selectedMenuItem}
                   onToggleSidebar={() => setSidebarOpen((v) => !v)}

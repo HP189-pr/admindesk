@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { isoToDMY, dmyToISO } from "../utils/date";
 import { FaChevronDown, FaChevronUp } from "react-icons/fa";
 import PageTopbar from "../components/PageTopbar";
 import { 
@@ -117,10 +118,11 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
   // Search effect with cleanup
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (state.searchTerm.length >= 3 || state.searchTerm.length === 0) {
+      // Trigger search for 1+ chars, or load all on empty
+      if (state.searchTerm.length >= 1 || state.searchTerm.length === 0) {
         loadEnrollments(state.searchTerm);
       }
-    }, 500);
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [state.searchTerm, loadEnrollments]);
@@ -222,11 +224,21 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
     }
 
     try {
+      // Convert date fields to ISO before sending
+      const payload = { ...formState.data };
+      if (payload.admission_date) {
+        const iso = dmyToISO(payload.admission_date);
+        if (iso) payload.admission_date = iso;
+      }
+      if (payload.enrollment_date) {
+        const iso2 = dmyToISO(payload.enrollment_date);
+        if (iso2) payload.enrollment_date = iso2;
+      }
       if (formState.isEditing) {
-        await updateEnrollment(formState.data.enrollment_no, formState.data);
+        await updateEnrollment(formState.data.enrollment_no, payload);
         toast.success("Enrollment updated successfully");
       } else {
-        await createEnrollment(formState.data);
+        await createEnrollment(payload);
         toast.success("Enrollment created successfully");
       }
       setState(prev => ({ ...prev, validationErrors: {} }));
@@ -287,14 +299,19 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
                     <td className="border p-2">{enr.maincourse?.name || enr.maincourse_id}</td>
                     <td className="border p-2">{enr.subcourse?.name || enr.subcourse_id}</td>
                     <td className="border p-2">{enr.batch}</td>
-                    <td className="border p-2">{enr.admission_date || '-'}</td>
+                    <td className="border p-2">{isoToDMY(enr.admission_date) || '-'}</td>
                     {(rights.can_edit || rights.can_delete) && (
                       <td className="border p-2">
                         {rights.can_edit && (
                           <button
                             className="px-2 py-1 bg-yellow-500 text-white rounded mr-2"
                             onClick={() => {
-                              setFormState({ data: { ...enr }, isEditing: true });
+                                const hydrated = {
+                                  ...enr,
+                                  admission_date: isoToDMY(enr.admission_date) || '',
+                                  enrollment_date: isoToDMY(enr.enrollment_date) || '',
+                                };
+                                setFormState({ data: hydrated, isEditing: true });
                               setSelectedTopbarMenu && setSelectedTopbarMenu("➕");
                             }}
                           >
@@ -409,7 +426,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="p-4 md:p-6 space-y-4 h-full">
       <PageTopbar
         title="Enrollment"
         actions={actions}
@@ -459,7 +476,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
 
       {/* Records section */}
       {getSelected() !== "➕" && (
-        <div className="bg-white shadow rounded-2xl p-4">
+        <div className="bg-white shadow rounded-2xl p-4 h-[calc(100vh-220px)] overflow-auto">
           {renderSearchView()}
         </div>
       )}
@@ -468,24 +485,28 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
 };
 
 // Helper component for form fields
-const FormField = ({ field, formData, error, onChange, disabled }) => (
-  <div>
-    <label className="block mb-1">
-      {field.label}{field.required && '*'}
-    </label>
-    <input
-      type={field.type || "text"}
-      name={field.field}
-      value={formData[field.field]}
-      onChange={onChange}
-      className={`border rounded px-3 py-2 w-full ${
-        error ? 'border-red-500' : ''
-      }`}
-      required={field.required}
-      disabled={disabled}
-    />
-    {error && <p className="text-red-500 text-sm">{error}</p>}
-  </div>
-);
+const FormField = ({ field, formData, error, onChange, disabled }) => {
+  const isDate = /date$/i.test(field.field);
+  return (
+    <div>
+      <label className="block mb-1">
+        {field.label}{field.required && '*'}
+      </label>
+      <input
+        type={isDate ? "text" : (field.type || "text")}
+        name={field.field}
+        value={formData[field.field]}
+        onChange={onChange}
+        placeholder={isDate ? "dd-mm-yyyy" : undefined}
+        className={`border rounded px-3 py-2 w-full ${
+          error ? 'border-red-500' : ''
+        }`}
+        required={field.required}
+        disabled={disabled}
+      />
+      {error && <p className="text-red-500 text-sm">{error}</p>}
+    </div>
+  );
+};
 
 export default Enrollment;

@@ -78,9 +78,7 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
 
   return (
     <div
-      className={`fixed top-0 right-0 h-full flex items-center transition-all duration-300 ease-in-out ${
-        isOpen ? '' : ''
-      }`}
+      className={`fixed top-0 right-0 h-screen flex items-center transition-all duration-300 ease-in-out`}
       style={{
         borderLeft: '1px solid rgba(0,0,0,0.1)',
         width: isOpen ? 261 : 61 // 261 = 256 chat + 5 gutter; 61 = 56 rail + 5 gutter

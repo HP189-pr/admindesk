@@ -3,7 +3,7 @@ from django.contrib.auth.hashers import check_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.utils import timezone
 from django.db import transaction
-from .models import Holiday, UserProfile, User, Module, Menu, UserPermission,Enrollment, Institute, MainBranch, SubBranch, InstituteCourseOffering, Verification, VerificationStatus
+from .models import Holiday, UserProfile, User, Module, Menu, UserPermission,Enrollment, Institute, MainBranch, SubBranch, InstituteCourseOffering, Verification, VerificationStatus, DocRec, MigrationRecord, ProvisionalRecord, InstVerificationMain, InstVerificationStudent, Eca, StudentProfile
 from django.conf import settings
 
 # --- Holiday Serializer ---
@@ -223,7 +223,7 @@ class EnrollmentSerializer(serializers.ModelSerializer):
             'batch', 'enrollment_date', 'admission_date',
             'subcourse', 'subcourse_id',
             'maincourse', 'maincourse_id',
-            'updated_by', 'created_at', 'updated_at', 'temp_no'
+            'updated_by', 'created_at', 'updated_at', 'temp_enroll_no'
         ]
         read_only_fields = [
             'enrollment_date', 'created_at', 'updated_at',
@@ -241,10 +241,11 @@ class EnrollmentSerializer(serializers.ModelSerializer):
         
         # Add detailed representation of related objects
         representation_map = {
-            'institute': lambda x: {'id': x.id, 'name': str(x)} if x else None,
-            'subcourse': lambda x: {'id': x.id, 'name': str(x)} if x else None,
-            'maincourse': lambda x: {'id': x.id, 'name': str(x)} if x else None,
-            'updated_by': lambda x: {'id': x.id, 'username': x.username} if x else None
+            # Use pk to be agnostic of primary key field name (e.g., institute_id)
+            'institute': lambda x: {'id': x.pk, 'name': str(x)} if x else None,
+            'subcourse': lambda x: {'id': x.pk, 'name': str(x)} if x else None,
+            'maincourse': lambda x: {'id': x.pk, 'name': str(x)} if x else None,
+            'updated_by': lambda x: {'id': x.pk, 'username': x.username} if x else None
         }
 
         for field, transform in representation_map.items():
@@ -296,12 +297,21 @@ class VerificationSerializer(serializers.ModelSerializer):
     # Read-only convenience fields coming from related Enrollment rows
     enrollment_no = serializers.CharField(source="enrollment.enrollment_no", read_only=True)
     second_enrollment_no = serializers.CharField(source="second_enrollment.enrollment_no", read_only=True)
+    # Write-only: allow linking to DocRec by its primary key id
+    doc_rec_id = serializers.PrimaryKeyRelatedField(
+        queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False
+    )
+    # Read-only: expose doc_rec public id (string) if linked
+    doc_rec_key = serializers.CharField(source="doc_rec.doc_rec_id", read_only=True)
+    # Nested ECA info for this verification (by same doc_rec)
+    eca = serializers.SerializerMethodField()
 
     class Meta:
         model = Verification
         fields = [
             "id",
             "date",
+            "vr_done_date",
             "enrollment", "enrollment_no",
             "second_enrollment", "second_enrollment_no",
             "student_name",
@@ -317,6 +327,8 @@ class VerificationSerializer(serializers.ModelSerializer):
             "remark",
             "last_resubmit_date", "last_resubmit_status",
             "createdat", "updatedat", "updatedby",
+            "doc_rec_id", "doc_rec_key",
+            "eca",
         ]
         read_only_fields = [
             "id", "createdat", "updatedat", "updatedby",
@@ -368,7 +380,35 @@ class VerificationSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if request and request.user and request.user.is_authenticated:
             validated["updatedby"] = request.user
-        return super().update(instance, validated)
+        # If student_name edited, also update Enrollment copy
+        new_name = validated.get("student_name")
+        resp = super().update(instance, validated)
+        try:
+            if new_name and instance.enrollment and instance.enrollment.student_name != new_name:
+                enr = instance.enrollment
+                enr.student_name = new_name
+                enr.save(update_fields=["student_name", "updated_at"])
+        except Exception:
+            pass
+        return resp
+
+    def get_eca(self, obj):
+        try:
+            if not obj.doc_rec:
+                return None
+            e = Eca.objects.filter(doc_rec=obj.doc_rec).order_by("id").first()
+            if not e:
+                return None
+            return {
+                "id": e.id,
+                "doc_rec_id": e.doc_rec.doc_rec_id if e.doc_rec else None,
+                "eca_name": e.eca_name,
+                "eca_ref_no": e.eca_ref_no,
+                "eca_send_date": e.eca_send_date,
+                "eca_remark": e.eca_remark,
+            }
+        except Exception:
+            return None
 
 
 class EcaResendSerializer(serializers.Serializer):
@@ -382,3 +422,146 @@ class AssignFinalSerializer(serializers.Serializer):
 
 class ResubmitSerializer(serializers.Serializer):
     status_note = serializers.CharField(required=False, allow_blank=True)
+
+
+# ---------- DocRec / Migration / Provisional / InstVerification serializers ----------
+
+class DocRecSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DocRec
+        fields = [
+            'id', 'apply_for', 'doc_rec_id', 'pay_by', 'pay_rec_no_pre', 'pay_rec_no', 'pay_amount', 'created_by', 'createdat', 'updatedat'
+        ]
+        read_only_fields = ['id', 'doc_rec_id', 'pay_rec_no_pre', 'created_by', 'createdat', 'updatedat']
+
+    def create(self, validated):
+        request = self.context.get('request')
+        if request and request.user and request.user.is_authenticated:
+            validated['created_by'] = request.user
+        return super().create(validated)
+
+
+class MigrationRecordSerializer(serializers.ModelSerializer):
+    # Allow binding doc_rec by its public doc_rec_id string
+    doc_rec_key = serializers.SlugRelatedField(
+        slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False
+    )
+    # Expose public doc_rec id string
+    doc_rec = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
+    class Meta:
+        model = MigrationRecord
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at', 'updated_at', 'created_by']
+
+    def create(self, validated):
+        request = self.context.get('request')
+        if request and request.user and request.user.is_authenticated:
+            validated['created_by'] = request.user
+        # Auto-populate from enrollment when provided
+        enr = validated.get('enrollment')
+        if enr:
+            if not validated.get('student_name'):
+                validated['student_name'] = enr.student_name or ''
+            if not validated.get('institute'):
+                validated['institute'] = enr.institute
+            if not validated.get('subcourse'):
+                validated['subcourse'] = enr.subcourse
+            if not validated.get('maincourse'):
+                validated['maincourse'] = enr.maincourse
+        return super().create(validated)
+
+
+class ProvisionalRecordSerializer(serializers.ModelSerializer):
+    doc_rec_key = serializers.SlugRelatedField(
+        slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False
+    )
+    doc_rec = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
+    class Meta:
+        model = ProvisionalRecord
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at', 'updated_at', 'created_by']
+
+    def create(self, validated):
+        request = self.context.get('request')
+        if request and request.user and request.user.is_authenticated:
+            validated['created_by'] = request.user
+        # Auto-populate from enrollment when provided
+        enr = validated.get('enrollment')
+        if enr:
+            if not validated.get('student_name'):
+                validated['student_name'] = enr.student_name or ''
+            if not validated.get('institute'):
+                validated['institute'] = enr.institute
+            if not validated.get('subcourse'):
+                validated['subcourse'] = enr.subcourse
+            if not validated.get('maincourse'):
+                validated['maincourse'] = enr.maincourse
+        return super().create(validated)
+
+
+class InstVerificationMainSerializer(serializers.ModelSerializer):
+    # Accept doc_rec id directly
+    doc_rec_id = serializers.PrimaryKeyRelatedField(
+        queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False
+    )
+    # Or accept doc_rec public key (string) directly
+    doc_rec_key = serializers.SlugRelatedField(
+        slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False
+    )
+    doc_rec = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
+    class Meta:
+        model = InstVerificationMain
+        fields = '__all__'
+
+
+class InstVerificationStudentSerializer(serializers.ModelSerializer):
+    # Bind to doc_rec via slug
+    doc_rec_key = serializers.SlugRelatedField(
+        slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False
+    )
+    doc_rec = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
+
+    class Meta:
+        model = InstVerificationStudent
+        fields = '__all__'
+
+
+class EcaSerializer(serializers.ModelSerializer):
+    # Bind ECA to DocRec via its public identifier (doc_rec_id string)
+    doc_rec_key = serializers.SlugRelatedField(
+        slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False
+    )
+    doc_rec_id = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
+
+    class Meta:
+        model = Eca
+        fields = [
+            'id', 'doc_rec_id', 'doc_rec_key', 'eca_name', 'eca_ref_no', 'eca_send_date', 'eca_remark', 'createdat', 'updatedat'
+        ]
+        read_only_fields = ['id', 'doc_rec_id', 'createdat', 'updatedat']
+
+
+class StudentProfileSerializer(serializers.ModelSerializer):
+    # Bind profile to Enrollment via its enrollment_no (slug)
+    enrollment_no = serializers.SlugRelatedField(
+        slug_field='enrollment_no', queryset=Enrollment.objects.all(), source='enrollment', write_only=True
+    )
+    # Expose linked enrollment number read-only
+    enrollment = serializers.CharField(source='enrollment.enrollment_no', read_only=True)
+
+    class Meta:
+        model = StudentProfile
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at', 'updated_at', 'updated_by', 'enrollment']
+
+    def create(self, validated):
+        request = self.context.get('request')
+        if request and request.user and request.user.is_authenticated:
+            validated['updated_by'] = request.user
+        return super().create(validated)
+
+    def update(self, instance, validated):
+        request = self.context.get('request')
+        if request and request.user and request.user.is_authenticated:
+            validated['updated_by'] = request.user
+        return super().update(instance, validated)

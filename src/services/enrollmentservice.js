@@ -1,10 +1,9 @@
 import axios from 'axios';
 
-const API_ROOT = 'http://127.0.0.1:8000/api';
-
+// Use relative baseURL to leverage Vite proxy (/api -> Django) and avoid CORS issues
 const api = axios.create({
-        baseURL: `${API_ROOT}/enrollments`,
-        headers: { 'Content-Type': 'application/json' }
+    baseURL: `/api/enrollments`,
+    headers: { 'Content-Type': 'application/json' }
 });
 
 api.interceptors.request.use((config) => {

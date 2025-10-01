@@ -5,6 +5,7 @@ import Provisional from "./Provisional";
 import Enrollment from "./Enrollment";
 import Degree from "./Degree";
 import InstitutionalVerification from "./inst-verification";
+import DocReceive from "./doc-receive";
 import AdminDashboard from "../components/AdminDashboard";
 import ProfileUpdate from "../components/ProfileUpdate";
 
@@ -30,7 +31,8 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
   else if (l.includes("verification") && !l.includes("institution")) key = "verification";
     else if (l.includes("migration")) key = "migration";
     else if (l.includes("provisional")) key = "provisional";
-    else if (l.includes("degree")) key = "degree";
+  else if (l.includes("degree")) key = "degree";
+  else if ((l.includes("document") || l.includes("doc")) && l.includes("receive")) key = "doc_receive";
     else if (l.includes("admin panel")) key = "admin";
     else if (l.includes("profile")) key = "profile";
 
@@ -74,6 +76,13 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
             onToggleChatbox={onToggleChatbox}
           />
         );
+      case "doc_receive":
+        return (
+          <DocReceive
+            onToggleSidebar={onToggleSidebar}
+            onToggleChatbox={onToggleChatbox}
+          />
+        );
       case "admin":
         return (
           <AdminDashboard
@@ -94,7 +103,15 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
     }
   };
 
-  return <div className="">{renderPage()}</div>;
+  // Make the work area a column with internal scrolling only
+  return (
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Page content (each page already renders its own topbar and panels). */}
+      <div className="flex-1 overflow-auto">
+        {renderPage()}
+      </div>
+    </div>
+  );
 };
 
 export default WorkArea;

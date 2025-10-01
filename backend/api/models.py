@@ -2,6 +2,7 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+from django.db import transaction
 
 
 # ✅ Holiday Model
@@ -313,6 +314,61 @@ class InstituteCourseOffering(models.Model):
         mc = getattr(self.maincourse, "course_name", None) or getattr(self.maincourse, "maincourse_id", "")
         sc = getattr(self.subcourse, "subcourse_name", None) or getattr(self.subcourse, "subcourse_id", "")
         return f"{self.institute} - {mc}{' / ' + sc if sc else ''} @ {self.campus or '-'}"
+
+# ✅ Student Profile (One-to-One with Enrollment via enrollment_no)
+class StudentProfile(models.Model):
+    id = models.BigAutoField(primary_key=True)
+
+    # Link to Enrollment by its public enrollment_no (varchar)
+    enrollment = models.OneToOneField(
+        "Enrollment",
+        to_field="enrollment_no",
+        db_column="enrollment_no",
+        on_delete=models.CASCADE,
+        related_name="student_profile",
+        db_constraint=False,
+    )
+
+    # Profile fields (kept flexible to match Excel upload)
+    gender = models.CharField(max_length=20, null=True, blank=True, db_column="gender")
+    birth_date = models.DateField(null=True, blank=True, db_column="birth_date")
+
+    address1 = models.CharField(max_length=255, null=True, blank=True, db_column="address1")
+    address2 = models.CharField(max_length=255, null=True, blank=True, db_column="address2")
+    city1 = models.CharField(max_length=100, null=True, blank=True, db_column="city1")
+    city2 = models.CharField(max_length=100, null=True, blank=True, db_column="city2")
+
+    contact_no = models.CharField(max_length=50, null=True, blank=True, db_column="contact_no")
+    email = models.EmailField(null=True, blank=True, db_column="email")
+
+    fees = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, default=0, db_column="fees")
+    hostel_required = models.BooleanField(default=False, db_column="hostel_required")
+
+    aadhar_no = models.CharField(max_length=20, null=True, blank=True, db_column="aadhar_no")
+    abc_id = models.CharField(max_length=50, null=True, blank=True, db_column="abc_id")
+    mobile_adhar = models.CharField(max_length=20, null=True, blank=True, db_column="mobile_adhar")
+    name_adhar = models.CharField(max_length=255, null=True, blank=True, db_column="name_adhar")
+    mother_name = models.CharField(max_length=255, null=True, blank=True, db_column="mother_name")
+    category = models.CharField(max_length=50, null=True, blank=True, db_column="category")
+
+    photo_uploaded = models.BooleanField(default=False, db_column="photo_uploaded")
+    is_d2d = models.BooleanField(default=False, db_column="is_d2d")
+    program_medium = models.CharField(max_length=50, null=True, blank=True, db_column="program_medium")
+
+    created_at = models.DateTimeField(auto_now_add=True, db_column="created_at")
+    updated_at = models.DateTimeField(auto_now=True, db_column="updated_at")
+    updated_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, db_column="updated_by", related_name="updated_student_profiles"
+    )
+
+    class Meta:
+        db_table = "student_profile"
+        indexes = [
+            models.Index(fields=["enrollment"], name="idx_sp_enrollment"),
+        ]
+
+    def __str__(self):
+        return f"Profile for {getattr(self.enrollment, 'enrollment_no', None) or '-'}"
 class MailStatus(models.TextChoices):
     NOT_SENT = "NOT_SENT", "Not Sent"
     SENT     = "SENT", "Sent"
@@ -331,7 +387,8 @@ class Verification(models.Model):
     id = models.BigAutoField(primary_key=True, db_column="id")
 
     # Basic info
-    date = models.DateField(default=timezone.now, db_column="date")
+    # Renamed column per new schema
+    date = models.DateField(default=timezone.now, db_column="doc_rec_date", verbose_name="Doc Record Date")
 
     # Enrollment relations
     enrollment = models.ForeignKey(
@@ -347,11 +404,12 @@ class Verification(models.Model):
     student_name = models.CharField(max_length=255, db_column="student_name")
 
     # Document counts (0..999)
-    tr_count = models.PositiveSmallIntegerField(default=0, db_column="tr_count")
-    ms_count = models.PositiveSmallIntegerField(default=0, db_column="ms_count")
-    dg_count = models.PositiveSmallIntegerField(default=0, db_column="dg_count")
-    moi_count = models.PositiveSmallIntegerField(default=0, db_column="moi_count")
-    backlog_count = models.PositiveSmallIntegerField(default=0, db_column="backlog_count")
+    # Column names updated per new schema (python names retained for code stability)
+    tr_count = models.PositiveSmallIntegerField(default=0, db_column="no_of_transcript")
+    ms_count = models.PositiveSmallIntegerField(default=0, db_column="no_of_marksheet")
+    dg_count = models.PositiveSmallIntegerField(default=0, db_column="no_of_degree")
+    moi_count = models.PositiveSmallIntegerField(default=0, db_column="no_of_moi")
+    backlog_count = models.PositiveSmallIntegerField(default=0, db_column="no_of_backlog")
 
     # Payment / REC linkage
     pay_rec_no = models.CharField(max_length=100, null=True, blank=True, db_column="pay_rec_no")
@@ -370,7 +428,7 @@ class Verification(models.Model):
     # Mail status for verification workflow
     mail_status = models.CharField(
         max_length=20, choices=MailStatus.choices,
-        default=MailStatus.NOT_SENT, db_column="mail_status"
+        default=MailStatus.NOT_SENT, db_column="mail_send_status"
     )
 
     # --- ECA integrated into same row ---
@@ -381,7 +439,7 @@ class Verification(models.Model):
 
     eca_mail_status  = models.CharField(
         max_length=20, choices=MailStatus.choices,
-        default=MailStatus.NOT_SENT, db_column="eca_mail_status"
+        default=MailStatus.NOT_SENT, db_column="eca_status"
     )
     eca_resend_count = models.PositiveSmallIntegerField(default=0, db_column="eca_resend_count")
     eca_last_action_at = models.DateTimeField(null=True, blank=True, db_column="eca_last_action_at")
@@ -398,7 +456,15 @@ class Verification(models.Model):
     )
 
     # Remarks & correction/resubmission tracking (last snapshot)
-    remark = models.TextField(null=True, blank=True, db_column="remark")
+    remark = models.TextField(null=True, blank=True, db_column="vr_remark")
+    # Completed date when verification DONE
+    vr_done_date = models.DateField(null=True, blank=True, db_column="vr_done_date")
+
+    # Link to Document Receipt by doc_rec_id (varchar) if present
+    doc_rec = models.ForeignKey(
+        'DocRec', on_delete=models.SET_NULL, null=True, blank=True,
+        to_field='doc_rec_id', db_column='doc_rec_id', related_name='verifications'
+    )
     last_resubmit_date = models.DateField(null=True, blank=True, db_column="last_resubmit_date")
     last_resubmit_status = models.CharField(max_length=20, null=True, blank=True, db_column="last_resubmit_status")
 
@@ -417,6 +483,7 @@ class Verification(models.Model):
             models.Index(fields=["status"], name="idx_verification_status"),
             models.Index(fields=["final_no"], name="idx_verification_final_no"),
             models.Index(fields=["pay_rec_no"], name="idx_verification_pay_rec_no"),
+            models.Index(fields=["doc_rec"], name="idx_verification_doc_rec"),
         ]
         constraints = [
             # counts 0..999
@@ -523,3 +590,599 @@ class Verification(models.Model):
             "eca_history", "eca_last_action_at", "eca_last_to_email",
             "eca_resend_count", "eca_mail_status", "updatedat"
         ])
+
+
+# ---------- Document Receipt (doc_rec) ----------
+class ApplyFor(models.TextChoices):
+    VERIFICATION = "VR", "Verification"
+    INST_VERIFICATION = "IV", "Institutional Verification"
+    PROVISIONAL  = "PR", "Provisional"
+    MIGRATION    = "MG", "Migration"
+    GRADE_TRANS  = "GT", "Grade To Marks"
+
+
+class PayBy(models.TextChoices):
+    CASH = "CASH", "Cash"
+    BANK = "BANK", "Bank"
+    UPI  = "UPI", "UPI"
+
+
+class PayPrefixRule(models.Model):
+        """
+        Admin-managed mapping for how to build pay_rec_no_pre per payment method and year.
+        pattern supports tokens:
+            - {yy}   two-digit year, e.g., 25
+            - {yyyy} four-digit year, e.g., 2025
+
+        Examples:
+            CASH, 2025, pattern="C01/{yy}/R"  -> C01/25/R
+            BANK, 2025, pattern="1471/{yy}/R" -> 1471/25/R
+            UPI,  any,  pattern="UPI/{yy}/R"  -> UPI/25/R
+        If multiple rules exist, the most specific one (matching the current 4-digit year)
+        is preferred; otherwise a rule with year_full=NULL acts as a fallback.
+        """
+        id = models.BigAutoField(primary_key=True)
+        pay_by = models.CharField(max_length=10, choices=PayBy.choices, db_column="pay_by")
+        year_full = models.PositiveIntegerField(null=True, blank=True, db_column="year_full")
+        pattern = models.CharField(max_length=50, db_column="pattern")
+        is_active = models.BooleanField(default=True, db_column="is_active")
+        priority = models.IntegerField(default=0, db_column="priority")  # higher wins if tie
+
+        createdat = models.DateTimeField(auto_now_add=True, db_column="createdat")
+        updatedat = models.DateTimeField(auto_now=True, db_column="updatedat")
+
+        class Meta:
+                db_table = "pay_prefix_rule"
+                indexes = [
+                        models.Index(fields=["pay_by", "year_full"], name="idx_payprefix_by_year"),
+                        models.Index(fields=["is_active"], name="idx_payprefix_active"),
+                ]
+
+        def __str__(self):
+                y = self.year_full or "*"
+                return f"{self.pay_by} {y}: {self.pattern} ({'on' if self.is_active else 'off'})"
+
+
+class DocRec(models.Model):
+    id = models.BigAutoField(primary_key=True)
+
+    apply_for = models.CharField(
+        max_length=2,
+        choices=ApplyFor.choices,
+        db_column="apply_for",
+    )
+
+    # e.g. vr_25_0025, pr_25_0001 (auto-generated)
+    doc_rec_id = models.CharField(
+        max_length=20,
+        unique=True,
+        db_column="doc_rec_id",
+    )
+
+    pay_by = models.CharField(
+        max_length=10,
+        choices=PayBy.choices,
+        db_column="pay_by",
+    )
+
+    # e.g. C01/25/R or 1471/24/R (auto-generated from pay_by)
+    pay_rec_no_pre = models.CharField(
+        max_length=20,
+        db_column="pay_rec_no_pre",
+    )
+
+    pay_rec_no = models.CharField(
+        max_length=50,
+        db_column="pay_rec_no",
+        null=True,
+        blank=True,
+    )
+
+    pay_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        db_column="pay_amount",
+        default=0,
+    )
+
+    # user who created this record (optional)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column="created_by",
+        related_name="doc_recs_created",
+    )
+
+    createdat = models.DateTimeField(auto_now_add=True, db_column="createdat")
+    updatedat = models.DateTimeField(auto_now=True, db_column="updatedat")
+
+    class Meta:
+        db_table = "doc_rec"
+        indexes = [
+            models.Index(fields=["doc_rec_id"], name="idx_doc_rec_id"),
+            models.Index(fields=["pay_rec_no"], name="idx_doc_pay_rec"),
+        ]
+
+    def __str__(self):
+        return f"{self.doc_rec_id} - {self.apply_for} - {self.pay_by}"
+
+    def _prefix_for_apply(self) -> str:
+        mapping = {
+            ApplyFor.VERIFICATION: "vr",
+            ApplyFor.INST_VERIFICATION: "iv",
+            ApplyFor.PROVISIONAL: "pr",
+            ApplyFor.MIGRATION: "mg",
+            ApplyFor.GRADE_TRANS: "gt",
+        }
+        return mapping.get(self.apply_for, "vr")
+
+    def _pay_prefix_for_payby(self, yy: int) -> str:
+        # Try admin-configured rule first; prefer exact 4-digit year rule, else fallback to NULL-year rule
+        now = timezone.now()
+        yyyy = now.year
+        year_str = f"{yy:02d}"
+        try:
+            rule = (
+                PayPrefixRule.objects
+                .filter(pay_by=self.pay_by, is_active=True)
+                .filter(models.Q(year_full=yyyy) | models.Q(year_full__isnull=True))
+                .order_by(
+                    models.Case(
+                        models.When(year_full=yyyy, then=models.Value(0)),
+                        models.When(year_full__isnull=True, then=models.Value(1)),
+                        default=models.Value(2),
+                        output_field=models.IntegerField(),
+                    ),
+                    -models.F("priority"),
+                    -models.F("id"),
+                )
+                .first()
+            )
+        except Exception:
+            rule = None
+
+        if rule and rule.pattern:
+            try:
+                return (
+                    rule.pattern
+                    .replace("{yy}", year_str)
+                    .replace("{yyyy}", str(yyyy))
+                )
+            except Exception:
+                pass
+
+        # Fallback to code defaults
+        mapping = {
+            PayBy.CASH: f"C01/{year_str}/R",
+            PayBy.BANK: f"1471/{year_str}/R",
+            PayBy.UPI: f"UPI/{year_str}/R",
+        }
+        return mapping.get(self.pay_by, f"NA/{year_str}/R")
+
+    def clean(self):
+        if self.pay_amount is not None and self.pay_amount < 0:
+            raise ValidationError({"pay_amount": "Amount cannot be negative."})
+
+    def save(self, *args, **kwargs):
+        # Auto-generate doc_rec_id and pay_rec_no_pre if not supplied
+        now = timezone.now()
+        yy = now.year % 100
+
+        if not self.pay_rec_no_pre:
+            self.pay_rec_no_pre = self._pay_prefix_for_payby(yy)
+
+        if not self.doc_rec_id:
+            prefix = self._prefix_for_apply()
+            year_str = f"{yy:02d}"
+            base = f"{prefix}_{year_str}_"
+            with transaction.atomic():
+                last = (
+                    DocRec.objects
+                    .select_for_update(skip_locked=True)
+                    .filter(doc_rec_id__startswith=base)
+                    .order_by("-doc_rec_id")
+                    .first()
+                )
+                next_num = 1
+                if last and last.doc_rec_id:
+                    try:
+                        next_num = int(last.doc_rec_id.split("_")[-1]) + 1
+                    except Exception:
+                        next_num = 1
+                self.doc_rec_id = f"{prefix}_{year_str}_{next_num:04d}"
+
+        super().save(*args, **kwargs)
+
+
+# ---------- ECA table (related via doc_rec_id) ----------
+class Eca(models.Model):
+    id = models.BigAutoField(primary_key=True)
+
+    # Link to DocRec by its string identifier (doc_rec_id)
+    doc_rec = models.ForeignKey(
+        DocRec,
+        to_field='doc_rec_id',
+        db_column='doc_rec_id',
+        on_delete=models.RESTRICT,
+        related_name='eca_entries',
+        null=True,
+        blank=True,
+    )
+
+    eca_name = models.CharField(max_length=255, null=True, blank=True, db_column='eca_name')
+    eca_ref_no = models.CharField(max_length=100, null=True, blank=True, db_column='eca_ref_no')
+    eca_send_date = models.DateField(null=True, blank=True, db_column='eca_send_date')
+    eca_remark = models.TextField(null=True, blank=True, db_column='eca_remark')
+
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='createdby',
+        related_name='eca_created'
+    )
+
+    createdat = models.DateTimeField(auto_now_add=True, db_column='createdat')
+    updatedat = models.DateTimeField(auto_now=True, db_column='updatedat')
+
+    class Meta:
+        db_table = 'eca'
+        indexes = [
+            models.Index(fields=["doc_rec"], name="idx_eca_doc_rec"),
+        ]
+
+    def __str__(self):
+        return f"ECA {self.id} for {getattr(self.doc_rec, 'doc_rec_id', None) or '-'}"
+
+
+# ---------- Institutional Verification Main (inst_verification_main) ----------
+class InstVerificationMain(models.Model):
+    id = models.BigAutoField(primary_key=True)
+
+    # Link to DocRec by its public identifier
+    doc_rec = models.ForeignKey(
+        DocRec,
+        to_field='doc_rec_id',
+        db_column='doc_rec_id',
+        on_delete=models.SET_NULL,
+        related_name='inst_verifications',
+        null=True,
+        blank=True,
+    )
+
+    # Institutional verification fields
+    inst_veri_number = models.CharField(max_length=100, null=True, blank=True, db_column='inst_veri_number')
+    inst_veri_date = models.DateField(null=True, blank=True, db_column='inst_veri_date')
+
+    institute = models.ForeignKey(
+        'Institute',
+        on_delete=models.SET_NULL,
+        db_column='institute_id',
+        related_name='inst_verification_main',
+        null=True,
+        blank=True,
+    )
+
+    rec_inst_name = models.CharField(max_length=255, null=True, blank=True, db_column='rec_inst_name')
+    rec_inst_address_1 = models.CharField(max_length=255, null=True, blank=True, db_column='rec_inst_address_1')
+    rec_inst_address_2 = models.CharField(max_length=255, null=True, blank=True, db_column='rec_inst_address_2')
+    rec_inst_location = models.CharField(max_length=255, null=True, blank=True, db_column='rec_inst_location')
+    rec_inst_city = models.CharField(max_length=255, null=True, blank=True, db_column='rec_inst_city')
+    rec_inst_pin = models.CharField(max_length=20, null=True, blank=True, db_column='rec_inst_pin')
+    rec_inst_email = models.EmailField(null=True, blank=True, db_column='rec_inst_email')
+    rec_by = models.CharField(max_length=255, null=True, blank=True, db_column='rec_by')
+
+    doc_rec_date = models.DateField(null=True, blank=True, db_column='doc_rec_date')
+    inst_ref_no = models.CharField(max_length=100, null=True, blank=True, db_column='inst_ref_no')
+    ref_date = models.DateField(null=True, blank=True, db_column='ref_date')
+
+    class Meta:
+        db_table = 'inst_verification_main'
+        indexes = [
+            models.Index(fields=['doc_rec'], name='idx_ivm_doc_rec'),
+            models.Index(fields=['institute'], name='idx_ivm_institute'),
+            models.Index(fields=['inst_veri_number'], name='idx_ivm_veri_no'),
+        ]
+
+    def __str__(self):
+        return f"InstVeri {self.inst_veri_number or '-'} for {getattr(self.doc_rec, 'doc_rec_id', None) or '-'}"
+
+
+# ---------- Institutional Verification Student (inst_verification_student) ----------
+class InstVerificationStudent(models.Model):
+    id = models.BigAutoField(primary_key=True)
+
+    # Link to DocRec by its public identifier
+    doc_rec = models.ForeignKey(
+        DocRec,
+        to_field='doc_rec_id',
+        db_column='doc_rec_id',
+        on_delete=models.SET_NULL,
+        related_name='inst_verification_students',
+        null=True,
+        blank=True,
+    )
+
+    sr_no = models.PositiveIntegerField(null=True, blank=True, db_column='sr_no')
+
+    # Link to Enrollment by its enrollment_no string
+    enrollment = models.ForeignKey(
+        Enrollment,
+        to_field='enrollment_no',
+        db_column='enrollment_no',
+        on_delete=models.SET_NULL,
+        related_name='inst_verification_students',
+        null=True,
+        blank=True,
+    )
+
+    student_name = models.CharField(max_length=255, null=True, blank=True, db_column='student_name')
+
+    institute = models.ForeignKey(
+        'Institute',
+        on_delete=models.SET_NULL,
+        db_column='institute_id',
+        related_name='inst_verification_students',
+        null=True,
+        blank=True,
+    )
+
+    # Use varchar links to course identifiers
+    sub_course = models.ForeignKey(
+        'SubBranch',
+        to_field='subcourse_id',
+        db_column='sub_course',
+        on_delete=models.SET_NULL,
+        related_name='inst_verification_students',
+        null=True,
+        blank=True,
+    )
+    main_course = models.ForeignKey(
+        'MainBranch',
+        to_field='maincourse_id',
+        db_column='main_course',
+        on_delete=models.SET_NULL,
+        related_name='inst_verification_students',
+        null=True,
+        blank=True,
+    )
+
+    type_of_credential = models.CharField(max_length=50, null=True, blank=True, db_column='type_of_credential')
+    month_year = models.CharField(max_length=20, null=True, blank=True, db_column='month_year')
+    verification_status = models.CharField(max_length=20, null=True, blank=True, db_column='verification_status', choices=VerificationStatus.choices)
+
+    class Meta:
+        db_table = 'inst_verification_student'
+        indexes = [
+            models.Index(fields=['doc_rec'], name='idx_ivs_doc_rec'),
+            models.Index(fields=['enrollment'], name='idx_ivs_enrollment'),
+            models.Index(fields=['institute'], name='idx_ivs_institute'),
+        ]
+
+    def __str__(self):
+        return f"IVS {self.sr_no or '-'} - {getattr(self.doc_rec, 'doc_rec_id', None) or '-'}"
+
+
+# ---------- Migration Certificate (migration) ----------
+class MigrationStatus(models.TextChoices):
+    PENDING = "Pending", "Pending"
+    ISSUED = "Issued", "Issued"
+    CANCELLED = "Cancelled", "Cancelled"
+
+
+class MigrationRecord(models.Model):
+    id = models.BigAutoField(primary_key=True)
+
+    # Link to DocRec by PK id (column name will be doc_rec_id)
+    doc_rec = models.ForeignKey(
+        DocRec,
+        on_delete=models.CASCADE,
+        db_column="doc_rec_id",
+        related_name="migration_records",
+    )
+
+    # Link to Enrollment by its public enrollment_no (varchar)
+    enrollment = models.ForeignKey(
+        Enrollment,
+        to_field="enrollment_no",
+        db_column="enrollment_no",
+        on_delete=models.CASCADE,
+        related_name="migration_records",
+        db_constraint=False,
+    )
+
+    student_name = models.CharField(max_length=255, db_column="student_name")
+
+    # Institute via its numeric/varchar PK column name in our schema (institute_id)
+    institute = models.ForeignKey(
+        Institute,
+        to_field="institute_id",
+        db_column="institute_id",
+        on_delete=models.CASCADE,
+        related_name="migration_records",
+    )
+
+    # Use varchar identifiers for course linkage to align with existing models
+    subcourse = models.ForeignKey(
+        SubBranch,
+        to_field="subcourse_id",
+        db_column="subcourse_id",
+        on_delete=models.CASCADE,
+        related_name="migration_records",
+    )
+    maincourse = models.ForeignKey(
+        MainBranch,
+        to_field="maincourse_id",
+        db_column="maincourse_id",
+        on_delete=models.CASCADE,
+        related_name="migration_records",
+    )
+
+    # Migration certificate details
+    mg_number = models.CharField(max_length=50, unique=True, db_column="mg_number")
+    mg_date = models.DateField(db_column="mg_date")
+
+    exam_year = models.CharField(max_length=20, db_column="exam_year")
+    admission_year = models.CharField(max_length=20, db_column="admission_year")
+    exam_details = models.TextField(null=True, blank=True, db_column="exam_details")
+
+    mg_status = models.CharField(
+        max_length=20,
+        choices=MigrationStatus.choices,
+        default=MigrationStatus.PENDING,
+        db_column="mg_status",
+    )
+
+    # Denormalized copy from DocRec; will be auto-copied on save if missing
+    pay_rec_no = models.CharField(max_length=50, db_column="pay_rec_no")
+
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='createdby',
+        related_name='migration_created'
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True, db_column="created_at")
+    updated_at = models.DateTimeField(auto_now=True, db_column="updated_at")
+
+    class Meta:
+        db_table = "migration"
+        indexes = [
+            models.Index(fields=["doc_rec"], name="idx_mg_doc_rec"),
+            models.Index(fields=["enrollment"], name="idx_mg_enrollment"),
+            models.Index(fields=["institute"], name="idx_mg_institute"),
+            models.Index(fields=["mg_number"], name="idx_mg_number"),
+        ]
+
+    def clean(self):
+        # Ensure pay_rec_no will be present
+        if not self.pay_rec_no and self.doc_rec and self.doc_rec.pay_rec_no:
+            self.pay_rec_no = self.doc_rec.pay_rec_no
+        if not self.pay_rec_no:
+            raise ValidationError({"pay_rec_no": "pay_rec_no is required (copied from related DocRec)."})
+
+    def save(self, *args, **kwargs):
+        # Auto-copy pay_rec_no from DocRec if not explicitly provided
+        if not self.pay_rec_no and self.doc_rec and self.doc_rec.pay_rec_no:
+            self.pay_rec_no = self.doc_rec.pay_rec_no
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Migration {self.mg_number} ({self.student_name})"
+
+
+# ---------- Provisional Certificate (provisional) ----------
+class ProvisionalStatus(models.TextChoices):
+    PENDING = "Pending", "Pending"
+    ISSUED = "Issued", "Issued"
+    CANCELLED = "Cancelled", "Cancelled"
+
+
+class ProvisionalRecord(models.Model):
+    id = models.BigAutoField(primary_key=True)
+
+    # Link to DocRec by PK id (column name will be doc_rec_id)
+    doc_rec = models.ForeignKey(
+        DocRec,
+        on_delete=models.CASCADE,
+        db_column="doc_rec_id",
+        related_name="provisional_records",
+    )
+
+    # Link to Enrollment by its public enrollment_no (varchar)
+    enrollment = models.ForeignKey(
+        Enrollment,
+        to_field="enrollment_no",
+        db_column="enrollment_no",
+        on_delete=models.CASCADE,
+        related_name="provisional_records",
+        db_constraint=False,
+    )
+
+    student_name = models.CharField(max_length=255, db_column="student_name")
+
+    # Institute via its PK column name in our schema (institute_id)
+    institute = models.ForeignKey(
+        Institute,
+        to_field="institute_id",
+        db_column="institute_id",
+        on_delete=models.CASCADE,
+        related_name="provisional_records",
+    )
+
+    # Use varchar identifiers for course linkage to align with existing models
+    subcourse = models.ForeignKey(
+        SubBranch,
+        to_field="subcourse_id",
+        db_column="subcourse_id",
+        on_delete=models.CASCADE,
+        related_name="provisional_records",
+    )
+    maincourse = models.ForeignKey(
+        MainBranch,
+        to_field="maincourse_id",
+        db_column="maincourse_id",
+        on_delete=models.CASCADE,
+        related_name="provisional_records",
+    )
+
+    # Provisional certificate details
+    class_obtain = models.CharField(max_length=100, null=True, blank=True, db_column="class_obtain")
+    prv_number = models.CharField(max_length=50, unique=True, db_column="prv_number")
+    prv_date = models.DateField(db_column="prv_date")
+
+    passing_year = models.CharField(max_length=20, db_column="passing_year")
+    prv_status = models.CharField(
+        max_length=20,
+        choices=ProvisionalStatus.choices,
+        default=ProvisionalStatus.PENDING,
+        db_column="prv_status",
+    )
+
+    # Denormalized copy from DocRec; will be auto-copied on save if missing
+    pay_rec_no = models.CharField(max_length=50, db_column="pay_rec_no")
+
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='createdby',
+        related_name='provisional_created'
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True, db_column="created_at")
+    updated_at = models.DateTimeField(auto_now=True, db_column="updated_at")
+
+    class Meta:
+        db_table = "provisional"
+        indexes = [
+            models.Index(fields=["doc_rec"], name="idx_prv_doc_rec"),
+            models.Index(fields=["enrollment"], name="idx_prv_enrollment"),
+            models.Index(fields=["institute"], name="idx_prv_institute"),
+            models.Index(fields=["prv_number"], name="idx_prv_number"),
+        ]
+
+    def clean(self):
+        # Ensure pay_rec_no will be present
+        if not self.pay_rec_no and self.doc_rec and self.doc_rec.pay_rec_no:
+            self.pay_rec_no = self.doc_rec.pay_rec_no
+        if not self.pay_rec_no:
+            raise ValidationError({"pay_rec_no": "pay_rec_no is required (copied from related DocRec)."})
+
+    def save(self, *args, **kwargs):
+        # Auto-copy pay_rec_no from DocRec if not explicitly provided
+        if not self.pay_rec_no and self.doc_rec and self.doc_rec.pay_rec_no:
+            self.pay_rec_no = self.doc_rec.pay_rec_no
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Provisional {self.prv_number} ({self.student_name})"

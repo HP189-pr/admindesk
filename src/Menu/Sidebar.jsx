@@ -22,7 +22,7 @@ const modules = [
     id: 'office_management',
     name: 'Office Management',
     icon: '🏢',
-    menu: ['📥 Inward', '📤 Outward', '🏖️ Leave Management', '📦 Inventory'],
+    menu: ['📥 Document Receive', '📥 Inward', '📤 Outward', '🏖️ Leave Management', '📦 Inventory'],
   },
   {
     id: 'finance',

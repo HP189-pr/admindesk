@@ -15,15 +15,18 @@ from django.contrib.auth import get_user_model
 from django.conf import settings
 import logging
 from django.db import models
+from django.db.models import Value
+from django.db.models.functions import Lower, Replace
 from django.db.models import Q
 from django.core.exceptions import ObjectDoesNotExist
 
-from .models import Holiday, UserProfile,User, Module, Menu, UserPermission, InstituteCourseOffering, Institute, MainBranch, SubBranch, Enrollment
+from .models import Holiday, UserProfile,User, Module, Menu, UserPermission, InstituteCourseOffering, Institute, MainBranch, SubBranch, Enrollment, DocRec, MigrationRecord, ProvisionalRecord, InstVerificationMain, InstVerificationStudent, Verification, Eca, StudentProfile
 from .serializers import (
     HolidaySerializer, LoginSerializer, UserSerializer,
     ChangePasswordSerializer, UserProfileSerializer,
     VerifyPasswordSerializer, CustomTokenObtainPairSerializer, ModuleSerializer, MenuSerializer, UserPermissionSerializer,
-    InstituteCourseOfferingSerializer, InstituteSerializer, MainBranchSerializer, SubBranchSerializer, EnrollmentSerializer
+    InstituteCourseOfferingSerializer, InstituteSerializer, MainBranchSerializer, SubBranchSerializer, EnrollmentSerializer,
+    DocRecSerializer, VerificationSerializer, MigrationRecordSerializer, ProvisionalRecordSerializer, InstVerificationMainSerializer, InstVerificationStudentSerializer, EcaSerializer, StudentProfileSerializer
     
 )
 
@@ -402,11 +405,114 @@ class InstituteCourseOfferingViewSet(viewsets.ModelViewSet):
     queryset = InstituteCourseOffering.objects.all().select_related("institute", "maincourse", "subcourse", "updated_by")
     serializer_class = InstituteCourseOfferingSerializer
 
+
+# ---------- DocRec / Verification / Migration / Provisional / InstVerification Main ----------
+
+class DocRecViewSet(viewsets.ModelViewSet):
+    queryset = DocRec.objects.all().order_by('-id')
+    serializer_class = DocRecSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class VerificationViewSet(viewsets.ModelViewSet):
+    queryset = Verification.objects.select_related('enrollment', 'second_enrollment').order_by('-id')
+    serializer_class = VerificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        search = self.request.query_params.get('search', '').strip()
+        if search:
+            norm_q = ''.join(search.split()).lower()
+            qs = qs.annotate(
+                n_en=Replace(Lower(models.F('enrollment__enrollment_no')), Value(' '), Value('')),
+                n_name=Replace(Lower(models.F('student_name')), Value(' '), Value('')),
+                n_final=Replace(Lower(models.F('final_no')), Value(' '), Value('')),
+            ).filter(
+                Q(n_en__contains=norm_q) | Q(n_name__contains=norm_q) | Q(n_final__contains=norm_q)
+            )
+        return qs
+
+
+class MigrationRecordViewSet(viewsets.ModelViewSet):
+    queryset = MigrationRecord.objects.select_related('doc_rec', 'enrollment', 'institute').order_by('-id')
+    serializer_class = MigrationRecordSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        search = self.request.query_params.get('search', '').strip()
+        if search:
+            norm_q = ''.join(search.split()).lower()
+            qs = qs.annotate(
+                n_en=Replace(Lower(models.F('enrollment__enrollment_no')), Value(' '), Value('')),
+                n_name=Replace(Lower(models.F('student_name')), Value(' '), Value('')),
+                n_mg=Replace(Lower(models.F('mg_number')), Value(' '), Value('')),
+            ).filter(Q(n_en__contains=norm_q) | Q(n_name__contains=norm_q) | Q(n_mg__contains=norm_q))
+        return qs
+
+
+class ProvisionalRecordViewSet(viewsets.ModelViewSet):
+    queryset = ProvisionalRecord.objects.select_related('doc_rec', 'enrollment', 'institute').order_by('-id')
+    serializer_class = ProvisionalRecordSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        search = self.request.query_params.get('search', '').strip()
+        if search:
+            norm_q = ''.join(search.split()).lower()
+            qs = qs.annotate(
+                n_en=Replace(Lower(models.F('enrollment__enrollment_no')), Value(' '), Value('')),
+                n_name=Replace(Lower(models.F('student_name')), Value(' '), Value('')),
+                n_prv=Replace(Lower(models.F('prv_number')), Value(' '), Value('')),
+            ).filter(Q(n_en__contains=norm_q) | Q(n_name__contains=norm_q) | Q(n_prv__contains=norm_q))
+        return qs
+
+
+class InstVerificationMainViewSet(viewsets.ModelViewSet):
+    queryset = InstVerificationMain.objects.select_related('doc_rec', 'institute').order_by('-id')
+    serializer_class = InstVerificationMainSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        search = self.request.query_params.get('search', '').strip()
+        if search:
+            norm_q = ''.join(search.split()).lower()
+            qs = qs.annotate(
+                n_instno=Replace(Lower(models.F('inst_veri_number')), Value(' '), Value('')),
+                n_recname=Replace(Lower(models.F('rec_inst_name')), Value(' '), Value('')),
+                n_ref=Replace(Lower(models.F('inst_ref_no')), Value(' '), Value('')),
+            ).filter(Q(n_instno__contains=norm_q) | Q(n_recname__contains=norm_q) | Q(n_ref__contains=norm_q))
+        return qs
+
+    @action(detail=False, methods=["get"], url_path="search-rec-inst")
+    def search_rec_inst(self, request):
+        """Autocomplete for rec_inst_name by prefix (min 3 chars)."""
+        q = request.query_params.get('q', '').strip()
+        if len(q) < 3:
+            return Response([], status=200)
+        qs = self.queryset.filter(rec_inst_name__icontains=q)[:20]
+        return Response([{ 'id': x.id, 'name': x.rec_inst_name } for x in qs], status=200)
+
     def perform_create(self, serializer):
-        serializer.save(updated_by=self.request.user if self.request.user.is_authenticated else None)
+        serializer.save()
 
     def perform_update(self, serializer):
-        serializer.save(updated_by=self.request.user if self.request.user.is_authenticated else None)
+        serializer.save()
+
+
+class EcaViewSet(viewsets.ModelViewSet):
+    queryset = Eca.objects.select_related('doc_rec').order_by('-id')
+    serializer_class = EcaSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class InstVerificationStudentViewSet(viewsets.ModelViewSet):
+    queryset = InstVerificationStudent.objects.select_related('doc_rec', 'enrollment', 'institute', 'sub_course', 'main_course').order_by('-id')
+    serializer_class = InstVerificationStudentSerializer
+    permission_classes = [IsAuthenticated]
 # ✅ Institute ViewSet
 
 # ✅ Enrollment ViewSet
@@ -420,7 +526,39 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset().order_by("-created_at")
         search = self.request.query_params.get("search", "").strip()
         if search:
-            qs = qs.filter(models.Q(enrollment_no__icontains=search) | models.Q(student_name__icontains=search))
+            norm_q = ''.join(search.split()).lower().replace('-', '').replace('_', '')
+            # Build normalized annotations: lowercased and without spaces/dashes/underscores
+            # Replace is nested to strip multiple characters.
+            n_en = Replace(
+                Replace(
+                    Replace(
+                        Replace(Lower(models.F('enrollment_no')), Value(' '), Value('')),
+                        Value('-'), Value('')
+                    ),
+                    Value('_'), Value('')
+                ),
+                Value('/'), Value('')
+            )
+            n_temp = Replace(
+                Replace(
+                    Replace(
+                        Replace(Lower(models.F('temp_enroll_no')), Value(' '), Value('')),
+                        Value('-'), Value('')
+                    ),
+                    Value('_'), Value('')
+                ),
+                Value('/'), Value('')
+            )
+            n_name = Replace(
+                Replace(
+                    Replace(Lower(models.F('student_name')), Value(' '), Value('')),
+                    Value('-'), Value('')
+                ),
+                Value('_'), Value('')
+            )
+            qs = qs.annotate(n_en=n_en, n_temp=n_temp, n_name=n_name).filter(
+                Q(n_en__contains=norm_q) | Q(n_temp__contains=norm_q) | Q(n_name__contains=norm_q)
+            )
         return qs
 
     def list(self, request, *args, **kwargs):
@@ -451,3 +589,20 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         serializer.save(updated_by=self.request.user if self.request.user.is_authenticated else None)
     
+
+class StudentProfileViewSet(viewsets.ModelViewSet):
+    queryset = StudentProfile.objects.select_related('enrollment').order_by('-id')
+    serializer_class = StudentProfileSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        search = self.request.query_params.get('search', '').strip()
+        if search:
+            norm_q = ''.join(search.split()).lower()
+            qs = qs.annotate(
+                n_en=Replace(Lower(models.F('enrollment__enrollment_no')), Value(' '), Value('')),
+                n_name=Replace(Lower(models.F('enrollment__student_name')), Value(' '), Value('')),
+            ).filter(Q(n_en__contains=norm_q) | Q(n_name__contains=norm_q))
+        return qs
+

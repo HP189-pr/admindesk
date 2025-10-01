@@ -15,6 +15,14 @@ try:
     SubBranchViewSet,
     InstituteViewSet,
     EnrollmentViewSet,
+        DocRecViewSet,
+        VerificationViewSet,
+        MigrationRecordViewSet,
+    ProvisionalRecordViewSet,
+    InstVerificationMainViewSet,
+    InstVerificationStudentViewSet,
+    StudentProfileViewSet,
+    EcaViewSet,
         LoginView,
         ChangePasswordView,
         UserProfileView,
@@ -38,6 +46,14 @@ try:
     router.register(r'subbranch', SubBranchViewSet, basename='subbranch')
     router.register(r'institutes', InstituteViewSet, basename='institutes')
     router.register(r'enrollments', EnrollmentViewSet, basename='enrollments')
+    router.register(r'docrec', DocRecViewSet, basename='docrec')
+    router.register(r'verification', VerificationViewSet, basename='verification')
+    router.register(r'migration', MigrationRecordViewSet, basename='migration')
+    router.register(r'provisional', ProvisionalRecordViewSet, basename='provisional')
+    router.register(r'inst-verification-main', InstVerificationMainViewSet, basename='inst-verification-main')
+    router.register(r'inst-verification-student', InstVerificationStudentViewSet, basename='inst-verification-student')
+    router.register(r'eca', EcaViewSet, basename='eca')
+    router.register(r'student-profiles', StudentProfileViewSet, basename='student-profiles')
 
     urlpatterns = [
         # Include all registered routes automatically
