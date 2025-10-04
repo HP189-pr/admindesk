@@ -1,13 +1,20 @@
 """File: backend/api/serializers.py
-Central DRF serializers (auth, navigation, courses, enrollment, documents, verification, profiles).
+Legacy aggregated serializer module.
 
-Refactor Plan (Phase 2 – future): split into multiple files mirroring planned view split:
-  auth_serializers.py, navigation_serializers.py, course_serializers.py, enrollment_serializers.py,
-  document_serializers.py, verification_serializers.py, profile_serializers.py.
+Status: Split into modular files:
+    - serializers_core.py
+    - serializers_courses.py
+    - serializers_documents.py
 
-Backward compatibility: keep existing import paths until all references updated.
-This header addition introduces no functional change.
+For backward compatibility existing imports still work; new code should import
+from the modular files where practical.
 """
+
+# Re-export all for backward compatibility
+from .serializers_core import *  # noqa: F401,F403
+from .serializers_courses import *  # noqa: F401,F403
+from .serializers_documents import *  # noqa: F401,F403
+
 
 from rest_framework import serializers
 from django.contrib.auth.hashers import check_password
