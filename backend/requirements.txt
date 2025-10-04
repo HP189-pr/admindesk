@@ -1,6 +1,7 @@
 # Add packages required by the Django backend
 Django
 djangorestframework
+djangorestframework-simplejwt
 pandas
 openpyxl
 psycopg2-binary

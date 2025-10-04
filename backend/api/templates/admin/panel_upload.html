@@ -1,0 +1,102 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+  <h1>{{ title }}</h1>
+
+  <div style="margin-bottom: 1rem;">
+    <form method="get" action="{{ download_template_url }}">
+      <label>Service</label>
+      <select name="service">
+        <option value="DOCREC">Doc Receipt</option>
+        <option value="ENROLLMENT">Enrollment</option>
+        <option value="MIGRATION">Migration</option>
+        <option value="PROVISIONAL">Provisional</option>
+        <option value="VERIFICATION">Verification</option>
+      </select>
+      <label>Sheet name (optional)</label>
+      <input type="text" name="sheet_name" placeholder="Defaults to service name" />
+      <button type="submit" class="default">Download Excel Template</button>
+    </form>
+  </div>
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <p class="help">Tip: To update only specific columns, enter a comma-separated list in "Columns to update" (e.g., student_name, batch). Leave empty to use all columns present in the sheet.</p>
+    <button type="submit" name="action" value="preview" class="default">Preview</button>
+    <button type="submit" name="action" value="confirm" class="deletelink">Confirm Upload</button>
+  </form>
+
+  {% if sheet %}
+    <h3>Sheet: {{ sheet }} ({{ count }} rows)</h3>
+  {% endif %}
+
+  {% if issues %}
+    <h3>Validation Issues</h3>
+    <table class="listing">
+      <thead>
+        <tr><th>Row</th><th>Key</th><th>Message</th></tr>
+      </thead>
+      <tbody>
+        {% for it in issues %}
+        <tr>
+          <td>{{ it.row }}</td>
+          <td>{{ it.key }}</td>
+          <td>{{ it.message }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  {% if preview %}
+    <h3>Preview</h3>
+    <div style="max-height: 300px; overflow: auto;">
+      <table class="listing">
+        <thead>
+          <tr>
+            {% for k in preview.0.keys %}
+            <th>{{ k }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in preview %}
+          <tr>
+            {% for v in row.values %}
+            <td>{{ v }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+
+  {% if results %}
+    <h3>Upload Results</h3>
+    <p>
+      {% if log_url %}
+        Log: <a href="{{ log_url }}" target="_blank" rel="noopener">Download</a>
+      {% endif %}
+    </p>
+    <div style="max-height: 300px; overflow: auto;">
+      <table class="listing">
+        <thead>
+          <tr><th>Row</th><th>Key</th><th>Status</th><th>Message</th></tr>
+        </thead>
+        <tbody>
+          {% for r in results %}
+          <tr>
+            <td>{{ r.row }}</td>
+            <td>{{ r.key }}</td>
+            <td>{{ r.status }}</td>
+            <td>{{ r.message }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+{% endblock %}

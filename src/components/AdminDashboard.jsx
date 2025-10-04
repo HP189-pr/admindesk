@@ -5,6 +5,8 @@ import UserRights from "../hooks/UserRights";
 import AddModule from "../hooks/AddModule";
 import Addcourse from "../hooks/Addcourse";
 import { useAuth } from "../hooks/AuthContext";
+import AuthUpload from "../hooks/AuthUpload.jsx";
+import DataAnalysis from "../hooks/DataAnalysis.jsx";
 
 const AdminDashboard = ({ selectedTopbarMenu, onToggleSidebar, onToggleChatbox, onSelectTopbar }) => {
   const [users, setUsers] = useState([]);
@@ -48,6 +50,10 @@ const AdminDashboard = ({ selectedTopbarMenu, onToggleSidebar, onToggleChatbox, 
         return <AddModule selectedTopbarMenu={selectedTopbarMenu} />;
       case "Add Course":
         return <Addcourse />;
+      case "Upload":
+        return <AuthUpload />;
+      case "Data Analysis":
+        return <DataAnalysis />;
       
       default:
         return <h2 className="text-xl font-semibold">Please select an option.</h2>;
@@ -58,7 +64,7 @@ const AdminDashboard = ({ selectedTopbarMenu, onToggleSidebar, onToggleChatbox, 
     <div className="flex flex-col h-full">
       <PageTopbar
         title="Admin Panel"
-        actions={["User Management", "User Rights", "Add Module", "Add Course"]}
+        actions={["User Management", "User Rights", "Add Module", "Add Course", "Upload", "Data Analysis"]}
         selected={selectedTopbarMenu}
         onSelect={onSelectTopbar}
         onToggleSidebar={onToggleSidebar}

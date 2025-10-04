@@ -430,9 +430,9 @@ class DocRecSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocRec
         fields = [
-            'id', 'apply_for', 'doc_rec_id', 'pay_by', 'pay_rec_no_pre', 'pay_rec_no', 'pay_amount', 'created_by', 'createdat', 'updatedat'
+            'id', 'apply_for', 'doc_rec_id', 'pay_by', 'pay_rec_no_pre', 'pay_rec_no', 'pay_amount', 'doc_rec_date', 'created_by', 'createdat', 'updatedat'
         ]
-        read_only_fields = ['id', 'doc_rec_id', 'pay_rec_no_pre', 'created_by', 'createdat', 'updatedat']
+        read_only_fields = ['id', 'doc_rec_id', 'created_by', 'createdat', 'updatedat']
 
     def create(self, validated):
         request = self.context.get('request')

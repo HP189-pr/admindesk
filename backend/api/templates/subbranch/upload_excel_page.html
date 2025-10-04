@@ -4,44 +4,253 @@
 {% block content %}
 <h1>{{ title }}</h1>
 
-<!-- Download Sample File -->
 <p>
-    <a href="{{ download_url }}" class="button">Download Sample File</a>
+        <a href="{{ download_url }}" class="button">Download Sample File</a>
 </p>
 
-<!-- Upload Form -->
-<form method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" name="upload_preview" class="button">Upload & Preview</button>
-</form>
+<div id="excel-uploader-root"></div>
 
-<!-- Preview Section -->
-{% if preview %}
-    <h2>Preview Data</h2>
-    <form method="post">
-        {% csrf_token %}
-        <table class="adminlist">
-            <thead>
-                <tr>
-                    {% for col in preview.columns %}
-                        <th>{{ col }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in preview.rows %}
-                    <tr>
-                        {% for cell in row %}
-                            <td>{{ cell }}</td>
-                        {% endfor %}
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <br>
-        <button type="submit" name="confirm" class="button">Confirm Upload</button>
-    </form>
-{% endif %}
+<style>
+    .xu-box {border:1px solid #c9d0d6; padding:16px; background:#fff; margin-bottom:20px;}
+    .xu-flex {display:flex; gap:12px; flex-wrap:wrap; align-items:center;}
+    .xu-hidden {display:none !important;}
+    .xu-columns {max-height:260px; overflow:auto; border:1px solid #ddd; padding:8px; background:#fafafa;}
+    .xu-columns label {display:block; font-weight:normal; cursor:pointer;}
+    .xu-preview table {border-collapse:collapse; width:100%;}
+    .xu-preview th, .xu-preview td {border:1px solid #ddd; padding:4px 6px; font-size:12px;}
+    .xu-progress {text-align:center; padding:30px;}
+    .spinner {width:48px; height:48px; border:6px solid #ccc; border-top-color:#0b61a4; border-radius:50%; animation:spin 0.9s linear infinite; margin:0 auto 12px;}
+    @keyframes spin {to {transform:rotate(360deg);}}
+    .log-table {border-collapse:collapse; width:100%; font-size:12px;}
+    .log-table th, .log-table td {border:1px solid #ccc; padding:4px 6px;}
+    .status-created {background:#e8f9e8;}
+    .status-updated {background:#e8f0ff;}
+    .status-skipped {background:#fff4e5;}
+    .xu-badge {display:inline-block; padding:2px 6px; border-radius:4px; font-size:11px; background:#eee; margin-right:4px;}
+    .xu-badge.created {background:#35a854; color:#fff;}
+    .xu-badge.updated {background:#1a73e8; color:#fff;}
+    .xu-badge.skipped {background:#f9ab00; color:#000;}
+    .xu-actions {margin-top:12px; display:flex; gap:10px;}
+    .xu-sticky {position:sticky; top:0; background:#fff; padding:6px 0;}
+    .button.secondary {background:#555;}
+    .xu-footer-note {font-size:11px; color:#666; margin-top:6px;}
+    .xu-small {font-size:12px; color:#444;}
+    .xu-inline {display:inline-block;}
+</style>
+
+<div class="xu-box" id="xu-step-1">
+    <h2>1. Select File & Fetch Sheets</h2>
+    <div class="xu-flex">
+        <input type="file" id="xu-file" accept=".xlsx,.xls" />
+        <button type="button" class="button" id="xu-fetch">Fetch Sheets</button>
+    </div>
+    <div id="xu-sheets-wrapper" class="xu-hidden" style="margin-top:15px;">
+        <label>Sheet Name:
+            <select id="xu-sheet" style="min-width:220px;"></select>
+        </label>
+        <button type="button" class="button" id="xu-load-columns">Load Columns</button>
+    </div>
+</div>
+
+<div class="xu-box xu-hidden" id="xu-step-2">
+    <h2>2. Choose Columns</h2>
+    <div class="xu-flex">
+        <div style="flex:1; min-width:250px;">
+            <div class="xu-sticky">
+                <button type="button" class="button" id="xu-select-all">Select All</button>
+                <button type="button" class="button secondary" id="xu-clear-all">Clear All</button>
+                <button type="button" class="button" id="xu-preview">Preview</button>
+            </div>
+            <div class="xu-columns" id="xu-columns"></div>
+            <div class="xu-footer-note">Tick the columns you want to update. Leave all unchecked to import none (not allowed) or select at least one.</div>
+        </div>
+    </div>
+</div>
+
+<div class="xu-box xu-hidden" id="xu-step-3">
+    <h2>3. Preview (<span id="xu-preview-count">0</span> / <span id="xu-total-count">0</span> rows)</h2>
+    <div class="xu-preview" id="xu-preview-table"></div>
+    <div class="xu-actions">
+        <button type="button" class="button" id="xu-back-columns">Back</button>
+        <button type="button" class="button" id="xu-start-upload">Upload</button>
+    </div>
+    <div class="xu-footer-note">Only first 50 rows shown. All rows will be processed on upload.</div>
+</div>
+
+<div class="xu-box xu-hidden" id="xu-step-4">
+    <h2>4. Upload Progress</h2>
+    <div class="xu-progress" id="xu-progress">
+        <div class="spinner"></div>
+        <div>Uploading... Please wait.</div>
+    </div>
+    <div id="xu-result" class="xu-hidden"></div>
+</div>
+
+<script>
+ (function(){
+     const csrfToken = document.querySelector('input[name=csrfmiddlewaretoken]')?.value;
+     const rootUrl = window.location.pathname; // ends with /upload-excel/
+
+     function postForm(data){
+            return fetch(rootUrl, {method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body:data});
+     }
+     function setHidden(id, hidden){ document.getElementById(id).classList.toggle('xu-hidden', hidden); }
+     function htmlEscape(s){ return (s+'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+     // Elements
+     const fileInput = document.getElementById('xu-file');
+     const fetchBtn = document.getElementById('xu-fetch');
+     const sheetsWrap = document.getElementById('xu-sheets-wrapper');
+     const sheetSelect = document.getElementById('xu-sheet');
+     const loadColsBtn = document.getElementById('xu-load-columns');
+     const colBox = document.getElementById('xu-columns');
+     const step2 = document.getElementById('xu-step-2');
+     const step3 = document.getElementById('xu-step-3');
+     const step4 = document.getElementById('xu-step-4');
+     const previewBtn = document.getElementById('xu-preview');
+     const previewTable = document.getElementById('xu-preview-table');
+     const previewCount = document.getElementById('xu-preview-count');
+     const totalCount = document.getElementById('xu-total-count');
+     const backBtn = document.getElementById('xu-back-columns');
+     const startUploadBtn = document.getElementById('xu-start-upload');
+     const resultDiv = document.getElementById('xu-result');
+     const progressDiv = document.getElementById('xu-progress');
+     const selectAllBtn = document.getElementById('xu-select-all');
+     const clearAllBtn = document.getElementById('xu-clear-all');
+
+     function showMessage(msg, level='info'){
+             // simple inline message
+             let el = document.getElementById('xu-msg');
+             if(!el){
+                 el = document.createElement('div');
+                 el.id='xu-msg';
+                 document.getElementById('excel-uploader-root').prepend(el);
+             }
+             el.className = 'xu-small';
+             el.style.color = level==='error'?'#b20000':'#0a4d14';
+             el.textContent = msg;
+     }
+
+     fetchBtn.addEventListener('click', ()=>{
+         if(!fileInput.files.length){ showMessage('Please choose a file first','error'); return; }
+         const fd = new FormData();
+         fd.append('csrfmiddlewaretoken', csrfToken);
+         fd.append('action','init');
+         fd.append('file', fileInput.files[0]);
+         showMessage('Reading file...');
+         postForm(fd).then(r=>r.json()).then(data=>{
+             if(data.error){ showMessage(data.error,'error'); return; }
+             sheetSelect.innerHTML = '';
+             data.sheets.forEach(s=>{
+                 const opt=document.createElement('option'); opt.value=s; opt.textContent=s; sheetSelect.appendChild(opt);
+             });
+             setHidden('xu-sheets-wrapper', false);
+             showMessage('Sheets loaded. Select a sheet and click Load Columns.');
+         }).catch(e=>showMessage('Error: '+e,'error'));
+     });
+
+        loadColsBtn.addEventListener('click', ()=>{
+         const sheet = sheetSelect.value; if(!sheet){ showMessage('Select a sheet','error'); return; }
+         const fd = new FormData(); fd.append('csrfmiddlewaretoken', csrfToken); fd.append('action','columns'); fd.append('sheet', sheet);
+         showMessage('Loading columns for '+sheet+' ...');
+         postForm(fd).then(r=>r.json()).then(data=>{
+                if(data.error){ showMessage(data.error,'error'); return; }
+              if(data.required_missing && data.required_missing.length){
+                  showMessage('Missing required columns in sheet: '+data.required_missing.join(', '),'error');
+                  return;
+              }
+              colBox.innerHTML='';
+              data.columns.forEach(c=>{
+                     const id='col_'+c.replace(/[^a-zA-Z0-9_]/g,'_');
+                     const label=document.createElement('label');
+                     label.innerHTML = `<input type="checkbox" value="${htmlEscape(c)}" checked /> ${htmlEscape(c)}`;
+                     colBox.appendChild(label);
+                });
+              if(data.unrecognized && data.unrecognized.length){
+                  const warn=document.createElement('div');
+                  warn.className='xu-small';
+                  warn.style.color='#8a6d00';
+                  warn.textContent='Ignored columns (not in model): '+data.unrecognized.join(', ');
+                  colBox.appendChild(warn);
+              }
+              // Always ensure required keys stay checked and disabled
+              if(data.required_keys){
+                  colBox.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+                      if(data.required_keys.includes(cb.value)){
+                          cb.checked=true; cb.disabled=true; cb.parentElement.style.fontWeight='600';
+                      }
+                  });
+              }
+                setHidden(step2.id,false);
+                setHidden(step3.id,true);
+                setHidden(step4.id,true);
+                showMessage('Columns loaded. Select which to include then click Preview.');
+         }).catch(e=>showMessage('Error: '+e,'error'));
+     });
+
+     selectAllBtn.addEventListener('click', ()=>{ colBox.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.checked=true); });
+     clearAllBtn.addEventListener('click', ()=>{ colBox.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.checked=false); });
+
+        previewBtn.addEventListener('click', ()=>{
+         const sheet=sheetSelect.value; if(!sheet){ showMessage('Select a sheet','error'); return; }
+         const selected=[...colBox.querySelectorAll('input[type=checkbox]:checked')].map(cb=>cb.value);
+         if(!selected.length){ showMessage('Select at least one column','error'); return; }
+         const fd=new FormData(); fd.append('csrfmiddlewaretoken', csrfToken); fd.append('action','preview'); fd.append('sheet', sheet);
+         selected.forEach(c=>fd.append('columns[]', c));
+         showMessage('Generating preview...');
+         postForm(fd).then(r=>r.json()).then(data=>{
+                if(data.error){ showMessage(data.error,'error'); return; }
+                previewCount.textContent = data.preview_rows;
+                totalCount.textContent = data.total_rows;
+                let html='<table><thead><tr>' + data.columns.map(c=>`<th>${htmlEscape(c)}</th>`).join('') + '</tr></thead><tbody>';
+                data.rows.forEach(r=>{ html+='<tr>'+ r.map(v=>`<td>${htmlEscape(v)}</td>`).join('') + '</tr>'; });
+                html+='</tbody></table>';
+                previewTable.innerHTML=html;
+                setHidden(step3.id,false);
+                showMessage('Preview ready. Click Upload to process.');
+         }).catch(e=>showMessage('Error: '+e,'error'));
+     });
+
+     backBtn.addEventListener('click', ()=>{
+         setHidden(step3.id,true); setHidden(step2.id,false); showMessage('You can adjust column selection.');
+     });
+
+     startUploadBtn.addEventListener('click', ()=>{
+         const sheet=sheetSelect.value; if(!sheet){ showMessage('Select a sheet','error'); return; }
+         const selected=[...colBox.querySelectorAll('input[type=checkbox]:checked')].map(cb=>cb.value);
+         if(!selected.length){ showMessage('Select at least one column','error'); return; }
+         setHidden(step4.id,false); setHidden(resultDiv.id,true); setHidden(progressDiv.id,false);
+         showMessage('Uploading...');
+         const fd=new FormData(); fd.append('csrfmiddlewaretoken', csrfToken); fd.append('action','commit'); fd.append('sheet', sheet);
+         selected.forEach(c=>fd.append('columns[]', c));
+         postForm(fd).then(r=>r.json()).then(data=>{
+             if(data.error){ showMessage(data.error,'error'); return; }
+             setHidden(progressDiv.id,true); setHidden(resultDiv.id,false);
+             const counts=data.counts || {created:0,updated:0,skipped:0};
+             let logHtml = `<div><span class='xu-badge created'>Created ${counts.created}</span><span class='xu-badge updated'>Updated ${counts.updated}</span><span class='xu-badge skipped'>Skipped ${counts.skipped}</span></div>`;
+             logHtml += '<div style="margin-top:10px; max-height:300px; overflow:auto;">';
+             logHtml += '<table class="log-table"><thead><tr><th>Row</th><th>Status</th><th>Ref</th><th>Message</th></tr></thead><tbody>';
+             (data.log||[]).forEach(entry=>{
+                    const cls = 'status-'+entry.status;
+                    logHtml += `<tr class='${cls}'><td>${entry.row}</td><td>${entry.status}</td><td>${entry.ref||''}</td><td>${htmlEscape(entry.message)}</td></tr>`;
+             });
+             logHtml += '</tbody></table></div>';
+             // Download log button (CSV)
+             logHtml += '<button type="button" class="button" id="xu-download-log">Download Log CSV</button>';
+             resultDiv.innerHTML = logHtml;
+             showMessage('Upload complete.');
+             const dlBtn = document.getElementById('xu-download-log');
+             if(dlBtn){ dlBtn.addEventListener('click', ()=> downloadLogCsv(data.log || [])); }
+         }).catch(e=>{ showMessage('Error: '+e,'error'); });
+     });
+
+     function downloadLogCsv(log){
+         let csv='row,status,ref,message\n';
+         log.forEach(l=>{ csv += `${l.row},${l.status||''},${(l.ref||'').toString().replace(/,/g,';')},"${(l.message||'').replace(/"/g,'""')}"\n`; });
+         const blob=new Blob([csv], {type:'text/csv'}); const url=URL.createObjectURL(blob);
+         const a=document.createElement('a'); a.href=url; a.download='import_log.csv'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(url); a.remove();}, 500);
+     }
+ })();
+</script>
 
 {% endblock %}

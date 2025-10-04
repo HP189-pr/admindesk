@@ -58,7 +58,21 @@ export const AuthProvider = ({ children }) => {
             });
     
             setProfilePicture(data.profile_picture || "/profilepic/default-profile.png");
-            setIsAdmin(data.is_admin || false);
+            // Initially set isAdmin from profile payload
+            let adminFlag = !!(data.is_admin);
+            try {
+                // Fallback/confirmation: call server to check admin access via flags/groups
+                const checkRes = await axios.get(`${API_BASE_URL}/api/check-admin-access/`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                    validateStatus: () => true,
+                });
+                if (checkRes.status === 200 && checkRes.data && typeof checkRes.data.is_admin !== 'undefined') {
+                    adminFlag = !!checkRes.data.is_admin;
+                }
+            } catch (e) {
+                // ignore, keep profile flag
+            }
+            setIsAdmin(adminFlag);
             localStorage.setItem("user", JSON.stringify(data));
         } catch (error) {
             console.error("❌ Fetch User Error:", error.response?.data || error.message);
@@ -101,7 +115,7 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // 🔹 Verify password function
+    // 🔹 Verify user password (for general secure pages)
     const verifyPassword = async (password) => {
         try {
             const { status } = await axios.post(
@@ -112,6 +126,36 @@ export const AuthProvider = ({ children }) => {
             return status === 200;
         } catch (error) {
             console.error("❌ Password Verification Error:", error.response?.data || error.message);
+            return false;
+        }
+    };
+
+    // 🔹 Admin Panel special password verification (server-configured)
+    const verifyAdminPanelPassword = async (password) => {
+        try {
+            const { status } = await axios.post(
+                `${API_BASE_URL}/api/verify-admin-panel-password/`,
+                { password },
+                {
+                    headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+                    withCredentials: true,
+                }
+            );
+            return status === 200;
+        } catch (error) {
+            return false;
+        }
+    };
+
+    // 🔹 Check if admin panel already verified in this session
+    const isAdminPanelVerified = async () => {
+        try {
+            const { data } = await axios.get(`${API_BASE_URL}/api/verify-admin-panel-password/`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+                withCredentials: true,
+            });
+            return !!data?.verified;
+        } catch (e) {
             return false;
         }
     };
@@ -172,7 +216,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, isAdmin, profilePicture, loading, login, logout, refreshToken, verifyPassword, fetchUsers, fetchUserDetail }}>
+        <AuthContext.Provider value={{ user, isAdmin, profilePicture, loading, login, logout, refreshToken, verifyPassword, verifyAdminPanelPassword, isAdminPanelVerified, fetchUsers, fetchUserDetail }}>
             {children}
         </AuthContext.Provider>
     );

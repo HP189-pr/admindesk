@@ -26,13 +26,16 @@ try:
         LoginView,
         ChangePasswordView,
         UserProfileView,
-        VerifyPasswordView,
+    VerifyPasswordView,
+    VerifyAdminPanelPasswordView,
         CustomTokenObtainPairView,
         ProfilePictureView,
     CheckAdminAccessView,
     MyNavigationView,
         UserAPIView,
         UserDetailAPIView,
+        BulkUploadView,
+        DataAnalysisView,
     )
 
     # Register router and API endpoints (normal path when DRF is installed)
@@ -75,6 +78,7 @@ try:
         # User profile management
         path('profile/', UserProfileView.as_view(), name="user-profile"),
         path('verify-password/', VerifyPasswordView.as_view(), name='verify-password'),
+    path('verify-admin-panel-password/', VerifyAdminPanelPasswordView.as_view(), name='verify-admin-panel-password'),
         path('profile-picture/', ProfilePictureView.as_view(), name='profile-picture'),
     path('my-navigation/', MyNavigationView.as_view(), name='my-navigation'),
 
@@ -82,6 +86,9 @@ try:
         path("users/", UserAPIView.as_view(), name="user-list-create"),
         path("users/<int:user_id>/", UserDetailAPIView.as_view(), name="user-detail"),
         path("modules/<int:module_id>/menus/", MenuViewSet.as_view({"get": "menus_by_module"}), name="menus-by-module"),
+        # Bulk upload and data analysis endpoints
+        path('bulk-upload/', BulkUploadView.as_view(), name='bulk-upload'),
+        path('data-analysis/', DataAnalysisView.as_view(), name='data-analysis'),
     ]
 
 except Exception as e:

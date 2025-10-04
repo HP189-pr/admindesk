@@ -1,5 +1,6 @@
 from pathlib import Path
 from datetime import timedelta
+import hmac
 import os
 import importlib
 import warnings
@@ -173,9 +174,19 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React Frontend
     "http://127.0.0.1:3000",  # React Alternative URL
+    "http://localhost:5173",  # Vite default
+    "http://127.0.0.1:5173",  # Vite alt
 ]
 
 CORS_ALLOW_CREDENTIALS = True  # Allow credentials (cookies, sessions)
+
+# CSRF trusted origins for local dev
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
 # REST framework settings (leave settings dict in place; it's safe even if package absent)
 REST_FRAMEWORK = {
@@ -217,3 +228,7 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # Optional: Set up Admin credentials or further configurations here if needed
+
+# Admin Panel secondary password (not the user password)
+# Configure in environment variable ADMIN_PANEL_SECRET. If not set, admin panel verification will fail safely.
+ADMIN_PANEL_SECRET = os.getenv("ADMIN_PANEL_SECRET")

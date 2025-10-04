@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { dmyToISO } from "../utils/date";
+import { dmyToISO, pad2 } from "../utils/date";
 import PageTopbar from "../components/PageTopbar";
 
 const ACTIONS = ["➕", "🔍", "📄 Report"];
@@ -16,21 +16,28 @@ const PAY_BY = [
   { value: "CASH", label: "Cash" },
   { value: "BANK", label: "Bank" },
   { value: "UPI", label: "UPI" },
+  { value: "NA", label: "Not Applicable" },
 ];
 
 export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
   const [panelOpen, setPanelOpen] = useState(true);
   const [selected, setSelected] = useState("➕");
 
+  const todayDMY = () => {
+    const d = new Date();
+    return `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}-${d.getFullYear()}`;
+  };
+
   const [form, setForm] = useState({
     apply_for: "VR",
-    pay_by: "CASH",
+    pay_by: "NA",
     pay_amount: 0,
+    doc_rec_date: todayDMY(), // dd-mm-yyyy UI
 
     // derived/readonly from server after create
     doc_rec_id: "",
-    pay_rec_no_pre: "",
-    pay_rec_no: "",
+  pay_rec_no_pre: "",
+  pay_rec_no: "",
 
     // verification specific
     enrollment: "",
@@ -60,6 +67,28 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
 
   const handleChange = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
+  // Fetch next doc_rec_id preview when apply_for changes
+  useEffect(() => {
+    const ctrl = new AbortController();
+    const run = async () => {
+      try {
+        const token = localStorage.getItem("access_token");
+        const res = await fetch(`/api/docrec/next-id/?apply_for=${encodeURIComponent(form.apply_for)}`, {
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          signal: ctrl.signal,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.next_id) {
+            setForm((f) => ({ ...f, doc_rec_id: data.next_id, doc_rec_date: f.doc_rec_date || todayDMY() }));
+          }
+        }
+      } catch {}
+    };
+    if (form.apply_for) run();
+    return () => ctrl.abort();
+  }, [form.apply_for]);
+
   const authHeaders = () => {
     const token = localStorage.getItem("access_token");
     return token ? { Authorization: `Bearer ${token}` } : {};
@@ -80,7 +109,9 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
       apply_for: form.apply_for,
       pay_by: form.pay_by,
       pay_amount: +form.pay_amount || 0,
-      pay_rec_no: form.pay_rec_no || null,
+      pay_rec_no: form.pay_by === 'NA' ? null : (form.pay_rec_no || null),
+      // send ISO date if provided
+      doc_rec_date: form.doc_rec_date ? dmyToISO(form.doc_rec_date) : undefined,
     };
     const res = await fetch("/api/docrec/", {
       method: "POST",
@@ -95,7 +126,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     setForm((f) => ({
       ...f,
       doc_rec_id: row.doc_rec_id,
-      pay_rec_no_pre: row.pay_rec_no_pre,
+      pay_rec_no_pre: row.pay_rec_no_pre || "",
     }));
     return row;
   };
@@ -220,12 +251,22 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
                 {APPLY_FOR.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
               </select>
             </div>
+            {/* doc_rec_id preview */}
+            <div>
+              <label className="text-sm">Doc Rec ID (next)</label>
+              <input className="w-full border rounded-lg p-2" value={form.doc_rec_id} readOnly />
+            </div>
             {/* pay_by */}
             <div>
               <label className="text-sm">Pay By</label>
               <select className="w-full border rounded-lg p-2" value={form.pay_by} onChange={(e)=>handleChange("pay_by", e.target.value)}>
                 {PAY_BY.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
               </select>
+            </div>
+            {/* doc_rec_date */}
+            <div>
+              <label className="text-sm">Doc Rec Date</label>
+              <input type="text" className="w-full border rounded-lg p-2" value={form.doc_rec_date} onChange={(e)=>handleChange("doc_rec_date", e.target.value)} placeholder="dd-mm-yyyy" />
             </div>
             {/* pay_amount */}
             <div>
@@ -235,7 +276,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
             {/* pay_rec_no */}
             <div>
               <label className="text-sm">Pay Receipt No (optional)</label>
-              <input className="w-full border rounded-lg p-2" value={form.pay_rec_no} onChange={(e)=>handleChange("pay_rec_no", e.target.value)} />
+              <input className="w-full border rounded-lg p-2" value={form.pay_rec_no} onChange={(e)=>handleChange("pay_rec_no", e.target.value)} disabled={form.pay_by === 'NA'} />
             </div>
 
             {/* If VR show verification options (simplified UI as placeholder) */}

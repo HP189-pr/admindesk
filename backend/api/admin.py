@@ -1,439 +1,493 @@
 import base64
+import base64
 from io import BytesIO
-from urllib import request
+from datetime import datetime, date, timedelta
+from typing import Any, Dict, List
+
+from django.contrib import admin, messages
+from django.contrib.auth import get_user_model
+from django.http import JsonResponse, HttpResponse
+from django.shortcuts import render
 from django.urls import path, reverse
-from django import forms
-from django.shortcuts import redirect, render
-from django.contrib import messages
-from django.http import HttpResponse
-from django.contrib import admin
-from datetime import datetime, date
 
+try:  # Optional pandas (Excel support)
+    import pandas as pd  # type: ignore
+except Exception:  # pragma: no cover
+    pd = None  # type: ignore
 
+from .models import (
+    MainBranch, SubBranch, Module, Menu, UserPermission, Institute, Enrollment,
+    DocRec, PayPrefixRule, Eca, InstVerificationMain, InstVerificationStudent,
+    MigrationRecord, ProvisionalRecord, StudentProfile, Verification
+)
 
-# make pandas optional to avoid import-time crash if it's not installed
-try:
-    import pandas as pd
-except Exception:
-    pd = None  # pandas not available; Excel features will be disabled
+User = get_user_model()
 
-from .models import MainBranch, SubBranch, Module, Menu, UserPermission, Institute, Enrollment, DocRec, PayPrefixRule, Eca, InstVerificationMain, InstVerificationStudent, MigrationRecord, ProvisionalRecord, StudentProfile
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
-# ------------------- Excel Date Parser -------------------
-def parse_excel_date(value):
-    """
-    Safely parse Excel / pandas date-like values to a Python date.
-    Returns None for blanks, NaT, or invalid values.
-    Works when pandas is missing as well.
-    """
-    # quick None / empty guard
-    if value is None:
+def _sanitize(v: Any) -> str:
+    if v is None:
+        return ""
+    return str(v).replace("\r", " ").replace("\n", " ")
+
+def parse_excel_date(val: Any):
+    if val in (None, "", "NaT", "nan"):
         return None
-    if isinstance(value, str) and value.strip() == "":
-        return None
-
-    # If pandas is available, treat pandas NA/NaT as None
-    if pd is not None:
+    if isinstance(val, date):
+        return val
+    if isinstance(val, datetime):
+        return val.date()
+    if 'Timestamp' in type(val).__name__:
         try:
-            if pd.isna(value):
-                return None
+            return val.to_pydatetime().date()
         except Exception:
-            # fallback if pd.isna errors for some type
+            return None
+    if isinstance(val, (int, float)):
+        try:
+            if val > 25000:  # excel serial
+                origin = datetime(1899, 12, 30)
+                return (origin + timedelta(days=int(val))).date()
+        except Exception:
+            return None
+    sv = str(val).strip()
+    for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%Y/%m/%d"):
+        try:
+            return datetime.strptime(sv, fmt).date()
+        except Exception:
             pass
-
-    # native Python date/datetime
-    if isinstance(value, date) and not isinstance(value, datetime):
-        return value
-    if isinstance(value, datetime):
-        try:
-            # drop tzinfo safely
-            if value.tzinfo is not None:
-                return value.replace(tzinfo=None).date()
-            return value.date()
-        except Exception:
-            try:
-                return datetime.fromtimestamp(value.timestamp()).date()
-            except Exception:
-                return None
-
-    # pandas Timestamp or other pandas-parsable values
-    if pd is not None:
-        try:
-            # pandas Timestamp handling
-            if isinstance(value, pd.Timestamp):
-                try:
-                    py_dt = value.to_pydatetime()
-                except Exception:
-                    py_dt = value.to_datetime().to_pydatetime() if hasattr(value, "to_datetime") else None
-                if py_dt is None:
-                    return None
-                if getattr(py_dt, "tzinfo", None) is not None:
-                    py_dt = py_dt.replace(tzinfo=None)
-                return py_dt.date()
-
-            # try to parse with pandas (coerce invalid -> NaT)
-            parsed = pd.to_datetime(value, errors="coerce", dayfirst=True)
-            if pd.isna(parsed):
-                return None
-            py_dt = parsed.to_pydatetime()
-            if getattr(py_dt, "tzinfo", None) is not None:
-                py_dt = py_dt.replace(tzinfo=None)
-            return py_dt.date()
-        except Exception:
-            # fall through to python parsing attempts
-            pass
-
-    # final fallback: common string formats
-    try:
-        for fmt in ("%d-%m-%Y", "%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y"):
-            try:
-                return datetime.strptime(str(value), fmt).date()
-            except Exception:
-                continue
-    except Exception:
-        pass
-
     return None
 
+# ---------------------------------------------------------------------------
+# Import spec (whitelist + required keys)
+# ---------------------------------------------------------------------------
 
-# ------------------- Excel Upload Form -------------------
-class ExcelUploadForm(forms.Form):
-    file = forms.FileField(label="Select Excel File")
+def get_import_spec(model) -> Dict[str, Any]:
+    specs: Dict[type, Dict[str, Any]] = {
+        MainBranch: {"allowed_columns": ["maincourse_id", "course_code", "course_name"], "required_keys": ["maincourse_id"], "create_requires": ["maincourse_id"]},
+        SubBranch: {"allowed_columns": ["subcourse_id", "subcourse_name", "maincourse_id"], "required_keys": ["subcourse_id", "maincourse_id"], "create_requires": ["subcourse_id", "maincourse_id"]},
+        Institute: {"allowed_columns": ["institute_id", "institute_code", "institute_name", "institute_campus", "institute_address", "institute_city"], "required_keys": ["institute_id"], "create_requires": ["institute_id", "institute_code"]},
+        Enrollment: {"allowed_columns": ["enrollment_no", "student_name", "batch", "institute_id", "subcourse_id", "maincourse_id", "temp_enroll_no", "enrollment_date", "admission_date"], "required_keys": ["enrollment_no"], "create_requires": ["enrollment_no", "student_name", "batch", "institute_id", "subcourse_id", "maincourse_id"]},
+        StudentProfile: {"allowed_columns": ["enrollment_no", "gender", "birth_date", "address1", "address2", "city1", "city2", "contact_no", "email", "fees", "hostel_required", "aadhar_no", "abc_id", "mobile_adhar", "name_adhar", "mother_name", "category", "photo_uploaded", "is_d2d", "program_medium"], "required_keys": ["enrollment_no"], "create_requires": ["enrollment_no"]},
+        DocRec: {"allowed_columns": ["apply_for", "doc_rec_id", "pay_by", "pay_rec_no_pre", "pay_rec_no", "pay_amount", "doc_rec_date"], "required_keys": ["apply_for", "doc_rec_id", "pay_by"], "create_requires": ["apply_for", "doc_rec_id", "pay_by"]},
+        MigrationRecord: {"allowed_columns": ["doc_rec_id", "enrollment_no", "student_name", "institute_id", "maincourse_id", "subcourse_id", "mg_number", "mg_date", "exam_year", "admission_year", "exam_details", "mg_status", "pay_rec_no"], "required_keys": ["doc_rec_id"], "create_requires": ["doc_rec_id"]},
+        ProvisionalRecord: {"allowed_columns": ["doc_rec_id", "enrollment_no", "student_name", "institute_id", "maincourse_id", "subcourse_id", "prv_number", "prv_date", "class_obtain", "passing_year", "prv_status", "pay_rec_no"], "required_keys": ["doc_rec_id"], "create_requires": ["doc_rec_id"]},
+        Verification: {"allowed_columns": ["doc_rec_id", "date", "enrollment_no", "second_enrollment_no", "student_name", "no_of_transcript", "no_of_marksheet", "no_of_degree", "no_of_moi", "no_of_backlog", "status", "final_no", "pay_rec_no"], "required_keys": ["doc_rec_id"], "create_requires": ["doc_rec_id"]},
+    }
+    for klass, spec in specs.items():
+        if issubclass(model, klass):
+            return spec
+    return {"allowed_columns": [], "required_keys": [], "create_requires": []}
 
-# Add this sanitizer so no pandas.NaT / Timestamp ends up in templates
-def _sanitize_for_template(value):
-    if value is None:
-        return ""
-    try:
-        if pd is not None:
-            if pd.isna(value):
-                return ""
-            if isinstance(value, pd.Timestamp):
-                py_dt = value.to_pydatetime()
-                if getattr(py_dt, "tzinfo", None) is not None:
-                    py_dt = py_dt.replace(tzinfo=None)
-                return py_dt.isoformat()
-    except Exception:
-        pass
+# ---------------------------------------------------------------------------
+# AJAX Excel Upload Mixin
+# ---------------------------------------------------------------------------
 
-    if isinstance(value, datetime):
-        try:
-            if getattr(value, "tzinfo", None) is not None:
-                value = value.replace(tzinfo=None)
-            return value.isoformat()
-        except Exception:
-            return str(value)
-    if isinstance(value, date):
-        return value.isoformat()
-    return str(value)
-
-# ------------------- Excel Upload Mixin -------------------
 class ExcelUploadMixin:
-    def get_urls(self):
-        urls = super().get_urls()
-        if pd is None:
-            return urls
+    upload_template = "subbranch/upload_excel_page.html"
 
-        name_upload = f'{self.model._meta.app_label}_{self.model._meta.model_name}_upload_excel'
-        name_download = f'{self.model._meta.app_label}_{self.model._meta.model_name}_download_template'
-
-        custom_urls = [
-            path(
-                'upload-excel/',
-                self.admin_site.admin_view(self.upload_excel),
-                name=name_upload
-            ),
-            path(
-                'download-template/',
-                self.admin_site.admin_view(self.download_template),
-                name=name_download
-            ),
+    def get_urls(self):  # type: ignore[override]
+        urls = super().get_urls()  # type: ignore
+        my = [
+            path("upload-excel/", self.admin_site.admin_view(self.upload_excel), name=f"{self.model._meta.app_label}_{self.model._meta.model_name}_upload_excel"),
+            path("download-template/", self.admin_site.admin_view(self.download_template), name=f"{self.model._meta.app_label}_{self.model._meta.model_name}_download_template"),
         ]
-        return custom_urls + urls
+        return my + urls
 
-    def download_template(self, request):
-        if pd is None:
-            messages.error(request, "Install pandas to download template")
-            return redirect("../")
+    def download_template(self, request):  # type: ignore
+        spec = get_import_spec(self.model)
+        header = ",".join(spec["allowed_columns"]) + "\n"
+        resp = HttpResponse(header, content_type="text/csv")
+        resp["Content-Disposition"] = f"attachment; filename={self.model._meta.model_name}_template.csv"
+        return resp
 
-        if issubclass(self.model, MainBranch):
-            df = pd.DataFrame(columns=["maincourse_id", "course_code", "course_name"])
-        elif issubclass(self.model, SubBranch):
-            df = pd.DataFrame(columns=["subcourse_id", "maincourse_id", "subcourse_name"])
-        elif issubclass(self.model, Institute):
-            df = pd.DataFrame(columns=[
-                "institute_id",
-                "institute_code",
-                "institute_name",
-                "institute_campus",
-                "institute_address",
-                "institute_city"
-            ])
-        elif issubclass(self.model, Enrollment):
-            df = pd.DataFrame(columns=[
-                "student_name",
-                "institute_id",
-                "batch",
-                "enrollment_date",
-                "subcourse_id",
-                "maincourse_id",
-                "enrollment_no",
-                "temp_enroll_no",
-                "admission_date",
-            ])
-        elif issubclass(self.model, StudentProfile):
-            df = pd.DataFrame(columns=[
-                "enrollment_no",
-                "gender",
-                "birth_date",
-                "address1",
-                "address2",
-                "city1",
-                "city2",
-                "contact_no",
-                "email",
-                "fees",
-                "hostel_required",
-                "aadhar_no",
-                "abc_id",
-                "mobile_adhar",
-                "name_adhar",
-                "mother_name",
-                "category",
-                "photo_uploaded",
-                "is_d2d",
-                "program_medium",
-            ])
-        else:
-            df = pd.DataFrame()
+    def upload_excel(self, request):  # type: ignore
+        if not pd:
+            messages.error(request, "Pandas not installed. Excel upload disabled.")
+            return render(request, self.upload_template, {
+                "title": f"Upload Excel for {self.model._meta.verbose_name}",
+                "download_url": reverse(f"admin:{self.model._meta.app_label}_{self.model._meta.model_name}_download_template"),
+            })
 
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine="openpyxl") as writer:
-            # Use model name as sheet name (or customize)
-            sheet_name = self.model._meta.verbose_name.title()  # e.g. "Enrollment"
-            # Keep StudentProfile compact to match importer check
-            if issubclass(self.model, StudentProfile):
-                sheet_name = "StudentProfile"
-            df.to_excel(writer, index=False, sheet_name=sheet_name)
-
-        output.seek(0)
-        response = HttpResponse(
-            output,
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
-        response['Content-Disposition'] = f'attachment; filename="{self.model._meta.model_name}_template.xlsx"'
-        return response
-
-
-    def upload_excel(self, request):
-        preview = None
-        form = ExcelUploadForm(request.POST or None, request.FILES or None)
-
-        if request.method == "POST":
-            if "upload_preview" in request.POST:
-                excel_file = request.FILES.get("file")
-                if not excel_file:
-                    messages.error(request, "Please select a file!")
-                else:
-                    # Save file content in session for confirm step
-                    request.session["excel_data"] = base64.b64encode(excel_file.read()).decode("utf-8")
-                    excel_file.seek(0)
-
-                    # Load preview
+        if request.method == "POST" and request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            action = request.POST.get("action")
+            try:
+                # ---- init ----
+                if action == "init":
+                    up = request.FILES.get("file")
+                    if not up:
+                        return JsonResponse({"error": "No file uploaded"}, status=400)
+                    request.session["excel_data"] = base64.b64encode(up.read()).decode("utf-8")
+                    up.seek(0)
                     try:
-                        df_sheets = pd.read_excel(excel_file, sheet_name=None)
+                        sheets = list(pd.read_excel(up, sheet_name=None, nrows=0).keys())
                     except Exception as e:
-                        messages.error(request, f"Error reading Excel file: {e}")
-                        df_sheets = {}
+                        return JsonResponse({"error": f"Read error: {e}"}, status=400)
+                    return JsonResponse({"sheets": sheets})
 
-                    for sheet_name, sheet_data in df_sheets.items():
-                        sheet_lower = sheet_name.lower()
-                        sheet_norm = sheet_lower.replace(" ", "")
-                        # Preview for all models
-                        if (
-                            (issubclass(self.model, MainBranch) and sheet_norm == "maincourse") or
-                            (issubclass(self.model, SubBranch) and sheet_norm == "subcourse") or
-                            (issubclass(self.model, Institute) and sheet_norm == "institute") or
-                            (issubclass(self.model, Enrollment) and sheet_norm == "enrollment") or
-                            (issubclass(self.model, StudentProfile) and sheet_norm == "studentprofile")
-                        ):
-                            rows = sheet_data.fillna("").values.tolist()
-                            sanitized_rows = [[ _sanitize_for_template(cell) for cell in row ] for row in rows]
-                            preview = {
-                                "columns": list(sheet_data.columns),
-                                "rows": sanitized_rows
-                            }
+                # ---- columns ----
+                if action == "columns":
+                    sheet = request.POST.get("sheet")
+                    encoded = request.session.get("excel_data")
+                    if not encoded:
+                        return JsonResponse({"error": "Session expired"}, status=400)
+                    try:
+                        frames = pd.read_excel(BytesIO(base64.b64decode(encoded)), sheet_name=None, nrows=0)
+                    except Exception as e:
+                        return JsonResponse({"error": f"Read error: {e}"}, status=400)
+                    if sheet not in frames:
+                        return JsonResponse({"error": "Sheet not found"}, status=404)
+                    spec = get_import_spec(self.model)
+                    allowed = set(spec["allowed_columns"])
+                    required_keys = spec["required_keys"]
+                    cols_present = [str(c).strip() for c in frames[sheet].columns]
+                    usable = [c for c in cols_present if c in allowed]
+                    unrecognized = [c for c in cols_present if c not in allowed]
+                    required_missing = [rk for rk in required_keys if rk not in cols_present]
+                    return JsonResponse({
+                        "columns": usable,
+                        "unrecognized": unrecognized,
+                        "required_keys": required_keys,
+                        "required_missing": required_missing,
+                    })
 
-            elif "confirm" in request.POST:
-                encoded_data = request.session.get("excel_data")
-                if not encoded_data:
-                    messages.error(request, "Session expired. Upload again.")
-                else:
-                    excel_bytes = base64.b64decode(encoded_data)
-                    excel_file_like = BytesIO(excel_bytes)
-                    df_sheets = pd.read_excel(excel_file_like, sheet_name=None)
+                # ---- preview ----
+                if action == "preview":
+                    sheet = request.POST.get("sheet")
+                    selected = request.POST.getlist("columns[]")
+                    if not selected:
+                        return JsonResponse({"error": "Select at least one column"}, status=400)
+                    encoded = request.session.get("excel_data")
+                    if not encoded:
+                        return JsonResponse({"error": "Session expired"}, status=400)
+                    try:
+                        frames = pd.read_excel(BytesIO(base64.b64decode(encoded)), sheet_name=None)
+                    except Exception as e:
+                        return JsonResponse({"error": f"Read error: {e}"}, status=400)
+                    if sheet not in frames:
+                        return JsonResponse({"error": "Sheet not found"}, status=404)
+                    df = frames[sheet]
+                    total = len(df.index)
+                    preview_df = df[selected].head(50).fillna("")
+                    rows = [list(map(_sanitize, r)) for r in preview_df.values.tolist()]
+                    return JsonResponse({
+                        "columns": selected,
+                        "rows": rows,
+                        "preview_rows": len(rows),
+                        "total_rows": total,
+                    })
 
-                    for sheet_name, sheet_data in df_sheets.items():
-                        sheet_lower = sheet_name.lower()
-                        sheet_norm = sheet_lower.replace(" ", "")
-
-                        # MainBranch
+                # ---- commit ----
+                if action == "commit":
+                    sheet = request.POST.get("sheet")
+                    selected = request.POST.getlist("columns[]")
+                    if not selected:
+                        return JsonResponse({"error": "No columns selected"}, status=400)
+                    encoded = request.session.get("excel_data")
+                    if not encoded:
+                        return JsonResponse({"error": "Session expired"}, status=400)
+                    try:
+                        frames = pd.read_excel(BytesIO(base64.b64decode(encoded)), sheet_name=None)
+                    except Exception as e:
+                        return JsonResponse({"error": f"Read error: {e}"}, status=400)
+                    if sheet not in frames:
+                        return JsonResponse({"error": "Sheet not found"}, status=404)
+                    spec = get_import_spec(self.model)
+                    allowed = set(spec["allowed_columns"])
+                    required = set(spec["required_keys"])
+                    chosen = [c for c in selected if c in allowed]
+                    if not required.issubset(chosen):
+                        return JsonResponse({"error": "All required columns must be selected"}, status=400)
+                    df = frames[sheet].fillna("")
+                    counts = {"created": 0, "updated": 0, "skipped": 0}
+                    log: List[Dict[str, Any]] = []
+                    def add_log(rn, status, msg, ref=None):
+                        log.append({"row": rn, "status": status, "message": msg, "ref": ref})
+                    sheet_norm = sheet.lower().replace(" ", "")
+                    eff = set(chosen)
+                    try:
                         if issubclass(self.model, MainBranch) and sheet_norm == "maincourse":
-                            for _, row in sheet_data.iterrows():
-                                course_code = str(row.get("course_code", "")).strip()
-                                if not course_code:
-                                    messages.warning(request, f"Skipped row with missing course_code: {row.to_dict()}")
-                                    continue
-                                self.model.objects.update_or_create(
-                                    maincourse_id=str(row["maincourse_id"]).strip(),
+                            for i, (_, r) in enumerate(df.iterrows(), start=2):
+                                mc = str(r.get("maincourse_id") or "").strip()
+                                if not mc:
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Missing maincourse_id"); continue
+                                obj, created = MainBranch.objects.update_or_create(
+                                    maincourse_id=mc,
                                     defaults={
-                                        "course_code": course_code,
-                                        "course_name": str(row.get("course_name", "")).strip(),
-                                        "updated_by": request.user
-                                    }
-                                )
-
-                        # SubBranch
-                        elif issubclass(self.model, SubBranch) and sheet_norm == "subcourse":
-                            for _, row in sheet_data.iterrows():
-                                main = MainBranch.objects.filter(maincourse_id=str(row["maincourse_id"])).first()
-                                if main:
-                                    self.model.objects.update_or_create(
-                                        subcourse_id=str(row["subcourse_id"]),
-                                        defaults={
-                                            "subcourse_name": row.get("subcourse_name"),
-                                            "maincourse": main,
-                                            "updated_by": request.user
-                                        }
-                                    )
-
-                        # Institute
-                        elif issubclass(self.model, Institute) and sheet_norm == "institute":
-                            for _, row in sheet_data.iterrows():
-                                self.model.objects.update_or_create(
-                                    institute_id=row.get("institute_id"),
-                                    defaults={
-                                        "institute_code": row.get("institute_code"),
-                                        "institute_name": row.get("institute_name"),
-                                        "institute_campus": row.get("institute_campus"),
-                                        "institute_address": row.get("institute_address"),
-                                        "institute_city": row.get("institute_city"),
-                                        "updated_by": request.user
-                                    }
-                                )
-
-                        # Enrollment
-                        # Enrollment
-                        elif issubclass(self.model, Enrollment) and sheet_norm == "enrollment":
-                            for _, row in sheet_data.iterrows():
-                                institute = Institute.objects.filter(institute_id=row.get("institute_id")).first()
-                                subcourse = SubBranch.objects.filter(subcourse_id=row.get("subcourse_id")).first()
-                                maincourse = MainBranch.objects.filter(maincourse_id=row.get("maincourse_id")).first()
-
-                                if not (institute and subcourse and maincourse):
-                                    messages.warning(request, f"Skipped row with missing related data: {row.to_dict()}")
-                                    continue
-
-                                enrollment_date = parse_excel_date(row.get("enrollment_date"))
-                                admission_date = parse_excel_date(row.get("admission_date"))
-
-                                self.model.objects.update_or_create(
-                                    enrollment_no=row.get("enrollment_no"),
-                                    defaults={
-                                        "student_name": row.get("student_name"),
-                                        "institute": institute,
-                                        "batch": row.get("batch"),
-                                        "enrollment_date": enrollment_date,   # safe date
-                                        "admission_date": admission_date,     # safe date
-                                        "subcourse": subcourse,
-                                        "maincourse": maincourse,
-                                        "temp_enroll_no": row.get("temp_enroll_no"),
-                                        "updated_by": request.user
-                                    }
-                                )
-
-                        # StudentProfile
-                        elif issubclass(self.model, StudentProfile) and sheet_norm == "studentprofile":
-                            for _, row in sheet_data.iterrows():
-                                en_no = str(row.get("enrollment_no", "")).strip()
-                                if not en_no:
-                                    messages.warning(request, f"Skipped row without enrollment_no: {row.to_dict()}")
-                                    continue
-                                enrollment = Enrollment.objects.filter(enrollment_no=en_no).first()
-                                if not enrollment:
-                                    messages.warning(request, f"Enrollment not found for {en_no}; skipped")
-                                    continue
-
-                                birth_date = parse_excel_date(row.get("birth_date"))
-                                fees_val = None
-                                try:
-                                    fees_val = float(row.get("fees")) if row.get("fees") not in (None, "") else None
-                                except Exception:
-                                    fees_val = None
-
-                                def _to_bool(v):
-                                    s = str(v).strip().lower()
-                                    return s in ("1", "true", "yes", "y", "t")
-
-                                self.model.objects.update_or_create(
-                                    enrollment=enrollment,
-                                    defaults={
-                                        "gender": row.get("gender") or None,
-                                        "birth_date": birth_date,
-                                        "address1": row.get("address1") or None,
-                                        "address2": row.get("address2") or None,
-                                        "city1": row.get("city1") or None,
-                                        "city2": row.get("city2") or None,
-                                        "contact_no": row.get("contact_no") or None,
-                                        "email": row.get("email") or None,
-                                        "fees": fees_val,
-                                        "hostel_required": _to_bool(row.get("hostel_required")),
-                                        "aadhar_no": row.get("aadhar_no") or None,
-                                        "abc_id": row.get("abc_id") or None,
-                                        "mobile_adhar": row.get("mobile_adhar") or None,
-                                        "name_adhar": row.get("name_adhar") or None,
-                                        "mother_name": row.get("mother_name") or None,
-                                        "category": row.get("category") or None,
-                                        "photo_uploaded": _to_bool(row.get("photo_uploaded")),
-                                        "is_d2d": _to_bool(row.get("is_d2d")),
-                                        "program_medium": row.get("program_medium") or None,
+                                        **({"course_code": r.get("course_code")} if "course_code" in eff else {}),
+                                        **({"course_name": r.get("course_name")} if "course_name" in eff else {}),
                                         "updated_by": request.user,
                                     }
                                 )
+                                if created: counts["created"] += 1; add_log(i, "created", "Created", mc)
+                                else: counts["updated"] += 1; add_log(i, "updated", "Updated", mc)
+                        elif issubclass(self.model, SubBranch) and sheet_norm == "subcourse":
+                            for i, (_, r) in enumerate(df.iterrows(), start=2):
+                                sb = str(r.get("subcourse_id") or "").strip()
+                                mc = str(r.get("maincourse_id") or "").strip()
+                                if not (sb and mc):
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Missing subcourse_id/maincourse_id"); continue
+                                main = MainBranch.objects.filter(maincourse_id=mc).first()
+                                if not main:
+                                    counts["skipped"] += 1; add_log(i, "skipped", f"maincourse {mc} not found"); continue
+                                obj, created = SubBranch.objects.update_or_create(
+                                    subcourse_id=sb,
+                                    defaults={
+                                        **({"subcourse_name": r.get("subcourse_name")} if "subcourse_name" in eff else {}),
+                                        **({"maincourse": main} if "maincourse_id" in eff else {}),
+                                        "updated_by": request.user,
+                                    }
+                                )
+                                if created: counts["created"] += 1; add_log(i, "created", "Created", sb)
+                                else: counts["updated"] += 1; add_log(i, "updated", "Updated", sb)
+                        elif issubclass(self.model, Institute) and sheet_norm == "institute":
+                            for i, (_, r) in enumerate(df.iterrows(), start=2):
+                                iid = r.get("institute_id")
+                                if iid in (None, ""):
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Missing institute_id"); continue
+                                obj, created = Institute.objects.update_or_create(
+                                    institute_id=iid,
+                                    defaults={
+                                        **({"institute_code": r.get("institute_code")} if "institute_code" in eff else {}),
+                                        **({"institute_name": r.get("institute_name")} if "institute_name" in eff else {}),
+                                        **({"institute_campus": r.get("institute_campus")} if "institute_campus" in eff else {}),
+                                        **({"institute_address": r.get("institute_address")} if "institute_address" in eff else {}),
+                                        **({"institute_city": r.get("institute_city")} if "institute_city" in eff else {}),
+                                        "updated_by": request.user,
+                                    }
+                                )
+                                if created: counts["created"] += 1; add_log(i, "created", "Created", iid)
+                                else: counts["updated"] += 1; add_log(i, "updated", "Updated", iid)
+                        elif issubclass(self.model, Enrollment) and sheet_norm == "enrollment":
+                            for i, (_, r) in enumerate(df.iterrows(), start=2):
+                                en = r.get("enrollment_no")
+                                if not en:
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Missing enrollment_no"); continue
+                                inst = Institute.objects.filter(institute_id=r.get("institute_id")).first() if "institute_id" in eff else None
+                                sub = SubBranch.objects.filter(subcourse_id=r.get("subcourse_id")).first() if "subcourse_id" in eff else None
+                                main = MainBranch.objects.filter(maincourse_id=r.get("maincourse_id")).first() if "maincourse_id" in eff else None
+                                if ("institute_id" in eff and not inst) or ("subcourse_id" in eff and not sub) or ("maincourse_id" in eff and not main):
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Related FK missing"); continue
+                                enroll_dt = parse_excel_date(r.get("enrollment_date")) if "enrollment_date" in eff else None
+                                adm_dt = parse_excel_date(r.get("admission_date")) if "admission_date" in eff else None
+                                obj, created = Enrollment.objects.update_or_create(
+                                    enrollment_no=en,
+                                    defaults={
+                                        **({"student_name": r.get("student_name")} if "student_name" in eff else {}),
+                                        **({"batch": r.get("batch")} if "batch" in eff else {}),
+                                        **({"institute": inst} if inst and "institute_id" in eff else {}),
+                                        **({"subcourse": sub} if sub and "subcourse_id" in eff else {}),
+                                        **({"maincourse": main} if main and "maincourse_id" in eff else {}),
+                                        **({"temp_enroll_no": r.get("temp_enroll_no")} if "temp_enroll_no" in eff else {}),
+                                        **({"enrollment_date": enroll_dt} if enroll_dt and "enrollment_date" in eff else {}),
+                                        **({"admission_date": adm_dt} if adm_dt and "admission_date" in eff else {}),
+                                        "updated_by": request.user,
+                                    }
+                                )
+                                if created: counts["created"] += 1; add_log(i, "created", "Created", en)
+                                else: counts["updated"] += 1; add_log(i, "updated", "Updated", en)
+                        elif issubclass(self.model, DocRec) and sheet_norm in ("docrec", "doc_rec"):
+                            for i, (_, r) in enumerate(df.iterrows(), start=2):
+                                apply_for = str(r.get("apply_for") or "").strip().upper()
+                                pay_by = str(r.get("pay_by") or "").strip().upper()
+                                doc_rec_id = str(r.get("doc_rec_id") or "").strip()
+                                if not (apply_for and pay_by and doc_rec_id):
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Missing apply_for/pay_by/doc_rec_id"); continue
+                                pay_rec_no_pre = str(r.get("pay_rec_no_pre") or "").strip()
+                                pay_rec_no = str(r.get("pay_rec_no") or "").strip() or None
+                                pay_amount = None
+                                if "pay_amount" in eff:
+                                    try:
+                                        raw_pay = r.get("pay_amount")
+                                        if str(raw_pay).strip() not in ("", "None"):
+                                            pay_amount = float(raw_pay)
+                                    except Exception:
+                                        pay_amount = None
+                                doc_date = parse_excel_date(r.get("doc_rec_date")) if "doc_rec_date" in eff else None
+                                obj, created = DocRec.objects.get_or_create(
+                                    doc_rec_id=doc_rec_id,
+                                    defaults={
+                                        **({"apply_for": apply_for} if "apply_for" in eff else {}),
+                                        **({"pay_by": pay_by} if "pay_by" in eff else {}),
+                                        **({"pay_rec_no_pre": pay_rec_no_pre} if "pay_rec_no_pre" in eff else {}),
+                                        **({"pay_rec_no": pay_rec_no} if "pay_rec_no" in eff else {}),
+                                        **({"pay_amount": pay_amount or 0} if "pay_amount" in eff else {}),
+                                        **({"doc_rec_date": doc_date} if doc_date and "doc_rec_date" in eff else {}),
+                                        "created_by": request.user,
+                                    }
+                                )
+                                if not created:
+                                    if "apply_for" in eff: obj.apply_for = apply_for
+                                    if "pay_by" in eff: obj.pay_by = pay_by
+                                    if "pay_rec_no_pre" in eff: obj.pay_rec_no_pre = pay_rec_no_pre
+                                    if "pay_rec_no" in eff: obj.pay_rec_no = pay_rec_no
+                                    if "pay_amount" in eff: obj.pay_amount = pay_amount or 0
+                                    if "doc_rec_date" in eff and doc_date: obj.doc_rec_date = doc_date
+                                    obj.save()
+                                if created: counts["created"] += 1; add_log(i, "created", "Created", doc_rec_id)
+                                else: counts["updated"] += 1; add_log(i, "updated", "Updated", doc_rec_id)
+                        elif issubclass(self.model, MigrationRecord) and sheet_norm == "migration":
+                            for i, (_, r) in enumerate(df.iterrows(), start=2):
+                                dr = DocRec.objects.filter(doc_rec_id=str(r.get("doc_rec_id")).strip()).first()
+                                if not dr:
+                                    counts["skipped"] += 1; add_log(i, "skipped", "doc_rec_id not found"); continue
+                                enr = Enrollment.objects.filter(enrollment_no=str(r.get("enrollment_no")).strip()).first() if "enrollment_no" in eff else None
+                                inst = Institute.objects.filter(institute_id=r.get("institute_id")).first() if "institute_id" in eff else None
+                                main = MainBranch.objects.filter(maincourse_id=r.get("maincourse_id")).first() if "maincourse_id" in eff else None
+                                sub = SubBranch.objects.filter(subcourse_id=r.get("subcourse_id")).first() if "subcourse_id" in eff else None
+                                mg_date = parse_excel_date(r.get("mg_date")) if "mg_date" in eff else None
+                                obj, created = MigrationRecord.objects.get_or_create(doc_rec=dr, defaults={})
+                                if "enrollment_no" in eff: obj.enrollment = enr
+                                if "student_name" in eff: obj.student_name = r.get("student_name") or (enr.student_name if enr else getattr(obj, 'student_name', ''))
+                                if "institute_id" in eff: obj.institute = inst
+                                if "maincourse_id" in eff: obj.maincourse = main
+                                if "subcourse_id" in eff: obj.subcourse = sub
+                                if "mg_number" in eff: obj.mg_number = str(r.get("mg_number") or "").strip()
+                                if "mg_date" in eff and mg_date: obj.mg_date = mg_date
+                                if "exam_year" in eff: obj.exam_year = r.get("exam_year")
+                                if "admission_year" in eff: obj.admission_year = r.get("admission_year")
+                                if "exam_details" in eff: obj.exam_details = r.get("exam_details")
+                                if "mg_status" in eff: obj.mg_status = r.get("mg_status") or getattr(obj, 'mg_status', None)
+                                if "pay_rec_no" in eff: obj.pay_rec_no = r.get("pay_rec_no") or (dr.pay_rec_no if dr else getattr(obj, 'pay_rec_no', ''))
+                                if not obj.created_by: obj.created_by = request.user
+                                obj.save()
+                                if created: counts["created"] += 1; add_log(i, "created", "Created", dr.doc_rec_id)
+                                else: counts["updated"] += 1; add_log(i, "updated", "Updated", dr.doc_rec_id)
+                        elif issubclass(self.model, ProvisionalRecord) and sheet_norm == "provisional":
+                            for i, (_, r) in enumerate(df.iterrows(), start=2):
+                                dr = DocRec.objects.filter(doc_rec_id=str(r.get("doc_rec_id")).strip()).first()
+                                if not dr:
+                                    counts["skipped"] += 1; add_log(i, "skipped", "doc_rec_id not found"); continue
+                                enr = Enrollment.objects.filter(enrollment_no=str(r.get("enrollment_no")).strip()).first() if "enrollment_no" in eff else None
+                                inst = Institute.objects.filter(institute_id=r.get("institute_id")).first() if "institute_id" in eff else None
+                                main = MainBranch.objects.filter(maincourse_id=r.get("maincourse_id")).first() if "maincourse_id" in eff else None
+                                sub = SubBranch.objects.filter(subcourse_id=r.get("subcourse_id")).first() if "subcourse_id" in eff else None
+                                prv_date = parse_excel_date(r.get("prv_date")) if "prv_date" in eff else None
+                                obj, created = ProvisionalRecord.objects.get_or_create(doc_rec=dr, defaults={})
+                                if "enrollment_no" in eff: obj.enrollment = enr
+                                if "student_name" in eff: obj.student_name = r.get("student_name") or (enr.student_name if enr else getattr(obj, 'student_name', ''))
+                                if "institute_id" in eff: obj.institute = inst
+                                if "maincourse_id" in eff: obj.maincourse = main
+                                if "subcourse_id" in eff: obj.subcourse = sub
+                                if "prv_number" in eff: obj.prv_number = str(r.get("prv_number") or "").strip()
+                                if "prv_date" in eff and prv_date: obj.prv_date = prv_date
+                                if "class_obtain" in eff: obj.class_obtain = r.get("class_obtain")
+                                if "passing_year" in eff: obj.passing_year = r.get("passing_year")
+                                if "prv_status" in eff: obj.prv_status = r.get("prv_status") or getattr(obj, 'prv_status', None)
+                                if "pay_rec_no" in eff: obj.pay_rec_no = r.get("pay_rec_no") or (dr.pay_rec_no if dr else getattr(obj, 'pay_rec_no', ''))
+                                if not obj.created_by: obj.created_by = request.user
+                                obj.save()
+                                if created: counts["created"] += 1; add_log(i, "created", "Created", dr.doc_rec_id)
+                                else: counts["updated"] += 1; add_log(i, "updated", "Updated", dr.doc_rec_id)
+                        elif issubclass(self.model, Verification) and sheet_norm == "verification":
+                            for i, (_, r) in enumerate(df.iterrows(), start=2):
+                                dr = DocRec.objects.filter(doc_rec_id=str(r.get("doc_rec_id")).strip()).first()
+                                if not dr:
+                                    counts["skipped"] += 1; add_log(i, "skipped", "doc_rec_id not found"); continue
+                                enr = Enrollment.objects.filter(enrollment_no=str(r.get("enrollment_no")).strip()).first() if "enrollment_no" in eff else None
+                                senr = Enrollment.objects.filter(enrollment_no=str(r.get("second_enrollment_no")).strip()).first() if "second_enrollment_no" in eff and str(r.get("second_enrollment_no") or '').strip() else None
+                                date_v = parse_excel_date(r.get("date")) if "date" in eff else None
+                                obj, created = Verification.objects.get_or_create(doc_rec=dr, defaults={})
+                                if "date" in eff and date_v: obj.date = date_v
+                                if "enrollment_no" in eff: obj.enrollment = enr
+                                if "second_enrollment_no" in eff: obj.second_enrollment = senr
+                                if "student_name" in eff: obj.student_name = r.get("student_name") or (enr.student_name if enr else getattr(obj, 'student_name', ''))
+                                if "no_of_transcript" in eff: obj.tr_count = int(r.get("no_of_transcript") or 0)
+                                if "no_of_marksheet" in eff: obj.ms_count = int(r.get("no_of_marksheet") or 0)
+                                if "no_of_degree" in eff: obj.dg_count = int(r.get("no_of_degree") or 0)
+                                if "no_of_moi" in eff: obj.moi_count = int(r.get("no_of_moi") or 0)
+                                if "no_of_backlog" in eff: obj.backlog_count = int(r.get("no_of_backlog") or 0)
+                                if "status" in eff: obj.status = r.get("status") or getattr(obj, 'status', None)
+                                if "final_no" in eff: obj.final_no = (str(r.get("final_no")).strip() or obj.final_no)
+                                if "pay_rec_no" in eff: obj.pay_rec_no = r.get("pay_rec_no") or (dr.pay_rec_no if dr else getattr(obj, 'pay_rec_no', ''))
+                                obj.updatedby = request.user
+                                obj.save()
+                                if created: counts["created"] += 1; add_log(i, "created", "Created", dr.doc_rec_id)
+                                else: counts["updated"] += 1; add_log(i, "updated", "Updated", dr.doc_rec_id)
+                        elif issubclass(self.model, StudentProfile) and sheet_norm == "studentprofile":
+                            for i, (_, r) in enumerate(df.iterrows(), start=2):
+                                en_no = str(r.get("enrollment_no", "")).strip()
+                                if not en_no:
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Missing enrollment_no"); continue
+                                enrollment = Enrollment.objects.filter(enrollment_no=en_no).first()
+                                if not enrollment:
+                                    counts["skipped"] += 1; add_log(i, "skipped", f"Enrollment {en_no} not found"); continue
+                                birth_date = parse_excel_date(r.get("birth_date")) if "birth_date" in eff else None
+                                fees_val = None
+                                if "fees" in eff:
+                                    try:
+                                        raw_fees = r.get("fees")
+                                        if raw_fees not in (None, ""):
+                                            fees_val = float(raw_fees)
+                                    except Exception:
+                                        fees_val = None
+                                def _to_bool(v):
+                                    s = str(v).strip().lower(); return s in ("1", "true", "yes", "y", "t")
+                                obj, created = StudentProfile.objects.update_or_create(
+                                    enrollment=enrollment,
+                                    defaults={
+                                        **({"gender": r.get("gender") or None} if "gender" in eff else {}),
+                                        **({"birth_date": birth_date} if birth_date and "birth_date" in eff else {}),
+                                        **({"address1": r.get("address1") or None} if "address1" in eff else {}),
+                                        **({"address2": r.get("address2") or None} if "address2" in eff else {}),
+                                        **({"city1": r.get("city1") or None} if "city1" in eff else {}),
+                                        **({"city2": r.get("city2") or None} if "city2" in eff else {}),
+                                        **({"contact_no": r.get("contact_no") or None} if "contact_no" in eff else {}),
+                                        **({"email": r.get("email") or None} if "email" in eff else {}),
+                                        **({"fees": fees_val} if "fees" in eff else {}),
+                                        **({"hostel_required": _to_bool(r.get("hostel_required"))} if "hostel_required" in eff else {}),
+                                        **({"aadhar_no": r.get("aadhar_no") or None} if "aadhar_no" in eff else {}),
+                                        **({"abc_id": r.get("abc_id") or None} if "abc_id" in eff else {}),
+                                        **({"mobile_adhar": r.get("mobile_adhar") or None} if "mobile_adhar" in eff else {}),
+                                        **({"name_adhar": r.get("name_adhar") or None} if "name_adhar" in eff else {}),
+                                        **({"mother_name": r.get("mother_name") or None} if "mother_name" in eff else {}),
+                                        **({"category": r.get("category") or None} if "category" in eff else {}),
+                                        **({"photo_uploaded": _to_bool(r.get("photo_uploaded"))} if "photo_uploaded" in eff else {}),
+                                        **({"is_d2d": _to_bool(r.get("is_d2d"))} if "is_d2d" in eff else {}),
+                                        **({"program_medium": r.get("program_medium") or None} if "program_medium" in eff else {}),
+                                        "updated_by": request.user,
+                                    }
+                                )
+                                if created: counts["created"] += 1; add_log(i, "created", "Created", en_no)
+                                else: counts["updated"] += 1; add_log(i, "updated", "Updated", en_no)
+                        else:
+                            return JsonResponse({"error": "Sheet name does not match expected for this model."}, status=400)
+                    except Exception as e:
+                        return JsonResponse({"error": f"Import error: {e}"}, status=500)
+                    if "excel_data" in request.session:
+                        del request.session["excel_data"]
+                    return JsonResponse({"success": True, "counts": counts, "log": log})
 
+                return JsonResponse({"error": "Unknown action"}, status=400)
+            except Exception as e:
+                return JsonResponse({"error": f"Unhandled error: {e}"}, status=500)
 
-                    messages.success(request, "Database updated successfully!")
-                    del request.session["excel_data"]
-
-        context = {
-            "form": form,
-            "preview": preview,
+        return render(request, self.upload_template, {
+            "title": f"Upload Excel for {self.model._meta.verbose_name}",
             "download_url": reverse(f"admin:{self.model._meta.app_label}_{self.model._meta.model_name}_download_template"),
-            "title": f"Upload Excel for {self.model._meta.verbose_name}"
-        }
-        return render(request, "subbranch/upload_excel_page.html", context)
+        })
 
+# ---------------------------------------------------------------------------
+# Common Admin Mixin (adds upload link)
+# ---------------------------------------------------------------------------
 
 class CommonAdminMixin(ExcelUploadMixin, admin.ModelAdmin):
     change_list_template = "subbranch/reusable_change_list.html"
     change_form_template = "subbranch/reusable_change_form.html"
 
-    search_fields = ()
-    list_filter = ()
-    readonly_fields = ()
-    autocomplete_fields = ()
-
-    def add_view(self, request, form_url='', extra_context=None):
+    def add_view(self, request, form_url='', extra_context=None):  # type: ignore[override]
         extra_context = extra_context or {}
         if pd:
             try:
-                upload_name = f'admin:{self.model._meta.app_label}_{self.model._meta.model_name}_upload_excel'
-                extra_context["upload_excel_url"] = reverse(upload_name)
+                extra_context["upload_excel_url"] = reverse(
+                    f"admin:{self.model._meta.app_label}_{self.model._meta.model_name}_upload_excel"
+                )
             except Exception:
                 extra_context["upload_excel_url"] = "../upload-excel/"
         return super().add_view(request, form_url, extra_context=extra_context)
 
-    def changelist_view(self, request, extra_context=None):
+    def changelist_view(self, request, extra_context=None):  # type: ignore[override]
         extra_context = extra_context or {}
         if pd:
             extra_context["upload_excel_url"] = reverse(
@@ -441,14 +495,16 @@ class CommonAdminMixin(ExcelUploadMixin, admin.ModelAdmin):
             )
         return super().changelist_view(request, extra_context=extra_context)
 
+# ---------------------------------------------------------------------------
+# Registrations
+# ---------------------------------------------------------------------------
 
 @admin.register(DocRec)
-class DocRecAdmin(admin.ModelAdmin):
+class DocRecAdmin(CommonAdminMixin):
     list_display = ("id", "apply_for", "doc_rec_id", "pay_by", "pay_rec_no_pre", "pay_rec_no", "pay_amount", "createdat")
     list_filter = ("apply_for", "pay_by", "createdat")
     search_fields = ("doc_rec_id", "pay_rec_no", "pay_rec_no_pre")
     readonly_fields = ("doc_rec_id", "pay_rec_no_pre", "createdat", "updatedat")
-
 
 @admin.register(PayPrefixRule)
 class PayPrefixRuleAdmin(admin.ModelAdmin):
@@ -457,7 +513,6 @@ class PayPrefixRuleAdmin(admin.ModelAdmin):
     search_fields = ("pattern",)
     ordering = ("-is_active", "pay_by", "-year_full", "-priority", "-id")
 
-
 @admin.register(Eca)
 class EcaAdmin(admin.ModelAdmin):
     list_display = ("id", "doc_rec", "eca_name", "eca_ref_no", "eca_send_date", "created_by", "createdat")
@@ -465,21 +520,114 @@ class EcaAdmin(admin.ModelAdmin):
     search_fields = ("eca_name", "eca_ref_no", "doc_rec__doc_rec_id")
     autocomplete_fields = ("doc_rec", "created_by")
     readonly_fields = ("createdat", "updatedat")
-
-    def save_model(self, request, obj, form, change):
+    def save_model(self, request, obj, form, change):  # type: ignore[override]
         if not change and not obj.created_by:
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
-
 
 @admin.register(InstVerificationMain)
 class InstVerificationMainAdmin(admin.ModelAdmin):
     list_display = ("id", "doc_rec", "inst_veri_number", "inst_veri_date", "institute", "rec_inst_city")
     list_filter = ("inst_veri_date", "institute")
 
-
 @admin.register(MigrationRecord)
 class MigrationRecordAdmin(admin.ModelAdmin):
+    list_display = ("id", "mg_number", "mg_date", "student_name", "enrollment", "institute", "maincourse", "subcourse", "mg_status", "doc_rec", "pay_rec_no", "created_by", "created_at")
+    list_filter = ("mg_status", "mg_date", "institute")
+    search_fields = ("mg_number", "student_name", "enrollment__enrollment_no", "doc_rec__id")
+    autocomplete_fields = ("doc_rec", "enrollment", "institute", "maincourse", "subcourse", "created_by")
+    readonly_fields = ("created_at", "updated_at")
+    def save_model(self, request, obj, form, change):  # type: ignore[override]
+        if not change and not obj.created_by:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+@admin.register(ProvisionalRecord)
+class ProvisionalRecordAdmin(admin.ModelAdmin):
+    list_display = ("id", "prv_number", "prv_date", "student_name", "enrollment", "institute", "maincourse", "subcourse", "prv_status", "doc_rec", "pay_rec_no", "created_by", "created_at")
+    list_filter = ("prv_status", "prv_date", "institute")
+    search_fields = ("prv_number", "student_name", "enrollment__enrollment_no", "doc_rec__id")
+    autocomplete_fields = ("doc_rec", "enrollment", "institute", "maincourse", "subcourse", "created_by")
+    readonly_fields = ("created_at", "updated_at")
+    def save_model(self, request, obj, form, change):  # type: ignore[override]
+        if not change and not obj.created_by:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+@admin.register(MainBranch)
+class MainBranchAdmin(CommonAdminMixin):
+    list_display = ("id", "maincourse_id", "course_code", "course_name", "created_at", "updated_at")
+    search_fields = ("maincourse_id", "course_name", "course_code")
+    list_filter = ("created_at", "updated_at")
+    readonly_fields = ("created_at", "updated_at")
+
+@admin.register(SubBranch)
+class SubBranchAdmin(CommonAdminMixin):
+    list_display = ("id", "subcourse_id", "subcourse_name", "maincourse", "created_at", "updated_at")
+    search_fields = ("subcourse_id", "subcourse_name", "maincourse__course_name")
+    list_filter = ("maincourse", "created_at", "updated_at")
+    readonly_fields = ("created_at", "updated_at")
+    autocomplete_fields = ("maincourse",)
+
+@admin.register(Module)
+class ModuleAdmin(admin.ModelAdmin):
+    list_display = ('moduleid', 'name', 'created_at', 'updated_at', 'updated_by')
+    search_fields = ('name__icontains',)
+    list_filter = ('created_at', 'updated_at')
+    readonly_fields = ('created_at', 'updated_at')
+
+@admin.register(Menu)
+class MenuAdmin(admin.ModelAdmin):
+    list_display = ('menuid', 'name', 'module', 'created_at', 'updated_at', 'updated_by')
+    search_fields = ('name__icontains',)
+    list_filter = ('module', 'created_at')
+    readonly_fields = ('created_at', 'updated_at')
+    autocomplete_fields = ('module',)
+
+@admin.register(UserPermission)
+class UserPermissionAdmin(admin.ModelAdmin):
+    list_display = ('permitid', 'user', 'module', 'menu', 'can_view', 'can_edit', 'can_delete', 'can_create', 'created_at')
+    search_fields = ('user__username__icontains', 'module__name__icontains', 'menu__name__icontains')
+    list_filter = ('module', 'menu', 'can_view', 'can_edit', 'can_delete', 'can_create')
+    readonly_fields = ('created_at',)
+    autocomplete_fields = ('user', 'module', 'menu')
+
+@admin.register(Institute)
+class InstituteAdmin(CommonAdminMixin):
+    list_display = ("institute_id", "institute_code", "institute_name", "institute_campus", "institute_address", "institute_city", "created_at", "updated_at", "updated_by")
+    search_fields = ("institute_code", "institute_name", "institute_campus", "institute_city")
+    list_filter = ("created_at", "updated_at", "institute_campus", "institute_city")
+    readonly_fields = ("created_at", "updated_at")
+
+@admin.register(Enrollment)
+class EnrollmentAdmin(CommonAdminMixin):
+    list_display = ("student_name", "institute", "batch", "subcourse", "maincourse", "enrollment_no", "temp_enroll_no", "enrollment_date", "admission_date", "created_at", "updated_at", "updated_by")
+    search_fields = ("student_name", "enrollment_no", "temp_enroll_no")
+    list_filter = ("institute", "batch", "maincourse", "subcourse", "enrollment_date", "admission_date")
+    readonly_fields = ("created_at", "updated_at")
+    autocomplete_fields = ("institute", "subcourse", "maincourse")
+
+@admin.register(InstVerificationStudent)
+class InstVerificationStudentAdmin(admin.ModelAdmin):
+    list_display = ("id", "doc_rec", "sr_no", "enrollment", "student_name", "institute", "verification_status")
+    list_filter = ("verification_status", "institute")
+    search_fields = ("doc_rec__doc_rec_id", "enrollment__enrollment_no", "student_name")
+    autocomplete_fields = ("doc_rec", "enrollment", "institute", "sub_course", "main_course")
+
+@admin.register(StudentProfile)
+class StudentProfileAdmin(CommonAdminMixin):
+    list_display = ("id", "enrollment", "gender", "birth_date", "city1", "city2", "contact_no", "abc_id", "photo_uploaded", "is_d2d", "updated_at")
+    search_fields = ("enrollment__enrollment_no", "enrollment__student_name", "abc_id", "aadhar_no", "mobile_adhar", "name_adhar", "mother_name", "category")
+    list_filter = ("gender", "city1", "city2", "photo_uploaded", "is_d2d", "category")
+    readonly_fields = ("created_at", "updated_at")
+    autocomplete_fields = ("enrollment",)
+
+@admin.register(Verification)
+class VerificationAdmin(admin.ModelAdmin):
+    list_display = ("id", "doc_rec", "date", "enrollment", "student_name", "status", "final_no")
+    search_fields = ("doc_rec__doc_rec_id", "enrollment__enrollment_no", "student_name", "final_no")
+    list_filter = ("status", "date")
+    autocomplete_fields = ("doc_rec", "enrollment", "second_enrollment")
     list_display = (
         "id", "mg_number", "mg_date", "student_name", "enrollment", "institute", "maincourse", "subcourse", "mg_status", "doc_rec", "pay_rec_no", "created_by", "created_at"
     )

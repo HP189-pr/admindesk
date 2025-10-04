@@ -605,6 +605,7 @@ class PayBy(models.TextChoices):
     CASH = "CASH", "Cash"
     BANK = "BANK", "Bank"
     UPI  = "UPI", "UPI"
+    NA   = "NA", "Not Applicable"
 
 
 class PayPrefixRule(models.Model):
@@ -669,6 +670,8 @@ class DocRec(models.Model):
     pay_rec_no_pre = models.CharField(
         max_length=20,
         db_column="pay_rec_no_pre",
+        null=True,
+        blank=True,
     )
 
     pay_rec_no = models.CharField(
@@ -697,6 +700,8 @@ class DocRec(models.Model):
 
     createdat = models.DateTimeField(auto_now_add=True, db_column="createdat")
     updatedat = models.DateTimeField(auto_now=True, db_column="updatedat")
+    # Optional explicit date of document receipt (separate from createdat)
+    doc_rec_date = models.DateField(null=True, blank=True, db_column="doc_rec_date")
 
     class Meta:
         db_table = "doc_rec"
@@ -758,6 +763,7 @@ class DocRec(models.Model):
             PayBy.CASH: f"C01/{year_str}/R",
             PayBy.BANK: f"1471/{year_str}/R",
             PayBy.UPI: f"UPI/{year_str}/R",
+            PayBy.NA: None,
         }
         return mapping.get(self.pay_by, f"NA/{year_str}/R")
 
@@ -770,8 +776,13 @@ class DocRec(models.Model):
         now = timezone.now()
         yy = now.year % 100
 
-        if not self.pay_rec_no_pre:
-            self.pay_rec_no_pre = self._pay_prefix_for_payby(yy)
+        # If NA, no prefixes/receipt numbers
+        if self.pay_by == PayBy.NA:
+            self.pay_rec_no_pre = None
+            self.pay_rec_no = None
+        else:
+            if not self.pay_rec_no_pre:
+                self.pay_rec_no_pre = self._pay_prefix_for_payby(yy)
 
         if not self.doc_rec_id:
             prefix = self._prefix_for_apply()
@@ -792,6 +803,10 @@ class DocRec(models.Model):
                     except Exception:
                         next_num = 1
                 self.doc_rec_id = f"{prefix}_{year_str}_{next_num:04d}"
+
+        # Default doc_rec_date to today if not provided
+        if not self.doc_rec_date:
+            self.doc_rec_date = timezone.now().date()
 
         super().save(*args, **kwargs)
 
