@@ -14,37 +14,18 @@ from django.http import HttpResponse
 try:
     from rest_framework.routers import DefaultRouter
     from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
+    # Domain viewsets still in transitional views.py
     from .views import (
-        HolidayViewSet,
-        ModuleViewSet,
-        MenuViewSet,
-    UserPermissionViewSet,
-    InstituteCourseOfferingViewSet,
-    MainBranchViewSet,
-    SubBranchViewSet,
-    InstituteViewSet,
-    EnrollmentViewSet,
-        DocRecViewSet,
-        VerificationViewSet,
-        MigrationRecordViewSet,
-    ProvisionalRecordViewSet,
-    InstVerificationMainViewSet,
-    InstVerificationStudentViewSet,
-    StudentProfileViewSet,
-    EcaViewSet,
-        LoginView,
-        ChangePasswordView,
-        UserProfileView,
-    VerifyPasswordView,
-    VerifyAdminPanelPasswordView,
-        CustomTokenObtainPairView,
-        ProfilePictureView,
-    CheckAdminAccessView,
-    MyNavigationView,
-        UserAPIView,
-        UserDetailAPIView,
-        BulkUploadView,
-        DataAnalysisView,
+        ModuleViewSet, MenuViewSet, UserPermissionViewSet, InstituteCourseOfferingViewSet, MainBranchViewSet,
+        SubBranchViewSet, InstituteViewSet, EnrollmentViewSet, DocRecViewSet, VerificationViewSet,
+        MigrationRecordViewSet, ProvisionalRecordViewSet, InstVerificationMainViewSet,
+        InstVerificationStudentViewSet, StudentProfileViewSet, EcaViewSet, BulkUploadView, DataAnalysisView,
+    )
+    # Auth / navigation / user management moved to views_auth
+    from .views_auth import (
+        HolidayViewSet, LoginView, ChangePasswordView, UserProfileView, VerifyPasswordView,
+        VerifyAdminPanelPasswordView, CustomTokenObtainPairView, ProfilePictureView, CheckAdminAccessView,
+        MyNavigationView, UserAPIView, UserDetailAPIView,
     )
 
     # Register router and API endpoints (normal path when DRF is installed)
