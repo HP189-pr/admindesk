@@ -6,7 +6,7 @@ No behavioral changes; header only.
 
 from django.contrib.auth.backends import BaseBackend
 from django.contrib.auth.hashers import check_password
-from api.models import User  # Ensure path correct if custom user model is adopted later
+from django.contrib.auth.models import User  # Import directly to avoid unnecessary facade dependency
 
 class UsernameOrIdBackend(BaseBackend):
     """
