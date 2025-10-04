@@ -1,3 +1,17 @@
+"""File: backend/api/views.py
+Primary API view layer (currently monolithic) containing:
+- Auth & profile endpoints
+- Navigation/permission endpoints
+- CRUD ViewSets for courses, institutes, enrollments, documents
+- Bulk upload + data analysis
+
+Planned Modular Split (Phase 2 – not yet applied):
+  auth.py, navigation.py, courses.py, enrollment.py, documents.py, verification.py, bulk.py
+Will maintain backward compatibility by keeping imports in this file or
+adjusting `api/urls.py` to point to new modules.
+
+Safety: Header only added; no logic changed.
+"""
 from rest_framework_simplejwt.tokens import RefreshToken
 import hmac
 import traceback

@@ -1,6 +1,12 @@
+"""File: backend/api/auth_backends.py
+Custom authentication backend allowing login via username OR numeric user id.
+
+No behavioral changes; header only.
+"""
+
 from django.contrib.auth.backends import BaseBackend
 from django.contrib.auth.hashers import check_password
-from api.models import User  # Make sure the path is correct for your project
+from api.models import User  # Ensure path correct if custom user model is adopted later
 
 class UsernameOrIdBackend(BaseBackend):
     """

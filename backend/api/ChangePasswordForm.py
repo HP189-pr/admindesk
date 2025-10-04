@@ -1,3 +1,10 @@
+"""File: backend/api/ChangePasswordForm.py
+Legacy Django form for password change (possibly unused).
+
+Observation: API-based password change handled via `ChangePasswordView` + serializer.
+Action: Marked as candidate for removal after confirming no template or external import usage.
+"""
+
 from django import forms
 from django.contrib.auth.hashers import make_password
 from .models import User

@@ -1,3 +1,14 @@
+"""File: backend/api/serializers.py
+Central DRF serializers (auth, navigation, courses, enrollment, documents, verification, profiles).
+
+Refactor Plan (Phase 2 – future): split into multiple files mirroring planned view split:
+  auth_serializers.py, navigation_serializers.py, course_serializers.py, enrollment_serializers.py,
+  document_serializers.py, verification_serializers.py, profile_serializers.py.
+
+Backward compatibility: keep existing import paths until all references updated.
+This header addition introduces no functional change.
+"""
+
 from rest_framework import serializers
 from django.contrib.auth.hashers import check_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer

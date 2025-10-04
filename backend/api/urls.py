@@ -1,3 +1,12 @@
+"""File: backend/api/urls.py
+API routing configuration.
+
+Notes:
+- Contains fallback when DRF/simplejwt unavailable (returns 503 guidance).
+- After future view modularization, only import sources will change; router pattern remains.
+- Keep route names stable to avoid frontend breakage.
+"""
+
 from django.urls import path, include
 from django.http import HttpResponse
 

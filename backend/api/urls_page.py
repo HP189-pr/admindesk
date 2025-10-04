@@ -1,3 +1,10 @@
+"""File: backend/api/urls_page.py
+Deprecated duplicate router for page-specific APIs.
+
+Current Action: Marked for removal after confirming no active consumers.
+If unused externally, it can be safely deleted in a later cleanup phase.
+"""
+
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views_pages import (

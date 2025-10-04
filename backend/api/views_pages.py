@@ -1,3 +1,10 @@
+"""File: backend/api/views_pages.py
+Deprecated duplicate viewsets (overlap with main `views.py`).
+
+Status: Retained temporarily for safety. Frontend should use endpoints in `api/views.py` (`api/urls.py`).
+Planned Removal (Phase 3): Delete after confirming no external clients depend on these routes
+(via access logs or 30-day monitoring). For now, marked deprecated.
+"""
 import os
 import uuid
 import logging

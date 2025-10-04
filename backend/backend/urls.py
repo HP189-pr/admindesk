@@ -1,3 +1,13 @@
+"""File: backend/backend/urls.py
+Project root URL configuration.
+
+Stable endpoints:
+- /admin/ -> Django admin
+- /api/   -> Application API (see `api/urls.py`)
+
+Root redirect currently points to admin index.
+"""
+
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings

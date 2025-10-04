@@ -1,3 +1,12 @@
+"""File: backend/api/models.py
+Monolithic models module (Phase 1 cleanup).
+
+Refactor Plan (Phase 2 – optional, not yet applied):
+- Split into domain modules under `api/domain/` (core, courses, enrollment, documents, verification, profiles).
+- Re-export in `api/domain/__init__.py` and optionally keep `models.py` importing from there for backward compatibility.
+
+Safety: No class names, Meta.db_table values, or field definitions changed here.
+"""
 from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone

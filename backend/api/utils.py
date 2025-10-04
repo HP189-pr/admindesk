@@ -1,3 +1,9 @@
+"""File: backend/api/utils.py
+Utility helpers (JWT claims augmentation, etc.).
+
+Future: Consider moving JWT token helpers into auth utilities module when views/serializers split.
+"""
+
 from rest_framework_simplejwt.tokens import RefreshToken
 
 def get_tokens_for_user(user):
