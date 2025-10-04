@@ -39,9 +39,11 @@ class Migration(migrations.Migration):
                         ('apply_for', models.CharField(choices=[('VR', 'Verification'), ('PR', 'Provisional'), ('MG', 'Migration'), ('GT', 'Grade To Marks')], db_column='apply_for', max_length=2)),
                         ('doc_rec_id', models.CharField(db_column='doc_rec_id', max_length=20, unique=True)),
                         ('pay_by', models.CharField(choices=[('CASH', 'Cash'), ('BANK', 'Bank'), ('UPI', 'UPI')], db_column='pay_by', max_length=10)),
-                        ('pay_rec_no_pre', models.CharField(db_column='pay_rec_no_pre', max_length=20)),
+                        # Adjusted to nullable to align with model refactor (facade split) keeping schema stable
+                        ('pay_rec_no_pre', models.CharField(db_column='pay_rec_no_pre', max_length=20, null=True, blank=True)),
                         ('pay_rec_no', models.CharField(blank=True, db_column='pay_rec_no', max_length=50, null=True)),
                         ('pay_amount', models.DecimalField(db_column='pay_amount', decimal_places=2, default=0, max_digits=12)),
+                        ('doc_rec_date', models.DateField(db_column='doc_rec_date', null=True, blank=True)),
                         ('createdat', models.DateTimeField(auto_now_add=True, db_column='createdat')),
                         ('updatedat', models.DateTimeField(auto_now=True, db_column='updatedat')),
                         ('created_by', models.ForeignKey(blank=True, db_column='created_by', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='doc_recs_created', to=settings.AUTH_USER_MODEL)),
