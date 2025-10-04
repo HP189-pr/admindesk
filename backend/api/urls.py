@@ -14,12 +14,15 @@ from django.http import HttpResponse
 try:
     from rest_framework.routers import DefaultRouter
     from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
-    # Domain viewsets still in transitional views.py
-    from .views import (
+    # Domain viewsets: course/enrollment now in views_courses; the rest still in transitional views
+    from .views_courses import (
         ModuleViewSet, MenuViewSet, UserPermissionViewSet, InstituteCourseOfferingViewSet, MainBranchViewSet,
-        SubBranchViewSet, InstituteViewSet, EnrollmentViewSet, DocRecViewSet, VerificationViewSet,
-        MigrationRecordViewSet, ProvisionalRecordViewSet, InstVerificationMainViewSet,
-        InstVerificationStudentViewSet, StudentProfileViewSet, EcaViewSet, BulkUploadView, DataAnalysisView,
+        SubBranchViewSet, InstituteViewSet, EnrollmentViewSet,
+    )
+    from .views import (
+        DocRecViewSet, VerificationViewSet, MigrationRecordViewSet, ProvisionalRecordViewSet,
+        InstVerificationMainViewSet, InstVerificationStudentViewSet, StudentProfileViewSet, EcaViewSet,
+        BulkUploadView, DataAnalysisView,
     )
     # Auth / navigation / user management moved to views_auth
     from .views_auth import (
