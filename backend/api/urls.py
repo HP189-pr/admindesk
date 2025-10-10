@@ -85,6 +85,10 @@ try:
     ]
 
 except Exception as e:
+    # DEBUG: print the exception early to help diagnose why we fell back
+    import sys, traceback
+    print("[api.urls] Import error in try block:", e, file=sys.stderr)
+    traceback.print_exc()
     # Fallback: DRF (or simplejwt) not installed or import failed.
     # Provide a simple endpoint so Django can start and admin works.
     def api_unavailable(request, *args, **kwargs):

@@ -198,7 +198,17 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    # Enforce consistent date formatting (dd-mm-yyyy) across API responses
+    'DATE_FORMAT': '%d-%m-%Y',
+    'DATE_INPUT_FORMATS': ['%d-%m-%Y', '%d/%m/%Y', '%Y-%m-%d'],  # accept a few common inputs
+    'DATETIME_FORMAT': '%d-%m-%Y %H:%M:%S',  # if any DateTime fields are serialized
+    'DATETIME_INPUT_FORMATS': ['%d-%m-%Y %H:%M:%S', '%Y-%m-%d %H:%M:%S', '%d-%m-%Y'],
 }
+
+# Django-level (non-DRF) date display/input preferences (admin, forms)
+DATE_INPUT_FORMATS = ['%d-%m-%Y', '%d/%m/%Y', '%Y-%m-%d']
+DATE_FORMAT = 'd-m-Y'
+DATETIME_FORMAT = 'd-m-Y H:i:s'
 
 # Optional: JWT settings (for token expiration, etc.)
 SIMPLE_JWT = {

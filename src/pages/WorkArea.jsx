@@ -8,6 +8,9 @@ import InstitutionalVerification from "./inst-verification";
 import DocReceive from "./doc-receive";
 import AdminDashboard from "../components/AdminDashboard";
 import ProfileUpdate from "../components/ProfileUpdate";
+import EmpLeavePage from "./emp-leave.jsx";
+
+
 
 // Pages will render their own topbars; WorkArea only decides which page to show.
 
@@ -29,12 +32,15 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
   // Check 'institution' first so it doesn't get caught by generic 'verification'
   else if (l.includes("institution")) key = "inst_ver";
   else if (l.includes("verification") && !l.includes("institution")) key = "verification";
-    else if (l.includes("migration")) key = "migration";
-    else if (l.includes("provisional")) key = "provisional";
+  else if (l.includes("migration")) key = "migration";
+  else if (l.includes("provisional")) key = "provisional";
   else if (l.includes("degree")) key = "degree";
   else if ((l.includes("document") || l.includes("doc")) && l.includes("receive")) key = "doc_receive";
-    else if (l.includes("admin panel")) key = "admin";
-    else if (l.includes("profile")) key = "profile";
+  else if (l.includes("leave management")) key = "emp_leave";
+  else if (l.includes("leave report")) key = "emp_leave_report";
+  else if (l.includes("balance certificate")) key = "emp_balance_certificate";
+  else if (l.includes("admin panel")) key = "admin";
+  else if (l.includes("profile")) key = "profile";
 
     switch (key) {
       case "enrollment":
@@ -83,6 +89,13 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
             onToggleChatbox={onToggleChatbox}
           />
         );
+      case "emp_leave":
+        return <EmpLeavePage />;
+      case "emp_leave_report":
+  // EmpLeaveReport file does not exist; fallback to EmpLeavePage
+  return <EmpLeavePage />;
+      case "emp_balance_certificate":
+        return <EmpBalanceCertificate />;
       case "admin":
         return (
           <AdminDashboard

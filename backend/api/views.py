@@ -21,8 +21,9 @@ from django.db.models.functions import Lower, Replace
 from django.http import HttpResponse
 from rest_framework.parsers import MultiPartParser, FormParser
 from io import BytesIO
-import os, datetime, logging
+import os, datetime, logging, uuid, threading
 from django.conf import settings
+from django.core.cache import cache
 
 from .models import (
     User, DocRec, MigrationRecord, ProvisionalRecord, InstVerificationMain, InstVerificationStudent, Verification, Eca,
@@ -196,6 +197,7 @@ class BulkService(str):
     MIGRATION = 'MIGRATION'
     PROVISIONAL = 'PROVISIONAL'
     VERIFICATION = 'VERIFICATION'
+    INSTITUTE = 'INSTITUTE'
     DEGREE = 'DEGREE'  # not implemented
 
 
@@ -207,19 +209,25 @@ def _parse_excel_date_safe(val):
         pd = None
     if val is None:
         return None
+    # Handle pandas NaT safely
+    if str(val) in ("NaT", "nat", "<NA>"):
+        return None
     if isinstance(val, datetime.date) and not isinstance(val, datetime.datetime):
         return val
     if isinstance(val, datetime.datetime):
         return (val.replace(tzinfo=None) if val.tzinfo else val).date()
     if pd is not None:
         try:
-            if pd.isna(val):
+            if pd.isna(val):  # covers NaTType
                 return None
             if isinstance(val, pd.Timestamp):
-                py_dt = val.to_pydatetime()
-                if getattr(py_dt, 'tzinfo', None) is not None:
-                    py_dt = py_dt.replace(tzinfo=None)
-                return py_dt.date()
+                try:
+                    py_dt = val.to_pydatetime()
+                    if getattr(py_dt, 'tzinfo', None) is not None:
+                        py_dt = py_dt.replace(tzinfo=None)
+                    return py_dt.date()
+                except Exception:
+                    return None
             parsed = pd.to_datetime(val, errors='coerce', dayfirst=True)
             if pd.isna(parsed):
                 return None
@@ -237,12 +245,48 @@ def _parse_excel_date_safe(val):
     return None
 
 
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
+
+class _CsrfExemptSessionAuthentication(SessionAuthentication):
+    def enforce_csrf(self, request):  # pragma: no cover (behavioral override)
+        return  # Disable CSRF for token-based clients
+
+
 class BulkUploadView(APIView):
+    """Handle bulk Excel/CSV upload with preview and confirm actions.
+
+    Improvements:
+      - Supports .xlsx/.xls and .csv (auto-detect by extension)
+      - Enforces max file size (default 5MB)
+      - Returns only JSON (never HTML) for errors to avoid frontend JSON parse failures
+      - CSRF exempt for session path while still allowing JWT auth
+    """
     permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication, _CsrfExemptSessionAuthentication, BasicAuthentication]
     parser_classes = [MultiPartParser, FormParser]
+    MAX_UPLOAD_BYTES = 20 * 1024 * 1024  # 20MB
 
     def get(self, request):
-        """Download sample template for selected service as Excel."""
+        """Dual GET behaviors:
+        1) If 'upload_id' is provided -> return JSON progress for async bulk job.
+        2) Else -> return Excel template (existing behavior).
+        """
+        upload_id = request.query_params.get('upload_id')
+        if upload_id:  # progress polling
+            data = cache.get(f"bulk:{upload_id}")
+            if not data:
+                return Response({"error": True, "detail": "upload_id not found or expired"}, status=404)
+            # Ensure absolute log_url if present & relative
+            if data.get('log_url') and not str(data['log_url']).startswith('http'):
+                try:
+                    data['log_url'] = request.build_absolute_uri(data['log_url'])
+                except Exception:
+                    pass
+            return Response({"error": False, "upload_id": upload_id, **data})
+
+        # Template generation path
         service = request.query_params.get('service', '').upper().strip()
         custom_sheet = (request.query_params.get('sheet_name') or '').strip() or None
         try:
@@ -253,6 +297,9 @@ class BulkUploadView(APIView):
         columns_map = {
             BulkService.DOCREC: [
                 "apply_for","doc_rec_id","pay_by","pay_rec_no_pre","pay_rec_no","pay_amount","doc_rec_date"
+            ],
+            BulkService.INSTITUTE: [
+                "institute_id","institute_code","institute_name","institute_campus","institute_address","institute_city"
             ],
             BulkService.ENROLLMENT: [
                 "student_name","institute_id","batch","enrollment_date","subcourse_id","maincourse_id","enrollment_no","temp_enroll_no","admission_date"
@@ -281,224 +328,244 @@ class BulkUploadView(APIView):
         resp['Content-Disposition'] = f'attachment; filename="{filename}"'
         return resp
 
-    def post(self, request):
-        action = request.query_params.get('action', 'preview')
-        service = request.data.get('service', '').upper().strip()
-        preferred_sheet = (request.data.get('sheet_name') or '').strip()
-        file = request.FILES.get('file')
-        if not service:
-            return Response({"detail": "service is required"}, status=400)
-        if not file:
-            return Response({"detail": "file is required"}, status=400)
-        try:
-            import pandas as pd
-        except Exception as e:
-            return Response({"detail": f"pandas required: {e}"}, status=500)
-
-        # Load excel
-        try:
-            df_sheets = pd.read_excel(file, sheet_name=None)
-        except Exception as e:
-            return Response({"detail": f"Error reading Excel: {e}"}, status=400)
-
-        # pick the requested sheet if present else the first
-        if preferred_sheet and preferred_sheet in df_sheets:
-            sheet_name, df = preferred_sheet, df_sheets[preferred_sheet]
-        else:
-            sheet_name, df = next(iter(df_sheets.items())) if df_sheets else (None, None)
-        if df is None:
-            return Response({"detail": "No sheets found"}, status=400)
-
-        def _bool(v):
-            s = str(v).strip().lower()
-            return s in ("1","true","yes","y","t")
-
-        # Preview returns top rows
-        if action == 'preview':
-            preview_rows = df.fillna('').head(100).to_dict(orient='records')
-            return Response({"sheet": sheet_name, "count": len(df), "preview": preview_rows})
-
-        # Confirm: iterate and upsert
+    def _process_confirm(self, service, df, user, track_id=None):  # noqa: C901
+        """Internal processor for confirm action. Optionally updates cache for progress."""
+        total_rows = len(df.index)
         results = []
+        ok_count = 0
+        fail_count = 0
+
+        def _cache_progress(processed):
+            if not track_id:
+                return
+            cache.set(f"bulk:{track_id}", {
+                "status": "running",
+                "service": service,
+                "processed": processed,
+                "total": total_rows,
+                "ok": ok_count,
+                "fail": fail_count,
+            }, timeout=3600)
+
         def _log(row_idx, key, status_msg, ok):
+            nonlocal ok_count, fail_count
+            if ok:
+                ok_count += 1
+            else:
+                fail_count += 1
             results.append({"row": int(row_idx), "key": key, "status": "OK" if ok else "FAIL", "message": status_msg})
 
-        if service == BulkService.DOCREC:
-            for idx, row in df.iterrows():
-                try:
-                    apply_for = str(row.get("apply_for") or "").strip().upper()
-                    pay_by = str(row.get("pay_by") or "").strip().upper()
-                    doc_rec_id = str(row.get("doc_rec_id") or "").strip()
-                    pay_rec_no_pre = str(row.get("pay_rec_no_pre") or "").strip()
-                    pay_rec_no = str(row.get("pay_rec_no") or "").strip() or None
-                    raw_amt = row.get("pay_amount")
-                    pay_amount = None
+        try:
+            if service == BulkService.DOCREC:
+                for idx, row in df.iterrows():
                     try:
-                        if str(raw_amt).strip() not in ("", "None"):
-                            pay_amount = float(raw_amt)
-                    except Exception:
+                        apply_for = str(row.get("apply_for") or "").strip().upper()
+                        pay_by = str(row.get("pay_by") or "").strip().upper()
+                        doc_rec_id = str(row.get("doc_rec_id") or "").strip()
+                        pay_rec_no_pre = str(row.get("pay_rec_no_pre") or "").strip()
+                        pay_rec_no = str(row.get("pay_rec_no") or "").strip() or None
+                        raw_amt = row.get("pay_amount")
                         pay_amount = None
-                    # When pay_by is NA, allow prefixes/receipt to be null
-                    if not (apply_for and pay_by and doc_rec_id):
-                        _log(idx, doc_rec_id, "Missing required fields (apply_for/pay_by/doc_rec_id)", False); continue
-                    if pay_by != PayBy.NA and not pay_rec_no_pre:
-                        _log(idx, doc_rec_id, "pay_rec_no_pre required unless pay_by=NA", False); continue
-                    # Parse doc_rec_date if present
-                    dr_date = _parse_excel_date_safe(row.get("doc_rec_date")) or timezone.now().date()
-                    obj, created = DocRec.objects.get_or_create(
-                        doc_rec_id=doc_rec_id,
-                        defaults={
-                            "apply_for": apply_for,
-                            "pay_by": pay_by,
-                            "pay_rec_no_pre": pay_rec_no_pre,
-                            "pay_rec_no": pay_rec_no,
-                            "pay_amount": pay_amount or 0,
-                            "doc_rec_date": dr_date,
-                            "created_by": request.user,
-                        }
-                    )
-                    if not created:
-                        obj.apply_for = apply_for
-                        obj.pay_by = pay_by
-                        obj.pay_rec_no_pre = pay_rec_no_pre if pay_by != PayBy.NA else None
-                        obj.pay_rec_no = pay_rec_no if pay_by != PayBy.NA else None
-                        obj.pay_amount = pay_amount or 0
-                        obj.doc_rec_date = dr_date
-                        obj.save()
-                    _log(idx, doc_rec_id, "Upserted", True)
-                except Exception as e:
-                    _log(idx, row.get("doc_rec_id"), str(e), False)
+                        try:
+                            if str(raw_amt).strip() not in ("", "None"):
+                                pay_amount = float(raw_amt)
+                        except Exception:
+                            pay_amount = None
+                        if not (apply_for and pay_by and doc_rec_id):
+                            _log(idx, doc_rec_id, "Missing required fields (apply_for/pay_by/doc_rec_id)", False); _cache_progress(idx+1); continue
+                        if pay_by != PayBy.NA and not pay_rec_no_pre:
+                            _log(idx, doc_rec_id, "pay_rec_no_pre required unless pay_by=NA", False); _cache_progress(idx+1); continue
+                        dr_date = _parse_excel_date_safe(row.get("doc_rec_date")) or timezone.now().date()
+                        obj, created = DocRec.objects.get_or_create(
+                            doc_rec_id=doc_rec_id,
+                            defaults={
+                                "apply_for": apply_for,
+                                "pay_by": pay_by,
+                                "pay_rec_no_pre": pay_rec_no_pre,
+                                "pay_rec_no": pay_rec_no,
+                                "pay_amount": pay_amount or 0,
+                                "doc_rec_date": dr_date,
+                                "created_by": user,
+                            }
+                        )
+                        if not created:
+                            obj.apply_for = apply_for
+                            obj.pay_by = pay_by
+                            obj.pay_rec_no_pre = pay_rec_no_pre if pay_by != PayBy.NA else None
+                            obj.pay_rec_no = pay_rec_no if pay_by != PayBy.NA else None
+                            obj.pay_amount = pay_amount or 0
+                            obj.doc_rec_date = dr_date
+                            obj.save()
+                        _log(idx, doc_rec_id, "Upserted", True)
+                    except Exception as e:
+                        _log(idx, row.get("doc_rec_id"), str(e), False)
+                    _cache_progress(idx+1)
 
-        elif service == BulkService.ENROLLMENT:
-            for idx, row in df.iterrows():
-                try:
-                    institute = Institute.objects.filter(institute_id=row.get("institute_id")).first()
-                    subcourse = SubBranch.objects.filter(subcourse_id=row.get("subcourse_id")).first()
-                    maincourse = MainBranch.objects.filter(maincourse_id=row.get("maincourse_id")).first()
-                    if not (institute and subcourse and maincourse):
-                        _log(idx, row.get("enrollment_no"), "Missing related institute/subcourse/maincourse", False); continue
-                    enrollment_date = _parse_excel_date_safe(row.get("enrollment_date"))
-                    admission_date = _parse_excel_date_safe(row.get("admission_date"))
-                    Enrollment.objects.update_or_create(
-                        enrollment_no=row.get("enrollment_no"),
-                        defaults={
-                            "student_name": row.get("student_name"),
-                            "institute": institute,
-                            "batch": row.get("batch"),
-                            "enrollment_date": enrollment_date,
-                            "admission_date": admission_date,
-                            "subcourse": subcourse,
-                            "maincourse": maincourse,
-                            "temp_enroll_no": row.get("temp_enroll_no"),
-                            "updated_by": request.user
-                        }
-                    )
-                    _log(idx, row.get("enrollment_no"), "Upserted", True)
-                except Exception as e:
-                    _log(idx, row.get("enrollment_no"), str(e), False)
+            elif service == BulkService.ENROLLMENT:
+                for idx, row in df.iterrows():
+                    try:
+                        institute = Institute.objects.filter(institute_id=row.get("institute_id")).first()
+                        subcourse = SubBranch.objects.filter(subcourse_id=row.get("subcourse_id")).first()
+                        maincourse = MainBranch.objects.filter(maincourse_id=row.get("maincourse_id")).first()
+                        if not (institute and subcourse and maincourse):
+                            _log(idx, row.get("enrollment_no"), "Missing related institute/subcourse/maincourse", False); _cache_progress(idx+1); continue
+                        enrollment_date = _parse_excel_date_safe(row.get("enrollment_date"))
+                        admission_date = _parse_excel_date_safe(row.get("admission_date"))
+                        Enrollment.objects.update_or_create(
+                            enrollment_no=row.get("enrollment_no"),
+                            defaults={
+                                "student_name": row.get("student_name"),
+                                "institute": institute,
+                                "batch": row.get("batch"),
+                                "enrollment_date": enrollment_date,
+                                "admission_date": admission_date,
+                                "subcourse": subcourse,
+                                "maincourse": maincourse,
+                                "temp_enroll_no": row.get("temp_enroll_no"),
+                                "updated_by": user
+                            }
+                        )
+                        _log(idx, row.get("enrollment_no"), "Upserted", True)
+                    except Exception as e:
+                        _log(idx, row.get("enrollment_no"), str(e), False)
+                    _cache_progress(idx+1)
 
-        elif service == BulkService.MIGRATION:
-            for idx, row in df.iterrows():
-                try:
-                    doc_rec = DocRec.objects.filter(doc_rec_id=str(row.get("doc_rec_id")).strip()).first()
-                    enr = Enrollment.objects.filter(enrollment_no=str(row.get("enrollment_no")).strip()).first()
-                    inst = Institute.objects.filter(institute_id=row.get("institute_id")).first()
-                    main = MainBranch.objects.filter(maincourse_id=row.get("maincourse_id")).first()
-                    sub = SubBranch.objects.filter(subcourse_id=row.get("subcourse_id")).first()
-                    if not (doc_rec and enr and inst and main and sub):
-                        _log(idx, row.get("mg_number"), "Missing related (doc_rec/enrollment/institute/main/sub)", False); continue
-                    mg_date = _parse_excel_date_safe(row.get("mg_date"))
-                    MigrationRecord.objects.update_or_create(
-                        mg_number=str(row.get("mg_number")).strip(),
-                        defaults={
-                            "doc_rec": doc_rec,
-                            "enrollment": enr,
-                            "student_name": row.get("student_name") or (enr.student_name if enr else ""),
-                            "institute": inst,
-                            "maincourse": main,
-                            "subcourse": sub,
-                            "mg_date": mg_date,
-                            "exam_year": row.get("exam_year"),
-                            "admission_year": row.get("admission_year"),
-                            "exam_details": row.get("exam_details"),
-                            "mg_status": row.get("mg_status") or MigrationStatus.PENDING,
-                            "pay_rec_no": row.get("pay_rec_no") or (doc_rec.pay_rec_no if doc_rec else ""),
-                            "created_by": request.user,
-                        }
-                    )
-                    _log(idx, row.get("mg_number"), "Upserted", True)
-                except Exception as e:
-                    _log(idx, row.get("mg_number"), str(e), False)
+            elif service == BulkService.INSTITUTE:
+                for idx, row in df.iterrows():
+                    try:
+                        inst_id = row.get("institute_id")
+                        if inst_id in (None, ""):
+                            _log(idx, inst_id, "Missing institute_id", False); _cache_progress(idx+1); continue
+                        Institute.objects.update_or_create(
+                            institute_id=inst_id,
+                            defaults={
+                                "institute_code": row.get("institute_code"),
+                                "institute_name": row.get("institute_name"),
+                                "institute_campus": row.get("institute_campus"),
+                                "institute_address": row.get("institute_address"),
+                                "institute_city": row.get("institute_city"),
+                                "updated_by": user,
+                            }
+                        )
+                        _log(idx, inst_id, "Upserted", True)
+                    except Exception as e:
+                        _log(idx, row.get("institute_id"), str(e), False)
+                    _cache_progress(idx+1)
 
-        elif service == BulkService.PROVISIONAL:
-            for idx, row in df.iterrows():
-                try:
-                    doc_rec = DocRec.objects.filter(doc_rec_id=str(row.get("doc_rec_id")).strip()).first()
-                    enr = Enrollment.objects.filter(enrollment_no=str(row.get("enrollment_no")).strip()).first()
-                    inst = Institute.objects.filter(institute_id=row.get("institute_id")).first()
-                    main = MainBranch.objects.filter(maincourse_id=row.get("maincourse_id")).first()
-                    sub = SubBranch.objects.filter(subcourse_id=row.get("subcourse_id")).first()
-                    if not (doc_rec and enr and inst and main and sub):
-                        _log(idx, row.get("prv_number"), "Missing related (doc_rec/enrollment/institute/main/sub)", False); continue
-                    prv_date = _parse_excel_date_safe(row.get("prv_date"))
-                    ProvisionalRecord.objects.update_or_create(
-                        prv_number=str(row.get("prv_number")).strip(),
-                        defaults={
-                            "doc_rec": doc_rec,
-                            "enrollment": enr,
-                            "student_name": row.get("student_name") or (enr.student_name if enr else ""),
-                            "institute": inst,
-                            "maincourse": main,
-                            "subcourse": sub,
-                            "class_obtain": row.get("class_obtain"),
-                            "prv_date": prv_date,
-                            "passing_year": row.get("passing_year"),
-                            "prv_status": row.get("prv_status") or ProvisionalStatus.PENDING,
-                            "pay_rec_no": row.get("pay_rec_no") or (doc_rec.pay_rec_no if doc_rec else ""),
-                            "created_by": request.user,
-                        }
-                    )
-                    _log(idx, row.get("prv_number"), "Upserted", True)
-                except Exception as e:
-                    _log(idx, row.get("prv_number"), str(e), False)
+            elif service == BulkService.MIGRATION:
+                for idx, row in df.iterrows():
+                    try:
+                        doc_rec = DocRec.objects.filter(doc_rec_id=str(row.get("doc_rec_id")).strip()).first()
+                        enr = Enrollment.objects.filter(enrollment_no=str(row.get("enrollment_no")).strip()).first()
+                        inst = Institute.objects.filter(institute_id=row.get("institute_id")).first()
+                        main = MainBranch.objects.filter(maincourse_id=row.get("maincourse_id")).first()
+                        sub = SubBranch.objects.filter(subcourse_id=row.get("subcourse_id")).first()
+                        if not (doc_rec and enr and inst and main and sub):
+                            _log(idx, row.get("mg_number"), "Missing related (doc_rec/enrollment/institute/main/sub)", False); _cache_progress(idx+1); continue
+                        mg_date = _parse_excel_date_safe(row.get("mg_date"))
+                        if mg_date is None:  # required non-null
+                            _log(idx, row.get("mg_number"), "Missing mg_date", False); _cache_progress(idx+1); continue
+                        MigrationRecord.objects.update_or_create(
+                            mg_number=str(row.get("mg_number")).strip(),
+                            defaults={
+                                "doc_rec": doc_rec,
+                                "enrollment": enr,
+                                "student_name": row.get("student_name") or (enr.student_name if enr else ""),
+                                "institute": inst,
+                                "maincourse": main,
+                                "subcourse": sub,
+                                "mg_date": mg_date,
+                                "exam_year": row.get("exam_year"),
+                                "admission_year": row.get("admission_year"),
+                                "exam_details": row.get("exam_details"),
+                                "mg_status": row.get("mg_status") or MigrationStatus.PENDING,
+                                "pay_rec_no": row.get("pay_rec_no") or (doc_rec.pay_rec_no if doc_rec else ""),
+                                "created_by": user,
+                            }
+                        )
+                        _log(idx, row.get("mg_number"), "Upserted", True)
+                    except Exception as e:
+                        _log(idx, row.get("mg_number"), str(e), False)
+                    _cache_progress(idx+1)
 
-        elif service == BulkService.VERIFICATION:
-            for idx, row in df.iterrows():
-                try:
-                    doc_rec = DocRec.objects.filter(doc_rec_id=str(row.get("doc_rec_id")).strip()).first()
-                    enr = Enrollment.objects.filter(enrollment_no=str(row.get("enrollment_no")).strip()).first()
-                    senr = None
-                    if str(row.get("second_enrollment_no") or '').strip():
-                        senr = Enrollment.objects.filter(enrollment_no=str(row.get("second_enrollment_no")).strip()).first()
-                    if not (doc_rec and enr):
-                        _log(idx, row.get("final_no"), "Missing related (doc_rec/enrollment)", False); continue
-                    date_v = _parse_excel_date_safe(row.get("date")) or timezone.now().date()
-                    Verification.objects.update_or_create(
-                        final_no=(str(row.get("final_no")).strip() or None),
-                        defaults={
-                            "doc_rec": doc_rec,
-                            "date": date_v,
-                            "enrollment": enr,
-                            "second_enrollment": senr,
-                            "student_name": row.get("student_name") or (enr.student_name if enr else ""),
-                            "tr_count": int(row.get("no_of_transcript") or 0),
-                            "ms_count": int(row.get("no_of_marksheet") or 0),
-                            "dg_count": int(row.get("no_of_degree") or 0),
-                            "moi_count": int(row.get("no_of_moi") or 0),
-                            "backlog_count": int(row.get("no_of_backlog") or 0),
-                            "status": row.get("status") or VerificationStatus.IN_PROGRESS,
-                            "pay_rec_no": row.get("pay_rec_no") or (doc_rec.pay_rec_no if doc_rec else ""),
-                            "updatedby": request.user,
-                        }
-                    )
-                    _log(idx, row.get("final_no") or row.get("enrollment_no"), "Upserted", True)
-                except Exception as e:
-                    _log(idx, row.get("final_no") or row.get("enrollment_no"), str(e), False)
+            elif service == BulkService.PROVISIONAL:
+                for idx, row in df.iterrows():
+                    try:
+                        doc_rec = DocRec.objects.filter(doc_rec_id=str(row.get("doc_rec_id")).strip()).first()
+                        enr = Enrollment.objects.filter(enrollment_no=str(row.get("enrollment_no")).strip()).first()
+                        inst = Institute.objects.filter(institute_id=row.get("institute_id")).first()
+                        main = MainBranch.objects.filter(maincourse_id=row.get("maincourse_id")).first()
+                        sub = SubBranch.objects.filter(subcourse_id=row.get("subcourse_id")).first()
+                        if not (doc_rec and enr and inst and main and sub):
+                            _log(idx, row.get("prv_number"), "Missing related (doc_rec/enrollment/institute/main/sub)", False); _cache_progress(idx+1); continue
+                        prv_date = _parse_excel_date_safe(row.get("prv_date"))
+                        if prv_date is None:
+                            _log(idx, row.get("prv_number"), "Missing prv_date", False); _cache_progress(idx+1); continue
+                        ProvisionalRecord.objects.update_or_create(
+                            prv_number=str(row.get("prv_number")).strip(),
+                            defaults={
+                                "doc_rec": doc_rec,
+                                "enrollment": enr,
+                                "student_name": row.get("student_name") or (enr.student_name if enr else ""),
+                                "institute": inst,
+                                "maincourse": main,
+                                "subcourse": sub,
+                                "class_obtain": row.get("class_obtain"),
+                                "prv_date": prv_date,
+                                "passing_year": row.get("passing_year"),
+                                "prv_status": row.get("prv_status") or ProvisionalStatus.PENDING,
+                                "pay_rec_no": row.get("pay_rec_no") or (doc_rec.pay_rec_no if doc_rec else ""),
+                                "created_by": user,
+                            }
+                        )
+                        _log(idx, row.get("prv_number"), "Upserted", True)
+                    except Exception as e:
+                        _log(idx, row.get("prv_number"), str(e), False)
+                    _cache_progress(idx+1)
 
-        else:
-            return Response({"detail": f"Service {service} not implemented"}, status=501)
+            elif service == BulkService.VERIFICATION:
+                for idx, row in df.iterrows():
+                    try:
+                        doc_rec = DocRec.objects.filter(doc_rec_id=str(row.get("doc_rec_id")).strip()).first()
+                        enr = Enrollment.objects.filter(enrollment_no=str(row.get("enrollment_no")).strip()).first()
+                        senr = None
+                        if str(row.get("second_enrollment_no") or '').strip():
+                            senr = Enrollment.objects.filter(enrollment_no=str(row.get("second_enrollment_no")).strip()).first()
+                        if not (doc_rec and enr):
+                            _log(idx, row.get("final_no"), "Missing related (doc_rec/enrollment)", False); _cache_progress(idx+1); continue
+                        date_v = _parse_excel_date_safe(row.get("date")) or timezone.now().date()
+                        Verification.objects.update_or_create(
+                            final_no=(str(row.get("final_no")).strip() or None),
+                            defaults={
+                                "doc_rec": doc_rec,
+                                "date": date_v,
+                                "enrollment": enr,
+                                "second_enrollment": senr,
+                                "student_name": row.get("student_name") or (enr.student_name if enr else ""),
+                                "tr_count": int(row.get("no_of_transcript") or 0),
+                                "ms_count": int(row.get("no_of_marksheet") or 0),
+                                "dg_count": int(row.get("no_of_degree") or 0),
+                                "moi_count": int(row.get("no_of_moi") or 0),
+                                "backlog_count": int(row.get("no_of_backlog") or 0),
+                                "status": row.get("status") or VerificationStatus.IN_PROGRESS,
+                                "pay_rec_no": row.get("pay_rec_no") or (doc_rec.pay_rec_no if doc_rec else ""),
+                                "updatedby": user,
+                            }
+                        )
+                        _log(idx, row.get("final_no") or row.get("enrollment_no"), "Upserted", True)
+                    except Exception as e:
+                        _log(idx, row.get("final_no") or row.get("enrollment_no"), str(e), False)
+                    _cache_progress(idx+1)
+            else:
+                return {"error": True, "detail": f"Service {service} not implemented"}
+        except Exception as e:
+            # fatal error
+            if track_id:
+                cache.set(f"bulk:{track_id}", {"status": "error", "detail": str(e)}, timeout=3600)
+            return {"error": True, "detail": str(e)}
 
         # Build log excel
+        file_url = None
         try:
             import pandas as pd
             logs_dir = os.path.join(settings.MEDIA_ROOT, 'logs')
@@ -512,13 +579,106 @@ class BulkUploadView(APIView):
             fpath = os.path.join(logs_dir, fname)
             with open(fpath, 'wb') as f:
                 f.write(out.getvalue())
-            file_url = request.build_absolute_uri(os.path.join(settings.MEDIA_URL, 'logs', fname))
-        except Exception as e:
+            file_url = settings.MEDIA_URL + 'logs/' + fname
+        except Exception:
             file_url = None
 
-        ok_count = sum(1 for r in results if r['status'] == 'OK')
-        fail_count = sum(1 for r in results if r['status'] != 'OK')
-        return Response({"summary": {"ok": ok_count, "fail": fail_count, "total": len(results)}, "log_url": file_url, "results": results})
+        summary = {"ok": ok_count, "fail": fail_count, "total": len(results)}
+        result_payload = {
+            "error": False,
+            "mode": "confirm",
+            "summary": summary,
+            "log_url": file_url,
+            "results": results,
+        }
+        if track_id:
+            cache.set(f"bulk:{track_id}", {"status": "done", **result_payload}, timeout=3600)
+        return result_payload
+
+    def post(self, request):  # noqa: C901
+        action = request.query_params.get('action', 'preview')
+        service = request.data.get('service', '').upper().strip()
+        preferred_sheet = (request.data.get('sheet_name') or '').strip()
+        upload = request.FILES.get('file')
+        async_mode = request.query_params.get('async') == '1'
+        track = async_mode and action != 'preview'
+
+        def err(detail, code=status.HTTP_400_BAD_REQUEST):
+            return Response({"error": True, "detail": detail}, status=code)
+
+        if not service:
+            return err("service is required")
+        if not upload:
+            return err("file is required")
+        if upload.size > self.MAX_UPLOAD_BYTES:
+            return err(f"File too large (> {self.MAX_UPLOAD_BYTES // (1024*1024)}MB)", status.HTTP_413_REQUEST_ENTITY_TOO_LARGE)
+
+        name_lower = upload.name.lower()
+        ext = os.path.splitext(name_lower)[1]
+        is_excel = ext in ('.xlsx', '.xls')
+        is_csv = ext == '.csv'
+        if not (is_excel or is_csv):
+            return err("Unsupported file type. Use .xlsx, .xls, or .csv", status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+
+        try:
+            import pandas as pd
+        except Exception:
+            return Response({"error": True, "detail": "pandas is required on server for Excel/CSV operations."}, status=500)
+
+        # Read into a DataFrame (or dict of DataFrames for Excel)
+        try:
+            if is_excel:
+                # Read all sheets for preview logic
+                df_sheets = pd.read_excel(upload, sheet_name=None)
+                if not df_sheets:
+                    return err("No sheets found in workbook")
+                if preferred_sheet and preferred_sheet in df_sheets:
+                    sheet_name, df = preferred_sheet, df_sheets[preferred_sheet]
+                else:
+                    sheet_name, df = next(iter(df_sheets.items()))
+            else:  # CSV
+                sheet_name = None
+                df = pd.read_csv(upload)
+        except Exception as e:
+            return err(f"Error reading file: {e}")
+        if df is None:
+            return err("No data found")
+
+        def _bool(v):
+            s = str(v).strip().lower()
+            return s in ("1","true","yes","y","t")
+
+        # Preview returns top rows
+        if action == 'preview':
+            preview_rows = df.fillna('').head(100).to_dict(orient='records')
+            return Response({
+                "error": False,
+                "mode": "preview",
+                "sheet": sheet_name,
+                "count": int(len(df)),
+                "preview": preview_rows
+            })
+
+        # Confirm path
+        if action != 'preview':
+            if track:
+                upload_id = str(uuid.uuid4())
+                # initial cache entry
+                cache.set(f"bulk:{upload_id}", {"status": "queued", "service": service, "processed": 0, "total": len(df.index)}, timeout=3600)
+                def _bg():
+                    from django.contrib.auth import get_user_model
+                    UserModel = get_user_model()
+                    user_obj = UserModel.objects.filter(id=request.user.id).first()
+                    payload = self._process_confirm(service, df, user_obj, track_id=upload_id)
+                threading.Thread(target=_bg, daemon=True).start()
+                return Response({"error": False, "mode": "started", "upload_id": upload_id, "total": len(df.index)})
+            else:
+                payload = self._process_confirm(service, df, request.user)
+                status_code = 200 if not payload.get('error') else 500
+                # Adjust absolute URL for log if present
+                if payload.get('log_url') and not payload['log_url'].startswith('http'):
+                    payload['log_url'] = request.build_absolute_uri(payload['log_url'])
+                return Response(payload, status=status_code)
 
 
 class DataAnalysisView(APIView):

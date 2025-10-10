@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 import os
+import getpass
 
 class Command(BaseCommand):
     help = "Create or update a Django superuser from env vars or command args."
@@ -14,13 +15,22 @@ class Command(BaseCommand):
         User = get_user_model()
         username = options["username"]
         email = options["email"]
-        password = options["password"]
+        password = options["password"] or os.getenv("ADMIN_PASSWORD")
 
         if not password:
-            self.stdout.write(self.style.ERROR(
-                "No password provided. Set ADMIN_PASSWORD env var or pass --password."
-            ))
-            return
+            # Prompt interactively (hidden) if running in an interactive terminal
+            try:
+                password = getpass.getpass("Admin password (will not echo): ")
+                confirm = getpass.getpass("Confirm password: ")
+                if password != confirm:
+                    self.stdout.write(self.style.ERROR("Passwords do not match."))
+                    return
+                if len(password) < 8:
+                    self.stdout.write(self.style.ERROR("Password must be at least 8 characters."))
+                    return
+            except (EOFError, KeyboardInterrupt):
+                self.stdout.write(self.style.ERROR("Password input cancelled."))
+                return
 
         try:
             user = User.objects.filter(username=username).first()
@@ -29,8 +39,9 @@ class Command(BaseCommand):
                 user.is_active = True
                 user.is_staff = True
                 user.is_superuser = True
-                user.set_password(password)
-                user.save()
+                if password:
+                    user.set_password(password)
+                    user.save()
                 self.stdout.write(self.style.SUCCESS(f'Updated superuser "{username}".'))
             else:
                 User.objects.create_superuser(username=username, email=email, password=password)

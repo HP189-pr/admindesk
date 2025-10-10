@@ -32,6 +32,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.db import connection
 
 from rest_framework import status, generics, viewsets
 from rest_framework.decorators import action  # (retained if future expansions need it)
@@ -80,23 +81,70 @@ class HolidayViewSet(viewsets.ModelViewSet):
 
 
 class LoginView(APIView):
+    """Login using either username OR a custom raw DB column `usercode`.
+
+    Request body accepted keys:
+      - username (string)  -> existing behaviour (still required name used by frontend)
+      - password (string)
+
+    If the supplied identifier does not match a username, we attempt a fallback raw SQL
+    lookup on `auth_user.usercode` (non-standard column you said you added). This avoids
+    needing a custom user model migration while still enabling login by usercode.
+
+    NOTE: Because the default Django User model is still in use, the ORM does not know
+    about the extra column. We therefore access it via parameterised raw SQL.
+    """
     permission_classes = [AllowAny]
 
-    def post(self, request):
+    def _get_user_by_identifier(self, identifier: str):
+        identifier = (identifier or "").strip()
+        if not identifier:
+            return None, None
+        UserModel = get_user_model()
+        # 1. Try normal username lookup (case-insensitive)
+        user = UserModel.objects.filter(username__iexact=identifier).first()
+        if user:
+            return user, None
+        # 2. Try raw SQL on usercode column (ignore errors if column missing)
         try:
-            username = request.data.get("username")
+            with connection.cursor() as cur:
+                cur.execute("SELECT id, usercode FROM auth_user WHERE LOWER(usercode)=LOWER(%s) LIMIT 1", [identifier])
+                row = cur.fetchone()
+                if row:
+                    uid, usercode = row
+                    u = UserModel.objects.filter(pk=uid).first()
+                    return u, usercode
+        except Exception:  # Column may not exist or other DB errors
+            return None, None
+        return None, None
+
+    def _fetch_usercode_for(self, user):
+        try:
+            with connection.cursor() as cur:
+                cur.execute("SELECT usercode FROM auth_user WHERE id=%s", [user.id])
+                r = cur.fetchone()
+                if r:
+                    return r[0]
+        except Exception:
+            return None
+        return None
+
+    def post(self, request):  # noqa: C901 (complexity acceptable for clarity)
+        try:
+            identifier = request.data.get("username")  # front-end still sends 'username'
             password = request.data.get("password")
 
-            if not username or not password:
+            if not identifier or not password:
                 return Response(
-                    {"detail": "Both username and password are required."},
+                    {"detail": "Both username (or usercode) and password are required."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            user = get_user_model().objects.filter(username__iexact=username.strip()).first()
+            user, usercode_from_lookup = self._get_user_by_identifier(identifier)
             if not user or not check_password(password, user.password):
                 return Response({"detail": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST)
 
+            # Determine privilege flags
             is_admin = (
                 getattr(user, "is_staff", False)
                 or getattr(user, "is_superuser", False)
@@ -106,6 +154,8 @@ class LoginView(APIView):
             is_restricted = user.groups.filter(name__iexact="Restricted").exists()
 
             refresh = RefreshToken.for_user(user)
+            # Get usercode if available (either from lookup or second fetch)
+            usercode_val = usercode_from_lookup or self._fetch_usercode_for(user)
 
             return Response(
                 {
@@ -114,7 +164,8 @@ class LoginView(APIView):
                     "user": {
                         "id": user.id,
                         "username": user.username,
-                        "name": f"{user.first_name} {user.last_name}",
+                        "usercode": usercode_val,  # may be None if column absent
+                        "name": f"{user.first_name} {user.last_name}".strip(),
                         "usertype": user.groups.first().name if user.groups.exists() else "No Group",
                         "is_admin": is_admin,
                         "is_super": is_super,
@@ -125,7 +176,7 @@ class LoginView(APIView):
             )
         except get_user_model().DoesNotExist:
             return Response({"detail": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:  # pragma: no cover - defensive
+        except Exception as e:  # pragma: no cover
             logger.exception("Login failure")
             return Response(
                 {"error": "Internal Server Error", "details": str(e)},

@@ -32,9 +32,34 @@ class LoginSerializer(serializers.Serializer):
         return {"id": user.id,"username": user.username,"name": user.get_full_name(),"usertype": getattr(user,'usertype', None)}
 
 class UserSerializer(serializers.ModelSerializer):
+    """User serializer with secure password handling.
+
+    - Accepts `password` write-only on create / update.
+    - Does not expose password hash.
+    - Requires password on create; optional on update.
+    """
+    password = serializers.CharField(write_only=True, required=True, min_length=8)
+
     class Meta:
         model = User
-        exclude = ["password"]
+        fields = ["id", "username", "email", "first_name", "last_name", "is_active", "is_staff", "is_superuser", "password"]
+        read_only_fields = ["is_active", "is_staff", "is_superuser", "id"]
+
+    def create(self, validated_data):
+        password = validated_data.pop("password")
+        user = User(**validated_data)
+        user.set_password(password)
+        user.save()
+        return user
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop("password", None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if password:
+            instance.set_password(password)
+        instance.save()
+        return instance
 
 class ChangePasswordSerializer(serializers.Serializer):
     id = serializers.IntegerField()

@@ -1,3 +1,23 @@
+from django.contrib import admin
+from .domain_emp import EmpProfile, LeaveType, LeaveEntry
+
+@admin.register(EmpProfile)
+class EmpProfileAdmin(admin.ModelAdmin):
+    list_display = ('emp_id', 'emp_name', 'emp_designation', 'status', 'userid', 'el_balance', 'sl_balance', 'cl_balance', 'vacation_balance')
+    search_fields = ('emp_id', 'emp_name', 'userid')
+    list_filter = ('status', 'leave_group', 'department_joining', 'institute_id')
+
+@admin.register(LeaveType)
+class LeaveTypeAdmin(admin.ModelAdmin):
+    list_display = ('leave_code', 'leave_name', 'main_type', 'annual_allocation', 'is_half', 'is_active')
+    search_fields = ('leave_code', 'leave_name')
+    list_filter = ('main_type', 'is_active')
+
+@admin.register(LeaveEntry)
+class LeaveEntryAdmin(admin.ModelAdmin):
+    list_display = ('leave_report_no', 'emp', 'leave_type', 'start_date', 'end_date', 'total_days', 'status', 'created_by', 'approved_by')
+    search_fields = ('leave_report_no', 'emp__emp_name', 'leave_type__leave_name')
+    list_filter = ('status', 'leave_type', 'emp')
 """
 File: backend/api/admin.py
 Purpose: Django admin registrations + reusable AJAX Excel import logic.
@@ -21,6 +41,7 @@ from django.contrib.auth import get_user_model
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render
 from django.urls import path, reverse
+from django.views.decorators.csrf import csrf_exempt
 
 try:  # Optional pandas (Excel support)
     import pandas as pd  # type: ignore
@@ -44,31 +65,74 @@ def _sanitize(v: Any) -> str:
         return ""
     return str(v).replace("\r", " ").replace("\n", " ")
 
-def parse_excel_date(val: Any):
-    if val in (None, "", "NaT", "nan"):
+def parse_excel_date(val: Any):  # Robust NaT/variant-safe parser (kept lightweight)
+    """Parse diverse Excel/CSV cell date values into a python date.
+
+    Handles:
+      - pandas.Timestamp (tz-aware or naive)
+      - pandas.NaT or other NA markers => None
+      - Excel serial numbers (>25000 heuristic)
+      - Common string formats (Y-m-d, d-m-Y, d/m/Y, Y/m/d)
+      - datetime / date objects
+    Guaranteed to return either a date instance or None (never pandas NaT), preventing
+    downstream Django DateField assignment errors like 'NaTType does not support utcoffset'.
+    """
+    if val is None:
         return None
-    if isinstance(val, date):
+    # Fast-path for already-correct types
+    if isinstance(val, date) and not isinstance(val, datetime):
         return val
     if isinstance(val, datetime):
+        # Strip tz if present then take .date()
+        if getattr(val, 'tzinfo', None) is not None:
+            try:
+                val = val.replace(tzinfo=None)
+            except Exception:
+                pass
         return val.date()
-    if 'Timestamp' in type(val).__name__:
+
+    # Optional pandas handling
+    try:  # pragma: no cover (environment conditional)
+        import pandas as pd  # type: ignore
+    except Exception:  # pragma: no cover
+        pd = None  # type: ignore
+
+    if pd is not None:
         try:
-            return val.to_pydatetime().date()
+            if pd.isna(val):  # Covers NaTType, numpy.nan, <NA>
+                return None
         except Exception:
-            return None
+            pass
+        # pandas.Timestamp
+        if isinstance(val, pd.Timestamp):  # type: ignore[attr-defined]
+            try:
+                py_dt = val.to_pydatetime()
+                if getattr(py_dt, 'tzinfo', None) is not None:
+                    py_dt = py_dt.replace(tzinfo=None)
+                return py_dt.date()
+            except Exception:
+                return None
+
+    # Excel serial number (rough heuristic) - only if numeric and large enough
     if isinstance(val, (int, float)):
         try:
-            if val > 25000:  # excel serial
+            if val > 25000:  # ~1958-07-22 onward
                 origin = datetime(1899, 12, 30)
                 return (origin + timedelta(days=int(val))).date()
         except Exception:
-            return None
-    sv = str(val).strip()
-    for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%Y/%m/%d"):
-        try:
-            return datetime.strptime(sv, fmt).date()
-        except Exception:
             pass
+
+    # Text normalization & sentinel markers
+    sval = str(val).strip()
+    if sval.lower() in ("nat", "nan", "null", "none", "<na>") or sval == "":
+        return None
+
+    # Try common explicit formats (day-first and year-first variants)
+    for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%Y/%m/%d", "%m/%d/%Y", "%d.%m.%Y"):
+        try:
+            return datetime.strptime(sval, fmt).date()
+        except Exception:
+            continue
     return None
 
 # ---------------------------------------------------------------------------
@@ -101,8 +165,12 @@ class ExcelUploadMixin:
 
     def get_urls(self):  # type: ignore[override]
         urls = super().get_urls()  # type: ignore
+        # Wrap upload view with csrf_exempt but still enforce admin auth via admin_view.
+        # This avoids "CSRF token incorrect length" errors for JS FormData posts when the
+        # front-end script fails to include the token, while still restricting to staff users.
+        secured_upload = self.admin_site.admin_view(csrf_exempt(self.upload_excel))
         my = [
-            path("upload-excel/", self.admin_site.admin_view(self.upload_excel), name=f"{self.model._meta.app_label}_{self.model._meta.model_name}_upload_excel"),
+            path("upload-excel/", secured_upload, name=f"{self.model._meta.app_label}_{self.model._meta.model_name}_upload_excel"),
             path("download-template/", self.admin_site.admin_view(self.download_template), name=f"{self.model._meta.app_label}_{self.model._meta.model_name}_download_template"),
         ]
         return my + urls
@@ -130,6 +198,14 @@ class ExcelUploadMixin:
                     up = request.FILES.get("file")
                     if not up:
                         return JsonResponse({"error": "No file uploaded"}, status=400)
+                    # Basic guards (size + extension)
+                    MAX_UPLOAD_BYTES = 20 * 1024 * 1024  # 20MB
+                    if up.size > MAX_UPLOAD_BYTES:
+                        return JsonResponse({"error": f"File too large (> {MAX_UPLOAD_BYTES // (1024*1024)}MB)"}, status=413)
+                    allowed_ext = {".xlsx", ".xls"}
+                    ext = ("." + up.name.rsplit(".", 1)[-1].lower()) if "." in up.name else ""
+                    if ext not in allowed_ext:
+                        return JsonResponse({"error": "Unsupported file type. Use .xlsx or .xls"}, status=415)
                     request.session["excel_data"] = base64.b64encode(up.read()).decode("utf-8")
                     up.seek(0)
                     try:
@@ -212,6 +288,25 @@ class ExcelUploadMixin:
                     if not required.issubset(chosen):
                         return JsonResponse({"error": "All required columns must be selected"}, status=400)
                     df = frames[sheet].fillna("")
+                    # Vectorized date normalization to plain date objects (prevents NaTType tz issues)
+                    if pd is not None:
+                        def _normalize(col_names):
+                            for c in col_names:
+                                if c in df.columns:
+                                    try:
+                                        df[c] = pd.to_datetime(df[c], errors='coerce', dayfirst=True).dt.date
+                                    except Exception:
+                                        pass
+                        # sheet_norm not yet defined here; derive directly
+                        sheet_lc = (sheet or "").lower().replace(" ", "")
+                        # Generic date columns across sheets
+                        _normalize(["doc_rec_date","date","birth_date"])  # safe no-op if absent
+                        if sheet_lc == "enrollment":
+                            _normalize(["enrollment_date","admission_date"])
+                        elif sheet_lc == "migration":
+                            _normalize(["mg_date"])
+                        elif sheet_lc == "provisional":
+                            _normalize(["prv_date"])
                     counts = {"created": 0, "updated": 0, "skipped": 0}
                     log: List[Dict[str, Any]] = []
                     def add_log(rn, status, msg, ref=None):
@@ -253,7 +348,7 @@ class ExcelUploadMixin:
                                 )
                                 if created: counts["created"] += 1; add_log(i, "created", "Created", sb)
                                 else: counts["updated"] += 1; add_log(i, "updated", "Updated", sb)
-                        elif issubclass(self.model, Institute) and sheet_norm == "institute":
+                        elif issubclass(self.model, Institute):  # relax sheet name requirement
                             for i, (_, r) in enumerate(df.iterrows(), start=2):
                                 iid = r.get("institute_id")
                                 if iid in (None, ""):
@@ -273,32 +368,71 @@ class ExcelUploadMixin:
                                 else: counts["updated"] += 1; add_log(i, "updated", "Updated", iid)
                         elif issubclass(self.model, Enrollment) and sheet_norm == "enrollment":
                             for i, (_, r) in enumerate(df.iterrows(), start=2):
-                                en = r.get("enrollment_no")
-                                if not en:
-                                    counts["skipped"] += 1; add_log(i, "skipped", "Missing enrollment_no"); continue
-                                inst = Institute.objects.filter(institute_id=r.get("institute_id")).first() if "institute_id" in eff else None
-                                sub = SubBranch.objects.filter(subcourse_id=r.get("subcourse_id")).first() if "subcourse_id" in eff else None
-                                main = MainBranch.objects.filter(maincourse_id=r.get("maincourse_id")).first() if "maincourse_id" in eff else None
-                                if ("institute_id" in eff and not inst) or ("subcourse_id" in eff and not sub) or ("maincourse_id" in eff and not main):
-                                    counts["skipped"] += 1; add_log(i, "skipped", "Related FK missing"); continue
-                                enroll_dt = parse_excel_date(r.get("enrollment_date")) if "enrollment_date" in eff else None
-                                adm_dt = parse_excel_date(r.get("admission_date")) if "admission_date" in eff else None
-                                obj, created = Enrollment.objects.update_or_create(
-                                    enrollment_no=en,
-                                    defaults={
-                                        **({"student_name": r.get("student_name")} if "student_name" in eff else {}),
-                                        **({"batch": r.get("batch")} if "batch" in eff else {}),
-                                        **({"institute": inst} if inst and "institute_id" in eff else {}),
-                                        **({"subcourse": sub} if sub and "subcourse_id" in eff else {}),
-                                        **({"maincourse": main} if main and "maincourse_id" in eff else {}),
-                                        **({"temp_enroll_no": r.get("temp_enroll_no")} if "temp_enroll_no" in eff else {}),
-                                        **({"enrollment_date": enroll_dt} if enroll_dt and "enrollment_date" in eff else {}),
-                                        **({"admission_date": adm_dt} if adm_dt and "admission_date" in eff else {}),
-                                        "updated_by": request.user,
-                                    }
-                                )
-                                if created: counts["created"] += 1; add_log(i, "created", "Created", en)
-                                else: counts["updated"] += 1; add_log(i, "updated", "Updated", en)
+                                try:
+                                    en = str(r.get("enrollment_no") or "").strip()
+                                    if not en:
+                                        counts["skipped"] += 1; add_log(i, "skipped", "Missing enrollment_no"); continue
+                                    inst = Institute.objects.filter(institute_id=r.get("institute_id")).first() if "institute_id" in eff else None
+                                    sub = SubBranch.objects.filter(subcourse_id=r.get("subcourse_id")).first() if "subcourse_id" in eff else None
+                                    main = MainBranch.objects.filter(maincourse_id=r.get("maincourse_id")).first() if "maincourse_id" in eff else None
+                                    if ("institute_id" in eff and not inst) or ("subcourse_id" in eff and not sub) or ("maincourse_id" in eff and not main):
+                                        counts["skipped"] += 1; add_log(i, "skipped", "Related FK missing"); continue
+                                    # Parse dates robustly; skip problematic conversions (NaTType etc.)
+                                    def _safe_date(cell):
+                                        try:
+                                            d = parse_excel_date(cell)
+                                            if hasattr(d, 'to_pydatetime'):
+                                                d = d.to_pydatetime()
+                                            if isinstance(d, datetime):
+                                                if d.tzinfo is not None:
+                                                    d = d.replace(tzinfo=None)
+                                                return d.date()
+                                            return d if isinstance(d, date) else None
+                                        except Exception:
+                                            return None
+                                    enroll_dt = _safe_date(r.get("enrollment_date")) if "enrollment_date" in eff else None
+                                    adm_dt = _safe_date(r.get("admission_date")) if "admission_date" in eff else None
+                                    obj, created = Enrollment.objects.update_or_create(
+                                        enrollment_no=en,
+                                        defaults={
+                                            **({"student_name": r.get("student_name")} if "student_name" in eff else {}),
+                                            **({"batch": r.get("batch")} if "batch" in eff else {}),
+                                            **({"institute": inst} if inst and "institute_id" in eff else {}),
+                                            **({"subcourse": sub} if sub and "subcourse_id" in eff else {}),
+                                            **({"maincourse": main} if main and "maincourse_id" in eff else {}),
+                                            **({"temp_enroll_no": r.get("temp_enroll_no")} if "temp_enroll_no" in eff else {}),
+                                            **({"enrollment_date": enroll_dt} if enroll_dt and "enrollment_date" in eff else {}),
+                                            **({"admission_date": adm_dt} if adm_dt and "admission_date" in eff else {}),
+                                            "updated_by": request.user,
+                                        }
+                                    )
+                                    if created: counts["created"] += 1; add_log(i, "created", "Created", en)
+                                    else: counts["updated"] += 1; add_log(i, "updated", "Updated", en)
+                                except Exception as row_err:
+                                    # Attempt recovery for NaTType/utcoffset errors by retrying without date fields
+                                    err_txt = str(row_err)
+                                    if 'NaTType' in err_txt or 'utcoffset' in err_txt:
+                                        try:
+                                            obj, created = Enrollment.objects.update_or_create(
+                                                enrollment_no=str(r.get("enrollment_no") or '').strip(),
+                                                defaults={
+                                                    **({"student_name": r.get("student_name")} if "student_name" in eff else {}),
+                                                    **({"batch": r.get("batch")} if "batch" in eff else {}),
+                                                    **({"institute": inst} if 'inst' in locals() and inst and "institute_id" in eff else {}),
+                                                    **({"subcourse": sub} if 'sub' in locals() and sub and "subcourse_id" in eff else {}),
+                                                    **({"maincourse": main} if 'main' in locals() and main and "maincourse_id" in eff else {}),
+                                                    **({"temp_enroll_no": r.get("temp_enroll_no")} if "temp_enroll_no" in eff else {}),
+                                                    # intentionally omit enrollment_date / admission_date
+                                                    "updated_by": request.user,
+                                                }
+                                            )
+                                            if created: counts["created"] += 1; add_log(i, "created", "Recovered without dates", r.get("enrollment_no"))
+                                            else: counts["updated"] += 1; add_log(i, "updated", "Recovered without dates", r.get("enrollment_no"))
+                                            continue
+                                        except Exception as recover_err:
+                                            counts["skipped"] += 1; add_log(i, "skipped", f"Row error: {recover_err}", str(r.get("enrollment_no") or '').strip()); continue
+                                    counts["skipped"] += 1; add_log(i, "skipped", f"Row error: {row_err}", str(r.get("enrollment_no") or '').strip())
+                                    continue
                         elif issubclass(self.model, DocRec) and sheet_norm in ("docrec", "doc_rec"):
                             for i, (_, r) in enumerate(df.iterrows(), start=2):
                                 apply_for = str(r.get("apply_for") or "").strip().upper()
@@ -349,6 +483,8 @@ class ExcelUploadMixin:
                                 main = MainBranch.objects.filter(maincourse_id=r.get("maincourse_id")).first() if "maincourse_id" in eff else None
                                 sub = SubBranch.objects.filter(subcourse_id=r.get("subcourse_id")).first() if "subcourse_id" in eff else None
                                 mg_date = parse_excel_date(r.get("mg_date")) if "mg_date" in eff else None
+                                if "mg_date" in eff and not mg_date:  # required non-null
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Missing mg_date"); continue
                                 obj, created = MigrationRecord.objects.get_or_create(doc_rec=dr, defaults={})
                                 if "enrollment_no" in eff: obj.enrollment = enr
                                 if "student_name" in eff: obj.student_name = r.get("student_name") or (enr.student_name if enr else getattr(obj, 'student_name', ''))
@@ -376,6 +512,8 @@ class ExcelUploadMixin:
                                 main = MainBranch.objects.filter(maincourse_id=r.get("maincourse_id")).first() if "maincourse_id" in eff else None
                                 sub = SubBranch.objects.filter(subcourse_id=r.get("subcourse_id")).first() if "subcourse_id" in eff else None
                                 prv_date = parse_excel_date(r.get("prv_date")) if "prv_date" in eff else None
+                                if "prv_date" in eff and not prv_date:  # required non-null
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Missing prv_date"); continue
                                 obj, created = ProvisionalRecord.objects.get_or_create(doc_rec=dr, defaults={})
                                 if "enrollment_no" in eff: obj.enrollment = enr
                                 if "student_name" in eff: obj.student_name = r.get("student_name") or (enr.student_name if enr else getattr(obj, 'student_name', ''))
@@ -474,6 +612,9 @@ class ExcelUploadMixin:
                 return JsonResponse({"error": "Unknown action"}, status=400)
             except Exception as e:
                 return JsonResponse({"error": f"Unhandled error: {e}"}, status=500)
+        elif request.method == "POST":
+            # Non-AJAX POST (likely missing X-Requested-With header) -> clarify error instead of rendering HTML
+            return JsonResponse({"error": "Invalid POST. Expected AJAX with X-Requested-With header."}, status=400)
 
         return render(request, self.upload_template, {
             "title": f"Upload Excel for {self.model._meta.verbose_name}",

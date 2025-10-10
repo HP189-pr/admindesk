@@ -27,10 +27,8 @@ from .domain_courses import __all__ as _courses_all  # type: ignore
 from .domain_enrollment import __all__ as _enroll_all  # type: ignore
 from .domain_documents import __all__ as _docs_all  # type: ignore
 from .domain_verification import __all__ as _ver_all  # type: ignore
-
-# Import leave management models directly
-from .domain_emp import EmpProfile, LeaveType, LeaveEntry
-__all__ = [*_core_all, *_courses_all, *_enroll_all, *_docs_all, *_ver_all, 'EmpProfile', 'LeaveType', 'LeaveEntry', 'User']
+from .domain_emp import __all__ as _ver_all  # type: ignore
+__all__ = [*_core_all, *_courses_all, *_enroll_all, *_docs_all, *_ver_all, 'User']
 
 # Backward compatibility: expose Django's default User model under expected name
 User = DjangoAuthUser
