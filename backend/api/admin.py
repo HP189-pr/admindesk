@@ -1,11 +1,14 @@
 from django.contrib import admin
-from .domain_emp import EmpProfile, LeaveType, LeaveEntry
+from .domain_emp import EmpProfile, LeaveType, LeaveEntry, LeavePeriod, LeaveAllocation
+from .domain_emp import LeaveBalanceSnapshot
 
 @admin.register(EmpProfile)
 class EmpProfileAdmin(admin.ModelAdmin):
     list_display = ('emp_id', 'emp_name', 'emp_designation', 'status', 'userid', 'el_balance', 'sl_balance', 'cl_balance', 'vacation_balance')
     search_fields = ('emp_id', 'emp_name', 'userid')
     list_filter = ('status', 'leave_group', 'department_joining', 'institute_id')
+    # allow inline management of allocations and leave entries from the employee page
+    # Inlines are defined later and injected here via ModelAdmin.inlines assignment below.
 
 @admin.register(LeaveType)
 class LeaveTypeAdmin(admin.ModelAdmin):
@@ -18,6 +21,49 @@ class LeaveEntryAdmin(admin.ModelAdmin):
     list_display = ('leave_report_no', 'emp', 'leave_type', 'start_date', 'end_date', 'total_days', 'status', 'created_by', 'approved_by')
     search_fields = ('leave_report_no', 'emp__emp_name', 'leave_type__leave_name')
     list_filter = ('status', 'leave_type', 'emp')
+
+
+@admin.register(LeavePeriod)
+class LeavePeriodAdmin(admin.ModelAdmin):
+    list_display = ('period_name', 'start_date', 'end_date', 'is_active')
+    search_fields = ('period_name',)
+    list_filter = ('is_active',)
+
+
+@admin.register(LeaveAllocation)
+class LeaveAllocationAdmin(admin.ModelAdmin):
+    list_display = ('profile', 'leave_type', 'period', 'allocated')
+    search_fields = ('profile__emp_name', 'leave_type__leave_name')
+    list_filter = ('period', 'leave_type')
+
+
+@admin.register(LeaveBalanceSnapshot)
+class LeaveBalanceSnapshotAdmin(admin.ModelAdmin):
+    list_display = ('profile', 'balance_date', 'el_balance', 'sl_balance', 'cl_balance', 'vacation_balance')
+    search_fields = ('profile__emp_id', 'profile__emp_name')
+    list_filter = ('balance_date',)
+
+
+# Inline admin registrations so allocations and leave entries can be edited on EmpProfile page
+from .domain_emp import LeaveEntry, LeaveAllocation
+
+
+class LeaveAllocationInline(admin.TabularInline):
+    model = LeaveAllocation
+    extra = 0
+    fields = ('leave_type', 'period', 'allocated')
+    readonly_fields = ()
+
+
+class LeaveEntryInline(admin.TabularInline):
+    model = LeaveEntry
+    extra = 0
+    fields = ('leave_report_no', 'leave_type', 'start_date', 'end_date', 'total_days', 'status')
+    readonly_fields = ('leave_report_no', 'total_days')
+
+
+# Attach inlines to EmpProfileAdmin (ensure tuple concatenation)
+EmpProfileAdmin.inlines = getattr(EmpProfileAdmin, 'inlines', ()) + (LeaveAllocationInline, LeaveEntryInline)
 """
 File: backend/api/admin.py
 Purpose: Django admin registrations + reusable AJAX Excel import logic.

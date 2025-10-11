@@ -50,6 +50,9 @@ try:
     router.register(r'inst-verification-student', InstVerificationStudentViewSet, basename='inst-verification-student')
     router.register(r'eca', EcaViewSet, basename='eca')
     router.register(r'student-profiles', StudentProfileViewSet, basename='student-profiles')
+    # Leave management endpoints
+    from .views_emp import LeavePeriodListView, LeaveAllocationListView, MyLeaveBalanceView
+    # Register list/create for leave periods via explicit path below
 
     urlpatterns = [
         # Include all registered routes automatically
@@ -74,6 +77,9 @@ try:
     path('verify-admin-panel-password/', VerifyAdminPanelPasswordView.as_view(), name='verify-admin-panel-password'),
         path('profile-picture/', ProfilePictureView.as_view(), name='profile-picture'),
     path('my-navigation/', MyNavigationView.as_view(), name='my-navigation'),
+    path('leaveperiods/', LeavePeriodListView.as_view(), name='leaveperiods'),
+    path('leave-allocations/', LeaveAllocationListView.as_view(), name='leave-allocations'),
+    path('my-leave-balance/', MyLeaveBalanceView.as_view(), name='my-leave-balance'),
 
         # User API endpoints
         path("users/", UserAPIView.as_view(), name="user-list-create"),

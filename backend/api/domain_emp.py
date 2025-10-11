@@ -85,4 +85,102 @@ class LeaveEntry(models.Model):
 
 	def __str__(self):
 		return f"{self.leave_report_no} - {self.emp.emp_name} ({self.leave_type.leave_name})"
+
+
+class LeavePeriod(models.Model):
+	period_name = models.CharField(max_length=50)
+	start_date = models.DateField()
+	end_date = models.DateField()
+	description = models.TextField(blank=True, null=True)
+	is_active = models.BooleanField(default=True)
+	created_at = models.DateTimeField(default=timezone.now)
+	updated_at = models.DateTimeField(auto_now=True)
+
+	def __str__(self):
+		return f"{self.period_name} ({self.start_date} - {self.end_date})"
+
+
+class LeaveAllocation(models.Model):
+	profile = models.ForeignKey(EmpProfile, on_delete=models.CASCADE, related_name='leave_allocations')
+	leave_type = models.ForeignKey(LeaveType, to_field='leave_code', db_column='leave_code', on_delete=models.PROTECT, related_name='allocations')
+	period = models.ForeignKey(LeavePeriod, on_delete=models.CASCADE, related_name='allocations')
+	allocated = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+	created_at = models.DateTimeField(default=timezone.now)
+	updated_at = models.DateTimeField(auto_now=True)
+
+	class Meta:
+		unique_together = ('profile', 'leave_type', 'period')
+
+	def used_days(self):
+		# Calculate used days for this allocation by summing overlap of approved leave entries
+		entries = LeaveEntry.objects.filter(
+			emp=self.profile,
+			leave_type=self.leave_type,
+			status__iexact='Approved',
+			end_date__gte=self.period.start_date,
+			start_date__lte=self.period.end_date,
+		)
+		total = 0.0
+		for e in entries:
+			# compute overlap days between entry and period
+			start = max(e.start_date, self.period.start_date)
+			end = min(e.end_date, self.period.end_date)
+			if end >= start:
+				overlap_days = (end - start).days + 1
+				# account for leave type day_value (half-day support)
+				day_value = float(e.leave_type.day_value if e.leave_type else 1)
+				total += overlap_days * day_value
+		return float(total)
+
+	@property
+	def balance(self):
+		return float(self.allocated) - self.used_days()
+
+	def __str__(self):
+		return f"{self.profile} - {self.leave_type} ({self.period.period_name})"
+
+
+# Auto-seed allocations when a LeavePeriod becomes active
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+
+@receiver(post_save, sender=LeavePeriod)
+def seed_allocations_for_period(sender, instance: LeavePeriod, created, **kwargs):
+	# only seed when a period is active
+	if not instance.is_active:
+		return
+	from .domain_emp import LeaveAllocation, LeaveType, EmpProfile
+	types = LeaveType.objects.filter(is_active=True)
+	profiles = EmpProfile.objects.all()
+	for p in profiles:
+		for lt in types:
+			if not LeaveAllocation.objects.filter(profile=p, leave_type=lt, period=instance).exists():
+				try:
+					LeaveAllocation.objects.create(profile=p, leave_type=lt, period=instance, allocated=(lt.annual_allocation or 0))
+				except Exception:
+					# ignore creation errors to avoid breaking admin save
+					continue
 #employee table, leave table, leavetype table 
+
+
+class LeaveBalanceSnapshot(models.Model):
+	"""
+	A snapshot of an employee's previous balances taken at a specific date.
+	This is used to record 'previous balance on particular date' that the user described.
+	Fields store balances for the common leave types present on EmpProfile.
+	"""
+	profile = models.ForeignKey(EmpProfile, on_delete=models.CASCADE, related_name='balance_snapshots')
+	balance_date = models.DateField()
+	el_balance = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+	sl_balance = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+	cl_balance = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+	vacation_balance = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+	note = models.TextField(blank=True, null=True)
+	created_at = models.DateTimeField(default=timezone.now)
+
+	class Meta:
+		unique_together = ('profile', 'balance_date')
+
+	def __str__(self):
+		return f"Snapshot {self.profile.emp_id} @ {self.balance_date}"

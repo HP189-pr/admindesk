@@ -13,12 +13,22 @@ const EmpLeavePage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [filterEmp, setFilterEmp] = useState('');
+  const [myBalances, setMyBalances] = useState([]);
+  const [allocations, setAllocations] = useState([]);
 
   useEffect(() => {
     axios.get('/api/leavetype/').then(r => setLeaveTypes(r.data || [])).catch(() => setLeaveTypes([]));
     axios.get('/api/empprofile/').then(r => { setProfiles(r.data || []); const me = (r.data || []).find(p => p.userid === user?.id); setProfile(me || null); }).catch(() => setProfiles([]));
     axios.get('/api/leaveentry/').then(r => setLeaveEntries(r.data || [])).catch(() => setLeaveEntries([]));
+    axios.get('/api/my-leave-balance/').then(r => setMyBalances(r.data || [])).catch(() => setMyBalances([]));
   }, [user]);
+
+  useEffect(() => {
+    // load allocations only when report panel is active
+    if (selectedPanel === 'Leave Report') {
+      axios.get('/api/leave-allocations/').then(r => setAllocations(r.data || [])).catch(() => setAllocations([]));
+    }
+  }, [selectedPanel]);
 
   const PANELS = ['Entry Leave', 'Leave Report', 'Balance Certificate'];
   const [selectedPanel, setSelectedPanel] = useState(PANELS[0]);
@@ -184,25 +194,23 @@ const EmpLeavePage = () => {
                   <table className="min-w-full text-sm">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="text-left py-2 px-3">Report No</th>
                         <th className="text-left py-2 px-3">Employee</th>
-                        <th className="text-left py-2 px-3">Type</th>
-                        <th className="text-left py-2 px-3">Dates</th>
-                        <th className="text-left py-2 px-3">Days</th>
-                        <th className="text-left py-2 px-3">Status</th>
+                        <th className="text-left py-2 px-3">Leave Type</th>
+                        <th className="text-left py-2 px-3">Allocated</th>
+                        <th className="text-left py-2 px-3">Used</th>
+                        <th className="text-left py-2 px-3">Balance</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredEntries.length === 0 ? (
-                        <tr><td colSpan={6} className="py-6 text-center text-gray-500">No records</td></tr>
-                      ) : filteredEntries.map((le) => (
-                        <tr key={le.id} className="border-b hover:bg-gray-50">
-                          <td className="py-2 px-3">{le.leave_report_no}</td>
-                          <td className="py-2 px-3">{le.emp_name}</td>
-                          <td className="py-2 px-3">{le.leave_type_name}</td>
-                          <td className="py-2 px-3">{le.start_date} - {le.end_date}</td>
-                          <td className="py-2 px-3">{le.total_days}</td>
-                          <td className="py-2 px-3">{le.status}</td>
+                      {allocations.length === 0 ? (
+                        <tr><td colSpan={5} className="py-6 text-center text-gray-500">No allocations / insufficient privileges</td></tr>
+                      ) : allocations.map((a) => (
+                        <tr key={`${a.profile}-${a.leave_type}`} className="border-b hover:bg-gray-50">
+                          <td className="py-2 px-3">{a.profile}</td>
+                          <td className="py-2 px-3">{a.leave_type_name}</td>
+                          <td className="py-2 px-3">{a.allocated}</td>
+                          <td className="py-2 px-3">{a.used}</td>
+                          <td className="py-2 px-3">{a.balance}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -213,16 +221,19 @@ const EmpLeavePage = () => {
 
             {selectedPanel === 'Balance Certificate' && (
               <div>
-                {profile ? (
-                  <ul className="list-inside">
-                    <li className="mb-1">Employee: <b>{profile.emp_name} ({profile.emp_id})</b></li>
-                    <li className="mb-1">Earned Leave: {profile.el_balance}</li>
-                    <li className="mb-1">Sick Leave: {profile.sl_balance}</li>
-                    <li className="mb-1">Casual Leave: {profile.cl_balance}</li>
-                    <li className="mb-1">Vacation: {profile.vacation_balance}</li>
-                  </ul>
+                {myBalances.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {myBalances.map(b => (
+                      <div key={b.leave_type} className="border rounded p-2">
+                        <div className="text-sm font-semibold">{b.leave_type_name} ({b.leave_type})</div>
+                        <div className="text-xs">Allocated: {b.allocated}</div>
+                        <div className="text-xs">Used: {b.used}</div>
+                        <div className="text-xs">Balance: {b.balance}</div>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
-                  <div className="text-gray-500">No profile selected</div>
+                  <div className="text-gray-500">No leave allocations found for current period</div>
                 )}
               </div>
             )}
