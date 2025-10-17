@@ -108,9 +108,10 @@ const AddModule = () => {
       let token = localStorage.getItem("access_token") || await refreshToken();
       if (!token) return;
 
+      // The API exposes menus as a top-level resource; create via /api/menus/ and pass module id
       const response = await axios.post(
-        `http://127.0.0.1:8000/api/modules/${selectedModule}/menus/`,
-        { name: newMenuName },
+        "http://127.0.0.1:8000/api/menus/",
+        { name: newMenuName, module: selectedModule },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -118,7 +119,9 @@ const AddModule = () => {
       setNewMenuName("");
       fetchMenus(selectedModule); // Refresh the menu list for the module
     } catch (error) {
-      console.error("❌ Error adding menu:", error.response?.data || error.message);
+      const serverMsg = error?.response?.data ? JSON.stringify(error.response.data) : (error.message || 'Error adding menu');
+      console.error("❌ Error adding menu:", serverMsg);
+      alert(`Add menu failed: ${serverMsg}`);
     }
   };
 

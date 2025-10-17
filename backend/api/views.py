@@ -29,6 +29,8 @@ from .models import (
     User, DocRec, MigrationRecord, ProvisionalRecord, InstVerificationMain, InstVerificationStudent, Verification, Eca,
     StudentProfile, MigrationStatus, ProvisionalStatus, VerificationStatus, PayBy,
 )
+from .models import MailStatus
+from .models import EmpProfile, LeaveType, LeaveEntry
 # NOTE: Course / institute / enrollment related models moved to views_courses module for viewsets, but
 # this file still references them in bulk upload & data analysis logic. Import them explicitly here.
 from .models import Institute, MainBranch, SubBranch, Enrollment  # noqa: E402
@@ -199,6 +201,9 @@ class BulkService(str):
     VERIFICATION = 'VERIFICATION'
     INSTITUTE = 'INSTITUTE'
     DEGREE = 'DEGREE'  # not implemented
+    # Added services
+    EMP_PROFILE = 'EMP_PROFILE'
+    LEAVE = 'LEAVE'
 
 
 def _parse_excel_date_safe(val):
@@ -314,21 +319,76 @@ class BulkUploadView(APIView):
                 "doc_rec_id","date","enrollment_no","second_enrollment_no","student_name","no_of_transcript","no_of_marksheet","no_of_degree","no_of_moi","no_of_backlog","status","final_no","pay_rec_no"
             ],
             BulkService.DEGREE: None,
+            BulkService.EMP_PROFILE: [
+                "emp_id","emp_name","emp_designation","userid","actual_joining","emp_birth_date","usr_birth_date","department_joining","institute_id","status","el_balance","sl_balance","cl_balance","vacation_balance",
+                "joining_year_allocation_el","joining_year_allocation_cl","joining_year_allocation_sl","joining_year_allocation_vac","leave_calculation_date","emp_short"
+            ],
+            BulkService.LEAVE: [
+                "leave_report_no","emp_id","leave_code","start_date","end_date","total_days","reason","status","created_by","approved_by","approved_at"
+            ],
         }
         cols = columns_map.get(service)
         if not cols:
             return Response({"detail": f"Template not available for {service or 'service'}"}, status=501)
         df = pd.DataFrame(columns=cols)
+        # If client requests a sample, populate one example row and add a summary sheet
+        sample_flag = str(request.query_params.get('sample', '')).strip().lower() in ('1', 'true', 'yes')
+        if sample_flag:
+            # Build a single representative example row using heuristics based on column names
+            example = {}
+            from datetime import date
+            today = date.today()
+            for c in cols:
+                lc = c.lower()
+                if 'emp_id' in lc:
+                    example[c] = 'EMP001'
+                elif 'emp_name' in lc or 'name' in lc:
+                    example[c] = 'John Doe'
+                elif 'designation' in lc:
+                    example[c] = 'Manager'
+                elif 'userid' in lc:
+                    example[c] = 'jdoe'
+                elif 'joining' in lc and 'date' in lc or lc in ('actual_joining',):
+                    example[c] = today.strftime('%Y-%m-%d')
+                elif 'birth' in lc and 'date' in lc or 'birth_date' in lc:
+                    example[c] = (today.replace(year=today.year-30)).strftime('%Y-%m-%d')
+                elif 'department' in lc:
+                    example[c] = 'HR'
+                elif 'institute' in lc:
+                    example[c] = 'INST01'
+                elif lc in ('status',):
+                    example[c] = 'Active'
+                elif any(x in lc for x in ('balance', 'el_', 'sl_', 'cl_', 'vacation')):
+                    example[c] = 0
+                elif 'joining_year_allocation' in lc:
+                    # small allocation example
+                    example[c] = 1
+                elif 'leave_calculation_date' in lc:
+                    example[c] = today.strftime('%Y-%m-%d')
+                elif 'emp_short' in lc:
+                    example[c] = 0
+                else:
+                    example[c] = ''
+            df = pd.DataFrame([example])
+
         output = BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name=custom_sheet or service.title())
+            if sample_flag:
+                # add a tiny summary sheet with counts
+                try:
+                    summary = pd.DataFrame([{"sheet": custom_sheet or service.title(), "sample_rows": len(df.index)}])
+                    summary.to_excel(writer, index=False, sheet_name='summary')
+                except Exception:
+                    # non-fatal: ignore summary write errors
+                    pass
         output.seek(0)
         filename = f"template_{service.lower()}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
         resp = HttpResponse(output.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         resp['Content-Disposition'] = f'attachment; filename="{filename}"'
         return resp
 
-    def _process_confirm(self, service, df, user, track_id=None):  # noqa: C901
+    def _process_confirm(self, service, df, user, track_id=None, auto_create_docrec=False):  # noqa: C901
         """Internal processor for confirm action. Optionally updates cache for progress."""
         total_rows = len(df.index)
         results = []
@@ -354,6 +414,24 @@ class BulkUploadView(APIView):
             else:
                 fail_count += 1
             results.append({"row": int(row_idx), "key": key, "status": "OK" if ok else "FAIL", "message": status_msg})
+
+        # Helper to safely convert numeric counts to int without failing on NaN/None/empty
+        def _safe_int(val):
+            try:
+                # Cover pandas NA / numpy.nan which are floats
+                if val is None:
+                    return 0
+                # If it's already an int-like string or number
+                if isinstance(val, (int,)):
+                    return int(val)
+                # Try float conversion then int (handles '3.0', numpy.nan etc.)
+                f = float(val)
+                # numpy.nan will compare unequal to itself
+                if f != f:
+                    return 0
+                return int(f)
+            except Exception:
+                return 0
 
         try:
             if service == BulkService.DOCREC:
@@ -523,35 +601,216 @@ class BulkUploadView(APIView):
                         _log(idx, row.get("prv_number"), str(e), False)
                     _cache_progress(idx+1)
 
+            elif service == BulkService.EMP_PROFILE:
+                for idx, row in df.iterrows():
+                    try:
+                        emp_id = str(row.get("emp_id") or "").strip()
+                        if not emp_id:
+                            _log(idx, emp_id, "Missing emp_id", False); _cache_progress(idx+1); continue
+                        # parse dates
+                        actual_joining = _parse_excel_date_safe(row.get("actual_joining"))
+                        emp_birth = _parse_excel_date_safe(row.get("emp_birth_date"))
+                        usr_birth = _parse_excel_date_safe(row.get("usr_birth_date"))
+                        defaults = {
+                            "emp_name": row.get("emp_name") or "",
+                            "emp_designation": row.get("emp_designation") or None,
+                            "userid": row.get("userid") or None,
+                            "actual_joining": actual_joining,
+                            "emp_birth_date": emp_birth,
+                            "usr_birth_date": usr_birth,
+                            "department_joining": row.get("department_joining") or None,
+                            "institute_id": row.get("institute_id") or None,
+                            "status": row.get("status") or "Active",
+                            "el_balance": float(row.get("el_balance") or 0) if row.get("el_balance") not in (None, "") else 0,
+                            "sl_balance": float(row.get("sl_balance") or 0) if row.get("sl_balance") not in (None, "") else 0,
+                            "cl_balance": float(row.get("cl_balance") or 0) if row.get("cl_balance") not in (None, "") else 0,
+                            "vacation_balance": float(row.get("vacation_balance") or 0) if row.get("vacation_balance") not in (None, "") else 0,
+                        }
+                        obj, created = EmpProfile.objects.update_or_create(
+                            emp_id=emp_id,
+                            defaults={**defaults, "created_by": user}
+                        )
+                        _log(idx, emp_id, "Upserted", True)
+                    except Exception as e:
+                        _log(idx, row.get("emp_id"), str(e), False)
+                    _cache_progress(idx+1)
+
+            elif service == BulkService.LEAVE:
+                for idx, row in df.iterrows():
+                    try:
+                        leave_report_no = str(row.get("leave_report_no") or "").strip()
+                        emp_id = str(row.get("emp_id") or "").strip()
+                        leave_code = str(row.get("leave_code") or "").strip()
+                        if not (leave_report_no and emp_id and leave_code):
+                            _log(idx, leave_report_no or emp_id or leave_code, "Missing required fields (leave_report_no/emp_id/leave_code)", False); _cache_progress(idx+1); continue
+                        profile = EmpProfile.objects.filter(emp_id=emp_id).first()
+                        if not profile:
+                            _log(idx, emp_id, "EmpProfile not found", False); _cache_progress(idx+1); continue
+                        lt = LeaveType.objects.filter(leave_code=leave_code).first()
+                        if not lt:
+                            _log(idx, leave_code, "LeaveType not found", False); _cache_progress(idx+1); continue
+                        start_date = _parse_excel_date_safe(row.get("start_date"))
+                        end_date = _parse_excel_date_safe(row.get("end_date"))
+                        total_days = None
+                        try:
+                            if row.get("total_days") not in (None, ""):
+                                total_days = float(row.get("total_days"))
+                        except Exception:
+                            total_days = None
+                        approved_at = _parse_excel_date_safe(row.get("approved_at"))
+                        obj, created = LeaveEntry.objects.update_or_create(
+                            leave_report_no=leave_report_no,
+                            defaults={
+                                "emp": profile,
+                                "leave_type": lt,
+                                "start_date": start_date or timezone.now().date(),
+                                "end_date": end_date or start_date or timezone.now().date(),
+                                "total_days": total_days,
+                                "reason": row.get("reason") or None,
+                                "status": row.get("status") or "Pending",
+                                "created_by": row.get("created_by") or user,
+                                "approved_by": row.get("approved_by") or None,
+                                "approved_at": approved_at,
+                            }
+                        )
+                        _log(idx, leave_report_no, "Upserted", True)
+                    except Exception as e:
+                        _log(idx, row.get("leave_report_no"), str(e), False)
+                    _cache_progress(idx+1)
+
             elif service == BulkService.VERIFICATION:
                 for idx, row in df.iterrows():
                     try:
-                        doc_rec = DocRec.objects.filter(doc_rec_id=str(row.get("doc_rec_id")).strip()).first()
-                        enr = Enrollment.objects.filter(enrollment_no=str(row.get("enrollment_no")).strip()).first()
+                        dr_key = str(row.get("doc_rec_id") or '').strip()
+                        enr_key = str(row.get("enrollment_no") or '').strip()
+                        doc_rec = DocRec.objects.filter(doc_rec_id=dr_key).first() if dr_key else None
+                        enr = Enrollment.objects.filter(enrollment_no=enr_key).first() if enr_key else None
                         senr = None
                         if str(row.get("second_enrollment_no") or '').strip():
                             senr = Enrollment.objects.filter(enrollment_no=str(row.get("second_enrollment_no")).strip()).first()
+
+                        # If DocRec missing and auto-create requested, create a minimal DocRec
+                        if not doc_rec and auto_create_docrec and dr_key:
+                            try:
+                                doc_date = _parse_excel_date_safe(row.get("doc_rec_date")) or timezone.now().date()
+                                # Collect optional fields from sheet if present
+                                pay_rec_no = (str(row.get('pay_rec_no') or '').strip() or None)
+                                remark = (str(row.get('doc_rec_remark') or '').strip() or None)
+                                # Create with available info; pay_by defaults to NA in model save() if not provided
+                                doc_rec = DocRec.objects.create(
+                                    doc_rec_id=dr_key,
+                                    apply_for='VR',
+                                    doc_rec_date=doc_date,
+                                    pay_rec_no=pay_rec_no,
+                                    doc_rec_remark=remark,
+                                    created_by=user
+                                )
+                            except Exception:
+                                doc_rec = DocRec.objects.filter(doc_rec_id=dr_key).first()
+
                         if not (doc_rec and enr):
-                            _log(idx, row.get("final_no"), "Missing related (doc_rec/enrollment)", False); _cache_progress(idx+1); continue
+                            # More specific message: indicate which related is missing
+                            missing = []
+                            if not doc_rec:
+                                missing.append('doc_rec')
+                            if not enr:
+                                missing.append('enrollment')
+                            _log(idx, row.get("final_no") or dr_key or enr_key, f"Missing related ({'/'.join(missing)})", False)
+                            _cache_progress(idx+1)
+                            continue
+
                         date_v = _parse_excel_date_safe(row.get("date")) or timezone.now().date()
-                        Verification.objects.update_or_create(
-                            final_no=(str(row.get("final_no")).strip() or None),
-                            defaults={
-                                "doc_rec": doc_rec,
-                                "date": date_v,
-                                "enrollment": enr,
-                                "second_enrollment": senr,
-                                "student_name": row.get("student_name") or (enr.student_name if enr else ""),
-                                "tr_count": int(row.get("no_of_transcript") or 0),
-                                "ms_count": int(row.get("no_of_marksheet") or 0),
-                                "dg_count": int(row.get("no_of_degree") or 0),
-                                "moi_count": int(row.get("no_of_moi") or 0),
-                                "backlog_count": int(row.get("no_of_backlog") or 0),
-                                "status": row.get("status") or VerificationStatus.IN_PROGRESS,
-                                "pay_rec_no": row.get("pay_rec_no") or (doc_rec.pay_rec_no if doc_rec else ""),
-                                "updatedby": user,
-                            }
-                        )
+                        # Build defaults but only include status if provided in sheet (avoid forcing IN_PROGRESS on blank cells)
+                        # normalize cell values: convert None/NaN/'nan'/'<NA>'/empty -> None, else trimmed string
+                        def _normalize_cell(val):
+                            try:
+                                import math
+                                if isinstance(val, float) and math.isnan(val):
+                                    return None
+                            except Exception:
+                                pass
+                            if val is None:
+                                return None
+                            s = str(val).strip()
+                            if s.lower() in ('', 'nan', 'none', '<na>'):
+                                return None
+                            return s
+
+                        # map mail_status from sheet (Y/N or SENT/NOT_SENT) to MailStatus values
+                        def _map_mail_status(val):
+                            try:
+                                s = str(val).strip().lower()
+                            except Exception:
+                                return None
+                            if s in ('y', 'yes', '1', 'true', 'sent'):
+                                return MailStatus.SENT
+                            if s in ('n', 'no', '0', 'false', 'not_sent', ''):
+                                return MailStatus.NOT_SENT
+                            return None
+
+                        # map eca_required (Y/N)
+                        def _map_bool_flag(val):
+                            try:
+                                s = str(val).strip().lower()
+                            except Exception:
+                                return False
+                            return s in ('y', 'yes', '1', 'true')
+
+                        # use normalized values where we previously used raw row.get()
+                        norm_pay_rec_no = _normalize_cell(row.get('pay_rec_no'))
+                        norm_eca_name = _normalize_cell(row.get('eca_name'))
+                        norm_eca_ref = _normalize_cell(row.get('eca_ref_no'))
+
+                        defaults = {
+                            "doc_rec": doc_rec,
+                            "date": date_v,
+                            "enrollment": enr,
+                            "second_enrollment": senr,
+                            "student_name": _normalize_cell(row.get("student_name")) or (enr.student_name if enr else ""),
+                            "tr_count": _safe_int(row.get("no_of_transcript") or 0),
+                            "ms_count": _safe_int(row.get("no_of_marksheet") or 0),
+                            "dg_count": _safe_int(row.get("no_of_degree") or 0),
+                            "moi_count": _safe_int(row.get("no_of_moi") or 0),
+                            "backlog_count": _safe_int(row.get("no_of_backlog") or 0),
+                            "pay_rec_no": norm_pay_rec_no or (doc_rec.pay_rec_no if doc_rec else ""),
+                            # ECA fields
+                            "eca_required": _map_bool_flag(_normalize_cell(row.get('eca_required'))),
+                            "eca_name": norm_eca_name,
+                            "eca_ref_no": norm_eca_ref,
+                            "eca_send_date": _parse_excel_date_safe(row.get('eca_send_date')),
+                            "eca_status": (_map_mail_status(_normalize_cell(row.get('eca_status') or row.get('eca_send_status'))) or MailStatus.NOT_SENT),
+                            # mail send status for verification (accept common header names)
+                            "mail_status": (_map_mail_status(_normalize_cell(row.get('mail_status') or row.get('mail_send_status') or row.get('mail_send'))) or MailStatus.NOT_SENT),
+                            "updatedby": user,
+                        }
+                        status_val = _normalize_cell(row.get("status"))
+                        has_status = status_val is not None and str(status_val).strip() != ""
+
+                        final_no_val = _normalize_cell(row.get("final_no"))
+
+                        # If final_no provided, try to find existing object and update, otherwise create.
+                        if final_no_val:
+                            existing = Verification.objects.filter(final_no=final_no_val).first()
+                            if existing:
+                                # update fields except status unless provided
+                                for k, v in defaults.items():
+                                    setattr(existing, k, v)
+                                if has_status:
+                                    existing.status = status_val
+                                # else preserve existing.status
+                                existing.full_clean()
+                                existing.save()
+                            else:
+                                # create: if sheet didn't provide status, create with NULL status
+                                create_data = {**defaults}
+                                create_data['final_no'] = final_no_val
+                                create_data['status'] = status_val if has_status else None
+                                Verification.objects.create(**create_data)
+                        else:
+                            # No final_no: create new record. If status blank -> keep NULL
+                            create_data = {**defaults}
+                            create_data['status'] = status_val if has_status else None
+                            Verification.objects.create(**create_data)
                         _log(idx, row.get("final_no") or row.get("enrollment_no"), "Upserted", True)
                     except Exception as e:
                         _log(idx, row.get("final_no") or row.get("enrollment_no"), str(e), False)
@@ -661,6 +920,8 @@ class BulkUploadView(APIView):
 
         # Confirm path
         if action != 'preview':
+            # Allow caller to request auto-creation of missing DocRec entries
+            auto_create_docrec = _bool(request.data.get('auto_create_docrec') or request.query_params.get('auto_create_docrec', ''))
             if track:
                 upload_id = str(uuid.uuid4())
                 # initial cache entry
@@ -669,11 +930,11 @@ class BulkUploadView(APIView):
                     from django.contrib.auth import get_user_model
                     UserModel = get_user_model()
                     user_obj = UserModel.objects.filter(id=request.user.id).first()
-                    payload = self._process_confirm(service, df, user_obj, track_id=upload_id)
+                    payload = self._process_confirm(service, df, user_obj, track_id=upload_id, auto_create_docrec=auto_create_docrec)
                 threading.Thread(target=_bg, daemon=True).start()
                 return Response({"error": False, "mode": "started", "upload_id": upload_id, "total": len(df.index)})
             else:
-                payload = self._process_confirm(service, df, request.user)
+                payload = self._process_confirm(service, df, request.user, auto_create_docrec=auto_create_docrec)
                 status_code = 200 if not payload.get('error') else 500
                 # Adjust absolute URL for log if present
                 if payload.get('log_url') and not payload['log_url'].startswith('http'):

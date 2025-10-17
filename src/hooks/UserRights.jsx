@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { toast } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 const UserRights = ({ fetchUserPermissions, updateUserPermission }) => {
@@ -19,9 +19,11 @@ const UserRights = ({ fetchUserPermissions, updateUserPermission }) => {
 
   useEffect(() => {
     if (selectedUser) {
-      fetchUserPermissions(selectedUser.userid).then((data) => {
+      const uid = selectedUser?.id ?? selectedUser?.userid;
+      fetchUserPermissions(uid).then((data) => {
+        // normalize incoming menus/modules to expected keys
         setSelectedMenus(data.menus || {});
-        setSelectedModules(data.modules || []);
+        setSelectedModules(Array.isArray(data.modules) ? data.modules.map(String) : []);
       });
     }
   }, [selectedUser]);
@@ -66,15 +68,21 @@ const UserRights = ({ fetchUserPermissions, updateUserPermission }) => {
   };
 
   const handleModuleSelection = (moduleId) => {
+    const key = String(moduleId);
     setSelectedModules((prevModules) => {
-      const isAlreadySelected = prevModules.includes(moduleId);
+      const isAlreadySelected = prevModules.includes(key);
       if (isAlreadySelected) {
-        return prevModules.filter((id) => id !== moduleId);
+        return prevModules.filter((id) => id !== key);
       } else {
-        return [...prevModules, moduleId];
+        return [...prevModules, key];
       }
     });
   };
+
+  // helper getters to support different API shapes (moduleid/module_id/id)
+  const getModuleKey = (m) => String(m.moduleid ?? m.id ?? m.module_id ?? m.name ?? "");
+  const getMenuKey = (mm) => String(mm.menuid ?? mm.id ?? mm.pk ?? "");
+  const getMenuModuleKey = (mm) => String(mm.module ?? mm.module_id ?? mm.moduleid ?? mm.moduleid ?? mm.module);
 
   const handlePermissionChange = (menuId, permissionType) => {
     setSelectedMenus((prevMenus) => {
@@ -97,8 +105,35 @@ const UserRights = ({ fetchUserPermissions, updateUserPermission }) => {
   };
 
   const savePermissions = async () => {
-    await updateUserPermission(selectedUser.userid, { menus: selectedMenus, modules: selectedModules });
-    toast.success("✅ Permissions updated successfully!");
+    if (!selectedUser) {
+      toast.error('Please select a user before saving.');
+      return;
+    }
+
+    try {
+      // show optimistic UI
+      toast.info('Saving permissions...');
+      // Enrich selectedMenus with module id so backend receives module when creating permissions
+      const enrichedMenus = {};
+      for (const [menuId, perms] of Object.entries(selectedMenus)) {
+        // find menu object to extract module id
+        const menuObj = menus.find((m) => getMenuKey(m) === menuId);
+        const moduleId = menuObj ? getMenuModuleKey(menuObj) : undefined;
+        enrichedMenus[menuId] = { ...perms, module: moduleId };
+      }
+
+  const userId = selectedUser?.id ?? selectedUser?.userid;
+  const res = await updateUserPermission(userId, { menus: enrichedMenus, modules: selectedModules });
+      if (res === false) {
+        toast.error('Save failed (server returned failure).');
+        return;
+      }
+      toast.dismiss();
+      toast.success("✅ Permissions updated successfully!");
+    } catch (err) {
+      console.error('Save permissions error', err);
+      toast.error('Failed to save permissions. See console for details.');
+    }
   };
 
   return (
@@ -107,11 +142,11 @@ const UserRights = ({ fetchUserPermissions, updateUserPermission }) => {
 
       <select
         className="p-2 border rounded"
-        onChange={(e) => setSelectedUser(users.find((u) => u.userid === Number(e.target.value)))}
+        onChange={(e) => setSelectedUser(users.find((u) => String((u.id ?? u.userid)) === e.target.value))}
       >
         <option value="">Select a user</option>
         {users.map((user) => (
-          <option key={user.userid} value={user.userid}>
+          <option key={(user.id ?? user.userid)} value={String((user.id ?? user.userid))}>
             {user.username}
           </option>
         ))}
@@ -128,18 +163,21 @@ const UserRights = ({ fetchUserPermissions, updateUserPermission }) => {
               </tr>
             </thead>
             <tbody>
-              {modules.map((module) => (
-                <tr key={module.id} className="border">
-                  <td className="border p-2">{module.name}</td>
-                  <td className="border p-2 text-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedModules.includes(module.id)}
-                      onChange={() => handleModuleSelection(module.id)}
-                    />
-                  </td>
-                </tr>
-              ))}
+              {modules.map((module) => {
+                const mKey = getModuleKey(module);
+                return (
+                  <tr key={mKey} className="border">
+                    <td className="border p-2">{module.name}</td>
+                    <td className="border p-2 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedModules.includes(mKey)}
+                        onChange={() => handleModuleSelection(mKey)}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -159,45 +197,46 @@ const UserRights = ({ fetchUserPermissions, updateUserPermission }) => {
             </thead>
             <tbody>
               {menus
-                .filter((menu) => selectedModules.includes(menu.module_id))
+                .filter((menu) => selectedModules.includes(getMenuModuleKey(menu)))
                 .map((menu) => {
-                  const menuPermissions = selectedMenus[menu.id] || {};
+                  const mKey = getMenuKey(menu);
+                  const menuPermissions = selectedMenus[mKey] || {};
                   return (
-                    <tr key={menu.id} className="border">
+                    <tr key={mKey} className="border">
                       <td className="border p-2">{menu.name}</td>
                       <td className="border p-2 text-center">
                         <input
                           type="checkbox"
                           checked={menuPermissions.all || false}
-                          onChange={() => handlePermissionChange(menu.id, "all")}
+                          onChange={() => handlePermissionChange(mKey, "all")}
                         />
                       </td>
                       <td className="border p-2 text-center">
                         <input
                           type="checkbox"
                           checked={menuPermissions.view || false}
-                          onChange={() => handlePermissionChange(menu.id, "view")}
+                          onChange={() => handlePermissionChange(mKey, "view")}
                         />
                       </td>
                       <td className="border p-2 text-center">
                         <input
                           type="checkbox"
                           checked={menuPermissions.add || false}
-                          onChange={() => handlePermissionChange(menu.id, "add")}
+                          onChange={() => handlePermissionChange(mKey, "add")}
                         />
                       </td>
                       <td className="border p-2 text-center">
                         <input
                           type="checkbox"
                           checked={menuPermissions.edit || false}
-                          onChange={() => handlePermissionChange(menu.id, "edit")}
+                          onChange={() => handlePermissionChange(mKey, "edit")}
                         />
                       </td>
                       <td className="border p-2 text-center">
                         <input
                           type="checkbox"
                           checked={menuPermissions.delete || false}
-                          onChange={() => handlePermissionChange(menu.id, "delete")}
+                          onChange={() => handlePermissionChange(mKey, "delete")}
                         />
                       </td>
                     </tr>
@@ -211,6 +250,7 @@ const UserRights = ({ fetchUserPermissions, updateUserPermission }) => {
       <button onClick={savePermissions} className="bg-blue-500 text-white px-4 py-2 rounded mt-4">
         Save Permissions
       </button>
+      <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );
 };

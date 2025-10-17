@@ -54,6 +54,45 @@ class MenuViewSet(viewsets.ModelViewSet):
 class UserPermissionViewSet(viewsets.ModelViewSet):
     queryset = UserPermission.objects.all()
     serializer_class = UserPermissionSerializer
+    
+    # Temporary debug helpers: capture incoming data and serializer errors
+    def create(self, request, *args, **kwargs):
+        try:
+            print("DEBUG: UserPermissionViewSet.create called. request.data=", request.data)
+        except Exception:
+            print("DEBUG: UserPermissionViewSet.create - failed to print request.data")
+
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            # Print errors to server console for immediate debugging
+            try:
+                print("DEBUG: UserPermission create errors:", serializer.errors)
+            except Exception:
+                pass
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def update(self, request, *args, **kwargs):
+        try:
+            print("DEBUG: UserPermissionViewSet.update called. request.data=", request.data)
+        except Exception:
+            print("DEBUG: UserPermissionViewSet.update - failed to print request.data")
+
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        if not serializer.is_valid():
+            try:
+                print("DEBUG: UserPermission update errors:", serializer.errors)
+            except Exception:
+                pass
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        self.perform_update(serializer)
+        return Response(serializer.data)
 
 
 class MainBranchViewSet(viewsets.ModelViewSet):

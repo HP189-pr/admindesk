@@ -78,6 +78,9 @@ MIDDLEWARE += [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Logging middleware: record user activity and exceptions
+    'api.middleware_logs.RequestActivityMiddleware',
+    'api.middleware_logs.ExceptionLoggingMiddleware',
 ]
 
 ROOT_URLCONF = 'backend.urls'

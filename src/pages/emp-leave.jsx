@@ -8,6 +8,8 @@ const EmpLeavePage = () => {
   const [leaveEntries, setLeaveEntries] = useState([]);
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [profiles, setProfiles] = useState([]);
+  const [periods, setPeriods] = useState([]);
+  const [selectedPeriod, setSelectedPeriod] = useState('');
   const [profile, setProfile] = useState(null);
   const [form, setForm] = useState({ emp_id: '', leave_type: '', leave_type_code: '', start_date: '', end_date: '', reason: '', total_days: '' });
   const [loading, setLoading] = useState(false);
@@ -16,23 +18,78 @@ const EmpLeavePage = () => {
   const [myBalances, setMyBalances] = useState([]);
   const [allocations, setAllocations] = useState([]);
 
+  const PANELS = ['Entry Leave', 'Leave Report', 'Balance Certificate'];
+  const [selectedPanel, setSelectedPanel] = useState(PANELS[0]);
+  const [panelOpen, setPanelOpen] = useState(true);
+
   useEffect(() => {
-    axios.get('/api/leavetype/').then(r => setLeaveTypes(r.data || [])).catch(() => setLeaveTypes([]));
-    axios.get('/api/empprofile/').then(r => { setProfiles(r.data || []); const me = (r.data || []).find(p => p.userid === user?.id); setProfile(me || null); }).catch(() => setProfiles([]));
-    axios.get('/api/leaveentry/').then(r => setLeaveEntries(r.data || [])).catch(() => setLeaveEntries([]));
+    // Load leave types (prefer normal API, fall back to compat SQL-backed endpoint)
+    axios.get('/api/leavetype/').then(r => {
+      const data = r.data || [];
+      // normalize shape: ensure leave_code & leave_name exist
+      setLeaveTypes(data.map(lt => ({ leave_code: lt.leave_code || lt.id || lt.code, leave_name: lt.leave_name || lt.leave_name || lt.name, annual_allocation: lt.annual_allocation || lt.annual_limit || lt.allocation, day_value: lt.day_value || lt.leave_unit || 1 })));
+    }).catch(async () => {
+      try {
+        const r2 = await axios.get('/api/leavetype-compat/');
+        const data = r2.data || [];
+        setLeaveTypes(data.map(lt => ({ leave_code: lt.leave_code || lt.id || lt.code, leave_name: lt.leave_name || lt.leave_name || lt.name, annual_allocation: lt.annual_allocation || lt.annual_limit || lt.allocation, day_value: lt.day_value || lt.leave_unit || 1 })));
+      } catch (e) {
+        setLeaveTypes([]);
+      }
+    });
+
+    // Load leave periods with fallback
+    axios.get('/api/leaveperiods/').then(r => { const pd = r.data || []; setPeriods(pd); const active = pd.find(p => p.is_active); if (active) setSelectedPeriod(String(active.id)); }).catch(async () => {
+      try {
+        const r2 = await axios.get('/api/leaveperiods-compat/'); const pd = r2.data || []; setPeriods(pd); const active = pd.find(p => p.is_active); if (active) setSelectedPeriod(String(active.id));
+      } catch (e) { setPeriods([]); }
+    });
+
+    // Load employee profiles
+    axios.get('/api/empprofile/').then(r => { setProfiles(r.data || []); const me = (r.data || []).find(p => p.userid === user?.username || String(p.emp_id) === String(user?.username)); setProfile(me || null); }).catch(() => setProfiles([]));
+
+    // Load leave entries with a fallback to legacy table endpoint
+    axios.get('/api/leaveentry/').then(r => setLeaveEntries(r.data || [])).catch(async () => {
+      try {
+        const r2 = await axios.get('/api/leave_entry/'); setLeaveEntries(r2.data || []);
+      } catch (e) {
+        setLeaveEntries([]);
+      }
+    });
+
     axios.get('/api/my-leave-balance/').then(r => setMyBalances(r.data || [])).catch(() => setMyBalances([]));
   }, [user]);
 
   useEffect(() => {
     // load allocations only when report panel is active
     if (selectedPanel === 'Leave Report') {
-      axios.get('/api/leave-allocations/').then(r => setAllocations(r.data || [])).catch(() => setAllocations([]));
+      const params = selectedPeriod ? `?period=${selectedPeriod}` : '';
+      axios.get(`/api/leave-allocations/${params}`).then(r => setAllocations(r.data || [])).catch(async () => {
+        try {
+          // try legacy allocations endpoint
+          const r2 = await axios.get(`/api/leavea_llocation_general/${params}`);
+          setAllocations(r2.data || []);
+        } catch (e) {
+          setAllocations([]);
+        }
+      });
     }
   }, [selectedPanel]);
 
-  const PANELS = ['Entry Leave', 'Leave Report', 'Balance Certificate'];
-  const [selectedPanel, setSelectedPanel] = useState(PANELS[0]);
-  const [panelOpen, setPanelOpen] = useState(true);
+  // Reload allocations when period changes while report panel active
+  useEffect(() => {
+    if (selectedPanel === 'Leave Report') {
+      const params = selectedPeriod ? `?period=${selectedPeriod}` : '';
+      axios.get(`/api/leave-allocations/${params}`).then(r => setAllocations(r.data || [])).catch(async () => {
+        try {
+          const r2 = await axios.get(`/api/leavea_llocation_general/${params}`);
+          setAllocations(r2.data || []);
+        } catch (e) {
+          setAllocations([]);
+        }
+      });
+    }
+  }, [selectedPeriod, selectedPanel]);
 
   const handleTopbarSelect = (panel) => {
     if (selectedPanel === panel) setPanelOpen(p => !p);
@@ -182,37 +239,107 @@ const EmpLeavePage = () => {
 
             {selectedPanel === 'Leave Report' && (
               <div>
-                <div className="mb-3">
-                  <label className="text-sm block mb-1">Filter by Employee</label>
-                  <select value={filterEmp} onChange={e => setFilterEmp(e.target.value)} className="w-full border rounded-lg p-2">
-                    <option value="">All Employees</option>
-                    {profiles.map(emp => <option key={emp.id} value={emp.id}>{emp.emp_name} ({emp.emp_id})</option>)}
-                  </select>
+                <div className="mb-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-sm block mb-1">Filter by Employee</label>
+                    <select value={filterEmp} onChange={e => setFilterEmp(e.target.value)} className="w-full border rounded-lg p-2">
+                      <option value="">All Employees</option>
+                      {profiles.map(emp => <option key={emp.id} value={emp.id}>{emp.emp_name} ({emp.emp_id})</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm block mb-1">Select Period</label>
+                    <select value={selectedPeriod} onChange={e => setSelectedPeriod(e.target.value)} className="w-full border rounded-lg p-2">
+                      <option value="">Active Period</option>
+                      {periods.map(p => <option key={p.id} value={p.id}>{p.period_name} ({p.start_date} - {p.end_date})</option>)}
+                    </select>
+                  </div>
+                  <div className="flex items-end">
+                    <button onClick={() => {
+                      const params = selectedPeriod ? `?period=${selectedPeriod}` : '';
+                      axios.get(`/api/leave-allocations/${params}`).then(r => setAllocations(r.data || [])).catch(() => setAllocations([]));
+                    }} className="px-3 py-2 bg-blue-600 text-white rounded">Refresh</button>
+                  </div>
                 </div>
 
                 <div className="overflow-auto">
-                  <table className="min-w-full text-sm">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="text-left py-2 px-3">Employee</th>
-                        <th className="text-left py-2 px-3">Leave Type</th>
-                        <th className="text-left py-2 px-3">Allocated</th>
-                        <th className="text-left py-2 px-3">Used</th>
-                        <th className="text-left py-2 px-3">Balance</th>
+                  {/* Build a wide table aggregated by employee and leave type */}
+                  <table className="min-w-full text-sm table-auto">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th rowSpan={2} className="p-2">Emp ID</th>
+                        <th rowSpan={2} className="p-2">Emp Name</th>
+                        <th rowSpan={2} className="p-2">Position</th>
+                        <th rowSpan={2} className="p-2">Leave Group</th>
+                        <th rowSpan={2} className="p-2">Joining Date</th>
+                        <th rowSpan={2} className="p-2">Leaving Date</th>
+                        {/* For each leave type we will have 4 sub-columns: Start, Alloc, Used, End */}
+                        {leaveTypes.map(lt => (
+                          <th key={lt.leave_code} colSpan={4} className="p-2 text-center">{lt.leave_name} ({lt.leave_code})</th>
+                        ))}
+                      </tr>
+                      <tr className="bg-gray-50">
+                        {leaveTypes.map(lt => (
+                          <React.Fragment key={lt.leave_code}>
+                            <th className="p-1 text-xs">Start</th>
+                            <th className="p-1 text-xs">Alloc</th>
+                            <th className="p-1 text-xs">Used</th>
+                            <th className="p-1 text-xs">End</th>
+                          </React.Fragment>
+                        ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {allocations.length === 0 ? (
-                        <tr><td colSpan={5} className="py-6 text-center text-gray-500">No allocations / insufficient privileges</td></tr>
-                      ) : allocations.map((a) => (
-                        <tr key={`${a.profile}-${a.leave_type}`} className="border-b hover:bg-gray-50">
-                          <td className="py-2 px-3">{a.profile}</td>
-                          <td className="py-2 px-3">{a.leave_type_name}</td>
-                          <td className="py-2 px-3">{a.allocated}</td>
-                          <td className="py-2 px-3">{a.used}</td>
-                          <td className="py-2 px-3">{a.balance}</td>
-                        </tr>
-                      ))}
+                      {profiles.length === 0 ? (
+                        <tr><td colSpan={6 + leaveTypes.length * 4} className="py-6 text-center text-gray-500">No employees</td></tr>
+                      ) : profiles.filter(emp => !filterEmp || String(emp.id) === String(filterEmp)).map(emp => {
+                        // For each leave type, find allocation for this emp
+                        const rowCells = leaveTypes.map(lt => {
+                          // match allocation by several possible shapes from compat/legacy APIs
+                          const alloc = allocations.find(a => (
+                            String(a.profile) === String(emp.id) || String(a.profile) === String(emp.emp_id) || String(a.profile_id) === String(emp.id) || String(a.profile_id) === String(emp.emp_id)
+                          ) && (
+                            String(a.leave_type) === String(lt.leave_code) || String(a.leave_code) === String(lt.leave_code)
+                          ));
+                          // start balance from profile fields
+                          let start = 0;
+                          const code = String(lt.leave_code || '').toLowerCase();
+                          if (code.startsWith('el')) start = Number(emp.el_balance || 0);
+                          else if (code.startsWith('sl')) start = Number(emp.sl_balance || 0);
+                          else if (code.startsWith('cl')) start = Number(emp.cl_balance || 0);
+                          else start = Number(emp.vacation_balance || 0);
+                          // derive allocated from multiple possible fields
+                          let allocated = 0;
+                          if (alloc) {
+                            allocated = Number(alloc.allocated ?? alloc.allocated_amount ?? alloc.allocated_el ?? alloc.allocated_cl ?? alloc.allocated_sl ?? alloc.allocated_vac ?? 0);
+                          }
+                          // derive used similarly
+                          let used = 0;
+                          if (alloc) {
+                            used = Number(alloc.used ?? alloc.used_days ?? 0);
+                          }
+                          const end = +(start + allocated - used).toFixed(2);
+                          return { start, allocated, used, end };
+                        });
+                        return (
+                          <tr key={emp.id} className="border-b hover:bg-gray-50">
+                            <td className="p-2">{emp.emp_id}</td>
+                            <td className="p-2">{emp.emp_name}</td>
+                            <td className="p-2">{emp.emp_designation}</td>
+                            <td className="p-2">{emp.leave_group}</td>
+                            <td className="p-2">{emp.actual_joining || emp.emp_birth_date || ''}</td>
+                            <td className="p-2">{emp.left_date || 'Cont'}</td>
+                            {rowCells.map((c, idx) => (
+                              <React.Fragment key={idx}>
+                                <td className="p-1 text-right">{c.start}</td>
+                                <td className="p-1 text-right">{c.allocated}</td>
+                                <td className="p-1 text-right">{c.used}</td>
+                                <td className="p-1 text-right">{c.end}</td>
+                              </React.Fragment>
+                            ))}
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

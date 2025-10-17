@@ -15,7 +15,7 @@ const modules = [
       '📑 Migration',
       '📋 Provisional',
       '🏅 Degree',
-      '🏛️ Institutional Verification',
+      '🏛️ Inst-Verification',
     ],
   },
   {
@@ -42,6 +42,7 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [securePage, setSecurePage] = useState(null);
   const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const [isAdminPanelFlow, setIsAdminPanelFlow] = useState(false);
 
   useEffect(() => {
@@ -79,16 +80,27 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
   };
 
   const handleVerifyPassword = async () => {
-    const ok = isAdminPanelFlow
-      ? await verifyAdminPanelPassword(password)
-      : await verifyPassword(password);
-    if (ok) {
-      setShowPasswordModal(false);
-      setPassword('');
-      setSelectedMenuItem(securePage);
+    setPasswordError('');
+    if (isAdminPanelFlow) {
+      const result = await verifyAdminPanelPassword(password);
+      if (result && result.success) {
+        setShowPasswordModal(false);
+        setPassword('');
+        setSelectedMenuItem(securePage);
+      } else {
+        setPasswordError(result?.message || 'Incorrect admin password');
+        setPassword('');
+      }
     } else {
-      alert('Incorrect password');
-      setPassword('');
+      const ok = await verifyPassword(password);
+      if (ok) {
+        setShowPasswordModal(false);
+        setPassword('');
+        setSelectedMenuItem(securePage);
+      } else {
+        setPasswordError('Incorrect password');
+        setPassword('');
+      }
     }
   };
 
@@ -233,6 +245,9 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
               className="w-full p-2 border rounded bg-gray-100 text-black focus:ring-0 focus:outline-none"
               placeholder={isAdminPanelFlow ? 'Admin panel password' : 'Your account password'}
             />
+            {passwordError && (
+              <div className="text-sm text-red-600 mt-2">{passwordError}</div>
+            )}
             <div className="flex justify-end mt-4">
               <button onClick={handleVerifyPassword} className="bg-blue-500 text-white px-4 py-2 rounded">Submit</button>
               <button onClick={() => setShowPasswordModal(false)} className="ml-2 px-4 py-2 bg-gray-300 rounded">Cancel</button>

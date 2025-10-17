@@ -38,6 +38,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     doc_rec_id: "",
   pay_rec_no_pre: "",
   pay_rec_no: "",
+  doc_rec_remark: "",
 
     // verification specific
     enrollment: "",
@@ -66,6 +67,13 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
   });
 
   const handleChange = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  // clear payment fields if pay_by becomes NA/null
+  useEffect(() => {
+    if (!form.pay_by || form.pay_by === 'NA') {
+      setForm((f) => ({ ...f, pay_rec_no: '', pay_amount: 0 }));
+    }
+  }, [form.pay_by]);
 
   // Fetch next doc_rec_id preview when apply_for changes
   useEffect(() => {
@@ -112,6 +120,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
       pay_rec_no: form.pay_by === 'NA' ? null : (form.pay_rec_no || null),
       // send ISO date if provided
       doc_rec_date: form.doc_rec_date ? dmyToISO(form.doc_rec_date) : undefined,
+      doc_rec_remark: form.doc_rec_remark || null,
     };
     const res = await fetch("/api/docrec/", {
       method: "POST",
@@ -150,6 +159,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
         backlog_count: clamp3(form.backlog),
         pay_rec_no: rec.pay_rec_no || null,
         doc_rec_id: rec.id,
+        doc_rec_remark: form.doc_rec_remark || null,
       };
       await fetch("/api/verification/", {
         method: "POST",
@@ -161,6 +171,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
         doc_rec_id: rec.id,
         rec_by: form.rec_by || null,
         rec_inst_name: form.rec_inst_name || null,
+        doc_rec_remark: form.doc_rec_remark || null,
       };
       await fetch("/api/inst-verification-main/", {
         method: "POST",
@@ -181,6 +192,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
         passing_year: form.passing_year,
         prv_status: "Pending",
         pay_rec_no: rec.pay_rec_no || "",
+        doc_rec_remark: form.doc_rec_remark || null,
       };
       await fetch("/api/provisional/", {
         method: "POST",
@@ -201,6 +213,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
         admission_year: form.admission_year,
         mg_status: "Pending",
         pay_rec_no: rec.pay_rec_no || "",
+        doc_rec_remark: form.doc_rec_remark || null,
       };
       await fetch("/api/migration/", {
         method: "POST",
@@ -213,7 +226,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
   };
 
   const leftSlot = (
-    <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-sky-600 text-white text-xl">📥</div>
+    <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-sky-600 text-white text-xl">📥</div>       
   );
 
   return (
@@ -236,7 +249,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
           <div className="font-semibold">{selected ? `${selected} Panel` : "Action Panel"}</div>
           <button
             onClick={() => setPanelOpen((o) => !o)}
-            className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
+            className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"  
           >
             {panelOpen ? "▲" : "▼"} {panelOpen ? "Collapse" : "Expand"}
           </button>
@@ -244,39 +257,60 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
 
         {panelOpen && selected === "➕" && (
           <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
-            {/* apply_for */}
-            <div>
-              <label className="text-sm">Apply For</label>
-              <select className="w-full border rounded-lg p-2" value={form.apply_for} onChange={(e)=>handleChange("apply_for", e.target.value)}>
-                {APPLY_FOR.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
-              </select>
-            </div>
-            {/* doc_rec_id preview */}
-            <div>
-              <label className="text-sm">Doc Rec ID (next)</label>
-              <input className="w-full border rounded-lg p-2" value={form.doc_rec_id} readOnly />
-            </div>
-            {/* pay_by */}
-            <div>
-              <label className="text-sm">Pay By</label>
-              <select className="w-full border rounded-lg p-2" value={form.pay_by} onChange={(e)=>handleChange("pay_by", e.target.value)}>
-                {PAY_BY.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
-              </select>
-            </div>
             {/* doc_rec_date */}
             <div>
               <label className="text-sm">Doc Rec Date</label>
               <input type="text" className="w-full border rounded-lg p-2" value={form.doc_rec_date} onChange={(e)=>handleChange("doc_rec_date", e.target.value)} placeholder="dd-mm-yyyy" />
             </div>
-            {/* pay_amount */}
+
+            {/* apply_for */}
             <div>
-              <label className="text-sm">Amount</label>
-              <input type="number" className="w-full border rounded-lg p-2" value={form.pay_amount} onChange={(e)=>handleChange("pay_amount", e.target.value)} />
+              <label className="text-sm">Apply For</label>
+              <select className="w-full border rounded-lg p-2" value={form.apply_for} onChange={(e)=>handleChange("apply_for", e.target.value)}> {APPLY_FOR.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
+              </select>
             </div>
-            {/* pay_rec_no */}
+
+            {/* doc_rec_id preview */}
             <div>
-              <label className="text-sm">Pay Receipt No (optional)</label>
-              <input className="w-full border rounded-lg p-2" value={form.pay_rec_no} onChange={(e)=>handleChange("pay_rec_no", e.target.value)} disabled={form.pay_by === 'NA'} />
+              <label className="text-sm">Doc Rec ID (next)</label>
+              <input className="w-full border rounded-lg p-2" value={form.doc_rec_id} readOnly />
+            </div>
+
+            {/* pay_by */}
+            <div>
+              <label className="text-sm">Pay By</label>
+              <select className="w-full border rounded-lg p-2" value={form.pay_by} onChange={(e)=>handleChange("pay_by", e.target.value)}> {PAY_BY.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
+              </select>
+            </div>
+
+            {/* pay_rec_no_pre (readonly preview), only show when pay_by not NA */}
+            {form.pay_by && form.pay_by !== 'NA' && (
+              <div>
+                <label className="text-sm">Pay Receipt Prefix</label>
+                <input className="w-full border rounded-lg p-2" value={form.pay_rec_no_pre} readOnly />
+              </div>
+            )}
+
+            {/* pay_rec_no */}
+            {form.pay_by && form.pay_by !== 'NA' ? (
+              <div>
+                <label className="text-sm">Pay Receipt No (optional)</label>
+                <input className="w-full border rounded-lg p-2" value={form.pay_rec_no} onChange={(e)=>handleChange("pay_rec_no", e.target.value)} />
+              </div>
+            ) : null}
+
+            {/* pay_amount */}
+            {form.pay_by && form.pay_by !== 'NA' ? (
+              <div>
+                <label className="text-sm">Amount</label>
+                <input type="number" className="w-full border rounded-lg p-2" value={form.pay_amount} onChange={(e)=>handleChange("pay_amount", e.target.value)} />
+              </div>
+            ) : null}
+
+            {/* doc_rec_remark */}
+            <div className="md:col-span-4">
+              <label className="text-sm">Doc Rec Remark</label>
+              <input className="w-full border rounded-lg p-2" value={form.doc_rec_remark} onChange={(e)=>handleChange("doc_rec_remark", e.target.value)} />
             </div>
 
             {/* If VR show verification options (simplified UI as placeholder) */}
@@ -284,37 +318,29 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
               <>
                 <div className="md:col-span-2">
                   <label className="text-sm">Enrollment No</label>
-                  <input className="w-full border rounded-lg p-2" value={form.enrollment} onChange={(e)=>handleChange("enrollment", e.target.value)} />
-                </div>
+                  <input className="w-full border rounded-lg p-2" value={form.enrollment} onChange={(e)=>handleChange("enrollment", e.target.value)} />                                                                                                         </div>
                 <div>
                   <label className="text-sm">2nd Enrollment</label>
-                  <input className="w-full border rounded-lg p-2" value={form.second_enrollment} onChange={(e)=>handleChange("second_enrollment", e.target.value)} />
-                </div>
+                  <input className="w-full border rounded-lg p-2" value={form.second_enrollment} onChange={(e)=>handleChange("second_enrollment", e.target.value)} />                                                                                           </div>
                 <div>
                   <label className="text-sm">Student Name</label>
-                  <input className="w-full border rounded-lg p-2" value={form.student_name} onChange={(e)=>handleChange("student_name", e.target.value)} />
-                </div>
+                  <input className="w-full border rounded-lg p-2" value={form.student_name} onChange={(e)=>handleChange("student_name", e.target.value)} />                                                                                                     </div>
 
                 <div>
                   <label className="text-sm">TR</label>
-                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.tr} onChange={(e)=>handleChange("tr", clamp3(e.target.value))} />
-                </div>
+                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.tr} onChange={(e)=>handleChange("tr", clamp3(e.target.value))} />                                                                                 </div>
                 <div>
                   <label className="text-sm">MS</label>
-                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.ms} onChange={(e)=>handleChange("ms", clamp3(e.target.value))} />
-                </div>
+                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.ms} onChange={(e)=>handleChange("ms", clamp3(e.target.value))} />                                                                                 </div>
                 <div>
                   <label className="text-sm">DG</label>
-                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.dg} onChange={(e)=>handleChange("dg", clamp3(e.target.value))} />
-                </div>
+                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.dg} onChange={(e)=>handleChange("dg", clamp3(e.target.value))} />                                                                                 </div>
                 <div>
                   <label className="text-sm">MOI</label>
-                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.moi} onChange={(e)=>handleChange("moi", clamp3(e.target.value))} />
-                </div>
+                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.moi} onChange={(e)=>handleChange("moi", clamp3(e.target.value))} />                                                                               </div>
                 <div>
                   <label className="text-sm">Backlog</label>
-                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.backlog} onChange={(e)=>handleChange("backlog", clamp3(e.target.value))} />
-                </div>
+                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.backlog} onChange={(e)=>handleChange("backlog", clamp3(e.target.value))} />                                                                       </div>
               </>
             )}
 
@@ -341,8 +367,8 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
                         handleChange("rec_inst_name", v);
                         if ((v||"").trim().length >= 3) {
                           try {
-                            const res = await fetch(`/api/inst-verification-main/search-rec-inst?q=${encodeURIComponent(v.trim())}`, { headers: { ...authHeaders() } });
-                            if (res.ok) {
+                            const res = await fetch(`/api/inst-verification-main/search-rec-inst?q=${encodeURIComponent(
+v.trim())}`, { headers: { ...authHeaders() } });                                                                                                    if (res.ok) {
                               const items = await res.json();
                               handleChange("rec_inst_suggestions", items || []);
                             }
@@ -372,16 +398,13 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
               <>
                 <div>
                   <label className="text-sm">PRV No</label>
-                  <input className="w-full border rounded-lg p-2" value={form.prv_number} onChange={(e)=>handleChange("prv_number", e.target.value)} />
-                </div>
+                  <input className="w-full border rounded-lg p-2" value={form.prv_number} onChange={(e)=>handleChange("prv_number", e.target.value)} />                                                                                                         </div>
                 <div>
                   <label className="text-sm">PRV Date</label>
-                  <input type="text" className="w-full border rounded-lg p-2" value={form.prv_date} onChange={(e)=>handleChange("prv_date", e.target.value)} placeholder="dd-mm-yyyy" />
-                </div>
+                  <input type="text" className="w-full border rounded-lg p-2" value={form.prv_date} onChange={(e)=>handleChange("prv_date", e.target.value)} placeholder="dd-mm-yyyy" />                                                                        </div>
                 <div>
                   <label className="text-sm">Passing Year</label>
-                  <input className="w-full border rounded-lg p-2" value={form.passing_year} onChange={(e)=>handleChange("passing_year", e.target.value)} />
-                </div>
+                  <input className="w-full border rounded-lg p-2" value={form.passing_year} onChange={(e)=>handleChange("passing_year", e.target.value)} />                                                                                                     </div>
               </>
             )}
 
@@ -389,20 +412,16 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
               <>
                 <div>
                   <label className="text-sm">MG No</label>
-                  <input className="w-full border rounded-lg p-2" value={form.mg_number} onChange={(e)=>handleChange("mg_number", e.target.value)} />
-                </div>
+                  <input className="w-full border rounded-lg p-2" value={form.mg_number} onChange={(e)=>handleChange("mg_number", e.target.value)} />                                                                                                           </div>
                 <div>
                   <label className="text-sm">MG Date</label>
-                  <input type="text" className="w-full border rounded-lg p-2" value={form.mg_date} onChange={(e)=>handleChange("mg_date", e.target.value)} placeholder="dd-mm-yyyy" />
-                </div>
+                  <input type="text" className="w-full border rounded-lg p-2" value={form.mg_date} onChange={(e)=>handleChange("mg_date", e.target.value)} placeholder="dd-mm-yyyy" />                                                                          </div>
                 <div>
                   <label className="text-sm">Exam Year</label>
-                  <input className="w-full border rounded-lg p-2" value={form.exam_year} onChange={(e)=>handleChange("exam_year", e.target.value)} />
-                </div>
+                  <input className="w-full border rounded-lg p-2" value={form.exam_year} onChange={(e)=>handleChange("exam_year", e.target.value)} />                                                                                                           </div>
                 <div>
                   <label className="text-sm">Admission Year</label>
-                  <input className="w-full border rounded-lg p-2" value={form.admission_year} onChange={(e)=>handleChange("admission_year", e.target.value)} />
-                </div>
+                  <input className="w-full border rounded-lg p-2" value={form.admission_year} onChange={(e)=>handleChange("admission_year", e.target.value)} />                                                                                                 </div>
               </>
             )}
 
@@ -423,3 +442,4 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     </div>
   );
 }
+

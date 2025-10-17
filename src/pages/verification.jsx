@@ -73,7 +73,9 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
     eca_required: false,
     eca_name: "",
     eca_ref_no: "",
-    eca_submit_date: "",
+    eca_send_date: "",
+    eca_status: "",
+    eca_resubmit_date: "",
     eca_remark: "",
     remark: "",
     pay_rec_no: "",
@@ -84,6 +86,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
   // Records list (latest first)
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
   const [q, setQ] = useState(""); // search query
 
   // no-op: toggling is handled by handleTopbarSelect
@@ -97,12 +100,29 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
   const loadRecords = async () => {
     setLoading(true);
     try {
-      // Example: GET /api/verification?limit=50&q=...
-      const url = q ? `/api/verification?q=${encodeURIComponent(q)}&limit=50` : `/api/verification?limit=50`;
-      const res = await fetch(url, { headers: { ...authHeaders() } });
+      // Example: GET /api/verification?limit=50&search=...
+      // Backend expects `search` param; also DRF may return paginated results { results: [...] }
+      const url = q ? `/api/verification?search=${encodeURIComponent(q)}&limit=50` : `/api/verification?limit=50`;
+      const res = await fetch(url, { headers: { ...authHeaders() }, credentials: 'include' });
+      // If not OK, surface the status/text to help debug why no records appear (401/403 etc)
+      if (!res.ok) {
+        let txt = '';
+        try { txt = await res.text(); } catch (e) { txt = res.statusText || String(res.status); }
+        console.error('Verification load error', res.status, txt);
+        setErrorMsg(`Failed to load records: ${res.status} ${res.statusText}` + (txt ? ` - ${txt}` : ''));
+        setRecords([]);
+        return;
+      }
       const data = await res.json();
-      // Expect data as array with fields used below
-      setRecords(Array.isArray(data) ? data : []);
+      // Accept either raw array or DRF paginated response { results: [...] }
+      if (Array.isArray(data)) {
+        setRecords(data);
+      } else if (data && Array.isArray(data.results)) {
+        setRecords(data.results);
+      } else {
+        setRecords([]);
+      }
+      setErrorMsg("");
     } catch (e) {
       console.error(e);
     } finally {
@@ -114,6 +134,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
     // POST /api/verification
     const body = {
   date: dmyToISO(form.date) || null,
+      doc_rec_id: form.doc_rec_id || null,
       enrollment_id: form.enrollment_id,
       second_enrollment_id: form.second_enrollment_id || null,
       student_name: form.name, // server can overwrite from Enrollment
@@ -127,7 +148,11 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
       mail_status: form.mail_status,
       eca_name: form.eca_name || null,
       eca_ref_no: form.eca_ref_no || null,
-      eca_submit_date: form.eca_submit_date || null,
+      eca_send_date: form.eca_send_date || null,
+      eca_status: form.eca_status || null,
+      eca_resubmit_date: form.eca_resubmit_date || null,
+      eca_remark: form.eca_remark || null,
+      doc_rec_remark: form.doc_rec_remark || null,
       remark: form.remark || null,
       pay_rec_no: form.pay_rec_no || null,
     };
@@ -147,6 +172,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
     const body = {
   date: dmyToISO(form.date) || null,
   vr_done_date: dmyToISO(form.vr_done_date) || null,
+    doc_rec_id: form.doc_rec_id || null,
       student_name: form.name || null,
       tr_count: +form.tr || 0,
       ms_count: +form.ms || 0,
@@ -157,6 +183,13 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
       final_no: form.final_no || null,
       mail_status: form.mail_status,
       remark: form.remark || null,
+      eca_name: form.eca_name || null,
+      eca_ref_no: form.eca_ref_no || null,
+      eca_send_date: form.eca_send_date || null,
+      eca_status: form.eca_status || null,
+      eca_resubmit_date: form.eca_resubmit_date || null,
+      eca_remark: form.eca_remark || null,
+      doc_rec_remark: form.doc_rec_remark || null,
       pay_rec_no: form.pay_rec_no || null,
     };
     const res = await fetch(`/api/verification/${id}/`, {
@@ -165,34 +198,6 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(await res.text());
-  };
-
-  const upsertEca = async (doc_rec_key) => {
-    if (!form.eca_required) return;
-    const payload = {
-      doc_rec_key,
-      eca_name: form.eca_name || null,
-      eca_ref_no: form.eca_ref_no || null,
-      eca_send_date: form.eca_submit_date || null,
-      eca_remark: form.eca_remark || null,
-    };
-    // Try to find existing ECA by fetching ver row's eca; fallback to POST
-    const exists = currentRow?.eca?.id;
-    if (exists) {
-      const res = await fetch(`/api/eca/${exists}/`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error(await res.text());
-    } else {
-      const res = await fetch(`/api/eca/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error(await res.text());
-    }
   };
 
   const [currentRow, setCurrentRow] = useState(null);
@@ -218,10 +223,16 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
     }
   };
 
-  // Table columns (include doc_rec_id and ECA columns)
+  // Formatters for table display
+  const formatEcaStatus = (row) => {
+    const s = (row && row.eca && row.eca.eca_status) || row?.eca_status || '';
+    // Hide explicit NOT_SENT values; show only real status text
+    return s && String(s).toUpperCase() !== 'NOT_SENT' ? s : '';
+  };
+
+  // Table columns (ordered as requested)
   const columns = useMemo(() => ([
     { key: "date", label: "Date" },
-    { key: "vr_done_date", label: "Done Date" },
     { key: "enrollment_no", label: "Enroll No" },
     { key: "second_enrollment_no", label: "Sec Enroll" },
     { key: "student_name", label: "Name" },
@@ -231,16 +242,17 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
     { key: "moi_count", label: "MOI" },
     { key: "backlog_count", label: "Backlog" },
     { key: "status", label: "Status" },
+    { key: "vr_done_date", label: "Done Date" },
     { key: "final_no", label: "Final No" },
     { key: "mail_status", label: "Mail" },
+  { key: "sequence", label: "Sequence" },
+    { key: "doc_rec_remark", label: "Doc Rec Remark" },
+    { key: "eca_required", label: "ECA Required" },
     { key: "eca_name", label: "ECA Name" },
     { key: "eca_ref_no", label: "ECA Ref No" },
-    { key: "eca_submit_date", label: "ECA Send Date" },
-    { key: "doc_rec_key", label: "Doc Rec" },
-    { key: "remark", label: "Remark" },
-    { key: "last_resubmit_date", label: "Resubmit Date" },
-    { key: "last_resubmit_status", label: "Resubmit Status" },
-    { key: "row_no", label: "#" },
+    { key: "eca_send_date", label: "ECA Send Date" },
+    { key: "eca_status", label: "ECA Status" },
+    { key: "eca_resubmit_date", label: "ECA Resubmit Date" },
   ]), []);
 
   return (
@@ -415,8 +427,8 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                     <div>
                       <label className="text-sm">Send-Date</label>
                       <input type="date" className="w-full border rounded-lg p-2"
-                        value={form.eca_submit_date}
-                        onChange={(e) => handleChange("eca_submit_date", e.target.value)} />
+                        value={form.eca_send_date}
+                        onChange={(e) => handleChange("eca_send_date", e.target.value)} />
                     </div>
                     <div className="md:col-span-2">
                       <label className="text-sm">ECA Remark</label>
@@ -457,9 +469,6 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                       try {
                         if (getSelected() === "✏️ Edit" && currentRow?.id) {
                           await updateRecord(currentRow.id);
-                          if (form.eca_required && form.doc_rec_key) {
-                            await upsertEca(form.doc_rec_key);
-                          }
                           alert("Updated!");
                         } else {
                           await createRecord();
@@ -516,6 +525,10 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
             </div>
           </div>
 
+          {errorMsg && (
+            <div className="p-3 text-sm text-red-600">{errorMsg}</div>
+          )}
+
           <div className="overflow-auto flex-1">
             <table className="min-w-[1200px] w-full text-sm">
               <thead className="bg-gray-50 border-b">
@@ -547,11 +560,13 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                       status: r.status || "IN_PROGRESS",
                       final_no: r.final_no || "",
                       mail_status: r.mail_status || "NOT_SENT",
-                      eca_required: !!r.eca,
-                      eca_name: r.eca?.eca_name || "",
-                      eca_ref_no: r.eca?.eca_ref_no || "",
-                      eca_submit_date: isoToDMY(r.eca?.eca_send_date) || "",
-                      eca_remark: r.eca?.eca_remark || "",
+                      eca_required: (r.eca_required === true) || (r.eca && r.eca.eca_required === true) || !!r.eca_name,
+                      eca_name: r.eca?.eca_name || r.eca_name || "",
+                      eca_ref_no: r.eca?.eca_ref_no || r.eca_ref_no || "",
+                      eca_send_date: isoToDMY(r.eca?.eca_send_date || r.eca_send_date || r.eca_submit_date) || "",
+                      eca_status: r.eca?.eca_status || r.eca_status || "",
+                      eca_resubmit_date: r.eca?.eca_resubmit_date || r.eca_resubmit_date || "",
+                      eca_remark: r.eca?.eca_remark || r.eca_remark || "",
                       remark: r.remark || "",
                       pay_rec_no: r.pay_rec_no || "",
                       doc_rec_id: r.doc_rec_id || r.doc_rec?.id || "",
@@ -561,7 +576,6 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                     setPanelOpen(true);
                   }}>
                     <td className="py-2 px-3">{r.date || "-"}</td>
-                    <td className="py-2 px-3">{r.vr_done_date || "-"}</td>
                     <td className="py-2 px-3">{r.enrollment_no || r.enrollment?.enrollment_no || "-"}</td>
                     <td className="py-2 px-3">{r.second_enrollment_no || r.second_enrollment?.enrollment_no || "-"}</td>
                     <td className="py-2 px-3">{r.student_name || "-"}</td>
@@ -571,16 +585,17 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                     <td className="py-2 px-3">{r.moi_count ?? "-"}</td>
                     <td className="py-2 px-3">{r.backlog_count ?? "-"}</td>
                     <td className="py-2 px-3"><Badge text={r.status} /></td>
+                    <td className="py-2 px-3">{r.vr_done_date || "-"}</td>
                     <td className="py-2 px-3">{r.final_no || "-"}</td>
                     <td className="py-2 px-3"><MailBadge text={r.mail_status} /></td>
+                    <td className="py-2 px-3">{records.length - idx}</td>
+                    <td className="py-2 px-3">{r.doc_rec_remark || r.remark || r.doc_rec?.doc_rec_remark || "-"}</td>
+                    <td className="py-2 px-3">{(r.eca_required === true || (r.eca && r.eca.eca_required === true)) ? 'Y' : ''}</td>
                     <td className="py-2 px-3">{r.eca?.eca_name || r.eca_name || "-"}</td>
                     <td className="py-2 px-3">{r.eca?.eca_ref_no || r.eca_ref_no || "-"}</td>
                     <td className="py-2 px-3">{r.eca?.eca_send_date || r.eca_submit_date || "-"}</td>
-                    <td className="py-2 px-3">{r.doc_rec_key || r.doc_rec?.doc_rec_id || "-"}</td>
-                    <td className="py-2 px-3">{r.remark || "-"}</td>
-                    <td className="py-2 px-3">{r.last_resubmit_date || r.resubmit_date || "-"}</td>
-                    <td className="py-2 px-3">{r.last_resubmit_status || r.resubmit_status || "-"}</td>
-                    <td className="py-2 px-3">{records.length - idx}</td>
+                    <td className="py-2 px-3">{formatEcaStatus(r) || ""}</td>
+                    <td className="py-2 px-3">{r.eca?.eca_resubmit_date || r.eca_resubmit_date || "-"}</td>
                   </tr>
                 ))}
               </tbody>

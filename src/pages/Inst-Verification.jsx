@@ -194,8 +194,8 @@ const InstitutionalVerification = ({ onToggleSidebar, onToggleChatbox }) => {
 				titleSlot={
 					<div className="mr-2 select-none">
 						<h2 className="text-lg md:text-xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-							Institutional Verification
-						</h2>
+										Inst-Verification
+									</h2>
 					</div>
 				}
 				actions={ACTIONS}
@@ -394,6 +394,87 @@ const InstitutionalVerification = ({ onToggleSidebar, onToggleChatbox }) => {
 						<button className="px-3 py-2 rounded-lg bg-blue-600 text-white" onClick={loadList}>Search</button>
 					</div>
 				)}
+
+				{/* Selected record summary (main + students) shown below the active panel */}
+				{mform && (mform.id || mform.doc_rec) && (
+					<div className="border rounded-2xl p-4 bg-white">
+						<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+							<div>
+								<div className="text-xs text-gray-500">Inst Veri No</div>
+								<div className="font-medium">{mform.inst_veri_number || '-'}</div>
+							</div>
+							<div>
+								<div className="text-xs text-gray-500">Date</div>
+								<div>{mform.inst_veri_date || mform.doc_rec_date || '-'}</div>
+							</div>
+							<div>
+								<div className="text-xs text-gray-500">Doc Rec Date</div>
+								<div>{mform.doc_rec_date || '-'}</div>
+							</div>
+						</div>
+
+						<div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+							<div>
+								<div className="text-xs text-gray-500">Inst Name</div>
+								<div className="font-medium">{mform.rec_inst_name || mform.institute || '-'}</div>
+							</div>
+							<div>
+								<div className="text-xs text-gray-500">Address 1</div>
+								<div>{mform.rec_inst_address_1 || '-'}</div>
+							</div>
+							<div>
+								<div className="text-xs text-gray-500">Address 2 / Location</div>
+								<div>{mform.rec_inst_address_2 || mform.rec_inst_location || '-'}</div>
+							</div>
+						</div>
+
+						<div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+							<div>
+								<div className="text-xs text-gray-500">City</div>
+								<div>{mform.rec_inst_city || '-'}</div>
+							</div>
+							<div>
+								<div className="text-xs text-gray-500">PIN</div>
+								<div>{mform.rec_inst_pin || '-'}</div>
+							</div>
+							<div>
+								<div className="text-xs text-gray-500">Inst Ref No / Ref Date</div>
+								<div>{mform.inst_ref_no || '-'} {mform.ref_date ? ` / ${mform.ref_date}` : ''}</div>
+							</div>
+						</div>
+
+						{/* Students list */}
+						<div className="mt-6">
+							<div className="text-sm font-semibold mb-2">Students</div>
+							<div className="overflow-auto">
+								<table className="min-w-full text-sm">
+									<thead>
+										<tr>
+											<th className="text-left pr-4 pb-1 border-b">SR</th>
+											<th className="text-left pr-4 pb-1 border-b">Student Name</th>
+											<th className="text-left pr-4 pb-1 border-b">Type of Credential</th>
+											<th className="text-left pr-4 pb-1 border-b">Month/Year</th>
+											<th className="text-left pr-4 pb-1 border-b">Verification Status</th>
+										</tr>
+									</thead>
+									<tbody>
+										{Array.isArray(srows) && srows.length>0 ? srows.map((s, i) => (
+											<tr key={s.id || i} className="border-b">
+												<td className="pr-4 py-1">{s.sr_no || i+1}</td>
+												<td className="pr-4 py-1">{s.student_name || '-'}</td>
+												<td className="pr-4 py-1">{s.type_of_credential || '-'}</td>
+												<td className="pr-4 py-1">{s.month_year || '-'}</td>
+												<td className="pr-4 py-1">{s.verification_status || '-'}</td>
+											</tr>
+										)) : (
+											<tr><td className="py-4 text-gray-500" colSpan={5}>No students</td></tr>
+										)}
+									</tbody>
+								</table>
+							</div>
+							</div>
+						</div>
+					)}
 			</div>
 
 			{/* Records Section */}

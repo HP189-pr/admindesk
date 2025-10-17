@@ -23,12 +23,16 @@ try:
         DocRecViewSet, VerificationViewSet, MigrationRecordViewSet, ProvisionalRecordViewSet,
         InstVerificationMainViewSet, InstVerificationStudentViewSet, StudentProfileViewSet, EcaViewSet,
         BulkUploadView, DataAnalysisView,
+        
     )
+    # Admin upload view
+    from .views_admin import UploadDocRecView
+    from .views_emp import EmpProfileViewSet
     # Auth / navigation / user management moved to views_auth
     from .views_auth import (
         HolidayViewSet, LoginView, ChangePasswordView, UserProfileView, VerifyPasswordView,
         VerifyAdminPanelPasswordView, CustomTokenObtainPairView, ProfilePictureView, CheckAdminAccessView,
-        MyNavigationView, UserAPIView, UserDetailAPIView,
+        MyNavigationView, UserAPIView, UserDetailAPIView, AdminChangePasswordView,
     )
 
     # Register router and API endpoints (normal path when DRF is installed)
@@ -50,9 +54,11 @@ try:
     router.register(r'inst-verification-student', InstVerificationStudentViewSet, basename='inst-verification-student')
     router.register(r'eca', EcaViewSet, basename='eca')
     router.register(r'student-profiles', StudentProfileViewSet, basename='student-profiles')
+    router.register(r'empprofile', EmpProfileViewSet, basename='empprofile')
     # Leave management endpoints
-    from .views_emp import LeavePeriodListView, LeaveAllocationListView, MyLeaveBalanceView
-    # Register list/create for leave periods via explicit path below
+    from .views_emp import LeavePeriodListView, LeaveAllocationListView, MyLeaveBalanceView, LeaveTypeViewSet, LeavePeriodViewSet, SeedLeaveAllocationsView, LeaveTypeCompatView, LeaveTypeCompatDetailView, LeavePeriodCompatView, LeaveReportView
+    router.register(r'leavetype', LeaveTypeViewSet, basename='leavetype')
+    router.register(r'leaveperiods', LeavePeriodViewSet, basename='leaveperiods')
 
     urlpatterns = [
         # Include all registered routes automatically
@@ -70,6 +76,8 @@ try:
 
         # Change password
         path('change-password/', ChangePasswordView.as_view(), name='change-password'),
+            # Admin change other user's password
+            path('users/<int:user_id>/change-password/', AdminChangePasswordView.as_view(), name='admin-change-password'),
 
         # User profile management
         path('profile/', UserProfileView.as_view(), name="user-profile"),
@@ -78,8 +86,14 @@ try:
         path('profile-picture/', ProfilePictureView.as_view(), name='profile-picture'),
     path('my-navigation/', MyNavigationView.as_view(), name='my-navigation'),
     path('leaveperiods/', LeavePeriodListView.as_view(), name='leaveperiods'),
+    # Note: leaveperiods is available both as router resource and legacy list-create; keep both for compatibility
     path('leave-allocations/', LeaveAllocationListView.as_view(), name='leave-allocations'),
+    path('seed-leave-allocations/', SeedLeaveAllocationsView.as_view(), name='seed-leave-allocations'),
+    path('leavetype-compat/', LeaveTypeCompatView.as_view(), name='leavetype-compat'),
+    path('leavetype-compat/<int:pk>/', LeaveTypeCompatDetailView.as_view(), name='leavetype-compat-detail'),
+    path('leaveperiods-compat/', LeavePeriodCompatView.as_view(), name='leaveperiods-compat'),
     path('my-leave-balance/', MyLeaveBalanceView.as_view(), name='my-leave-balance'),
+    path('leave-report/', LeaveReportView.as_view(), name='leave-report'),
 
         # User API endpoints
         path("users/", UserAPIView.as_view(), name="user-list-create"),
@@ -88,6 +102,7 @@ try:
         # Bulk upload and data analysis endpoints
         path('bulk-upload/', BulkUploadView.as_view(), name='bulk-upload'),
         path('data-analysis/', DataAnalysisView.as_view(), name='data-analysis'),
+    path('admin/upload-docrec/', UploadDocRecView.as_view(), name='admin-upload-docrec'),
     ]
 
 except Exception as e:

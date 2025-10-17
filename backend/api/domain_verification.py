@@ -37,18 +37,18 @@ class Verification(models.Model):
     moi_count = models.PositiveSmallIntegerField(default=0, db_column='no_of_moi')
     backlog_count = models.PositiveSmallIntegerField(default=0, db_column='no_of_backlog')
     pay_rec_no = models.CharField(max_length=100, null=True, blank=True, db_column='pay_rec_no')
-    status = models.CharField(max_length=20, choices=VerificationStatus.choices, default=VerificationStatus.IN_PROGRESS, db_column='status')
+    # Allow NULL so bulk uploads can leave status blank (preserve NULL).
+    # Normal doc-rec creation flow should set IN_PROGRESS explicitly in the creation path.
+    status = models.CharField(max_length=20, choices=VerificationStatus.choices, null=True, blank=True, db_column='status')
     final_no = models.CharField(max_length=50, unique=True, null=True, blank=True, db_column='final_no')
     mail_status = models.CharField(max_length=20, choices=MailStatus.choices, default=MailStatus.NOT_SENT, db_column='mail_send_status')
     eca_required = models.BooleanField(default=False, db_column='eca_required')
+    # Denormalized ECA summary fields (only these are kept per your requested final table)
     eca_name = models.CharField(max_length=255, null=True, blank=True, db_column='eca_name')
     eca_ref_no = models.CharField(max_length=100, null=True, blank=True, db_column='eca_ref_no')
-    eca_submit_date = models.DateField(null=True, blank=True, db_column='eca_submit_date')
-    eca_mail_status = models.CharField(max_length=20, choices=MailStatus.choices, default=MailStatus.NOT_SENT, db_column='eca_status')
-    eca_resend_count = models.PositiveSmallIntegerField(default=0, db_column='eca_resend_count')
-    eca_last_action_at = models.DateTimeField(null=True, blank=True, db_column='eca_last_action_at')
-    eca_last_to_email = models.EmailField(null=True, blank=True, db_column='eca_last_to_email')
-    eca_history = models.JSONField(null=True, blank=True, db_column='eca_history')
+    eca_send_date = models.DateField(null=True, blank=True, db_column='eca_send_date')
+    eca_resubmit_date = models.DateField(null=True, blank=True, db_column='eca_resubmit_date')
+    eca_status = models.CharField(max_length=20, choices=MailStatus.choices, default=MailStatus.NOT_SENT, db_column='eca_status')
     replaces_verification = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, db_column='replaces_verification_id', related_name='superseded_by')
     remark = models.TextField(null=True, blank=True, db_column='vr_remark')
     vr_done_date = models.DateField(null=True, blank=True, db_column='vr_done_date')
@@ -78,8 +78,8 @@ class Verification(models.Model):
         if self.status in (VerificationStatus.PENDING, VerificationStatus.CANCEL) and self.final_no:
             raise ValidationError({'final_no': 'final_no must be empty for PENDING or CANCEL.'})
         if not self.eca_required and any([
-            self.eca_name, self.eca_ref_no, self.eca_submit_date,
-            self.eca_resend_count, self.eca_last_action_at, self.eca_last_to_email, self.eca_history
+            self.eca_name, self.eca_ref_no, self.eca_send_date,
+            self.eca_resubmit_date, self.eca_status
         ]):
             raise ValidationError('ECA details present but eca_required=False.')
     def save(self,*a,**kw):
@@ -97,13 +97,19 @@ class Verification(models.Model):
         self.full_clean()
         self.save(update_fields=['last_resubmit_date','last_resubmit_status','remark','status','updatedat'])
     def eca_push_history(self, action: str, to_email: str | None = None, notes: str | None = None, mark_sent: bool = True):
-        now = timezone.now(); entry = {'action':action,'at':now.isoformat(),'to':to_email,'notes':notes}
-        hist = list(self.eca_history or []); hist.append(entry); self.eca_history = hist
-        self.eca_last_action_at = now; self.eca_last_to_email = to_email or self.eca_last_to_email
-        if action == 'RESEND': self.eca_resend_count = (self.eca_resend_count or 0) + 1
-        if mark_sent: self.eca_mail_status = MailStatus.SENT
+        """
+        Record a high-level ECA action. Since we keep only summary fields on Verification,
+        we update `eca_status` and `eca_resubmit_date` when relevant.
+        """
+        now = timezone.now()
+        # If this was a resend or push we can set resubmit date
+        if action == 'RESEND':
+            self.eca_resubmit_date = now.date()
+        if mark_sent:
+            self.eca_status = MailStatus.SENT
+        # optionally update last updated timestamp
         self.full_clean()
-        self.save(update_fields=['eca_history','eca_last_action_at','eca_last_to_email','eca_resend_count','eca_mail_status','updatedat'])
+        self.save(update_fields=['eca_resubmit_date','eca_status','updatedat'])
 
 class InstVerificationMain(models.Model):
     id = models.BigAutoField(primary_key=True)

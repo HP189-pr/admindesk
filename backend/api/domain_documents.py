@@ -10,7 +10,7 @@ __all__ = ['ApplyFor', 'PayBy', 'PayPrefixRule', 'DocRec', 'Eca']
 
 class ApplyFor(models.TextChoices):
     VERIFICATION = 'VR', 'Verification'
-    INST_VERIFICATION = 'IV', 'Institutional Verification'
+    INST_VERIFICATION = 'IV', 'Inst-Verification'
     PROVISIONAL = 'PR', 'Provisional'
     MIGRATION = 'MG', 'Migration'
     GRADE_TRANS = 'GT', 'Grade To Marks'
@@ -52,6 +52,7 @@ class DocRec(models.Model):
     createdat = models.DateTimeField(auto_now_add=True, db_column='createdat')
     updatedat = models.DateTimeField(auto_now=True, db_column='updatedat')
     doc_rec_date = models.DateField(null=True, blank=True, db_column='doc_rec_date')
+    doc_rec_remark = models.TextField(null=True, blank=True, db_column='doc_rec_remark')
     class Meta:
         db_table = 'doc_rec'
         indexes = [
@@ -92,7 +93,7 @@ class DocRec(models.Model):
         mapping = {
             PayBy.CASH: f"C01/{year_str}/R",
             PayBy.BANK: f"1471/{year_str}/R",
-            PayBy.UPI: f"UPI/{year_str}/R",
+            PayBy.UPI: f"8785/{year_str}/R",
             PayBy.NA: None,
         }
         return mapping.get(self.pay_by, f"NA/{year_str}/R")

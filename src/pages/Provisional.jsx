@@ -29,6 +29,18 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
     pay_rec_no: "",
   });
 
+  // Support initial navigation from doc-receive via window var
+  useEffect(() => {
+    try {
+      const nav = window.__admindesk_initial_nav;
+      if (nav && nav.nav === 'provisional' && nav.docrec) {
+        setForm((f)=>({ ...f, doc_rec: nav.docrec }));
+        // clear after consuming
+        delete window.__admindesk_initial_nav;
+      }
+    } catch (e) {}
+  }, []);
+
   const authHeaders = () => {
     const token = localStorage.getItem("access_token");
     return token ? { Authorization: `Bearer ${token}` } : {};
@@ -91,6 +103,55 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
       if (!res.ok) throw new Error(await res.text());
     }
     await loadList();
+  };
+
+  // Load records by doc_rec key (public id)
+  const loadByDocRec = async (docRecKey) => {
+    if (!docRecKey) return;
+    try {
+      const res = await fetch(`/api/provisional/?doc_rec=${encodeURIComponent(docRecKey)}`, { headers: { ...authHeaders() } });
+      const data = await res.json();
+      setList(Array.isArray(data) ? data : data.results || []);
+    } catch (e) { console.error(e); }
+  };
+
+  // Add entry client-side: ensures duplicate prv_number and status rules per doc_rec
+  const addEntry = async (entry) => {
+    // validation: prv_number unique per doc_rec
+    const sibling = list.find((r) => (r.prv_number || '').trim() === (entry.prv_number || '').trim());
+    if (sibling) {
+      if ((entry.prv_status || '').toLowerCase() !== 'cancelled') {
+        alert('Duplicate PRV number for this document is not allowed unless status is Cancelled.');
+        return;
+      }
+    }
+    // status rule: only one 'Issued' or one 'Pending' (null) per doc_rec
+    const statusNonCancel = list.filter(r => (r.prv_status||'').toLowerCase() !== 'cancelled');
+    if ((entry.prv_status||'').toLowerCase() !== 'cancelled') {
+      const hasDoneOrNull = statusNonCancel.find(r => !r.prv_status || ['issued','pending','done'].includes((r.prv_status||'').toLowerCase()));
+      if (hasDoneOrNull) {
+        alert('Only one non-cancelled provisional entry allowed per document.');
+        return;
+      }
+    }
+    // create via API
+    const payload = {
+      doc_rec_key: form.doc_rec || form.doc_rec_key || undefined,
+      enrollment: entry.enrollment || null,
+      student_name: entry.student_name || null,
+      institute: entry.institute || null,
+      subcourse: entry.subcourse || null,
+      maincourse: entry.maincourse || null,
+      class_obtain: entry.class_obtain || null,
+      prv_number: entry.prv_number || null,
+      prv_date: entry.prv_date || null,
+      passing_year: entry.passing_year || null,
+      prv_status: entry.prv_status || 'Pending',
+      pay_rec_no: entry.pay_rec_no || null,
+    };
+    const res = await fetch(`/api/provisional/`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(payload) });
+    if (!res.ok) throw new Error(await res.text());
+    await loadByDocRec(form.doc_rec || form.doc_rec_key);
   };
 
   return (

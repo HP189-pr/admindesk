@@ -133,17 +133,21 @@ export const AuthProvider = ({ children }) => {
     // 🔹 Admin Panel special password verification (server-configured)
     const verifyAdminPanelPassword = async (password) => {
         try {
-            const { status } = await axios.post(
+            const res = await axios.post(
                 `${API_BASE_URL}/api/verify-admin-panel-password/`,
                 { password },
                 {
                     headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
                     withCredentials: true,
+                    validateStatus: () => true,
                 }
             );
-            return status === 200;
+            if (res.status === 200) return { success: true, message: res.data?.message || "Admin panel access granted." };
+            // surface message from server when available
+            return { success: false, message: res.data?.detail || res.data?.message || "Invalid admin panel password." };
         } catch (error) {
-            return false;
+            console.error('❌ Admin Panel Verify Error:', error.response?.data || error.message);
+            return { success: false, message: error.response?.data?.detail || "Failed to verify admin password." };
         }
     };
 
@@ -201,6 +205,32 @@ export const AuthProvider = ({ children }) => {
             return [];
         }
     };
+
+    // 🔹 Create a new user (calls backend)
+    const createUser = async (payload) => {
+        try {
+            const { data } = await axios.post(`${API_BASE_URL}/api/users/`, payload, {
+                headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}`, 'Content-Type': 'application/json' }
+            });
+            return { success: true, data };
+        } catch (error) {
+            console.error('❌ Create User Error:', error.response?.data || error.message);
+            return { success: false, error: error.response?.data || error.message };
+        }
+    };
+
+    // 🔹 Update existing user
+    const updateUser = async (userId, payload) => {
+        try {
+            const { data } = await axios.put(`${API_BASE_URL}/api/users/${userId}/`, payload, {
+                headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}`, 'Content-Type': 'application/json' }
+            });
+            return { success: true, data };
+        } catch (error) {
+            console.error('❌ Update User Error:', error.response?.data || error.message);
+            return { success: false, error: error.response?.data || error.message };
+        }
+    };
     
     // 🔹 Fetch user details by ID
     const fetchUserDetail = async (userId) => {
@@ -216,7 +246,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, isAdmin, profilePicture, loading, login, logout, refreshToken, verifyPassword, verifyAdminPanelPassword, isAdminPanelVerified, fetchUsers, fetchUserDetail }}>
+        <AuthContext.Provider value={{ user, isAdmin, profilePicture, loading, login, logout, refreshToken, verifyPassword, verifyAdminPanelPassword, isAdminPanelVerified, fetchUsers, fetchUserDetail, createUser, updateUser }}>
             {children}
         </AuthContext.Provider>
     );

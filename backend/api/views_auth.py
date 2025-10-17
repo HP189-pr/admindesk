@@ -387,14 +387,108 @@ class UserAPIView(APIView):
     def get(self, request):
         users = User.objects.all()
         serializer = UserSerializer(users, many=True)
-        return Response(serializer.data, status=200)
+        # Enrich serialized data with usr_birth_date (if column exists)
+        out = []
+        from django.db import connection
+        for u in serializer.data:
+            usr = dict(u)
+            try:
+                with connection.cursor() as cur:
+                    cur.execute("SELECT usr_birth_date FROM auth_user WHERE id=%s", [usr.get('id')])
+                    r = cur.fetchone()
+                    if r:
+                        usr['usr_birth_date'] = r[0].isoformat() if r[0] else None
+                    else:
+                        usr['usr_birth_date'] = None
+            except Exception:
+                usr['usr_birth_date'] = None
+            out.append(usr)
+        return Response(out, status=200)
 
     def post(self, request):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
+            # Persist usr_birth_date to auth_user if provided
+            b = request.data.get('usr_birth_date')
+            try:
+                if b:
+                    from django.db import connection
+                    with connection.cursor() as cur:
+                        cur.execute("UPDATE auth_user SET usr_birth_date = %s WHERE id = %s", [b, serializer.data.get('id')])
+            except Exception:
+                pass
+
+            # If user has no usable password, set default password based on birthdate (ddmmyy)
+            try:
+                from django.contrib.auth import get_user_model
+                from datetime import date
+                UserModel = get_user_model()
+                user_obj = UserModel.objects.filter(id=serializer.data.get('id')).first()
+                if user_obj:
+                    needs = False
+                    try:
+                        needs = (not user_obj.has_usable_password()) or (not user_obj.password)
+                    except Exception:
+                        needs = not bool(user_obj.password)
+                    if needs:
+                        # prefer provided usr_birth_date, otherwise try to read from auth_user via SQL
+                        birth = None
+                        if b:
+                            try:
+                                birth = date.fromisoformat(b)
+                            except Exception:
+                                birth = None
+                        else:
+                            try:
+                                from django.db import connection
+                                with connection.cursor() as cur:
+                                    cur.execute("SELECT usr_birth_date FROM auth_user WHERE id=%s", [user_obj.id])
+                                    r = cur.fetchone()
+                                    if r and r[0]:
+                                        birth = r[0]
+                            except Exception:
+                                birth = None
+
+                        if birth:
+                                try:
+                                    pw = birth.strftime('%d%m%y')
+                                    user_obj.set_password(pw)
+                                    user_obj.save()
+                                    print(f"[DEBUG] Set default password for user id={user_obj.id} to birthdate-derived value")
+                                except Exception:
+                                    print(f"[DEBUG] Failed to set default password for user id={user_obj.id}")
+                                    pass
+            except Exception:
+                pass
+
             return Response(serializer.data, status=201)
         return Response(serializer.errors, status=400)
+
+
+class AdminChangePasswordView(APIView):
+    """Allow admin/staff to set a user's password without needing the old password."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, user_id):
+        # only staff/superuser may change other users' passwords
+        if not (request.user.is_staff or request.user.is_superuser):
+            return Response({"detail": "Not authorized."}, status=403)
+
+        new_password = (request.data or {}).get('new_password')
+        if not new_password or len(new_password) < 6:
+            return Response({"new_password": ["New password must be at least 6 characters."]}, status=400)
+
+        UserModel = get_user_model()
+        try:
+            u = UserModel.objects.get(id=user_id)
+        except UserModel.DoesNotExist:
+            return Response({"detail": "User not found."}, status=404)
+
+        u.set_password(new_password)
+        u.save()
+        return Response({"message": "Password changed successfully."}, status=200)
 
 
 class UserDetailAPIView(APIView):
@@ -410,6 +504,17 @@ class UserDetailAPIView(APIView):
         serializer = UserSerializer(user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
+            # Persist usr_birth_date if provided
+            try:
+                b = request.data.get('usr_birth_date')
+                from django.db import connection
+                with connection.cursor() as cur:
+                    if b:
+                        cur.execute("UPDATE auth_user SET usr_birth_date = %s WHERE id = %s", [b, user_id])
+                    else:
+                        cur.execute("UPDATE auth_user SET usr_birth_date = NULL WHERE id = %s", [user_id])
+            except Exception:
+                pass
             return Response(serializer.data, status=200)
         return Response(serializer.errors, status=400)
 

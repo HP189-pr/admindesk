@@ -1,6 +1,7 @@
 from django.contrib import admin
 from .domain_emp import EmpProfile, LeaveType, LeaveEntry, LeavePeriod, LeaveAllocation
 from .domain_emp import LeaveBalanceSnapshot
+from .domain_logs import UserActivityLog, ErrorLog
 
 @admin.register(EmpProfile)
 class EmpProfileAdmin(admin.ModelAdmin):
@@ -64,6 +65,20 @@ class LeaveEntryInline(admin.TabularInline):
 
 # Attach inlines to EmpProfileAdmin (ensure tuple concatenation)
 EmpProfileAdmin.inlines = getattr(EmpProfileAdmin, 'inlines', ()) + (LeaveAllocationInline, LeaveEntryInline)
+
+# register logs
+@admin.register(UserActivityLog)
+class UserActivityLogAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'module', 'action', 'path', 'method', 'status_code', 'created_at')
+    readonly_fields = ('created_at', 'updated_at')
+    search_fields = ('user__username', 'module', 'action', 'path')
+
+
+@admin.register(ErrorLog)
+class ErrorLogAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'path', 'method', 'message', 'created_at')
+    readonly_fields = ('created_at', 'updated_at')
+    search_fields = ('user__username', 'path', 'message')
 """
 File: backend/api/admin.py
 Purpose: Django admin registrations + reusable AJAX Excel import logic.
@@ -191,11 +206,15 @@ def get_import_spec(model) -> Dict[str, Any]:
         SubBranch: {"allowed_columns": ["subcourse_id", "subcourse_name", "maincourse_id"], "required_keys": ["subcourse_id", "maincourse_id"], "create_requires": ["subcourse_id", "maincourse_id"]},
         Institute: {"allowed_columns": ["institute_id", "institute_code", "institute_name", "institute_campus", "institute_address", "institute_city"], "required_keys": ["institute_id"], "create_requires": ["institute_id", "institute_code"]},
         Enrollment: {"allowed_columns": ["enrollment_no", "student_name", "batch", "institute_id", "subcourse_id", "maincourse_id", "temp_enroll_no", "enrollment_date", "admission_date"], "required_keys": ["enrollment_no"], "create_requires": ["enrollment_no", "student_name", "batch", "institute_id", "subcourse_id", "maincourse_id"]},
+            # Employee (EmpProfile) bulk upload
+            EmpProfile: {"allowed_columns": ["emp_id", "emp_name", "emp_designation", "userid", "actual_joining", "emp_birth_date", "usr_birth_date", "department_joining", "institute_id", "status", "el_balance", "sl_balance", "cl_balance", "vacation_balance", "joining_year_allocation_el", "joining_year_allocation_cl", "joining_year_allocation_sl", "joining_year_allocation_vac", "leave_calculation_date", "emp_short"], "required_keys": ["emp_id"], "create_requires": ["emp_id", "emp_name"]},
+            # LeaveEntry bulk upload
+            LeaveEntry: {"allowed_columns": ["leave_report_no", "emp_id", "leave_code", "start_date", "end_date", "total_days", "reason", "status", "created_by", "approved_by", "approved_at"], "required_keys": ["leave_report_no"], "create_requires": ["leave_report_no", "emp_id", "leave_code", "start_date"]},
         StudentProfile: {"allowed_columns": ["enrollment_no", "gender", "birth_date", "address1", "address2", "city1", "city2", "contact_no", "email", "fees", "hostel_required", "aadhar_no", "abc_id", "mobile_adhar", "name_adhar", "mother_name", "category", "photo_uploaded", "is_d2d", "program_medium"], "required_keys": ["enrollment_no"], "create_requires": ["enrollment_no"]},
-        DocRec: {"allowed_columns": ["apply_for", "doc_rec_id", "pay_by", "pay_rec_no_pre", "pay_rec_no", "pay_amount", "doc_rec_date"], "required_keys": ["apply_for", "doc_rec_id", "pay_by"], "create_requires": ["apply_for", "doc_rec_id", "pay_by"]},
-        MigrationRecord: {"allowed_columns": ["doc_rec_id", "enrollment_no", "student_name", "institute_id", "maincourse_id", "subcourse_id", "mg_number", "mg_date", "exam_year", "admission_year", "exam_details", "mg_status", "pay_rec_no"], "required_keys": ["doc_rec_id"], "create_requires": ["doc_rec_id"]},
-        ProvisionalRecord: {"allowed_columns": ["doc_rec_id", "enrollment_no", "student_name", "institute_id", "maincourse_id", "subcourse_id", "prv_number", "prv_date", "class_obtain", "passing_year", "prv_status", "pay_rec_no"], "required_keys": ["doc_rec_id"], "create_requires": ["doc_rec_id"]},
-        Verification: {"allowed_columns": ["doc_rec_id", "date", "enrollment_no", "second_enrollment_no", "student_name", "no_of_transcript", "no_of_marksheet", "no_of_degree", "no_of_moi", "no_of_backlog", "status", "final_no", "pay_rec_no"], "required_keys": ["doc_rec_id"], "create_requires": ["doc_rec_id"]},
+    DocRec: {"allowed_columns": ["apply_for", "doc_rec_id", "pay_by", "pay_rec_no_pre", "pay_rec_no", "pay_amount", "doc_rec_date", "doc_rec_remark"], "required_keys": ["apply_for", "doc_rec_id", "pay_by"], "create_requires": ["apply_for", "doc_rec_id", "pay_by"]},
+    MigrationRecord: {"allowed_columns": ["doc_rec_id", "enrollment_no", "student_name", "institute_id", "maincourse_id", "subcourse_id", "mg_number", "mg_date", "exam_year", "admission_year", "exam_details", "mg_status", "pay_rec_no"], "required_keys": ["doc_rec_id"], "create_requires": ["doc_rec_id"]},
+    ProvisionalRecord: {"allowed_columns": ["doc_rec_id", "enrollment_no", "student_name", "institute_id", "maincourse_id", "subcourse_id", "prv_number", "prv_date", "class_obtain", "passing_year", "prv_status", "pay_rec_no"], "required_keys": ["doc_rec_id"], "create_requires": ["doc_rec_id"]},
+    Verification: {"allowed_columns": ["doc_rec_id", "date", "enrollment_no", "second_enrollment_no", "student_name", "no_of_transcript", "no_of_marksheet", "no_of_degree", "no_of_moi", "no_of_backlog", "status", "final_no", "pay_rec_no", "vr_done_date", "mail_status", "eca_required", "eca_name", "eca_ref_no", "eca_submit_date", "eca_remark", "doc_rec_remark"], "required_keys": ["doc_rec_id"], "create_requires": ["doc_rec_id"]},
     }
     for klass, spec in specs.items():
         if issubclass(model, klass):
@@ -520,10 +539,24 @@ class ExcelUploadMixin:
                                 if created: counts["created"] += 1; add_log(i, "created", "Created", doc_rec_id)
                                 else: counts["updated"] += 1; add_log(i, "updated", "Updated", doc_rec_id)
                         elif issubclass(self.model, MigrationRecord) and sheet_norm == "migration":
+                            auto_create = bool(str(request.POST.get('auto_create_docrec', '')).strip())
                             for i, (_, r) in enumerate(df.iterrows(), start=2):
                                 dr = DocRec.objects.filter(doc_rec_id=str(r.get("doc_rec_id")).strip()).first()
                                 if not dr:
-                                    counts["skipped"] += 1; add_log(i, "skipped", "doc_rec_id not found"); continue
+                                    if auto_create:
+                                        doc_date = parse_excel_date(r.get("doc_rec_date")) if "doc_rec_date" in eff else None
+                                        try:
+                                            dr = DocRec.objects.create(
+                                                doc_rec_date=doc_date,
+                                                apply_for='MG',
+                                                created_by=request.user,
+                                            )
+                                            # record creation in log
+                                            add_log(i, "created", "Auto-created DocRec", dr.doc_rec_id)
+                                        except Exception as e:
+                                            counts["skipped"] += 1; add_log(i, "skipped", f"Failed create docrec: {e}"); continue
+                                    else:
+                                        counts["skipped"] += 1; add_log(i, "skipped", "doc_rec_id not found"); continue
                                 enr = Enrollment.objects.filter(enrollment_no=str(r.get("enrollment_no")).strip()).first() if "enrollment_no" in eff else None
                                 inst = Institute.objects.filter(institute_id=r.get("institute_id")).first() if "institute_id" in eff else None
                                 main = MainBranch.objects.filter(maincourse_id=r.get("maincourse_id")).first() if "maincourse_id" in eff else None
@@ -549,10 +582,23 @@ class ExcelUploadMixin:
                                 if created: counts["created"] += 1; add_log(i, "created", "Created", dr.doc_rec_id)
                                 else: counts["updated"] += 1; add_log(i, "updated", "Updated", dr.doc_rec_id)
                         elif issubclass(self.model, ProvisionalRecord) and sheet_norm == "provisional":
+                            auto_create = bool(str(request.POST.get('auto_create_docrec', '')).strip())
                             for i, (_, r) in enumerate(df.iterrows(), start=2):
                                 dr = DocRec.objects.filter(doc_rec_id=str(r.get("doc_rec_id")).strip()).first()
                                 if not dr:
-                                    counts["skipped"] += 1; add_log(i, "skipped", "doc_rec_id not found"); continue
+                                    if auto_create:
+                                        doc_date = parse_excel_date(r.get("doc_rec_date")) if "doc_rec_date" in eff else None
+                                        try:
+                                            dr = DocRec.objects.create(
+                                                doc_rec_date=doc_date,
+                                                apply_for='PR',
+                                                created_by=request.user,
+                                            )
+                                            add_log(i, "created", "Auto-created DocRec", dr.doc_rec_id)
+                                        except Exception as e:
+                                            counts["skipped"] += 1; add_log(i, "skipped", f"Failed create docrec: {e}"); continue
+                                    else:
+                                        counts["skipped"] += 1; add_log(i, "skipped", "doc_rec_id not found"); continue
                                 enr = Enrollment.objects.filter(enrollment_no=str(r.get("enrollment_no")).strip()).first() if "enrollment_no" in eff else None
                                 inst = Institute.objects.filter(institute_id=r.get("institute_id")).first() if "institute_id" in eff else None
                                 main = MainBranch.objects.filter(maincourse_id=r.get("maincourse_id")).first() if "maincourse_id" in eff else None
@@ -577,10 +623,23 @@ class ExcelUploadMixin:
                                 if created: counts["created"] += 1; add_log(i, "created", "Created", dr.doc_rec_id)
                                 else: counts["updated"] += 1; add_log(i, "updated", "Updated", dr.doc_rec_id)
                         elif issubclass(self.model, Verification) and sheet_norm == "verification":
+                            auto_create = bool(str(request.POST.get('auto_create_docrec', '')).strip())
                             for i, (_, r) in enumerate(df.iterrows(), start=2):
                                 dr = DocRec.objects.filter(doc_rec_id=str(r.get("doc_rec_id")).strip()).first()
                                 if not dr:
-                                    counts["skipped"] += 1; add_log(i, "skipped", "doc_rec_id not found"); continue
+                                    if auto_create:
+                                        doc_date = parse_excel_date(r.get("doc_rec_date")) if "doc_rec_date" in eff else None
+                                        try:
+                                            dr = DocRec.objects.create(
+                                                doc_rec_date=doc_date,
+                                                apply_for='VR',
+                                                created_by=request.user,
+                                            )
+                                            add_log(i, "created", "Auto-created DocRec", dr.doc_rec_id)
+                                        except Exception as e:
+                                            counts["skipped"] += 1; add_log(i, "skipped", f"Failed create docrec: {e}"); continue
+                                    else:
+                                        counts["skipped"] += 1; add_log(i, "skipped", "doc_rec_id not found"); continue
                                 enr = Enrollment.objects.filter(enrollment_no=str(r.get("enrollment_no")).strip()).first() if "enrollment_no" in eff else None
                                 senr = Enrollment.objects.filter(enrollment_no=str(r.get("second_enrollment_no")).strip()).first() if "second_enrollment_no" in eff and str(r.get("second_enrollment_no") or '').strip() else None
                                 date_v = parse_excel_date(r.get("date")) if "date" in eff else None
@@ -597,6 +656,42 @@ class ExcelUploadMixin:
                                 if "status" in eff: obj.status = r.get("status") or getattr(obj, 'status', None)
                                 if "final_no" in eff: obj.final_no = (str(r.get("final_no")).strip() or obj.final_no)
                                 if "pay_rec_no" in eff: obj.pay_rec_no = r.get("pay_rec_no") or (dr.pay_rec_no if dr else getattr(obj, 'pay_rec_no', ''))
+                                # vr_done_date
+                                if "vr_done_date" in eff:
+                                    vr_done = parse_excel_date(r.get("vr_done_date"))
+                                    if vr_done:
+                                        obj.vr_done_date = vr_done
+                                # mail_status mapping
+                                if "mail_status" in eff:
+                                    obj.mail_status = r.get("mail_status") or getattr(obj, 'mail_status', None)
+                                # if doc_rec_remark provided, sync to DocRec
+                                if "doc_rec_remark" in eff:
+                                    remark_val = r.get("doc_rec_remark")
+                                    if remark_val is not None and dr:
+                                        dr.doc_rec_remark = remark_val
+                                        dr.save(update_fields=['doc_rec_remark'])
+                                # ECA handling: populate Verification's own eca_* fields (denormalized single-row mode)
+                                try:
+                                    if "eca_required" in eff and str(r.get("eca_required") or '').strip().lower() in ('1','true','yes','y'):
+                                        if 'eca_name' in eff:
+                                            obj.eca_name = r.get('eca_name') or None
+                                        if 'eca_ref_no' in eff:
+                                            obj.eca_ref_no = r.get('eca_ref_no') or None
+                                        if 'eca_submit_date' in eff:
+                                            eca_send = parse_excel_date(r.get('eca_submit_date'))
+                                            if eca_send:
+                                                obj.eca_submit_date = eca_send
+                                        if 'eca_remark' in eff:
+                                            # store as part of eca_history or remark field — we'll store the text in eca_history as a single entry
+                                            try:
+                                                hist = list(obj.eca_history or [])
+                                                hist.append({'imported_remark': _sanitize(r.get('eca_remark'))})
+                                                obj.eca_history = hist
+                                            except Exception:
+                                                obj.eca_history = [{'imported_remark': _sanitize(r.get('eca_remark'))}]
+                                except Exception:
+                                    # keep import tolerant; skip ECA details on error
+                                    pass
                                 obj.updatedby = request.user
                                 obj.save()
                                 if created: counts["created"] += 1; add_log(i, "created", "Created", dr.doc_rec_id)
@@ -779,10 +874,41 @@ class ModuleAdmin(admin.ModelAdmin):
 @admin.register(Menu)
 class MenuAdmin(admin.ModelAdmin):
     list_display = ('menuid', 'name', 'module', 'created_at', 'updated_at', 'updated_by')
-    search_fields = ('name__icontains',)
-    list_filter = ('module', 'created_at')
-    readonly_fields = ('created_at', 'updated_at')
-    autocomplete_fields = ('module',)
+    search_fields = ('name', 'menuid')
+
+
+# ---------------------------------------------------------------------------
+# Re-register EmpProfile and LeaveEntry with upload support
+# (use CommonAdminMixin which inherits ExcelUploadMixin to enable CSV/XLSX uploads)
+# ---------------------------------------------------------------------------
+try:
+    admin.site.unregister(EmpProfile)
+except Exception:
+    # not registered or already unregistered
+    pass
+
+
+@admin.register(EmpProfile)
+class EmpProfileUploadAdmin(CommonAdminMixin):
+    # Preserve the existing admin configuration while adding upload support
+    list_display = ('emp_id', 'emp_name', 'emp_designation', 'status', 'userid', 'el_balance', 'sl_balance', 'cl_balance', 'vacation_balance')
+    search_fields = ('emp_id', 'emp_name', 'userid')
+    list_filter = ('status', 'leave_group', 'department_joining', 'institute_id')
+    inlines = (LeaveAllocationInline, LeaveEntryInline)
+
+
+try:
+    admin.site.unregister(LeaveEntry)
+except Exception:
+    pass
+
+
+@admin.register(LeaveEntry)
+class LeaveEntryUploadAdmin(CommonAdminMixin):
+    list_display = ('leave_report_no', 'emp', 'leave_type', 'start_date', 'end_date', 'total_days', 'status', 'created_by', 'approved_by')
+    search_fields = ('leave_report_no', 'emp__emp_name', 'leave_type__leave_name')
+    list_filter = ('status', 'leave_type', 'emp')
+    readonly_fields = ('leave_report_no', 'total_days')
 
 @admin.register(UserPermission)
 class UserPermissionAdmin(admin.ModelAdmin):
@@ -823,12 +949,118 @@ class StudentProfileAdmin(CommonAdminMixin):
     autocomplete_fields = ("enrollment",)
 
 @admin.register(Verification)
-class VerificationAdmin(admin.ModelAdmin):
-    list_display = ("id", "doc_rec", "date", "enrollment", "student_name", "status", "final_no")
+class VerificationAdmin(CommonAdminMixin):
+    # Desired column order:
+    # Date, Enrollment, Sec Enrollment, Name, TR, MS, DG, MOI, Backlog, Status, Done Date, Final No, Mail, Sequence, Doc_Rec_Remark, ECA_Required, ECA_Name, ECA_Ref_No, ECA_Send_Date, ECA_Status, ECA_Resubmit_Date
+    list_display = (
+        "date_display",
+        "enrollment",
+        "second_enrollment",
+        "student_name",
+        "tr_count",
+        "ms_count",
+        "dg_count",
+        "moi_count",
+        "backlog_count",
+        "status",
+        "done_date_display",
+        "final_no",
+        "mail_flag",
+        "seq",
+        "doc_rec_remark",
+        "eca_required_flag",
+        "eca_name",
+        "eca_ref_no",
+        "eca_send_date",
+        "eca_status",
+        "eca_resubmit_date",
+    )
+    # doc_rec_remark is not a direct field on Verification (it comes from related DocRec).
+    # We'll surface it in the edit form via get_form and sync on save.
     search_fields = ("doc_rec__doc_rec_id", "enrollment__enrollment_no", "student_name", "final_no")
     list_filter = ("status", "date")
     autocomplete_fields = ("doc_rec", "enrollment", "second_enrollment")
     readonly_fields = ("createdat", "updatedat")
+
+    def date_display(self, obj):
+        return obj.date.strftime('%d-%m-%Y') if obj.date else '-'
+    date_display.short_description = 'Date'
+
+    def done_date_display(self, obj):
+        return obj.vr_done_date.strftime('%d-%m-%Y') if obj.vr_done_date else '-'
+    done_date_display.short_description = 'Done Date'
+
+    def mail_flag(self, obj):
+        # Show Y/N based on mail_status
+        return 'Y' if (obj.mail_status or '').upper() == 'SENT' else 'N'
+    mail_flag.short_description = 'Mail'
+
+    def eca_required_flag(self, obj):
+        return 'Y' if obj.eca_required else 'N'
+    eca_required_flag.short_description = 'ECA Req'
+
+    def doc_rec_remark(self, obj):
+        # Prefer verification-level remark if present, else fallback to related DocRec.remark
+        val = None
+        try:
+            # verification may have its own remark field (vr_remark stored on Verification.remark)
+            val = getattr(obj, 'doc_rec_remark', None)
+        except Exception:
+            val = None
+        if not val and getattr(obj, 'doc_rec', None):
+            try:
+                val = getattr(obj.doc_rec, 'doc_rec_remark', None)
+            except Exception:
+                val = None
+        # sanitize pandas NaN or string 'nan'
+        if val is None:
+            return ''
+        s = str(val)
+        if s.lower() == 'nan':
+            return ''
+        return s
+    doc_rec_remark.short_description = 'Doc Rec Remark'
+
+    def seq(self, obj):
+        # row number in the current changelist page; Django admin doesn't provide index directly
+        # we approximate by using the object's pk ordering offset (best-effort)
+        return obj.pk
+    seq.short_description = 'Sequence'
+
+    def save_model(self, request, obj, form, change):  # type: ignore[override]
+        # Keep parity with other create-by patterns
+        if not change and not getattr(obj, 'updatedby', None):
+            try:
+                obj.updatedby = request.user  # type: ignore[attr-defined]
+            except Exception:
+                pass
+        # Save Verification first
+        super().save_model(request, obj, form, change)
+        # If doc_rec_remark was edited via the verification form, sync it to related DocRec
+        try:
+            new_remark = form.cleaned_data.get('doc_rec_remark')
+        except Exception:
+            new_remark = None
+        if new_remark is not None and getattr(obj, 'doc_rec', None):
+            try:
+                obj.doc_rec.doc_rec_remark = new_remark
+                obj.doc_rec.save()
+            except Exception:
+                pass
+
+    def get_form(self, request, obj=None, **kwargs):
+        # Extend the admin form to include a doc_rec_remark field sourced from related DocRec
+        form = super().get_form(request, obj, **kwargs)
+        from django import forms
+        class WrappedForm(form):
+            doc_rec_remark = forms.CharField(required=False, label='Doc Rec Remark')
+            def __init__(self_inner, *a, **kw):
+                super().__init__(*a, **kw)
+                # Prepopulate from obj if editing
+                if obj and getattr(obj, 'doc_rec', None):
+                    self_inner.fields['doc_rec_remark'].initial = obj.doc_rec.doc_rec_remark
+        return WrappedForm
+
 
     def save_model(self, request, obj, form, change):  # type: ignore[override]
         # Keep parity with other create-by patterns

@@ -30,6 +30,16 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
     pay_rec_no: "",
   });
 
+  useEffect(() => {
+    try {
+      const nav = window.__admindesk_initial_nav;
+      if (nav && nav.nav === 'migration' && nav.docrec) {
+        setForm((f)=>({ ...f, doc_rec: nav.docrec }));
+        delete window.__admindesk_initial_nav;
+      }
+    } catch (e) {}
+  }, []);
+
   const authHeaders = () => {
     const token = localStorage.getItem("access_token");
     return token ? { Authorization: `Bearer ${token}` } : {};
@@ -96,6 +106,53 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
       if (!res.ok) throw new Error(await res.text());
     }
     await loadList();
+  };
+
+  const loadByDocRec = async (docRecKey) => {
+    if (!docRecKey) return;
+    try {
+      const res = await fetch(`/api/migration/?doc_rec=${encodeURIComponent(docRecKey)}`, { headers: { ...authHeaders() } });
+      const data = await res.json();
+      setList(Array.isArray(data) ? data : data.results || []);
+    } catch (e) { console.error(e); }
+  };
+
+  const addEntry = async (entry) => {
+    // duplicate mg_number check
+    const sibling = list.find((r) => (r.mg_number || '').trim() === (entry.mg_number || '').trim());
+    if (sibling) {
+      if ((entry.mg_status || '').toLowerCase() !== 'cancelled') {
+        alert('Duplicate MG number for this document is not allowed unless status is Cancelled.');
+        return;
+      }
+    }
+    // only one non-cancelled per doc_rec
+    const statusNonCancel = list.filter(r => (r.mg_status||'').toLowerCase() !== 'cancelled');
+    if ((entry.mg_status||'').toLowerCase() !== 'cancelled') {
+      const hasDoneOrNull = statusNonCancel.find(r => !r.mg_status || ['issued','pending','done'].includes((r.mg_status||'').toLowerCase()));
+      if (hasDoneOrNull) {
+        alert('Only one non-cancelled migration entry allowed per document.');
+        return;
+      }
+    }
+    const payload = {
+      doc_rec_key: form.doc_rec || form.doc_rec_key || undefined,
+      enrollment: entry.enrollment || null,
+      student_name: entry.student_name || null,
+      institute: entry.institute || null,
+      subcourse: entry.subcourse || null,
+      maincourse: entry.maincourse || null,
+      mg_number: entry.mg_number || null,
+      mg_date: entry.mg_date || null,
+      exam_year: entry.exam_year || null,
+      admission_year: entry.admission_year || null,
+      exam_details: entry.exam_details || null,
+      mg_status: entry.mg_status || 'Pending',
+      pay_rec_no: entry.pay_rec_no || null,
+    };
+    const res = await fetch(`/api/migration/`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(payload) });
+    if (!res.ok) throw new Error(await res.text());
+    await loadByDocRec(form.doc_rec || form.doc_rec_key);
   };
 
   return (

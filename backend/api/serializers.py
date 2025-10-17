@@ -338,9 +338,8 @@ class VerificationSerializer(serializers.ModelSerializer):
             "status",
             "final_no",
             "mail_status",
-            "eca_required", "eca_name", "eca_ref_no", "eca_submit_date",
-            "eca_mail_status", "eca_resend_count", "eca_last_action_at", "eca_last_to_email",
-            "eca_history",
+            "eca_required", "eca_name", "eca_ref_no", "eca_send_date",
+            "eca_status", "eca_resubmit_date",
             "replaces_verification",
             "remark",
             "last_resubmit_date", "last_resubmit_status",
@@ -374,7 +373,7 @@ class VerificationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"final_no": "Must be empty for PENDING or CANCEL."})
 
         # ECA details must be empty if not required
-        eca_fields = ("eca_name", "eca_ref_no", "eca_submit_date", "eca_history")
+        eca_fields = ("eca_name", "eca_ref_no", "eca_send_date", "eca_resubmit_date")
         if not eca_required:
             for ef in eca_fields:
                 if attrs.get(ef) is not None:
@@ -412,18 +411,16 @@ class VerificationSerializer(serializers.ModelSerializer):
 
     def get_eca(self, obj):
         try:
-            if not obj.doc_rec:
-                return None
-            e = Eca.objects.filter(doc_rec=obj.doc_rec).order_by("id").first()
-            if not e:
+            # Return ECA info from verification's denormalized fields
+            if not obj:
                 return None
             return {
-                "id": e.id,
-                "doc_rec_id": e.doc_rec.doc_rec_id if e.doc_rec else None,
-                "eca_name": e.eca_name,
-                "eca_ref_no": e.eca_ref_no,
-                "eca_send_date": e.eca_send_date,
-                "eca_remark": e.eca_remark,
+                "id": None,
+                "doc_rec_id": obj.doc_rec.doc_rec_id if getattr(obj, 'doc_rec', None) else None,
+                "eca_name": getattr(obj, 'eca_name', None),
+                "eca_ref_no": getattr(obj, 'eca_ref_no', None),
+                "eca_send_date": getattr(obj, 'eca_submit_date', None),
+                "eca_remark": None,
             }
         except Exception:
             return None

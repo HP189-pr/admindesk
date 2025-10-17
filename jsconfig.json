@@ -3,12 +3,25 @@
     "baseUrl": ".",
     "paths": {
       "*": ["src/*", "*" ]
-    }
+    },
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "types": []
   },
+  "typeAcquisition": {
+    "enable": false
+  },
+  "include": [
+    "src/**/*"
+  ],
   "exclude": [
     "node_modules",
     "dist",
     "build",
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.d.ts",
     "src/pages/Inst-Verification.jsx"
   ]
 }

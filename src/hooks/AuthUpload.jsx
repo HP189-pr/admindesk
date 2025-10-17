@@ -8,6 +8,9 @@ const SERVICES = [
   { key: 'MIGRATION', label: 'Migration' },
   { key: 'VERIFICATION', label: 'Verification' },
   { key: 'PROVISIONAL', label: 'Provisional' },
+  { key: 'INSTITUTIONAL_VERIFICATION', label: 'Institutional Verification' },
+  { key: 'LEAVE', label: 'Leave Entry' },
+  { key: 'EMP_PROFILE', label: 'EMP Profile' },
 ];
 
 export default function AuthUpload() {
@@ -19,6 +22,7 @@ export default function AuthUpload() {
   const [preview, setPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState(null);
+  const [autoCreateDocRec, setAutoCreateDocRec] = useState(false);
 
   const apiBase = '/api';
 
@@ -92,6 +96,7 @@ export default function AuthUpload() {
       fd.append('service', service);
         if (sheetName) fd.append('sheet_name', sheetName);
       fd.append('file', file);
+      if (service === 'VERIFICATION' && autoCreateDocRec) fd.append('auto_create_docrec', '1');
       const res = await fetch(`${apiBase}/bulk-upload/?action=confirm`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
@@ -134,10 +139,16 @@ export default function AuthUpload() {
         {uploading && (
           <span className="ml-2 animate-spin inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
         )}
+        {service === 'VERIFICATION' && (
+          <label className="ml-3 flex items-center text-sm">
+            <input type="checkbox" checked={autoCreateDocRec} onChange={(e) => setAutoCreateDocRec(e.target.checked)} className="mr-2" />
+            Auto-create missing DocRec
+          </label>
+        )}
       </div>
 
       {preview && (
-        <div className="bg-gray-800 rounded p-3 overflow-auto" style={{ maxHeight: 280 }}>
+        <div className="bg-white rounded p-3 overflow-auto text-black" style={{ maxHeight: 280 }}>
           <div className="text-sm mb-2">Sheet: {preview.sheet} | Total rows: {preview.count}</div>
           <table className="min-w-full text-sm">
             <thead>
@@ -166,7 +177,7 @@ export default function AuthUpload() {
           {result.log_url && (
             <a href={result.log_url} target="_blank" rel="noreferrer" className="text-blue-400 underline">Download Log</a>
           )}
-          <div className="bg-gray-800 rounded p-3 overflow-auto" style={{ maxHeight: 220 }}>
+          <div className="bg-white rounded p-3 overflow-auto text-black" style={{ maxHeight: 220 }}>
             <table className="min-w-full text-sm">
               <thead>
                 <tr>

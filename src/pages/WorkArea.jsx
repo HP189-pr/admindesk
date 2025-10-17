@@ -4,7 +4,7 @@ import Migration from "./Migration";
 import Provisional from "./Provisional";
 import Enrollment from "./Enrollment";
 import Degree from "./Degree";
-import InstitutionalVerification from "./inst-verification";
+import InstitutionalVerification from "./Inst-Verification";
 import DocReceive from "./doc-receive";
 import AdminDashboard from "../components/AdminDashboard";
 import ProfileUpdate from "../components/ProfileUpdate";
@@ -23,15 +23,33 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
     setSelectedTopbarMenu(null);
   }, [selectedSubmenu]);
 
+  // Small navigation handoff: if other pages set admindesk_navigate and admindesk_docrec in localStorage,
+  // consume them to switch to the appropriate page and clear the keys.
+  useEffect(() => {
+    try {
+      const nav = localStorage.getItem('admindesk_navigate');
+      const docrec = localStorage.getItem('admindesk_docrec');
+      if (nav) {
+        localStorage.removeItem('admindesk_navigate');
+        if (docrec) localStorage.removeItem('admindesk_docrec');
+        // rely on selectedSubmenu mapping below by passing explicit keys
+        // we use window.location to force a re-eval of selectedSubmenu from Sidebar if needed
+        // but instead, when nav exists, programmatically set key mapping by temporarily using selectedSubmenu
+        // Set window.selected_for_nav to be consumed by pages
+        window.__admindesk_initial_nav = { nav, docrec };
+      }
+    } catch (e) {}
+  }, []);
+
   // Normalize selectedSubmenu to a page key to handle label variations
   const renderPage = () => {
     const s = (selectedSubmenu || "").toString();
     const l = s.toLowerCase();
     let key = "";
   if (l.includes("enroll")) key = "enrollment";
-  // Check 'institution' first so it doesn't get caught by generic 'verification'
-  else if (l.includes("institution")) key = "inst_ver";
-  else if (l.includes("verification") && !l.includes("institution")) key = "verification";
+  // Prefer explicit 'inst' / 'inst-verification' labels so they don't fall through to the generic 'verification' page
+  else if (l.includes("inst") || l.includes("inst-") || l.includes("institution")) key = "inst_ver";
+  else if (l.includes("verification") && !l.includes("inst") && !l.includes("institution")) key = "verification";
   else if (l.includes("migration")) key = "migration";
   else if (l.includes("provisional")) key = "provisional";
   else if (l.includes("degree")) key = "degree";

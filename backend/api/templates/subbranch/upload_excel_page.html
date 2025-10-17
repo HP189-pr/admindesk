@@ -72,6 +72,10 @@
     <div class="xu-preview" id="xu-preview-table"></div>
     <div class="xu-actions">
         <button type="button" class="button" id="xu-back-columns">Back</button>
+        <label style="display:inline-flex; align-items:center; gap:8px; margin-right:8px;">
+            <input type="checkbox" id="xu-auto-create" />
+            <span class="xu-small">Auto-create missing DocRec entries</span>
+        </label>
         <button type="button" class="button" id="xu-start-upload">Upload</button>
     </div>
     <div class="xu-footer-note">Only first 50 rows shown. All rows will be processed on upload.</div>
@@ -223,6 +227,9 @@
          showMessage('Uploading...');
          const fd=new FormData(); fd.append('csrfmiddlewaretoken', csrfToken); fd.append('action','commit'); fd.append('sheet', sheet);
          selected.forEach(c=>fd.append('columns[]', c));
+         // include auto-create flag if checked
+         const autoChk = document.getElementById('xu-auto-create');
+         if (autoChk && autoChk.checked) fd.append('auto_create_docrec', '1');
          postForm(fd).then(r=>r.json()).then(data=>{
              if(data.error){ showMessage(data.error,'error'); return; }
              setHidden(progressDiv.id,true); setHidden(resultDiv.id,false);
