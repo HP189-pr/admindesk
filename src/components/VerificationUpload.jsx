@@ -15,6 +15,18 @@ export default function VerificationUpload() {
 
   const postForm = (fd) => fetch(uploadUrl, { method: 'POST', body: fd, credentials: 'same-origin' });
 
+  const postFormWithProgress = (fd, onProgress) => {
+    return new Promise((resolve, reject)=>{
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', uploadUrl, true);
+      xhr.withCredentials = true;
+      xhr.upload.onprogress = (e)=>{ if(e.lengthComputable && onProgress) onProgress(Math.round((e.loaded/e.total)*100)); };
+      xhr.onreadystatechange = ()=>{ if(xhr.readyState===4){ try{ resolve(JSON.parse(xhr.responseText||'{}')); }catch(e){ reject(e); } } };
+      xhr.onerror = (e)=> reject(e);
+      xhr.send(fd);
+    });
+  };
+
   const handleFetch = async () => {
     if (!file) return setMessage('Choose a file');
     const fd = new FormData();
@@ -46,13 +58,23 @@ export default function VerificationUpload() {
     setPreviewRows(data.rows || []); setMessage('Preview ready'); setStep(3);
   };
 
-  const commit = async (selected, autoCreate) => {
+  const commit = async (selected, autoCreate, onProgress) => {
     const fd = new FormData(); fd.append('action','commit'); fd.append('sheet', sheet);
     selected.forEach(c => fd.append('columns[]', c));
     if (autoCreate) fd.append('auto_create_docrec', '1');
-    const res = await postForm(fd); const data = await res.json();
+    const data = await postFormWithProgress(fd, onProgress);
     if (data.error) return setMessage(data.error || 'Error');
     setMessage(`Upload complete: ${JSON.stringify(data.counts || {})}`);
+    // If server returned base64 xlsx, trigger download
+    if(data.log_xlsx && data.log_name){
+      try{
+        const bytes = atob(data.log_xlsx);
+        const buf = new Uint8Array(bytes.length);
+        for(let i=0;i<bytes.length;i++) buf[i] = bytes.charCodeAt(i);
+        const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+        const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download=data.log_name || 'import_log.xlsx'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(url); a.remove();},500);
+      }catch(e){ console.warn('Failed to download xlsx log', e); }
+    }
     setStep(4);
   };
 
@@ -75,7 +97,7 @@ export default function VerificationUpload() {
       )}
 
       {step >= 2 && (
-        <div className="mb-2">
+          <div className="mb-2">
           <div>Columns (click to toggle)</div>
           <div style={{maxHeight:180, overflow:'auto', border:'1px solid #ddd', padding:8}}>
             {columns.map(c => (
@@ -100,10 +122,16 @@ export default function VerificationUpload() {
           </div>
           <div className="mt-2">
             <label><input type="checkbox" id="auto-create" /> Auto-create missing DocRec</label>
+            <div style={{display:'inline-block', marginLeft:12}}>
+              <div style={{width:200, height:14, background:'#eee', borderRadius:6, overflow:'hidden'}}>
+                <div id="upload-pct" style={{height:'100%', width:'0%', background:'linear-gradient(90deg,#4aa3ff,#2b8dd6)'}}></div>
+              </div>
+              <span id="upload-pct-text" style={{marginLeft:8}}>0%</span>
+            </div>
             <button className="ml-2" onClick={()=>{
               const selected=[...document.querySelectorAll('input[type=checkbox]:checked')].map(i=>i.value);
               const auto = document.getElementById('auto-create')?.checked;
-              commit(selected, !!auto);
+              commit(selected, !!auto, (pct)=>{ const el=document.getElementById('upload-pct'); const t=document.getElementById('upload-pct-text'); if(el) el.style.width = pct + '%'; if(t) t.textContent = pct + '%'; });
             }}>Upload</button>
           </div>
         </div>

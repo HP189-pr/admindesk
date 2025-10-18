@@ -52,7 +52,8 @@ class DocRec(models.Model):
     createdat = models.DateTimeField(auto_now_add=True, db_column='createdat')
     updatedat = models.DateTimeField(auto_now=True, db_column='updatedat')
     doc_rec_date = models.DateField(null=True, blank=True, db_column='doc_rec_date')
-    doc_rec_remark = models.TextField(null=True, blank=True, db_column='doc_rec_remark')
+    # short remark stored on DocRec (varchar in DB)
+    doc_rec_remark = models.CharField(max_length=255, null=True, blank=True, db_column='doc_rec_remark')
     class Meta:
         db_table = 'doc_rec'
         indexes = [

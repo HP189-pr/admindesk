@@ -27,6 +27,7 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
     admission_year: "",
     exam_details: "",
     mg_status: "Pending",
+    doc_rec_remark: "",
     pay_rec_no: "",
   });
 
@@ -95,8 +96,9 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
       exam_year: form.exam_year || null,
       admission_year: form.admission_year || null,
       exam_details: form.exam_details || null,
-      mg_status: form.mg_status || "Pending",
+      mg_status: (String(form.mg_status || 'Pending')).toUpperCase().includes('CANCEL') ? 'CANCEL' : (form.mg_status || 'Pending'),
       pay_rec_no: form.pay_rec_no || null,
+      doc_rec_remark: form.doc_rec_remark || null,
     };
     if (form.id) {
       const res = await fetch(`/api/migration/${form.id}/`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(payload) });
@@ -147,8 +149,9 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
       exam_year: entry.exam_year || null,
       admission_year: entry.admission_year || null,
       exam_details: entry.exam_details || null,
-      mg_status: entry.mg_status || 'Pending',
+      mg_status: (String(entry.mg_status || 'Pending')).toUpperCase().includes('CANCEL') ? 'CANCEL' : (entry.mg_status || 'Pending'),
       pay_rec_no: entry.pay_rec_no || null,
+      doc_rec_remark: entry.doc_rec_remark || form.doc_rec_remark || null,
     };
     const res = await fetch(`/api/migration/`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(payload) });
     if (!res.ok) throw new Error(await res.text());
@@ -232,6 +235,10 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
               <label className="text-sm">Pay Rec No</label>
               <input className="w-full border rounded-lg p-2" value={form.pay_rec_no} onChange={(e)=>setF('pay_rec_no', e.target.value)} />
             </div>
+            <div>
+              <label className="text-sm">Doc Rec Remark</label>
+              <input className="w-full border rounded-lg p-2" value={form.doc_rec_remark} onChange={(e)=>setF('doc_rec_remark', e.target.value)} />
+            </div>
 
             <div className="md:col-span-4 flex justify-end">
               <button className="px-4 py-2 rounded-lg bg-emerald-600 text-white" onClick={async()=>{ try{ await save(); alert('Saved'); setSelectedTopbarMenu('🔍'); setPanelOpen(false); }catch(e){ alert(e.message||'Failed'); } }}>Save</button>
@@ -269,7 +276,7 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
             </thead>
             <tbody>
               {list.length === 0 && !loading && (
-                <tr><td colSpan={12} className="py-6 text-center text-gray-500">No records</td></tr>
+                <tr><td colSpan={13} className="py-6 text-center text-gray-500">No records</td></tr>
               )}
               {list.map((r)=> (
                 <tr key={r.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={()=>{
@@ -291,6 +298,7 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
                     exam_details: r.exam_details || '',
                     mg_status: r.mg_status || 'Pending',
                     pay_rec_no: r.pay_rec_no || '',
+                    doc_rec_remark: r.doc_rec_remark || '',
                   });
                 }}>
                   <td className="py-2 px-3">{r.doc_rec || r.doc_rec_id || '-'}</td>
@@ -305,6 +313,7 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
                   <td className="py-2 px-3">{r.admission_year || '-'}</td>
                   <td className="py-2 px-3">{r.mg_status || '-'}</td>
                   <td className="py-2 px-3">{r.pay_rec_no || '-'}</td>
+                  <td className="py-2 px-3">{r.doc_rec_remark || '-'}</td>
                 </tr>
               ))}
             </tbody>

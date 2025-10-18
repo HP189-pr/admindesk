@@ -19,6 +19,8 @@
     .xu-preview table {border-collapse:collapse; width:100%;}
     .xu-preview th, .xu-preview td {border:1px solid #ddd; padding:4px 6px; font-size:12px;}
     .xu-progress {text-align:center; padding:30px;}
+    .xu-progress-bar {width:80%; height:18px; border:1px solid #ccc; margin: 8px auto; border-radius:6px; overflow:hidden; background:#f0f0f0}
+    .xu-progress-bar-inner {height:100%; width:0%; background:linear-gradient(90deg,#4aa3ff,#2b8dd6); transition:width 0.3s ease}
     .spinner {width:48px; height:48px; border:6px solid #ccc; border-top-color:#0b61a4; border-radius:50%; animation:spin 0.9s linear infinite; margin:0 auto 12px;}
     @keyframes spin {to {transform:rotate(360deg);}}
     .log-table {border-collapse:collapse; width:100%; font-size:12px;}
@@ -86,6 +88,8 @@
     <div class="xu-progress" id="xu-progress">
         <div class="spinner"></div>
         <div>Uploading... Please wait.</div>
+        <div class="xu-progress-bar"><div class="xu-progress-bar-inner" id="xu-progress-inner"></div></div>
+        <div id="xu-progress-pct">0%</div>
     </div>
     <div id="xu-result" class="xu-hidden"></div>
 </div>
@@ -219,7 +223,7 @@
          setHidden(step3.id,true); setHidden(step2.id,false); showMessage('You can adjust column selection.');
      });
 
-     startUploadBtn.addEventListener('click', ()=>{
+    startUploadBtn.addEventListener('click', ()=>{
          const sheet=sheetSelect.value; if(!sheet){ showMessage('Select a sheet','error'); return; }
          const selected=[...colBox.querySelectorAll('input[type=checkbox]:checked')].map(cb=>cb.value);
          if(!selected.length){ showMessage('Select at least one column','error'); return; }
@@ -230,25 +234,49 @@
          // include auto-create flag if checked
          const autoChk = document.getElementById('xu-auto-create');
          if (autoChk && autoChk.checked) fd.append('auto_create_docrec', '1');
-         postForm(fd).then(r=>r.json()).then(data=>{
-             if(data.error){ showMessage(data.error,'error'); return; }
-             setHidden(progressDiv.id,true); setHidden(resultDiv.id,false);
-             const counts=data.counts || {created:0,updated:0,skipped:0};
-             let logHtml = `<div><span class='xu-badge created'>Created ${counts.created}</span><span class='xu-badge updated'>Updated ${counts.updated}</span><span class='xu-badge skipped'>Skipped ${counts.skipped}</span></div>`;
-             logHtml += '<div style="margin-top:10px; max-height:300px; overflow:auto;">';
-             logHtml += '<table class="log-table"><thead><tr><th>Row</th><th>Status</th><th>Ref</th><th>Message</th></tr></thead><tbody>';
-             (data.log||[]).forEach(entry=>{
-                    const cls = 'status-'+entry.status;
-                    logHtml += `<tr class='${cls}'><td>${entry.row}</td><td>${entry.status}</td><td>${entry.ref||''}</td><td>${htmlEscape(entry.message)}</td></tr>`;
-             });
-             logHtml += '</tbody></table></div>';
-             // Download log button (CSV)
-             logHtml += '<button type="button" class="button" id="xu-download-log">Download Log CSV</button>';
-             resultDiv.innerHTML = logHtml;
-             showMessage('Upload complete.');
-             const dlBtn = document.getElementById('xu-download-log');
-             if(dlBtn){ dlBtn.addEventListener('click', ()=> downloadLogCsv(data.log || [])); }
-         }).catch(e=>{ showMessage('Error: '+e,'error'); });
+
+         // Use XHR to track upload progress and support returned XLSX log
+         const xhr = new XMLHttpRequest();
+         xhr.open('POST', rootUrl, true);
+         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+         xhr.upload.onprogress = function(e){
+             if(e.lengthComputable){
+                 const pct = Math.round((e.loaded / e.total) * 100);
+                 document.getElementById('xu-progress-inner').style.width = pct + '%';
+                 document.getElementById('xu-progress-pct').textContent = pct + '%';
+             }
+         };
+         xhr.onreadystatechange = function(){
+             if(xhr.readyState === 4){
+                 try{
+                     const data = JSON.parse(xhr.responseText || '{}');
+                     if(data.error){ showMessage(data.error,'error'); return; }
+                     setHidden(progressDiv.id,true); setHidden(resultDiv.id,false);
+                     const counts=data.counts || {created:0,updated:0,skipped:0};
+                     let logHtml = `<div><span class='xu-badge created'>Created ${counts.created}</span><span class='xu-badge updated'>Updated ${counts.updated}</span><span class='xu-badge skipped'>Skipped ${counts.skipped}</span></div>`;
+                     logHtml += '<div style="margin-top:10px; max-height:300px; overflow:auto;">';
+                     logHtml += '<table class="log-table"><thead><tr><th>Row</th><th>Status</th><th>Ref</th><th>Message</th></tr></thead><tbody>';
+                     (data.log||[]).forEach(entry=>{
+                            const cls = 'status-'+entry.status;
+                            logHtml += `<tr class='${cls}'><td>${entry.row}</td><td>${entry.status}</td><td>${entry.ref||''}</td><td>${htmlEscape(entry.message)}</td></tr>`;
+                     });
+                     logHtml += '</tbody></table></div>';
+                     // Download log button (CSV)
+                     logHtml += '<button type="button" class="button" id="xu-download-log">Download Log CSV</button>';
+                     // If server returned an Excel log (base64), add button to download it
+                     if(data.log_xlsx && data.log_name){
+                         logHtml += ` <button type="button" class="button" id="xu-download-log-xlsx">Download Log XLSX</button>`;
+                     }
+                     resultDiv.innerHTML = logHtml;
+                     showMessage('Upload complete.');
+                     const dlBtn = document.getElementById('xu-download-log');
+                     if(dlBtn){ dlBtn.addEventListener('click', ()=> downloadLogCsv(data.log || [])); }
+                     const dlX = document.getElementById('xu-download-log-xlsx');
+                     if(dlX){ dlX.addEventListener('click', ()=> downloadLogXlsx(data.log_xlsx, data.log_name)); }
+                 }catch(err){ showMessage('Upload parse error: '+err,'error'); }
+             }
+         };
+         xhr.send(fd);
      });
 
      function downloadLogCsv(log){
@@ -257,6 +285,16 @@
          const blob=new Blob([csv], {type:'text/csv'}); const url=URL.createObjectURL(blob);
          const a=document.createElement('a'); a.href=url; a.download='import_log.csv'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(url); a.remove();}, 500);
      }
+
+    function downloadLogXlsx(b64, name){
+        if(!b64) return showMessage('No XLSX log available', 'error');
+        const bytes = atob(b64);
+        let buf = new Uint8Array(bytes.length);
+        for(let i=0;i<bytes.length;i++) buf[i] = bytes.charCodeAt(i);
+        const blob = new Blob([buf], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = name || 'import_log.xlsx'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 500);
+    }
  })();
 </script>
 

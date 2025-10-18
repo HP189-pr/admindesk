@@ -43,6 +43,8 @@ class Verification(models.Model):
     final_no = models.CharField(max_length=50, unique=True, null=True, blank=True, db_column='final_no')
     mail_status = models.CharField(max_length=20, choices=MailStatus.choices, default=MailStatus.NOT_SENT, db_column='mail_send_status')
     eca_required = models.BooleanField(default=False, db_column='eca_required')
+    # Additional free-text remark stored specifically on the DocRec/verification row
+    doc_rec_remark = models.TextField(null=True, blank=True, db_column='doc_rec_remark')
     # Denormalized ECA summary fields (only these are kept per your requested final table)
     eca_name = models.CharField(max_length=255, null=True, blank=True, db_column='eca_name')
     eca_ref_no = models.CharField(max_length=100, null=True, blank=True, db_column='eca_ref_no')
@@ -86,6 +88,15 @@ class Verification(models.Model):
         if self.enrollment and not self.student_name:
             self.student_name = self.enrollment.student_name or ''
         super().save(*a,**kw)
+        # Sync doc_rec_remark to the parent DocRec if provided
+        try:
+            if self.doc_rec and getattr(self, 'doc_rec_remark', None) is not None:
+                if getattr(self.doc_rec, 'doc_rec_remark', None) != self.doc_rec_remark:
+                    self.doc_rec.doc_rec_remark = self.doc_rec_remark
+                    self.doc_rec.save(update_fields=['doc_rec_remark'])
+        except Exception:
+            # best-effort sync; do not break primary save
+            pass
     def __str__(self):
         return f"Verification #{self.id} - {self.student_name} - {self.status}"
     def record_resubmit(self, status_note: str | None = None):
@@ -170,9 +181,9 @@ class MigrationRecord(models.Model):
     doc_rec = models.ForeignKey(DocRec, on_delete=models.CASCADE, db_column='doc_rec_id', related_name='migration_records')
     enrollment = models.ForeignKey(Enrollment, to_field='enrollment_no', db_column='enrollment_no', on_delete=models.CASCADE, related_name='migration_records', db_constraint=False)
     student_name = models.CharField(max_length=255, db_column='student_name')
-    institute = models.ForeignKey(Institute, to_field='institute_id', db_column='institute_id', on_delete=models.CASCADE, related_name='migration_records')
-    subcourse = models.ForeignKey(SubBranch, to_field='subcourse_id', db_column='subcourse_id', on_delete=models.CASCADE, related_name='migration_records')
-    maincourse = models.ForeignKey(MainBranch, to_field='maincourse_id', db_column='maincourse_id', on_delete=models.CASCADE, related_name='migration_records')
+    institute = models.ForeignKey(Institute, to_field='institute_id', db_column='institute_id', on_delete=models.CASCADE, related_name='migration_records', null=True, blank=True)
+    subcourse = models.ForeignKey(SubBranch, to_field='subcourse_id', db_column='subcourse_id', on_delete=models.CASCADE, related_name='migration_records', null=True, blank=True)
+    maincourse = models.ForeignKey(MainBranch, to_field='maincourse_id', db_column='maincourse_id', on_delete=models.CASCADE, related_name='migration_records', null=True, blank=True)
     mg_number = models.CharField(max_length=50, unique=True, db_column='mg_number')
     mg_date = models.DateField(db_column='mg_date')
     exam_year = models.CharField(max_length=20, db_column='exam_year')
@@ -180,6 +191,8 @@ class MigrationRecord(models.Model):
     exam_details = models.TextField(null=True, blank=True, db_column='exam_details')
     mg_status = models.CharField(max_length=20, choices=MigrationStatus.choices, default=MigrationStatus.PENDING, db_column='mg_status')
     pay_rec_no = models.CharField(max_length=50, db_column='pay_rec_no')
+    # Free-text remark associated with the related DocRec (kept as a short varchar per schema)
+    doc_rec_remark = models.CharField(max_length=255, null=True, blank=True, db_column='doc_rec_remark')
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='createdby', related_name='migration_created')
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     updated_at = models.DateTimeField(auto_now=True, db_column='updated_at')
@@ -197,9 +210,35 @@ class MigrationRecord(models.Model):
         if not self.pay_rec_no:
             raise ValidationError({'pay_rec_no': 'pay_rec_no is required (copied from related DocRec).'})
     def save(self,*a,**kw):
+        # If enrollment provided, try to copy institute/main/subcourse from it when missing
+        try:
+            if getattr(self, 'enrollment', None) and not getattr(self, 'institute', None):
+                try:
+                    enr = self.enrollment
+                    if getattr(enr, 'institute', None):
+                        self.institute = enr.institute
+                    if getattr(enr, 'maincourse', None):
+                        self.maincourse = enr.maincourse
+                    if getattr(enr, 'subcourse', None):
+                        self.subcourse = enr.subcourse
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
         if not self.pay_rec_no and self.doc_rec and self.doc_rec.pay_rec_no:
             self.pay_rec_no = self.doc_rec.pay_rec_no
-        self.full_clean(); return super().save(*a,**kw)
+        self.full_clean()
+        result = super().save(*a,**kw)
+        # propagate doc_rec_remark to DocRec when present
+        try:
+            if self.doc_rec and getattr(self, 'doc_rec_remark', None) is not None:
+                if getattr(self.doc_rec, 'doc_rec_remark', None) != self.doc_rec_remark:
+                    self.doc_rec.doc_rec_remark = self.doc_rec_remark
+                    self.doc_rec.save(update_fields=['doc_rec_remark'])
+        except Exception:
+            pass
+        return result
     def __str__(self):
         return f"Migration {self.mg_number} ({self.student_name})"
 
@@ -213,15 +252,17 @@ class ProvisionalRecord(models.Model):
     doc_rec = models.ForeignKey(DocRec, on_delete=models.CASCADE, db_column='doc_rec_id', related_name='provisional_records')
     enrollment = models.ForeignKey(Enrollment, to_field='enrollment_no', db_column='enrollment_no', on_delete=models.CASCADE, related_name='provisional_records', db_constraint=False)
     student_name = models.CharField(max_length=255, db_column='student_name')
-    institute = models.ForeignKey(Institute, to_field='institute_id', db_column='institute_id', on_delete=models.CASCADE, related_name='provisional_records')
-    subcourse = models.ForeignKey(SubBranch, to_field='subcourse_id', db_column='subcourse_id', on_delete=models.CASCADE, related_name='provisional_records')
-    maincourse = models.ForeignKey(MainBranch, to_field='maincourse_id', db_column='maincourse_id', on_delete=models.CASCADE, related_name='provisional_records')
+    institute = models.ForeignKey(Institute, to_field='institute_id', db_column='institute_id', on_delete=models.CASCADE, related_name='provisional_records', null=True, blank=True)
+    subcourse = models.ForeignKey(SubBranch, to_field='subcourse_id', db_column='subcourse_id', on_delete=models.CASCADE, related_name='provisional_records', null=True, blank=True)
+    maincourse = models.ForeignKey(MainBranch, to_field='maincourse_id', db_column='maincourse_id', on_delete=models.CASCADE, related_name='provisional_records', null=True, blank=True)
     class_obtain = models.CharField(max_length=100, null=True, blank=True, db_column='class_obtain')
     prv_number = models.CharField(max_length=50, unique=True, db_column='prv_number')
     prv_date = models.DateField(db_column='prv_date')
     passing_year = models.CharField(max_length=20, db_column='passing_year')
     prv_status = models.CharField(max_length=20, choices=ProvisionalStatus.choices, default=ProvisionalStatus.PENDING, db_column='prv_status')
     pay_rec_no = models.CharField(max_length=50, db_column='pay_rec_no')
+    # short remark synced to DocRec
+    doc_rec_remark = models.CharField(max_length=255, null=True, blank=True, db_column='doc_rec_remark') 
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='createdby', related_name='provisional_created')
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     updated_at = models.DateTimeField(auto_now=True, db_column='updated_at')
@@ -238,3 +279,34 @@ class ProvisionalRecord(models.Model):
             self.pay_rec_no = self.doc_rec.pay_rec_no
         if not self.pay_rec_no:
             raise ValidationError({'pay_rec_no': 'pay_rec_no is required (copied from related DocRec).'})
+    def save(self,*a,**kw):
+        # Try to default institute/main/subcourse from linked enrollment when missing
+        try:
+            if getattr(self, 'enrollment', None) and not getattr(self, 'institute', None):
+                try:
+                    enr = self.enrollment
+                    if getattr(enr, 'institute', None):
+                        self.institute = enr.institute
+                    if getattr(enr, 'maincourse', None):
+                        self.maincourse = enr.maincourse
+                    if getattr(enr, 'subcourse', None):
+                        self.subcourse = enr.subcourse
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        # default pay_rec_no from DocRec
+        if not self.pay_rec_no and self.doc_rec and self.doc_rec.pay_rec_no:
+            self.pay_rec_no = self.doc_rec.pay_rec_no
+        self.full_clean()
+        res = super().save(*a,**kw)
+        # propagate doc_rec_remark
+        try:
+            if self.doc_rec and getattr(self, 'doc_rec_remark', None) is not None:
+                if getattr(self.doc_rec, 'doc_rec_remark', None) != self.doc_rec_remark:
+                    self.doc_rec.doc_rec_remark = self.doc_rec_remark
+                    self.doc_rec.save(update_fields=['doc_rec_remark'])
+        except Exception:
+            pass
+        return res

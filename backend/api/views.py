@@ -390,6 +390,13 @@ class BulkUploadView(APIView):
 
     def _process_confirm(self, service, df, user, track_id=None, auto_create_docrec=False):  # noqa: C901
         """Internal processor for confirm action. Optionally updates cache for progress."""
+        # Normalize pandas NaN/NaT values to Python None to avoid passing numpy.nan into ORM filters
+        try:
+            import pandas as _pd
+            if isinstance(df, _pd.DataFrame):
+                df = df.where(_pd.notnull(df), None)
+        except Exception:
+            pass
         total_rows = len(df.index)
         results = []
         ok_count = 0
@@ -414,6 +421,27 @@ class BulkUploadView(APIView):
             else:
                 fail_count += 1
             results.append({"row": int(row_idx), "key": key, "status": "OK" if ok else "FAIL", "message": status_msg})
+
+        def _clean_cell(val):
+            """Normalize cell values: convert pandas/numpy NaN, 'nan', '<NA>', 'none', empty strings to None; trim strings."""
+            try:
+                import pandas as _p
+                if isinstance(val, float) and _p.isna(val):
+                    return None
+            except Exception:
+                # pandas may not be available in this scope; continue
+                pass
+            if val is None:
+                return None
+            try:
+                s = str(val).strip()
+            except Exception:
+                return val
+            if s == '':
+                return None
+            if s.lower() in ('nan', 'none', '<na>'):
+                return None
+            return s
 
         # Helper to safely convert numeric counts to int without failing on NaN/None/empty
         def _safe_int(val):
@@ -533,13 +561,98 @@ class BulkUploadView(APIView):
             elif service == BulkService.MIGRATION:
                 for idx, row in df.iterrows():
                     try:
-                        doc_rec = DocRec.objects.filter(doc_rec_id=str(row.get("doc_rec_id")).strip()).first()
-                        enr = Enrollment.objects.filter(enrollment_no=str(row.get("enrollment_no")).strip()).first()
-                        inst = Institute.objects.filter(institute_id=row.get("institute_id")).first()
-                        main = MainBranch.objects.filter(maincourse_id=row.get("maincourse_id")).first()
-                        sub = SubBranch.objects.filter(subcourse_id=row.get("subcourse_id")).first()
-                        if not (doc_rec and enr and inst and main and sub):
-                            _log(idx, row.get("mg_number"), "Missing related (doc_rec/enrollment/institute/main/sub)", False); _cache_progress(idx+1); continue
+                        doc_rec_id_raw = _clean_cell(row.get("doc_rec_id"))
+                        doc_rec = None
+                        if doc_rec_id_raw:
+                            try:
+                                key = str(doc_rec_id_raw).strip()
+                            except Exception:
+                                key = str(doc_rec_id_raw)
+                            # Try exact
+                            doc_rec = DocRec.objects.filter(doc_rec_id=key).first()
+                            # Try case-insensitive
+                            if not doc_rec:
+                                try:
+                                    doc_rec = DocRec.objects.filter(doc_rec_id__iexact=key).first()
+                                except Exception:
+                                    doc_rec = None
+                            # Try normalized (remove non-alphanum, lower)
+                            if not doc_rec:
+                                try:
+                                    import re
+                                    norm = re.sub(r'[^0-9a-zA-Z]', '', key).lower()
+                                    if norm:
+                                        # annotate not needed; do a simple filter on cleaned field
+                                        for dr in DocRec.objects.all()[:20000]:
+                                            try:
+                                                if re.sub(r'[^0-9a-zA-Z]', '', str(dr.doc_rec_id)).lower() == norm:
+                                                    doc_rec = dr
+                                                    break
+                                            except Exception:
+                                                continue
+                                except Exception:
+                                    pass
+                        enr_key = _clean_cell(row.get("enrollment_no"))
+                        enr = None
+                        # Robust enrollment lookup: try exact, iexact, and a normalized-space match
+                        if enr_key:
+                            try:
+                                k = str(enr_key).strip()
+                            except Exception:
+                                k = str(enr_key)
+                            if k:
+                                enr = Enrollment.objects.filter(enrollment_no=k).first()
+                                if not enr:
+                                    try:
+                                        enr = Enrollment.objects.filter(enrollment_no__iexact=k).first()
+                                    except Exception:
+                                        enr = None
+                                if not enr:
+                                    try:
+                                        # normalize by removing spaces and comparing lower-case
+                                        norm = ''.join(k.split()).lower()
+                                        enr = (Enrollment.objects
+                                               .annotate(_norm=Replace(Lower(models.F('enrollment_no')), Value(' '), Value('')))
+                                               .filter(_norm=norm)
+                                               .first())
+                                    except Exception:
+                                        enr = None
+
+                        # Accept missing FK cells (None) and try to fallback to enrollment's relations
+                        inst_key = _clean_cell(row.get("institute_id"))
+                        main_key = _clean_cell(row.get("maincourse_id"))
+                        sub_key = _clean_cell(row.get("subcourse_id"))
+                        inst = Institute.objects.filter(institute_id=str(inst_key)).first() if inst_key else None
+                        main = MainBranch.objects.filter(maincourse_id=str(main_key)).first() if main_key else None
+                        sub = SubBranch.objects.filter(subcourse_id=str(sub_key)).first() if sub_key else None
+
+                        # If institute/main/sub missing but enrollment exists, try to use enrollment's relations
+                        if enr:
+                            try:
+                                if not inst and getattr(enr, 'institute', None):
+                                    inst = enr.institute
+                                if not main and getattr(enr, 'maincourse', None):
+                                    main = enr.maincourse
+                                if not sub and getattr(enr, 'subcourse', None):
+                                    sub = enr.subcourse
+                            except Exception:
+                                pass
+
+                        missing = []
+                        if not doc_rec:
+                            missing.append('doc_rec')
+                        if not enr:
+                            missing.append('enrollment')
+                        if not inst:
+                            missing.append('institute')
+                        if not main:
+                            missing.append('main')
+                        if not sub:
+                            missing.append('sub')
+                        if missing:
+                            # Provide attempted keys in the message to aid debugging
+                            msg = f"Missing related ({'/'.join(missing)}) -- tried doc_rec='{doc_rec_id_raw}', enrollment_no='{enr_key}'"
+                            _log(idx, row.get("mg_number"), msg, False); _cache_progress(idx+1); continue
                         mg_date = _parse_excel_date_safe(row.get("mg_date"))
                         if mg_date is None:  # required non-null
                             _log(idx, row.get("mg_number"), "Missing mg_date", False); _cache_progress(idx+1); continue
@@ -569,11 +682,54 @@ class BulkUploadView(APIView):
             elif service == BulkService.PROVISIONAL:
                 for idx, row in df.iterrows():
                     try:
-                        doc_rec = DocRec.objects.filter(doc_rec_id=str(row.get("doc_rec_id")).strip()).first()
-                        enr = Enrollment.objects.filter(enrollment_no=str(row.get("enrollment_no")).strip()).first()
-                        inst = Institute.objects.filter(institute_id=row.get("institute_id")).first()
-                        main = MainBranch.objects.filter(maincourse_id=row.get("maincourse_id")).first()
-                        sub = SubBranch.objects.filter(subcourse_id=row.get("subcourse_id")).first()
+                        doc_rec_id_raw = _clean_cell(row.get("doc_rec_id"))
+                        doc_rec = None
+                        if doc_rec_id_raw:
+                            try:
+                                key = str(doc_rec_id_raw).strip()
+                            except Exception:
+                                key = str(doc_rec_id_raw)
+                            doc_rec = DocRec.objects.filter(doc_rec_id=key).first()
+                            if not doc_rec:
+                                try:
+                                    doc_rec = DocRec.objects.filter(doc_rec_id__iexact=key).first()
+                                except Exception:
+                                    doc_rec = None
+                            if not doc_rec:
+                                try:
+                                    import re
+                                    norm = re.sub(r'[^0-9a-zA-Z]', '', key).lower()
+                                    if norm:
+                                        for dr in DocRec.objects.all()[:20000]:
+                                            try:
+                                                if re.sub(r'[^0-9a-zA-Z]', '', str(dr.doc_rec_id)).lower() == norm:
+                                                    doc_rec = dr
+                                                    break
+                                            except Exception:
+                                                continue
+                                except Exception:
+                                    pass
+                        enr_key = _clean_cell(row.get("enrollment_no"))
+                        enr = Enrollment.objects.filter(enrollment_no=str(enr_key)).first() if enr_key else None
+
+                        inst_key = _clean_cell(row.get("institute_id"))
+                        main_key = _clean_cell(row.get("maincourse_id"))
+                        sub_key = _clean_cell(row.get("subcourse_id"))
+                        inst = Institute.objects.filter(institute_id=str(inst_key)).first() if inst_key else None
+                        main = MainBranch.objects.filter(maincourse_id=str(main_key)).first() if main_key else None
+                        sub = SubBranch.objects.filter(subcourse_id=str(sub_key)).first() if sub_key else None
+
+                        if enr:
+                            try:
+                                if not inst and getattr(enr, 'institute', None):
+                                    inst = enr.institute
+                                if not main and getattr(enr, 'maincourse', None):
+                                    main = enr.maincourse
+                                if not sub and getattr(enr, 'subcourse', None):
+                                    sub = enr.subcourse
+                            except Exception:
+                                pass
+
                         if not (doc_rec and enr and inst and main and sub):
                             _log(idx, row.get("prv_number"), "Missing related (doc_rec/enrollment/institute/main/sub)", False); _cache_progress(idx+1); continue
                         prv_date = _parse_excel_date_safe(row.get("prv_date"))
@@ -902,6 +1058,35 @@ class BulkUploadView(APIView):
             return err(f"Error reading file: {e}")
         if df is None:
             return err("No data found")
+
+        # If client provided a columns[] selection, subset dataframe to only those columns
+        # Also ensure minimal keys used by services remain present if available
+        try:
+            selected_cols = None
+            # request.data may be a QueryDict-like with getlist
+            if hasattr(request.data, 'getlist'):
+                selected_cols = request.data.getlist('columns[]') or request.data.getlist('columns')
+            else:
+                # fallback: might be provided as a JSON list or single value
+                sel = request.data.get('columns[]') or request.data.get('columns')
+                if isinstance(sel, list):
+                    selected_cols = sel
+                elif isinstance(sel, str):
+                    # single value
+                    selected_cols = [sel]
+            if selected_cols:
+                # Columns we should keep regardless if selected (useful ids used by processors)
+                force_keys = ['enrollment_no', 'doc_rec_id', 'prv_number', 'mg_number', 'final_no']
+                # Build keep list in order: selected cols that exist + available force keys
+                keep = [c for c in selected_cols if c in df.columns]
+                for k in force_keys:
+                    if k in df.columns and k not in keep:
+                        keep.append(k)
+                if keep:
+                    df = df.loc[:, [c for c in keep if c in df.columns]]
+        except Exception:
+            # non-fatal: proceed with original df
+            pass
 
         def _bool(v):
             s = str(v).strip().lower()

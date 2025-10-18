@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from './AuthContext.jsx';
+import AdminBulkUpload from '../components/AdminBulkUpload.jsx';
 
 const SERVICES = [
   { key: 'DOCREC', label: 'Document Received' },
@@ -130,77 +131,9 @@ export default function AuthUpload() {
         <button onClick={downloadTemplate} className="ml-2 px-3 py-1 bg-blue-600 text-white rounded">Download Sample</button>
       </div>
 
-      <div className="flex items-center gap-2">
-        <input type="file" accept=".xlsx,.xls" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-        <button onClick={onPreview} className="px-3 py-1 bg-gray-700 text-white rounded">Preview</button>
-        <button onClick={onUpload} disabled={uploading} className="px-3 py-1 bg-green-600 text-white rounded disabled:opacity-50">
-          {uploading ? 'Uploading…' : 'Upload'}
-        </button>
-        {uploading && (
-          <span className="ml-2 animate-spin inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
-        )}
-        {service === 'VERIFICATION' && (
-          <label className="ml-3 flex items-center text-sm">
-            <input type="checkbox" checked={autoCreateDocRec} onChange={(e) => setAutoCreateDocRec(e.target.checked)} className="mr-2" />
-            Auto-create missing DocRec
-          </label>
-        )}
+      <div>
+        <AdminBulkUpload service={service} uploadApi="/api/bulk-upload/" sheetName={sheetName} />
       </div>
-
-      {preview && (
-        <div className="bg-white rounded p-3 overflow-auto text-black" style={{ maxHeight: 280 }}>
-          <div className="text-sm mb-2">Sheet: {preview.sheet} | Total rows: {preview.count}</div>
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr>
-                {preview.preview[0] && Object.keys(preview.preview[0]).map((k) => (
-                  <th key={k} className="text-left pr-4 pb-1 border-b border-gray-700">{k}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {preview.preview.map((row, i) => (
-                <tr key={i} className="border-b border-gray-700">
-                  {Object.values(row).map((v, j) => (
-                    <td key={j} className="pr-4 py-1">{String(v)}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {result && (
-        <div className="space-y-2">
-          <div className="text-sm">OK: {result.summary?.ok} | Fail: {result.summary?.fail} | Total: {result.summary?.total}</div>
-          {result.log_url && (
-            <a href={result.log_url} target="_blank" rel="noreferrer" className="text-blue-400 underline">Download Log</a>
-          )}
-          <div className="bg-white rounded p-3 overflow-auto text-black" style={{ maxHeight: 220 }}>
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr>
-                  <th className="text-left pr-4 pb-1 border-b border-gray-700">Row</th>
-                  <th className="text-left pr-4 pb-1 border-b border-gray-700">Key</th>
-                  <th className="text-left pr-4 pb-1 border-b border-gray-700">Status</th>
-                  <th className="text-left pr-4 pb-1 border-b border-gray-700">Message</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.results?.map((r, i) => (
-                  <tr key={i} className="border-b border-gray-700">
-                    <td className="pr-4 py-1">{r.row}</td>
-                    <td className="pr-4 py-1">{r.key}</td>
-                    <td className="pr-4 py-1">{r.status}</td>
-                    <td className="pr-4 py-1">{r.message}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -196,6 +196,32 @@ def parse_excel_date(val: Any):  # Robust NaT/variant-safe parser (kept lightwei
             continue
     return None
 
+
+def _clean_cell(val: Any):
+    """Normalize a cell value from pandas/Excel into a safe Python value.
+
+    - Converts pandas NaN/NaT and common sentinel strings to None
+    - Strips strings and returns None for empty strings
+    - Returns the original value for non-string values (after NaN check)
+    """
+    if val is None:
+        return None
+    try:
+        # pandas/numpy NA check
+        import pandas as _pd  # type: ignore
+        if _pd is not None:
+            try:
+                if _pd.isna(val):
+                    return None
+            except Exception:
+                pass
+    except Exception:
+        pass
+    s = str(val).strip()
+    if s == "" or s.lower() in ("nan", "none", "<na>"):
+        return None
+    return s
+
 # ---------------------------------------------------------------------------
 # Import spec (whitelist + required keys)
 # ---------------------------------------------------------------------------
@@ -285,15 +311,50 @@ class ExcelUploadMixin:
                     encoded = request.session.get("excel_data")
                     if not encoded:
                         return JsonResponse({"error": "Session expired"}, status=400)
-                    try:
-                        frames = pd.read_excel(BytesIO(base64.b64decode(encoded)), sheet_name=None, nrows=0)
-                    except Exception as e:
-                        return JsonResponse({"error": f"Read error: {e}"}, status=400)
-                    if sheet not in frames:
-                        return JsonResponse({"error": "Sheet not found"}, status=404)
                     spec = get_import_spec(self.model)
                     allowed = set(spec["allowed_columns"])
                     required_keys = spec["required_keys"]
+
+                    # Try to detect the correct header row. Some Excel files include title rows
+                    # above the real header which causes pandas to read columns as Unnamed.
+                    # We'll try header rows 0..2 and pick the one that yields the most matches
+                    # against the allowed whitelist.
+                    best_header = 0
+                    best_score = -1
+                    frames = None
+                    read_err = None
+                    for try_h in (0, 1, 2):
+                        try:
+                            frames_try = pd.read_excel(BytesIO(base64.b64decode(encoded)), sheet_name=None, header=try_h, nrows=0)
+                        except Exception as e:
+                            read_err = e
+                            continue
+                        if sheet not in frames_try:
+                            continue
+                        cols_try = [str(c).strip() for c in frames_try[sheet].columns]
+                        usable_try = [c for c in cols_try if c in allowed]
+                        score = len(usable_try)
+                        # prefer header with more usable allowed columns
+                        if score > best_score:
+                            best_score = score
+                            best_header = try_h
+                            frames = frames_try
+
+                    if frames is None:
+                        # final attempt without header override to bubble up the original error
+                        try:
+                            frames = pd.read_excel(BytesIO(base64.b64decode(encoded)), sheet_name=None, nrows=0)
+                        except Exception as e:
+                            return JsonResponse({"error": f"Read error: {e}"}, status=400)
+
+                    if sheet not in frames:
+                        return JsonResponse({"error": "Sheet not found"}, status=404)
+
+                    # Persist detected header row per-sheet in session so preview/commit use same
+                    header_map = request.session.get('excel_header_rows', {})
+                    header_map[str(sheet)] = int(best_header)
+                    request.session['excel_header_rows'] = header_map
+
                     cols_present = [str(c).strip() for c in frames[sheet].columns]
                     usable = [c for c in cols_present if c in allowed]
                     unrecognized = [c for c in cols_present if c not in allowed]
@@ -303,7 +364,29 @@ class ExcelUploadMixin:
                         "unrecognized": unrecognized,
                         "required_keys": required_keys,
                         "required_missing": required_missing,
+                        "detected_header": header_map.get(str(sheet), 0),
                     })
+
+                # Debug helper: return raw column names Pandas sees for diagnosis
+                if action == "debug_columns":
+                    sheet = request.POST.get("sheet")
+                    encoded = request.session.get("excel_data")
+                    if not encoded:
+                        return JsonResponse({"error": "Session expired"}, status=400)
+                    try:
+                        # Try with the stored header row first
+                        header_map = request.session.get('excel_header_rows', {})
+                        header_row = header_map.get(str(sheet), 0)
+                        frames = pd.read_excel(BytesIO(base64.b64decode(encoded)), sheet_name=None, header=header_row)
+                    except Exception:
+                        try:
+                            frames = pd.read_excel(BytesIO(base64.b64decode(encoded)), sheet_name=None)
+                        except Exception as e:
+                            return JsonResponse({"error": f"Read error: {e}"}, status=400)
+                    if sheet not in frames:
+                        return JsonResponse({"error": "Sheet not found"}, status=404)
+                    raw_cols = [str(c) for c in frames[sheet].columns]
+                    return JsonResponse({"raw_columns": raw_cols, "detected_header": header_map.get(str(sheet), 0)})
 
                 # ---- preview ----
                 if action == "preview":
@@ -314,8 +397,11 @@ class ExcelUploadMixin:
                     encoded = request.session.get("excel_data")
                     if not encoded:
                         return JsonResponse({"error": "Session expired"}, status=400)
+                    # Respect any detected header row for this sheet (fallback to 0)
+                    header_map = request.session.get('excel_header_rows', {})
+                    header_row = header_map.get(str(sheet), 0)
                     try:
-                        frames = pd.read_excel(BytesIO(base64.b64decode(encoded)), sheet_name=None)
+                        frames = pd.read_excel(BytesIO(base64.b64decode(encoded)), sheet_name=None, header=header_row)
                     except Exception as e:
                         return JsonResponse({"error": f"Read error: {e}"}, status=400)
                     if sheet not in frames:
@@ -340,8 +426,11 @@ class ExcelUploadMixin:
                     encoded = request.session.get("excel_data")
                     if not encoded:
                         return JsonResponse({"error": "Session expired"}, status=400)
+                    # Respect detected header row if available when committing
+                    header_map = request.session.get('excel_header_rows', {})
+                    header_row = header_map.get(str(sheet), 0)
                     try:
-                        frames = pd.read_excel(BytesIO(base64.b64decode(encoded)), sheet_name=None)
+                        frames = pd.read_excel(BytesIO(base64.b64decode(encoded)), sheet_name=None, header=header_row)
                     except Exception as e:
                         return JsonResponse({"error": f"Read error: {e}"}, status=400)
                     if sheet not in frames:
@@ -352,7 +441,17 @@ class ExcelUploadMixin:
                     chosen = [c for c in selected if c in allowed]
                     if not required.issubset(chosen):
                         return JsonResponse({"error": "All required columns must be selected"}, status=400)
-                    df = frames[sheet].fillna("")
+                    df = frames[sheet]
+                    # Clean numeric/foreign-key like id columns so pandas.nan does not get passed
+                    try:
+                        if pd is not None:
+                            for fk_col in ("institute_id", "maincourse_id", "subcourse_id"):
+                                if fk_col in df.columns:
+                                    # Replace NA/NaN/None with Python None
+                                    df[fk_col] = df[fk_col].apply(lambda v: None if (pd.isna(v) or (isinstance(v, str) and str(v).strip().lower() in ("nan","none","<na>"))) else v)
+                    except Exception:
+                        # be tolerant: proceed without vectorized cleaning if something fails
+                        pass
                     # Vectorized date normalization to plain date objects (prevents NaTType tz issues)
                     if pd is not None:
                         def _normalize(col_names):
@@ -415,7 +514,7 @@ class ExcelUploadMixin:
                                 else: counts["updated"] += 1; add_log(i, "updated", "Updated", sb)
                         elif issubclass(self.model, Institute):  # relax sheet name requirement
                             for i, (_, r) in enumerate(df.iterrows(), start=2):
-                                iid = r.get("institute_id")
+                                iid = _clean_cell(r.get("institute_id"))
                                 if iid in (None, ""):
                                     counts["skipped"] += 1; add_log(i, "skipped", "Missing institute_id"); continue
                                 obj, created = Institute.objects.update_or_create(
@@ -437,9 +536,12 @@ class ExcelUploadMixin:
                                     en = str(r.get("enrollment_no") or "").strip()
                                     if not en:
                                         counts["skipped"] += 1; add_log(i, "skipped", "Missing enrollment_no"); continue
-                                    inst = Institute.objects.filter(institute_id=r.get("institute_id")).first() if "institute_id" in eff else None
-                                    sub = SubBranch.objects.filter(subcourse_id=r.get("subcourse_id")).first() if "subcourse_id" in eff else None
-                                    main = MainBranch.objects.filter(maincourse_id=r.get("maincourse_id")).first() if "maincourse_id" in eff else None
+                                    inst_key = _clean_cell(r.get("institute_id")) if "institute_id" in eff else None
+                                    sub_key = _clean_cell(r.get("subcourse_id")) if "subcourse_id" in eff else None
+                                    main_key = _clean_cell(r.get("maincourse_id")) if "maincourse_id" in eff else None
+                                    inst = Institute.objects.filter(institute_id=inst_key).first() if inst_key else None
+                                    sub = SubBranch.objects.filter(subcourse_id=sub_key).first() if sub_key else None
+                                    main = MainBranch.objects.filter(maincourse_id=main_key).first() if main_key else None
                                     if ("institute_id" in eff and not inst) or ("subcourse_id" in eff and not sub) or ("maincourse_id" in eff and not main):
                                         counts["skipped"] += 1; add_log(i, "skipped", "Related FK missing"); continue
                                     # Parse dates robustly; skip problematic conversions (NaTType etc.)
@@ -462,9 +564,9 @@ class ExcelUploadMixin:
                                         defaults={
                                             **({"student_name": r.get("student_name")} if "student_name" in eff else {}),
                                             **({"batch": r.get("batch")} if "batch" in eff else {}),
-                                            **({"institute": inst} if inst and "institute_id" in eff else {}),
-                                            **({"subcourse": sub} if sub and "subcourse_id" in eff else {}),
-                                            **({"maincourse": main} if main and "maincourse_id" in eff else {}),
+                                            **({"institute": inst} if getattr(inst, 'pk', None) is not None and "institute_id" in eff else {}),
+                                            **({"subcourse": sub} if getattr(sub, 'pk', None) is not None and "subcourse_id" in eff else {}),
+                                            **({"maincourse": main} if getattr(main, 'pk', None) is not None and "maincourse_id" in eff else {}),
                                             **({"temp_enroll_no": r.get("temp_enroll_no")} if "temp_enroll_no" in eff else {}),
                                             **({"enrollment_date": enroll_dt} if enroll_dt and "enrollment_date" in eff else {}),
                                             **({"admission_date": adm_dt} if adm_dt and "admission_date" in eff else {}),
@@ -483,9 +585,9 @@ class ExcelUploadMixin:
                                                 defaults={
                                                     **({"student_name": r.get("student_name")} if "student_name" in eff else {}),
                                                     **({"batch": r.get("batch")} if "batch" in eff else {}),
-                                                    **({"institute": inst} if 'inst' in locals() and inst and "institute_id" in eff else {}),
-                                                    **({"subcourse": sub} if 'sub' in locals() and sub and "subcourse_id" in eff else {}),
-                                                    **({"maincourse": main} if 'main' in locals() and main and "maincourse_id" in eff else {}),
+                                                    **({"institute": inst} if 'inst' in locals() and getattr(inst, 'pk', None) is not None and "institute_id" in eff else {}),
+                                                    **({"subcourse": sub} if 'sub' in locals() and getattr(sub, 'pk', None) is not None and "subcourse_id" in eff else {}),
+                                                    **({"maincourse": main} if 'main' in locals() and getattr(main, 'pk', None) is not None and "maincourse_id" in eff else {}),
                                                     **({"temp_enroll_no": r.get("temp_enroll_no")} if "temp_enroll_no" in eff else {}),
                                                     # intentionally omit enrollment_date / admission_date
                                                     "updated_by": request.user,
@@ -541,7 +643,33 @@ class ExcelUploadMixin:
                         elif issubclass(self.model, MigrationRecord) and sheet_norm == "migration":
                             auto_create = bool(str(request.POST.get('auto_create_docrec', '')).strip())
                             for i, (_, r) in enumerate(df.iterrows(), start=2):
-                                dr = DocRec.objects.filter(doc_rec_id=str(r.get("doc_rec_id")).strip()).first()
+                                doc_rec_id_raw = _clean_cell(r.get("doc_rec_id"))
+                                dr = None
+                                if doc_rec_id_raw:
+                                    try:
+                                        k = str(doc_rec_id_raw).strip()
+                                    except Exception:
+                                        k = str(doc_rec_id_raw)
+                                    dr = DocRec.objects.filter(doc_rec_id=k).first()
+                                    if not dr:
+                                        try:
+                                            dr = DocRec.objects.filter(doc_rec_id__iexact=k).first()
+                                        except Exception:
+                                            dr = None
+                                    if not dr:
+                                        try:
+                                            import re
+                                            norm = re.sub(r'[^0-9a-zA-Z]', '', k).lower()
+                                            if norm:
+                                                for cand in DocRec.objects.all()[:20000]:
+                                                    try:
+                                                        if re.sub(r'[^0-9a-zA-Z]', '', str(cand.doc_rec_id)).lower() == norm:
+                                                            dr = cand
+                                                            break
+                                                    except Exception:
+                                                        continue
+                                        except Exception:
+                                            pass
                                 if not dr:
                                     if auto_create:
                                         doc_date = parse_excel_date(r.get("doc_rec_date")) if "doc_rec_date" in eff else None
@@ -551,32 +679,145 @@ class ExcelUploadMixin:
                                                 apply_for='MG',
                                                 created_by=request.user,
                                             )
-                                            # record creation in log
                                             add_log(i, "created", "Auto-created DocRec", dr.doc_rec_id)
                                         except Exception as e:
                                             counts["skipped"] += 1; add_log(i, "skipped", f"Failed create docrec: {e}"); continue
                                     else:
                                         counts["skipped"] += 1; add_log(i, "skipped", "doc_rec_id not found"); continue
-                                enr = Enrollment.objects.filter(enrollment_no=str(r.get("enrollment_no")).strip()).first() if "enrollment_no" in eff else None
-                                inst = Institute.objects.filter(institute_id=r.get("institute_id")).first() if "institute_id" in eff else None
-                                main = MainBranch.objects.filter(maincourse_id=r.get("maincourse_id")).first() if "maincourse_id" in eff else None
-                                sub = SubBranch.objects.filter(subcourse_id=r.get("subcourse_id")).first() if "subcourse_id" in eff else None
-                                mg_date = parse_excel_date(r.get("mg_date")) if "mg_date" in eff else None
-                                if "mg_date" in eff and not mg_date:  # required non-null
+                                # Parse enrollment and supporting relationships using cleaned cells
+                                enr_key = _clean_cell(r.get("enrollment_no")) if "enrollment_no" in eff else None
+                                enr = Enrollment.objects.filter(enrollment_no=str(enr_key).strip()).first() if enr_key else None
+                                inst_key = _clean_cell(r.get("institute_id")) if "institute_id" in eff else None
+                                main_key = _clean_cell(r.get("maincourse_id")) if "maincourse_id" in eff else None
+                                sub_key = _clean_cell(r.get("subcourse_id")) if "subcourse_id" in eff else None
+                                inst = Institute.objects.filter(institute_id=inst_key).first() if inst_key else None
+                                main = MainBranch.objects.filter(maincourse_id=main_key).first() if main_key else None
+                                sub = SubBranch.objects.filter(subcourse_id=sub_key).first() if sub_key else None
+                                if enr:
+                                    # Try to auto-fill fk relations from enrollment if not provided explicitly
+                                    try:
+                                        if not inst and getattr(enr, 'institute', None):
+                                            inst = enr.institute
+                                    except Exception:
+                                        pass
+                                    try:
+                                        if not main and getattr(enr, 'maincourse', None):
+                                            main = enr.maincourse
+                                    except Exception:
+                                        pass
+                                    try:
+                                        if not sub and getattr(enr, 'subcourse', None):
+                                            sub = enr.subcourse
+                                    except Exception:
+                                        pass
+
+                                # Normalize mg_status and mg_date
+                                mg_status_raw = _clean_cell(r.get("mg_status")) or ''
+                                mg_status = str(mg_status_raw).strip().upper()
+                                mg_date = parse_excel_date(r.get("mg_date")) if "mg_date" in eff and _clean_cell(r.get("mg_date")) is not None else None
+                                # If mg_status is blank for non-cancel records, default to ISSUED
+                                if mg_status == '':
+                                    mg_status = 'ISSUED'
+                                    mg_status_raw = 'ISSUED'
+
+                                # If status is CANCEL (case-insensitive) then only minimal fields are required
+                                is_cancel = mg_status == 'CANCEL'
+                                # Validate presence of mg_number always
+                                mn = _clean_cell(r.get("mg_number"))
+                                if not mn:
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Missing mg_number"); continue
+                                # For non-cancel records: require enrollment_no / student_name only if the
+                                # corresponding columns were selected by the user (in `eff`). If the user did
+                                # not include these FK columns (they are expected to exist in Enrollment table),
+                                # don't fail the row just because the sheet omitted them.
+                                if not is_cancel:
+                                    # enrollment_no required only if provided in the column selection
+                                    if "enrollment_no" in eff:
+                                        enr_key_present = bool(_clean_cell(r.get("enrollment_no")))
+                                        if not enr_key_present:
+                                            counts["skipped"] += 1; add_log(i, "skipped", "Missing enrollment_no for non-cancel record"); continue
+                                    # student_name required only if provided in the column selection
+                                    if "student_name" in eff:
+                                        student_name_present = bool(_clean_cell(r.get("student_name")))
+                                        if not student_name_present:
+                                            counts["skipped"] += 1; add_log(i, "skipped", "Missing student_name for non-cancel record"); continue
+                                # mg_date is required only if the column is selected
+                                if not is_cancel and "mg_date" in eff and not mg_date:
                                     counts["skipped"] += 1; add_log(i, "skipped", "Missing mg_date"); continue
+
+                                # Prevent duplicate MigrationRecord for same enrollment (if enrollment provided and not cancel)
+                                if enr and not is_cancel:
+                                    existing_for_enr = MigrationRecord.objects.filter(enrollment=enr).first()
+                                    if existing_for_enr:
+                                        counts["skipped"] += 1; add_log(i, "skipped", f"Migration already exists for enrollment {enr.enrollment_no}"); continue
+
                                 obj, created = MigrationRecord.objects.get_or_create(doc_rec=dr, defaults={})
-                                if "enrollment_no" in eff: obj.enrollment = enr
-                                if "student_name" in eff: obj.student_name = r.get("student_name") or (enr.student_name if enr else getattr(obj, 'student_name', ''))
-                                if "institute_id" in eff: obj.institute = inst
-                                if "maincourse_id" in eff: obj.maincourse = main
-                                if "subcourse_id" in eff: obj.subcourse = sub
-                                if "mg_number" in eff: obj.mg_number = str(r.get("mg_number") or "").strip()
-                                if "mg_date" in eff and mg_date: obj.mg_date = mg_date
-                                if "exam_year" in eff: obj.exam_year = r.get("exam_year")
-                                if "admission_year" in eff: obj.admission_year = r.get("admission_year")
-                                if "exam_details" in eff: obj.exam_details = r.get("exam_details")
-                                if "mg_status" in eff: obj.mg_status = r.get("mg_status") or getattr(obj, 'mg_status', None)
-                                if "pay_rec_no" in eff: obj.pay_rec_no = r.get("pay_rec_no") or (dr.pay_rec_no if dr else getattr(obj, 'pay_rec_no', ''))
+                                # Populate fields (keep tolerant): for CANCEL store only minimal fields
+                                if "enrollment_no" in eff and enr:
+                                    obj.enrollment = enr
+                                if not is_cancel:
+                                    # student_name may be absent in sheet; fall back to enrollment or existing value
+                                    if "student_name" in eff:
+                                        obj.student_name = (_clean_cell(r.get("student_name")) or (enr.student_name if enr else getattr(obj, 'student_name', '')))
+                                    if inst: obj.institute = inst
+                                    if main: obj.maincourse = main
+                                    if sub: obj.subcourse = sub
+                                    if "exam_year" in eff:
+                                        obj.exam_year = _clean_cell(r.get("exam_year"))
+                                    if "admission_year" in eff:
+                                        obj.admission_year = _clean_cell(r.get("admission_year"))
+                                    if "exam_details" in eff:
+                                        obj.exam_details = _clean_cell(r.get("exam_details"))
+                                    if mg_date: obj.mg_date = mg_date
+                                # Always store mg_number and mg_status if provided
+                                # mg_number already validated; ensure it's saved
+                                obj.mg_number = str(mn).strip()
+                                if "mg_status" in eff and mg_status_raw not in (None, ''):
+                                    obj.mg_status = mg_status_raw or getattr(obj, 'mg_status', None)
+                                if "pay_rec_no" in eff:
+                                    obj.pay_rec_no = _clean_cell(r.get("pay_rec_no")) or (dr.pay_rec_no if dr else getattr(obj, 'pay_rec_no', None))
+
+                                # If doc_rec_remark present in sheet, sync it to DocRec
+                                if "doc_rec_remark" in eff:
+                                    remark_val = r.get("doc_rec_remark")
+                                    if remark_val is not None:
+                                        try:
+                                            dr.doc_rec_remark = remark_val
+                                            dr.save(update_fields=['doc_rec_remark'])
+                                        except Exception:
+                                            pass
+
+                                # Ensure FK fields are valid model instances / PKs (defensive against NaN from Excel)
+                                try:
+                                    # helper: coerce invalid FK PKs (nan, 'nan', <NA>) to None
+                                    for fk in ('institute', 'maincourse', 'subcourse'):
+                                        pk_attr = fk + '_id'
+                                        try:
+                                            val = getattr(obj, pk_attr, None)
+                                        except Exception:
+                                            val = None
+                                        if val is None:
+                                            setattr(obj, fk, None)
+                                        else:
+                                            try:
+                                                # allow numeric or numeric-string PKs
+                                                int(val)
+                                            except Exception:
+                                                setattr(obj, fk, None)
+                                except Exception:
+                                    # if anything goes wrong, clear the FK fields to avoid type errors
+                                    try:
+                                        obj.institute = None
+                                    except Exception:
+                                        pass
+                                    try:
+                                        obj.maincourse = None
+                                    except Exception:
+                                        pass
+                                    try:
+                                        obj.subcourse = None
+                                    except Exception:
+                                        pass
                                 if not obj.created_by: obj.created_by = request.user
                                 obj.save()
                                 if created: counts["created"] += 1; add_log(i, "created", "Created", dr.doc_rec_id)
@@ -599,10 +840,13 @@ class ExcelUploadMixin:
                                             counts["skipped"] += 1; add_log(i, "skipped", f"Failed create docrec: {e}"); continue
                                     else:
                                         counts["skipped"] += 1; add_log(i, "skipped", "doc_rec_id not found"); continue
-                                enr = Enrollment.objects.filter(enrollment_no=str(r.get("enrollment_no")).strip()).first() if "enrollment_no" in eff else None
-                                inst = Institute.objects.filter(institute_id=r.get("institute_id")).first() if "institute_id" in eff else None
-                                main = MainBranch.objects.filter(maincourse_id=r.get("maincourse_id")).first() if "maincourse_id" in eff else None
-                                sub = SubBranch.objects.filter(subcourse_id=r.get("subcourse_id")).first() if "subcourse_id" in eff else None
+                                enr = Enrollment.objects.filter(enrollment_no=str(r.get("enrollment_no")).strip()).first() if "enrollment_no" in eff and str(r.get("enrollment_no") or '').strip() else None
+                                inst_key = _clean_cell(r.get("institute_id")) if "institute_id" in eff else None
+                                main_key = _clean_cell(r.get("maincourse_id")) if "maincourse_id" in eff else None
+                                sub_key = _clean_cell(r.get("subcourse_id")) if "subcourse_id" in eff else None
+                                inst = Institute.objects.filter(institute_id=inst_key).first() if inst_key else None
+                                main = MainBranch.objects.filter(maincourse_id=main_key).first() if main_key else None
+                                sub = SubBranch.objects.filter(subcourse_id=sub_key).first() if sub_key else None
                                 prv_date = parse_excel_date(r.get("prv_date")) if "prv_date" in eff else None
                                 if "prv_date" in eff and not prv_date:  # required non-null
                                     counts["skipped"] += 1; add_log(i, "skipped", "Missing prv_date"); continue
@@ -618,6 +862,34 @@ class ExcelUploadMixin:
                                 if "passing_year" in eff: obj.passing_year = r.get("passing_year")
                                 if "prv_status" in eff: obj.prv_status = r.get("prv_status") or getattr(obj, 'prv_status', None)
                                 if "pay_rec_no" in eff: obj.pay_rec_no = r.get("pay_rec_no") or (dr.pay_rec_no if dr else getattr(obj, 'pay_rec_no', ''))
+                                # Defensive FK coercion similar to migration block
+                                try:
+                                    for fk in ('institute', 'maincourse', 'subcourse'):
+                                        pk_attr = fk + '_id'
+                                        try:
+                                            val = getattr(obj, pk_attr, None)
+                                        except Exception:
+                                            val = None
+                                        if val is None:
+                                            setattr(obj, fk, None)
+                                        else:
+                                            try:
+                                                int(val)
+                                            except Exception:
+                                                setattr(obj, fk, None)
+                                except Exception:
+                                    try:
+                                        obj.institute = None
+                                    except Exception:
+                                        pass
+                                    try:
+                                        obj.maincourse = None
+                                    except Exception:
+                                        pass
+                                    try:
+                                        obj.subcourse = None
+                                    except Exception:
+                                        pass
                                 if not obj.created_by: obj.created_by = request.user
                                 obj.save()
                                 if created: counts["created"] += 1; add_log(i, "created", "Created", dr.doc_rec_id)
@@ -746,9 +1018,59 @@ class ExcelUploadMixin:
                             return JsonResponse({"error": "Sheet name does not match expected for this model."}, status=400)
                     except Exception as e:
                         return JsonResponse({"error": f"Import error: {e}"}, status=500)
+                    # Build an Excel log workbook (Summary + Errors) and return it as base64 so frontend can download
+                    log_xlsx_b64 = None
+                    log_name = None
+                    # Collect skipped rows with original data and error message
+                    failed_rows = []
+                    try:
+                        for entry in log:
+                            if entry.get('status') and str(entry.get('status')).lower() == 'skipped':
+                                try:
+                                    row_no = int(entry.get('row') or 0)
+                                except Exception:
+                                    row_no = 0
+                                # dataframe rows were enumerated starting at 2
+                                idx = row_no - 2
+                                if idx >= 0 and df is not None and idx < len(df.index):
+                                    row_series = df.iloc[idx]
+                                    # convert to plain python values
+                                    row_data = {str(c): (row_series.get(c) if c in row_series.index else None) for c in df.columns}
+                                else:
+                                    row_data = {}
+                                row_data['error'] = entry.get('message')
+                                failed_rows.append(row_data)
+                    except Exception:
+                        failed_rows = []
+
+                    # Summary sheet as single-row table
+                    summary_df = None
+                    error_df = None
+                    if pd is not None:
+                        try:
+                            summary_df = pd.DataFrame([{'total': (len(df.index) if df is not None else 0), 'created': counts.get('created',0), 'updated': counts.get('updated',0), 'skipped': counts.get('skipped',0)}])
+                            if failed_rows:
+                                error_df = pd.DataFrame(failed_rows)
+                            # write to excel
+                            bio = BytesIO()
+                            with pd.ExcelWriter(bio, engine='openpyxl') as writer:
+                                summary_df.to_excel(writer, index=False, sheet_name='Summary')
+                                if error_df is not None:
+                                    # Attempt to preserve original column order
+                                    error_df.to_excel(writer, index=False, sheet_name='Errors')
+                            bio.seek(0)
+                            log_xlsx_b64 = base64.b64encode(bio.read()).decode('utf-8')
+                            log_name = f"import_log_{sheet_norm}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+                        except Exception:
+                            log_xlsx_b64 = None
+
                     if "excel_data" in request.session:
                         del request.session["excel_data"]
-                    return JsonResponse({"success": True, "counts": counts, "log": log})
+                    resp = {"success": True, "counts": counts, "log": log}
+                    if log_xlsx_b64:
+                        resp['log_xlsx'] = log_xlsx_b64
+                        resp['log_name'] = log_name
+                    return JsonResponse(resp)
 
                 return JsonResponse({"error": "Unknown action"}, status=400)
             except Exception as e:
@@ -826,7 +1148,7 @@ class InstVerificationMainAdmin(admin.ModelAdmin):
     list_filter = ("inst_veri_date", "institute")
 
 @admin.register(MigrationRecord)
-class MigrationRecordAdmin(admin.ModelAdmin):
+class MigrationRecordAdmin(CommonAdminMixin):
     list_display = ("id", "mg_number", "mg_date", "student_name", "enrollment", "institute", "maincourse", "subcourse", "mg_status", "doc_rec", "pay_rec_no", "created_by", "created_at")
     list_filter = ("mg_status", "mg_date", "institute")
     search_fields = ("mg_number", "student_name", "enrollment__enrollment_no", "doc_rec__doc_rec_id")
@@ -838,7 +1160,7 @@ class MigrationRecordAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 @admin.register(ProvisionalRecord)
-class ProvisionalRecordAdmin(admin.ModelAdmin):
+class ProvisionalRecordAdmin(CommonAdminMixin):
     list_display = ("id", "prv_number", "prv_date", "student_name", "enrollment", "institute", "maincourse", "subcourse", "prv_status", "doc_rec", "pay_rec_no", "created_by", "created_at")
     list_filter = ("prv_status", "prv_date", "institute")
     search_fields = ("prv_number", "student_name", "enrollment__enrollment_no", "doc_rec__doc_rec_id")
