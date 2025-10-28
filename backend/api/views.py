@@ -21,7 +21,7 @@ from django.db.models.functions import Lower, Replace
 from django.http import HttpResponse
 from rest_framework.parsers import MultiPartParser, FormParser
 from io import BytesIO
-import os, datetime, logging, uuid, threading
+import os, datetime, logging, uuid, threading, traceback
 from django.conf import settings
 from django.core.cache import cache
 
@@ -112,7 +112,8 @@ class VerificationViewSet(viewsets.ModelViewSet):
 
 
 class MigrationRecordViewSet(viewsets.ModelViewSet):
-    queryset = MigrationRecord.objects.select_related('doc_rec', 'enrollment', 'institute').order_by('-id')
+    # doc_rec is stored as a plain varchar (doc_rec_id string) so do not select_related it
+    queryset = MigrationRecord.objects.select_related('enrollment', 'institute').order_by('-id')
     serializer_class = MigrationRecordSerializer
     permission_classes = [IsAuthenticated]
 
@@ -130,7 +131,8 @@ class MigrationRecordViewSet(viewsets.ModelViewSet):
 
 
 class ProvisionalRecordViewSet(viewsets.ModelViewSet):
-    queryset = ProvisionalRecord.objects.select_related('doc_rec', 'enrollment', 'institute').order_by('-id')
+    # `doc_rec` is stored as a plain varchar in DB (not a FK), so avoid select_related on it.
+    queryset = ProvisionalRecord.objects.select_related('enrollment', 'institute').order_by('-id')
     serializer_class = ProvisionalRecordSerializer
     permission_classes = [IsAuthenticated]
 
@@ -225,6 +227,7 @@ def _parse_excel_date_safe(val):
         try:
             if pd.isna(val):  # covers NaTType
                 return None
+            # pandas Timestamp -> python date
             if isinstance(val, pd.Timestamp):
                 try:
                     py_dt = val.to_pydatetime()
@@ -233,6 +236,21 @@ def _parse_excel_date_safe(val):
                     return py_dt.date()
                 except Exception:
                     return None
+            # If numeric and large, it's likely an Excel serial date (e.g., 42552)
+            try:
+                if isinstance(val, (int, float)) and float(val) > 1000:
+                    try:
+                        parsed = pd.to_datetime(val, unit='D', origin='1899-12-30', errors='coerce')
+                        if not pd.isna(parsed):
+                            py_dt = parsed.to_pydatetime()
+                            if getattr(py_dt, 'tzinfo', None) is not None:
+                                py_dt = py_dt.replace(tzinfo=None)
+                            return py_dt.date()
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            # Fallback generic parse
             parsed = pd.to_datetime(val, errors='coerce', dayfirst=True)
             if pd.isna(parsed):
                 return None
@@ -248,6 +266,81 @@ def _parse_excel_date_safe(val):
         except Exception:
             continue
     return None
+
+
+def _normalize_month_year(val):
+    """Normalize month-year values to format 'Mon-YYYY' (e.g., 'Apr-2010', 'Jul-2016').
+    Accepts pandas Timestamps, datetime/date, or strings like 'Apr-2010', 'Jul-16', '2010-04-01'."""
+    if val is None:
+        return None
+    try:
+        import pandas as _pd
+    except Exception:
+        _pd = None
+    try:
+        # handle pandas Timestamp or datetime
+        if _pd is not None and isinstance(val, _pd.Timestamp):
+            dt = val.to_pydatetime()
+            return dt.strftime('%b-%Y').upper()
+        import datetime as _dt
+        if isinstance(val, (_dt.date, _dt.datetime)):
+            return val.strftime('%b-%Y').upper()
+        # Handle Excel serial numbers (e.g., 42552) which pandas may present as numeric
+        try:
+            # integers or floats that look like Excel serial dates
+            if isinstance(val, (int, float)):
+                # treat values > 1000 as possible Excel serials
+                if float(val) > 1000:
+                    if _pd is not None:
+                        try:
+                            parsed = _pd.to_datetime(val, unit='D', origin='1899-12-30')
+                            if not _pd.isna(parsed):
+                                return parsed.to_pydatetime().strftime('%b-%Y').upper()
+                        except Exception:
+                            pass
+                    else:
+                        # fallback using Excel epoch: 1899-12-30
+                        try:
+                            base = _dt.datetime(1899, 12, 30)
+                            parsed = base + _dt.timedelta(days=int(val))
+                            return parsed.strftime('%b-%Y').upper()
+                        except Exception:
+                            pass
+        except Exception:
+            pass
+        s = str(val).strip()
+        if s == '' or s.lower() in ('nan', 'none', '<na>'):
+            return None
+        # Try common formats
+        for fmt in ('%b-%y', '%b-%Y', '%B-%Y', '%m-%Y', '%Y-%m-%d', '%Y'):
+            try:
+                parsed = _dt.datetime.strptime(s, fmt)
+                return parsed.strftime('%b-%Y')
+            except Exception:
+                continue
+        # Try pandas parser as a fallback
+        if _pd is not None:
+            try:
+                parsed = _pd.to_datetime(s, errors='coerce', dayfirst=True)
+                if not _pd.isna(parsed):
+                    dt = parsed.to_pydatetime()
+                    return dt.strftime('%b-%Y').upper()
+            except Exception:
+                pass
+        # Try regex for patterns like 'Jul-16' or 'Apr 2010'
+        import re
+        m = re.search(r'([A-Za-z]{3,9})[\s\-_/]*(\d{2,4})', s)
+        if m:
+            mon = m.group(1)[:3].upper()
+            yr = m.group(2)
+            if len(yr) == 2:
+                # interpret two-digit years as 2000s if reasonable
+                yy = int(yr)
+                yr = f"{2000+yy:04d}" if yy < 100 else yr
+            return f"{mon}-{yr}"
+    except Exception:
+        pass
+    return str(val)
 
 
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
@@ -313,7 +406,7 @@ class BulkUploadView(APIView):
                 "doc_rec_id","enrollment_no","student_name","institute_id","maincourse_id","subcourse_id","mg_number","mg_date","exam_year","admission_year","exam_details","mg_status","pay_rec_no"
             ],
             BulkService.PROVISIONAL: [
-                "doc_rec_id","enrollment_no","student_name","institute_id","maincourse_id","subcourse_id","prv_number","prv_date","class_obtain","passing_year","prv_status","pay_rec_no"
+                "doc_rec_id","enrollment_no","student_name","institute_id","maincourse_id","subcourse_id","prv_number","prv_date","class_obtain","prv_degree_name","passing_year","prv_status","pay_rec_no"
             ],
             BulkService.VERIFICATION: [
                 "doc_rec_id","date","enrollment_no","second_enrollment_no","student_name","no_of_transcript","no_of_marksheet","no_of_degree","no_of_moi","no_of_backlog","status","final_no","pay_rec_no"
@@ -356,6 +449,8 @@ class BulkUploadView(APIView):
                     example[c] = 'HR'
                 elif 'institute' in lc:
                     example[c] = 'INST01'
+                elif 'prv_degree_name' in lc or 'degree' in lc:
+                    example[c] = 'B.Sc Computer Science'
                 elif lc in ('status',):
                     example[c] = 'Active'
                 elif any(x in lc for x in ('balance', 'el_', 'sl_', 'cl_', 'vacation')):
@@ -388,7 +483,7 @@ class BulkUploadView(APIView):
         resp['Content-Disposition'] = f'attachment; filename="{filename}"'
         return resp
 
-    def _process_confirm(self, service, df, user, track_id=None, auto_create_docrec=False):  # noqa: C901
+    def _process_confirm(self, service, df, user, track_id=None, auto_create_docrec=False, selected_cols=None):  # noqa: C901
         """Internal processor for confirm action. Optionally updates cache for progress."""
         # Normalize pandas NaN/NaT values to Python None to avoid passing numpy.nan into ORM filters
         try:
@@ -460,6 +555,44 @@ class BulkUploadView(APIView):
                 return int(f)
             except Exception:
                 return 0
+
+        def _normalize_prv_number(val):
+            """Return a canonical string for prv_number: strip trailing .0 from floats and numeric strings."""
+            if val is None:
+                return None
+            try:
+                # numpy/pandas numeric types
+                import numpy as _np
+                if isinstance(val, _np.generic):
+                    val = val.item()
+            except Exception:
+                pass
+            # numeric types
+            try:
+                if isinstance(val, (int,)):
+                    return str(val)
+                if isinstance(val, float):
+                    if val.is_integer():
+                        return str(int(val))
+                    return str(val)
+            except Exception:
+                pass
+            # string-like
+            try:
+                s = str(val).strip()
+                # common Excel float representation like '2656.0'
+                if s.endswith('.0') and s.replace('.', '', 1).isdigit():
+                    return s.split('.')[0]
+                # if it's numeric with decimal but integer-valued
+                try:
+                    f = float(s)
+                    if f.is_integer():
+                        return str(int(f))
+                except Exception:
+                    pass
+                return s
+            except Exception:
+                return str(val)
 
         try:
             if service == BulkService.DOCREC:
@@ -638,43 +771,224 @@ class BulkUploadView(APIView):
                             except Exception:
                                 pass
 
+                        # If doc_rec is missing and the caller asked for auto-creation, try to create it
+                        if not doc_rec and auto_create_docrec:
+                            try:
+                                create_key = str(doc_rec_id_raw).strip() if doc_rec_id_raw else None
+                                if create_key:
+                                    doc_rec = DocRec.objects.create(doc_rec_id=create_key, apply_for='MG', created_by=user)
+                                else:
+                                    doc_rec = DocRec.objects.create(apply_for='MG', created_by=user)
+                            except Exception:
+                                # creation failed - leave doc_rec as None and fall through to missing handling
+                                doc_rec = None
+
+                        # Normalize mg_status early and determine if this is a CANCEL row so that
+                        # CANCEL rows can be treated with relaxed requirements (they shouldn't
+                        # require institute/main/sub even if those columns were selected).
+                        mg_status_raw_local = _clean_cell(row.get("mg_status")) or ''
+                        try:
+                            mg_status_local = str(mg_status_raw_local).strip().upper() if mg_status_raw_local is not None else ''
+                        except Exception:
+                            mg_status_local = ''
+                        if mg_status_local == '':
+                            mg_status_local = 'ISSUED'
+                            mg_status_raw_local = 'ISSUED'
+                        is_cancel_local = (mg_status_local == 'CANCEL')
+
+                        # Determine which related fields are actually required based on what the
+                        # client selected. If the client included enrollment_no then enrollment is
+                        # required; otherwise, we can accept missing enrollment if institute/main/sub
+                        # can be derived. Conversely, if institute/main/sub columns were included
+                        # but blank, treat them as missing. For CANCEL rows, relax institute/main/sub
+                        # requirements even if those columns were selected.
                         missing = []
+                        sel = selected_cols or []
+                        # doc_rec: still required unless auto-created earlier
                         if not doc_rec:
                             missing.append('doc_rec')
-                        if not enr:
+                        # enrollment required only if explicitly selected and not a CANCEL row
+                        if ('enrollment_no' in sel) and not enr and (not is_cancel_local):
                             missing.append('enrollment')
-                        if not inst:
-                            missing.append('institute')
-                        if not main:
-                            missing.append('main')
-                        if not sub:
-                            missing.append('sub')
+                        # institute/main/sub: for non-cancel rows, treat as missing if not resolved
+                        # AND either the corresponding column was selected or enrollment was not
+                        # present (so we can't fallback). For CANCEL rows, do not require these
+                        # even if selected.
+                        if (not is_cancel_local):
+                            if not inst and (('institute_id' in sel) or (not enr)):
+                                missing.append('institute')
+                            if not main and (('maincourse_id' in sel) or (not enr)):
+                                missing.append('main')
+                            if not sub and (('subcourse_id' in sel) or (not enr)):
+                                missing.append('sub')
                         if missing:
                             # Provide attempted keys in the message to aid debugging
                             msg = f"Missing related ({'/'.join(missing)}) -- tried doc_rec='{doc_rec_id_raw}', enrollment_no='{enr_key}'"
-                            _log(idx, row.get("mg_number"), msg, False); _cache_progress(idx+1); continue
-                        mg_date = _parse_excel_date_safe(row.get("mg_date"))
-                        if mg_date is None:  # required non-null
-                            _log(idx, row.get("mg_number"), "Missing mg_date", False); _cache_progress(idx+1); continue
-                        MigrationRecord.objects.update_or_create(
-                            mg_number=str(row.get("mg_number")).strip(),
-                            defaults={
-                                "doc_rec": doc_rec,
-                                "enrollment": enr,
-                                "student_name": row.get("student_name") or (enr.student_name if enr else ""),
-                                "institute": inst,
-                                "maincourse": main,
-                                "subcourse": sub,
-                                "mg_date": mg_date,
-                                "exam_year": row.get("exam_year"),
-                                "admission_year": row.get("admission_year"),
-                                "exam_details": row.get("exam_details"),
-                                "mg_status": row.get("mg_status") or MigrationStatus.PENDING,
-                                "pay_rec_no": row.get("pay_rec_no") or (doc_rec.pay_rec_no if doc_rec else ""),
-                                "created_by": user,
-                            }
-                        )
-                        _log(idx, row.get("mg_number"), "Upserted", True)
+                            _log(idx, row.get("mg_number"), msg, False)
+                            _cache_progress(idx+1)
+                            continue
+                        # Only require mg_date when the upload included that column (or
+                        # the client explicitly selected it) and the record is not a CANCEL.
+                        # Use canonicalized selected_cols (if provided) so synonym names
+                        # from the UI map correctly. Reuse earlier computed is_cancel_local.
+                        is_cancel = is_cancel_local
+                        sel = selected_cols or []
+                        try:
+                            mg_date_present = ('mg_date' in sel) if sel else ('mg_date' in df.columns)
+                        except Exception:
+                            mg_date_present = ('mg_date' in df.columns)
+                        mg_date = _parse_excel_date_safe(row.get("mg_date")) if mg_date_present else None
+                        if (not is_cancel_local) and mg_date_present and mg_date is None:
+                            _log(idx, row.get("mg_number"), "Missing mg_date", False)
+                            _cache_progress(idx+1)
+                            continue
+                        # Upsert pattern: prefer get/create then update attributes selectively.
+                        mg_num_val = str(row.get("mg_number")).strip()
+                        existing = MigrationRecord.objects.filter(mg_number=mg_num_val).first()
+
+                        # Prepare candidate values but only include them when not None to avoid
+                        # writing explicit NULL into non-nullable fields.
+                        candidate = {}
+                        if doc_rec is not None:
+                            # store the doc_rec_id string (doc_rec may be a DocRec object)
+                            candidate['doc_rec'] = (doc_rec.doc_rec_id if getattr(doc_rec, 'doc_rec_id', None) else (doc_rec if isinstance(doc_rec, str) else None))
+                        if enr is not None:
+                            candidate['enrollment'] = enr
+                        # student_name: prefer sheet value, fallback to enrollment
+                        sn = _clean_cell(row.get("student_name"))
+                        if sn is not None:
+                            candidate['student_name'] = sn
+                        elif enr and getattr(enr, 'student_name', None):
+                            candidate['student_name'] = enr.student_name
+                        if inst is not None:
+                            candidate['institute'] = inst
+                        if main is not None:
+                            candidate['maincourse'] = main
+                        if sub is not None:
+                            candidate['subcourse'] = sub
+                        if mg_date is not None:
+                            candidate['mg_date'] = mg_date
+                        # exam/admission year: only include if present in dataframe
+                        exam_year_val = None
+                        admission_year_val = None
+                        try:
+                            if ('exam_year' in sel) if sel else ('exam_year' in df.columns):
+                                exam_year_val = _clean_cell(row.get('exam_year'))
+                        except Exception:
+                            exam_year_val = _clean_cell(row.get('exam_year'))
+                        try:
+                            if ('admission_year' in sel) if sel else ('admission_year' in df.columns):
+                                admission_year_val = _clean_cell(row.get('admission_year'))
+                        except Exception:
+                            admission_year_val = _clean_cell(row.get('admission_year'))
+                        if exam_year_val is not None:
+                            candidate['exam_year'] = exam_year_val
+                        if admission_year_val is not None:
+                            candidate['admission_year'] = admission_year_val
+                        if ('exam_details' in sel) if sel else ('exam_details' in df.columns):
+                            ed = _clean_cell(row.get('exam_details'))
+                            if ed is not None:
+                                candidate['exam_details'] = ed
+                        # mg_status: normalize common variants (case-insensitive)
+                        # and prefer provided value; default to PENDING.
+                        ms_raw = _clean_cell(row.get('mg_status')) or ''
+                        try:
+                            ms_norm = str(ms_raw).strip().upper()
+                        except Exception:
+                            ms_norm = ''
+                        if ms_norm.startswith('CANCEL') or ms_norm in ('CANCELED', 'CANCELLED'):
+                            ms_mapped = MigrationStatus.CANCELLED
+                        elif ms_norm in ('D', 'DONE', 'ISSUED', 'I'):
+                            # Treat Done/Issued as ISSUED
+                            ms_mapped = MigrationStatus.ISSUED
+                        elif ms_norm == 'P' or ms_norm == 'PENDING' or ms_norm == MigrationStatus.PENDING:
+                            ms_mapped = MigrationStatus.PENDING
+                        elif ms_norm:
+                            # If a raw value matches one of the choice values (case-insensitive), try to map
+                            # common synonyms; fall back to ISSUED for empty/unknown to match requested behavior
+                            ms_mapped = ms_norm
+                        else:
+                            # When mg_status is not provided, default to ISSUED (treated as Done)
+                            ms_mapped = MigrationStatus.ISSUED
+                        candidate['mg_status'] = ms_mapped
+                        # pay_rec_no: prefer sheet value, else from doc_rec if available
+                        pay_rec_val = None
+                        try:
+                            if ('pay_rec_no' in sel) if sel else ('pay_rec_no' in df.columns):
+                                pay_rec_val = _clean_cell(row.get('pay_rec_no'))
+                        except Exception:
+                            pay_rec_val = _clean_cell(row.get('pay_rec_no'))
+                        if not pay_rec_val and doc_rec is not None:
+                            pay_rec_val = getattr(doc_rec, 'pay_rec_no', None)
+                        if pay_rec_val is not None:
+                            candidate['pay_rec_no'] = pay_rec_val
+
+                        # created_by only set on create
+                        if existing:
+                            # Update existing object selectively
+                            for k, v in candidate.items():
+                                setattr(existing, k, v)
+                            # For CANCEL rows, ensure student_name is at least empty string
+                            # before running full_clean() so validation won't reject it.
+                            try:
+                                if is_cancel_local and not getattr(existing, 'student_name', None):
+                                    existing.student_name = ''
+                                existing.full_clean()
+                                existing.save()
+                                _log(idx, row.get("mg_number"), "Upserted", True)
+                            except Exception as e:
+                                _log(idx, row.get("mg_number"), str(e), False)
+                        else:
+                            # For new records, ensure required fields are present for non-CANCEL rows.
+                            missing_required = []
+                            if (not is_cancel_local):
+                                # If an enrollment exists, prefer its relations and do not
+                                # require institute/main/sub even if those columns were
+                                # selected (they can be derived/filled from enrollment).
+                                # Only require these related records when no enrollment
+                                # is present and the corresponding relation could not be
+                                # resolved.
+                                if not inst and (not enr):
+                                    missing_required.append('institute')
+                                if not main and (not enr):
+                                    missing_required.append('maincourse')
+                                if not sub and (not enr):
+                                    missing_required.append('subcourse')
+                                # student_name: required for non-CANCEL rows; allow empty
+                                # for CANCEL rows (we'll set it to empty string).
+                                if not candidate.get('student_name'):
+                                    if is_cancel_local:
+                                        candidate['student_name'] = ''
+                                    else:
+                                        missing_required.append('student_name')
+                                if mg_date_present and candidate.get('mg_date') is None:
+                                    missing_required.append('mg_date')
+                                # exam_year/admission_year: required only if selected
+                                if (('exam_year' in sel) if sel else ('exam_year' in df.columns)) and candidate.get('exam_year') is None:
+                                    missing_required.append('exam_year')
+                                if (('admission_year' in sel) if sel else ('admission_year' in df.columns)) and candidate.get('admission_year') is None:
+                                    missing_required.append('admission_year')
+                                # pay_rec_no: required if selected or if we have no doc_rec to copy from
+                                pay_required_cond = (('pay_rec_no' in sel) if sel else ('pay_rec_no' in df.columns)) or (doc_rec is None)
+                                if pay_required_cond and candidate.get('pay_rec_no') is None:
+                                    missing_required.append('pay_rec_no')
+                            if missing_required:
+                                _log(idx, mg_num_val, f"Missing required fields for new MigrationRecord: {', '.join(missing_required)}", False)
+                                _cache_progress(idx+1)
+                                continue
+                            # Build create data. Ensure student_name is present for CANCEL rows
+                            # (some validation paths may reject missing/None even when blank is allowed).
+                            create_data = {**candidate}
+                            # If student_name was omitted and this is a CANCEL, set to empty string
+                            if not create_data.get('student_name') and is_cancel_local:
+                                create_data['student_name'] = ''
+                            create_data['mg_number'] = mg_num_val
+                            create_data['created_by'] = user
+                            try:
+                                obj = MigrationRecord.objects.create(**create_data)
+                                _log(idx, row.get("mg_number"), "Created", True)
+                            except Exception as e:
+                                _log(idx, row.get("mg_number"), str(e), False)
                     except Exception as e:
                         _log(idx, row.get("mg_number"), str(e), False)
                     _cache_progress(idx+1)
@@ -709,8 +1023,42 @@ class BulkUploadView(APIView):
                                                 continue
                                 except Exception:
                                     pass
+                        # If doc_rec is missing and the caller asked for auto-creation, try to create it
+                        if not doc_rec and auto_create_docrec:
+                            try:
+                                create_key = str(doc_rec_id_raw).strip() if doc_rec_id_raw else None
+                                if create_key:
+                                    # preserve apply_for as PROVISIONAL (PRV)
+                                    doc_rec = DocRec.objects.create(doc_rec_id=create_key, apply_for='PRV', created_by=user)
+                                else:
+                                    doc_rec = DocRec.objects.create(apply_for='PRV', created_by=user)
+                            except Exception:
+                                doc_rec = None
+
+                        # enrollment may be optional; only required when provided or when non-CANCEL
                         enr_key = _clean_cell(row.get("enrollment_no"))
-                        enr = Enrollment.objects.filter(enrollment_no=str(enr_key)).first() if enr_key else None
+                        enr = None
+                        if enr_key:
+                            try:
+                                k = str(enr_key).strip()
+                            except Exception:
+                                k = str(enr_key)
+                            if k:
+                                enr = Enrollment.objects.filter(enrollment_no=k).first()
+                                if not enr:
+                                    try:
+                                        enr = Enrollment.objects.filter(enrollment_no__iexact=k).first()
+                                    except Exception:
+                                        enr = None
+                                if not enr:
+                                    try:
+                                        norm = ''.join(k.split()).lower()
+                                        enr = (Enrollment.objects
+                                               .annotate(_norm=Replace(Lower(models.F('enrollment_no')), Value(' '), Value('')))
+                                               .filter(_norm=norm)
+                                               .first())
+                                    except Exception:
+                                        enr = None
 
                         inst_key = _clean_cell(row.get("institute_id"))
                         main_key = _clean_cell(row.get("maincourse_id"))
@@ -730,29 +1078,94 @@ class BulkUploadView(APIView):
                             except Exception:
                                 pass
 
-                        if not (doc_rec and enr and inst and main and sub):
-                            _log(idx, row.get("prv_number"), "Missing related (doc_rec/enrollment/institute/main/sub)", False); _cache_progress(idx+1); continue
+                        # Normalize prv_status early and determine CANCEL rows so they get relaxed requirements
+                        prv_status_raw_local = _clean_cell(row.get('prv_status')) or ''
+                        try:
+                            prv_status_local = str(prv_status_raw_local).strip().upper() if prv_status_raw_local is not None else ''
+                        except Exception:
+                            prv_status_local = ''
+                        if prv_status_local == '':
+                            # Treat blank status as ISSUED by default
+                            prv_status_local = 'ISSUED'
+                            prv_status_raw_local = 'ISSUED'
+                        is_cancel_local = (prv_status_local == 'CANCEL' or prv_status_local.startswith('CANCEL'))
+
+                        # Normalize prv_number once for consistent keys (strip .0 etc.)
+                        normalized_prv = _normalize_prv_number(row.get("prv_number"))
+
+                        # If this is a CANCEL row we only require doc_rec, prv_number and prv_date
+                        if is_cancel_local:
+                            if not doc_rec:
+                                _log(idx, normalized_prv or row.get("prv_number"), "Missing doc_rec for CANCEL record", False); _cache_progress(idx+1); continue
+                            prv_date = _parse_excel_date_safe(row.get("prv_date"))
+                            if prv_date is None:
+                                _log(idx, normalized_prv or row.get("prv_number"), "Missing prv_date for CANCEL record", False); _cache_progress(idx+1); continue
+                            # Upsert minimal fields for CANCEL
+                            ProvisionalRecord.objects.update_or_create(
+                                prv_number=normalized_prv,
+                                defaults={
+                                    # store the doc_rec_id string (doc_rec may be a DocRec object)
+                                    "doc_rec": (doc_rec.doc_rec_id if getattr(doc_rec, 'doc_rec_id', None) else (doc_rec if isinstance(doc_rec, str) else None)),
+                                    "prv_date": prv_date,
+                                    "prv_status": ProvisionalStatus.CANCELLED,
+                                    "created_by": user,
+                                }
+                            )
+                            _log(idx, normalized_prv or row.get("prv_number"), "Upserted (CANCEL)", True)
+                            _cache_progress(idx+1)
+                            continue
+
+                        # Non-CANCEL rows: require related doc_rec and at least some FK info (enrollment or institute/main/sub)
+                        if not doc_rec:
+                            _log(idx, normalized_prv or row.get("prv_number"), "Missing doc_rec", False); _cache_progress(idx+1); continue
                         prv_date = _parse_excel_date_safe(row.get("prv_date"))
                         if prv_date is None:
-                            _log(idx, row.get("prv_number"), "Missing prv_date", False); _cache_progress(idx+1); continue
+                            _log(idx, normalized_prv or row.get("prv_number"), "Missing prv_date", False); _cache_progress(idx+1); continue
+
+                        # Normalize prv_status into ProvisionalStatus constants
+                        try:
+                            ps_raw = prv_status_raw_local or ''
+                            ps_norm = str(ps_raw).strip().upper() if ps_raw is not None else ''
+                        except Exception:
+                            ps_norm = ''
+                        if ps_norm.startswith('CANCEL') or ps_norm in ('CANCELED', 'CANCELLED'):
+                            ps_mapped = ProvisionalStatus.CANCELLED
+                        elif ps_norm in ('D', 'DONE', 'ISSUED', 'I'):
+                            ps_mapped = ProvisionalStatus.ISSUED
+                        elif ps_norm in ('P', 'PENDING'):
+                            ps_mapped = ProvisionalStatus.PENDING
+                        elif ps_norm:
+                            # try a title-cased match
+                            try:
+                                ps_mapped = ps_norm.capitalize()
+                            except Exception:
+                                ps_mapped = ProvisionalStatus.ISSUED
+                        else:
+                            ps_mapped = ProvisionalStatus.ISSUED
+
+                        # Build upsert defaults with fallbacks
+                        defaults = {
+                            # store doc_rec as doc_rec_id string
+                            "doc_rec": (doc_rec.doc_rec_id if getattr(doc_rec, 'doc_rec_id', None) else (doc_rec if isinstance(doc_rec, str) else None)),
+                            "enrollment": enr,
+                            "student_name": row.get("student_name") or (enr.student_name if enr else None),
+                            "institute": inst,
+                            "maincourse": main,
+                            "subcourse": sub,
+                            "class_obtain": row.get("class_obtain"),
+                            "prv_date": prv_date,
+                            # Normalize passing year into 'Mon-YYYY' format where possible
+                            "passing_year": _normalize_month_year(row.get("passing_year")),
+                            "prv_status": ps_mapped,
+                            "pay_rec_no": (row.get("pay_rec_no") or (doc_rec.pay_rec_no if doc_rec else None)),
+                            "created_by": user,
+                        }
+
                         ProvisionalRecord.objects.update_or_create(
-                            prv_number=str(row.get("prv_number")).strip(),
-                            defaults={
-                                "doc_rec": doc_rec,
-                                "enrollment": enr,
-                                "student_name": row.get("student_name") or (enr.student_name if enr else ""),
-                                "institute": inst,
-                                "maincourse": main,
-                                "subcourse": sub,
-                                "class_obtain": row.get("class_obtain"),
-                                "prv_date": prv_date,
-                                "passing_year": row.get("passing_year"),
-                                "prv_status": row.get("prv_status") or ProvisionalStatus.PENDING,
-                                "pay_rec_no": row.get("pay_rec_no") or (doc_rec.pay_rec_no if doc_rec else ""),
-                                "created_by": user,
-                            }
+                            prv_number=normalized_prv,
+                            defaults=defaults
                         )
-                        _log(idx, row.get("prv_number"), "Upserted", True)
+                        _log(idx, normalized_prv or row.get("prv_number"), "Upserted", True)
                     except Exception as e:
                         _log(idx, row.get("prv_number"), str(e), False)
                     _cache_progress(idx+1)
@@ -974,10 +1387,39 @@ class BulkUploadView(APIView):
             else:
                 return {"error": True, "detail": f"Service {service} not implemented"}
         except Exception as e:
-            # fatal error
+            # fatal error: attempt to write partial log (if any) so client gets a log file
+            try:
+                import pandas as _pd
+                import base64
+                logs_dir = os.path.join(settings.MEDIA_ROOT, 'logs')
+                os.makedirs(logs_dir, exist_ok=True)
+                df_log = _pd.DataFrame(results) if results else _pd.DataFrame([{"error": str(e)}])
+                out = BytesIO()
+                with _pd.ExcelWriter(out, engine='openpyxl') as writer:
+                    df_log.to_excel(writer, index=False, sheet_name='result')
+                out.seek(0)
+                fname = f"upload_log_{service.lower()}_{timezone.now().strftime('%Y%m%d_%H%M%S')}_partial.xlsx"
+                fpath = os.path.join(logs_dir, fname)
+                with open(fpath, 'wb') as f:
+                    f.write(out.getvalue())
+                file_url = settings.MEDIA_URL + 'logs/' + fname
+                try:
+                    logging.info('Wrote partial upload log to %s (url=%s)', fpath, file_url)
+                except Exception:
+                    pass
+                try:
+                    log_xlsx_b64 = base64.b64encode(out.getvalue()).decode('utf-8')
+                    log_name = fname
+                except Exception:
+                    log_xlsx_b64 = None
+                    log_name = None
+            except Exception:
+                file_url = None
+                log_xlsx_b64 = None
+                log_name = None
             if track_id:
-                cache.set(f"bulk:{track_id}", {"status": "error", "detail": str(e)}, timeout=3600)
-            return {"error": True, "detail": str(e)}
+                cache.set(f"bulk:{track_id}", {"status": "error", "detail": str(e), "log_url": file_url, **({'log_xlsx': log_xlsx_b64, 'log_name': log_name} if log_xlsx_b64 else {})}, timeout=3600)
+            return {"error": True, "detail": str(e), "log_url": file_url, **({'log_xlsx': log_xlsx_b64, 'log_name': log_name} if log_xlsx_b64 else {})}
 
         # Build log excel
         file_url = None
@@ -994,7 +1436,18 @@ class BulkUploadView(APIView):
             fpath = os.path.join(logs_dir, fname)
             with open(fpath, 'wb') as f:
                 f.write(out.getvalue())
-            file_url = settings.MEDIA_URL + 'logs/' + fname
+                file_url = settings.MEDIA_URL + 'logs/' + fname
+            try:
+                import base64
+                log_xlsx_b64 = base64.b64encode(out.getvalue()).decode('utf-8')
+                log_name = fname
+            except Exception:
+                log_xlsx_b64 = None
+                log_name = None
+            try:
+                logging.info('Wrote upload log to %s (url=%s) size_bytes=%d base64_len=%d', fpath, file_url, len(out.getvalue()), len(log_xlsx_b64) if log_xlsx_b64 else 0)
+            except Exception:
+                pass
         except Exception:
             file_url = None
 
@@ -1005,10 +1458,69 @@ class BulkUploadView(APIView):
             "summary": summary,
             "log_url": file_url,
             "results": results,
+            # Include base64-encoded XLSX so the frontend can trigger download even if
+            # relative media URL resolution fails in some deployments or client code.
+            **({'log_xlsx': log_xlsx_b64, 'log_name': log_name} if (log_xlsx_b64) else {}),
         }
+        # Ensure payload is JSON-serializable (convert numpy/pandas NaN and numpy types to native Python)
+        def _make_json_safe(o):
+            try:
+                import math
+                import numpy as _np
+                import pandas as _pd
+            except Exception:
+                _np = None; _pd = None; math = __import__('math')
+
+            # primitives
+            if o is None:
+                return None
+            if isinstance(o, (str, bool, int)):
+                return o
+            if isinstance(o, float):
+                try:
+                    if math.isnan(o) or o in (float('inf'), float('-inf')):
+                        return None
+                except Exception:
+                    pass
+                return o
+            # numpy scalar
+            try:
+                if _np is not None and isinstance(o, _np.generic):
+                    return _make_json_safe(o.item())
+            except Exception:
+                pass
+            # pandas types
+            try:
+                if _pd is not None and isinstance(o, _pd.Timestamp):
+                    return str(o.to_pydatetime())
+            except Exception:
+                pass
+            # dict/list
+            if isinstance(o, dict):
+                return {str(k): _make_json_safe(v) for k, v in o.items()}
+            if isinstance(o, (list, tuple)):
+                return [_make_json_safe(v) for v in o]
+            # dates
+            try:
+                import datetime as _dt
+                if isinstance(o, (_dt.date, _dt.datetime)):
+                    return o.isoformat()
+            except Exception:
+                pass
+            # fallback: stringify
+            try:
+                return str(o)
+            except Exception:
+                return None
+
+        safe_payload = _make_json_safe(result_payload)
         if track_id:
-            cache.set(f"bulk:{track_id}", {"status": "done", **result_payload}, timeout=3600)
-        return result_payload
+            try:
+                cache.set(f"bulk:{track_id}", {"status": "done", **safe_payload}, timeout=3600)
+            except Exception:
+                # caching failure should not block response
+                logging.exception('Failed to cache bulk result for %s', track_id)
+        return safe_payload
 
     def post(self, request):  # noqa: C901
         action = request.query_params.get('action', 'preview')
@@ -1055,6 +1567,7 @@ class BulkUploadView(APIView):
                 sheet_name = None
                 df = pd.read_csv(upload)
         except Exception as e:
+            logging.exception('Error reading uploaded file')
             return err(f"Error reading file: {e}")
         if df is None:
             return err("No data found")
@@ -1062,6 +1575,65 @@ class BulkUploadView(APIView):
         # If client provided a columns[] selection, subset dataframe to only those columns
         # Also ensure minimal keys used by services remain present if available
         try:
+            # Normalize common header name variants to canonical internal column names.
+            # Many upload sheets use headings like 'key', 'institute', 'main', 'sub', etc.
+            # Map those to the expected names so server-side processors can find them.
+            def _canonical(colname):
+                if colname is None:
+                    return None
+                s = str(colname).strip().lower()
+                # remove punctuation and multiple spaces
+                s2 = ''.join(ch for ch in s if ch.isalnum() or ch.isspace()).strip()
+                s2 = ' '.join(s2.split())
+                # direct synonyms
+                mapping = {
+                    'key': 'enrollment_no',
+                    'enrollment': 'enrollment_no',
+                    'enrollment no': 'enrollment_no',
+                    'enrollment_no': 'enrollment_no',
+                    'docrec': 'doc_rec_id',
+                    'doc rec': 'doc_rec_id',
+                    'doc_rec_id': 'doc_rec_id',
+                    'institute': 'institute_id',
+                    'institute id': 'institute_id',
+                    'institute_id': 'institute_id',
+                    'main': 'maincourse_id',
+                    'maincourse': 'maincourse_id',
+                    'main course': 'maincourse_id',
+                    'maincourse id': 'maincourse_id',
+                    'sub': 'subcourse_id',
+                    'subcourse': 'subcourse_id',
+                    'sub course': 'subcourse_id',
+                    'subcourse id': 'subcourse_id',
+                    'mg number': 'mg_number',
+                    'mg_number': 'mg_number',
+                    'mg_date': 'mg_date',
+                    'mg date': 'mg_date',
+                    'student name': 'student_name',
+                    'student_name': 'student_name',
+                    'pay rec no': 'pay_rec_no',
+                    'pay_rec_no': 'pay_rec_no',
+                    'exam year': 'exam_year',
+                    'exam_year': 'exam_year',
+                    'admission year': 'admission_year',
+                    'admission_year': 'admission_year',
+                }
+                return mapping.get(s2, None)
+
+            # Build a rename map for df columns where a canonical name is available
+            try:
+                rename_map = {}
+                for c in list(df.columns):
+                    canon = _canonical(c)
+                    if canon and canon != c:
+                        # Avoid overwriting if canon already exists as a column
+                        if canon not in df.columns:
+                            rename_map[c] = canon
+                if rename_map:
+                    df = df.rename(columns=rename_map)
+            except Exception:
+                pass
+
             selected_cols = None
             # request.data may be a QueryDict-like with getlist
             if hasattr(request.data, 'getlist'):
@@ -1077,13 +1649,45 @@ class BulkUploadView(APIView):
             if selected_cols:
                 # Columns we should keep regardless if selected (useful ids used by processors)
                 force_keys = ['enrollment_no', 'doc_rec_id', 'prv_number', 'mg_number', 'final_no']
-                # Build keep list in order: selected cols that exist + available force keys
-                keep = [c for c in selected_cols if c in df.columns]
+                # Canonicalize selected column names to match any renaming we applied to df.
+                def _canon_for_selected(name):
+                    try:
+                        c = _canonical(name)
+                    except Exception:
+                        c = None
+                    # prefer canonical name if present in df, else try the original name, else try a case-insensitive match
+                    if c and c in df.columns:
+                        return c
+                    if name in df.columns:
+                        return name
+                    # case-insensitive match
+                    lname = str(name).strip().lower()
+                    for col in df.columns:
+                        try:
+                            if str(col).strip().lower() == lname:
+                                return col
+                        except Exception:
+                            continue
+                    return None
+
+                # Build keep list in order: selected cols that exist (canonicalized) + available force keys
+                keep = []
+                for sc in selected_cols:
+                    c = _canon_for_selected(sc)
+                    if c and c not in keep:
+                        keep.append(c)
                 for k in force_keys:
                     if k in df.columns and k not in keep:
                         keep.append(k)
                 if keep:
                     df = df.loc[:, [c for c in keep if c in df.columns]]
+                    # Replace selected_cols with the canonicalized/available column names we kept.
+                    # This ensures downstream logic checks the canonical names rather than
+                    # the original user-supplied strings (which might be synonyms).
+                    try:
+                        selected_cols = [c for c in keep if c in df.columns]
+                    except Exception:
+                        selected_cols = keep
         except Exception:
             # non-fatal: proceed with original df
             pass
@@ -1094,6 +1698,29 @@ class BulkUploadView(APIView):
 
         # Preview returns top rows
         if action == 'preview':
+            # Format numeric "number" columns (e.g., prv_number, mg_number) to remove trailing .0
+            try:
+                import pandas as _pd
+                for col in list(df.columns):
+                    if col.endswith('_number') and col in df.columns:
+                        try:
+                            df[col] = df[col].apply(lambda v: (int(v) if (isinstance(v, (int,)) or (isinstance(v, float) and not _pd.isna(v) and float(v).is_integer())) else v))
+                        except Exception:
+                            # fallback: coerce numeric-like strings
+                            def _fmt(v):
+                                try:
+                                    if v is None:
+                                        return v
+                                    sv = str(v).strip()
+                                    if sv.replace('.', '', 1).isdigit():
+                                        fv = float(sv)
+                                        return int(fv) if fv.is_integer() else v
+                                except Exception:
+                                    pass
+                                return v
+                            df[col] = df[col].apply(_fmt)
+            except Exception:
+                pass
             preview_rows = df.fillna('').head(100).to_dict(orient='records')
             return Response({
                 "error": False,
@@ -1115,15 +1742,18 @@ class BulkUploadView(APIView):
                     from django.contrib.auth import get_user_model
                     UserModel = get_user_model()
                     user_obj = UserModel.objects.filter(id=request.user.id).first()
-                    payload = self._process_confirm(service, df, user_obj, track_id=upload_id, auto_create_docrec=auto_create_docrec)
+                    payload = self._process_confirm(service, df, user_obj, track_id=upload_id, auto_create_docrec=auto_create_docrec, selected_cols=selected_cols)
                 threading.Thread(target=_bg, daemon=True).start()
                 return Response({"error": False, "mode": "started", "upload_id": upload_id, "total": len(df.index)})
             else:
-                payload = self._process_confirm(service, df, request.user, auto_create_docrec=auto_create_docrec)
+                payload = self._process_confirm(service, df, request.user, auto_create_docrec=auto_create_docrec, selected_cols=selected_cols)
                 status_code = 200 if not payload.get('error') else 500
                 # Adjust absolute URL for log if present
                 if payload.get('log_url') and not payload['log_url'].startswith('http'):
-                    payload['log_url'] = request.build_absolute_uri(payload['log_url'])
+                    try:
+                        payload['log_url'] = request.build_absolute_uri(payload['log_url'])
+                    except Exception:
+                        logging.exception('Failed to build absolute log_url')
                 return Response(payload, status=status_code)
 
 
@@ -1157,7 +1787,8 @@ class DataAnalysisView(APIView):
             dups = MigrationRecord.objects.values('mg_number').annotate(c=models.Count('id')).filter(c__gt=1)
             for d in dups:
                 add('DUPLICATE_MG_NUMBER', d['mg_number'], f"Appears {d['c']} times")
-            for m in MigrationRecord.objects.select_related('doc_rec')[:5000]:
+            # doc_rec is stored as a string; iterate normally
+            for m in MigrationRecord.objects.all()[:5000]:
                 if not m.doc_rec:
                     add('MISSING_DOC_REC', m.mg_number, 'No doc_rec linked')
 
@@ -1165,7 +1796,8 @@ class DataAnalysisView(APIView):
             dups = ProvisionalRecord.objects.values('prv_number').annotate(c=models.Count('id')).filter(c__gt=1)
             for d in dups:
                 add('DUPLICATE_PRV_NUMBER', d['prv_number'], f"Appears {d['c']} times")
-            for p in ProvisionalRecord.objects.select_related('doc_rec')[:5000]:
+            # doc_rec is stored as a string (doc_rec_id). No select_related.
+            for p in ProvisionalRecord.objects.all()[:5000]:
                 if not p.doc_rec:
                     add('MISSING_DOC_REC', p.prv_number, 'No doc_rec linked')
 

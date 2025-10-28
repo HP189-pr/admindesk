@@ -30,7 +30,9 @@ class Verification(models.Model):
     date = models.DateField(default=timezone.now, db_column='doc_rec_date', verbose_name='Doc Record Date')
     enrollment = models.ForeignKey(Enrollment, on_delete=models.RESTRICT, db_column='enrollment_id', related_name='verifications')
     second_enrollment = models.ForeignKey(Enrollment, on_delete=models.RESTRICT, null=True, blank=True, db_column='second_enrollment_id', related_name='secondary_verifications')
-    student_name = models.CharField(max_length=255, db_column='student_name')
+    # Allow blank student_name so CANCEL rows can be stored without a name.
+    # DB keeps this as NOT NULL (empty string) but Django validation will permit '' when blank=True.
+    student_name = models.CharField(max_length=255, db_column='student_name', blank=True)
     tr_count = models.PositiveSmallIntegerField(default=0, db_column='no_of_transcript')
     ms_count = models.PositiveSmallIntegerField(default=0, db_column='no_of_marksheet')
     dg_count = models.PositiveSmallIntegerField(default=0, db_column='no_of_degree')
@@ -178,19 +180,27 @@ class MigrationStatus(models.TextChoices):
 
 class MigrationRecord(models.Model):
     id = models.BigAutoField(primary_key=True)
-    doc_rec = models.ForeignKey(DocRec, on_delete=models.CASCADE, db_column='doc_rec_id', related_name='migration_records')
-    enrollment = models.ForeignKey(Enrollment, to_field='enrollment_no', db_column='enrollment_no', on_delete=models.CASCADE, related_name='migration_records', db_constraint=False)
-    student_name = models.CharField(max_length=255, db_column='student_name')
+    # DB changed: store doc_rec_id as a varchar instead of a foreign key.
+    # Keep attribute name `doc_rec` for compatibility but store the raw identifier string.
+    doc_rec = models.CharField(max_length=100, db_column='doc_rec_id', null=True, blank=True)
+    # enrollment is nullable in DB schema; allow NULL and do not cascade-delete.
+    enrollment = models.ForeignKey(Enrollment, to_field='enrollment_no', db_column='enrollment_no', on_delete=models.SET_NULL, related_name='migration_records', null=True, blank=True, db_constraint=False)
+    # Allow blank student_name so CANCEL rows can be stored without a name.
+    # DB keeps this as NOT NULL (empty string) but Django validation will permit '' when blank=True.
+    student_name = models.CharField(max_length=255, db_column='student_name', blank=True)
     institute = models.ForeignKey(Institute, to_field='institute_id', db_column='institute_id', on_delete=models.CASCADE, related_name='migration_records', null=True, blank=True)
     subcourse = models.ForeignKey(SubBranch, to_field='subcourse_id', db_column='subcourse_id', on_delete=models.CASCADE, related_name='migration_records', null=True, blank=True)
     maincourse = models.ForeignKey(MainBranch, to_field='maincourse_id', db_column='maincourse_id', on_delete=models.CASCADE, related_name='migration_records', null=True, blank=True)
     mg_number = models.CharField(max_length=50, unique=True, db_column='mg_number')
-    mg_date = models.DateField(db_column='mg_date')
-    exam_year = models.CharField(max_length=20, db_column='exam_year')
-    admission_year = models.CharField(max_length=20, db_column='admission_year')
+    # Allow nullable date/year fields per actual DB schema (nullable allowed)
+    mg_date = models.DateField(db_column='mg_date', null=True, blank=True)
+    exam_year = models.CharField(max_length=20, db_column='exam_year', null=True, blank=True)
+    admission_year = models.CharField(max_length=20, db_column='admission_year', null=True, blank=True)
     exam_details = models.TextField(null=True, blank=True, db_column='exam_details')
     mg_status = models.CharField(max_length=20, choices=MigrationStatus.choices, default=MigrationStatus.PENDING, db_column='mg_status')
-    pay_rec_no = models.CharField(max_length=50, db_column='pay_rec_no')
+    # pay_rec_no is nullable in the DB schema; keep nullable here and avoid
+    # enforcing presence at model-clean time (caller may choose to copy from DocRec).
+    pay_rec_no = models.CharField(max_length=50, db_column='pay_rec_no', null=True, blank=True)
     # Free-text remark associated with the related DocRec (kept as a short varchar per schema)
     doc_rec_remark = models.CharField(max_length=255, null=True, blank=True, db_column='doc_rec_remark')
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='createdby', related_name='migration_created')
@@ -205,10 +215,15 @@ class MigrationRecord(models.Model):
             models.Index(fields=['mg_number'], name='idx_mg_number'),
         ]
     def clean(self):
-        if not self.pay_rec_no and self.doc_rec and self.doc_rec.pay_rec_no:
-            self.pay_rec_no = self.doc_rec.pay_rec_no
-        if not self.pay_rec_no:
-            raise ValidationError({'pay_rec_no': 'pay_rec_no is required (copied from related DocRec).'})
+        # default pay_rec_no from related DocRec if available; do not fail validation
+        # if it's still missing since DB schema allows NULL for this column.
+        try:
+            if not self.pay_rec_no and self.doc_rec:
+                dr = DocRec.objects.filter(doc_rec_id=self.doc_rec).first()
+                if dr and getattr(dr, 'pay_rec_no', None):
+                    self.pay_rec_no = dr.pay_rec_no
+        except Exception:
+            pass
     def save(self,*a,**kw):
         # If enrollment provided, try to copy institute/main/subcourse from it when missing
         try:
@@ -226,16 +241,22 @@ class MigrationRecord(models.Model):
         except Exception:
             pass
 
-        if not self.pay_rec_no and self.doc_rec and self.doc_rec.pay_rec_no:
-            self.pay_rec_no = self.doc_rec.pay_rec_no
+        try:
+            if not self.pay_rec_no and self.doc_rec:
+                dr = DocRec.objects.filter(doc_rec_id=self.doc_rec).first()
+                if dr and getattr(dr, 'pay_rec_no', None):
+                    self.pay_rec_no = dr.pay_rec_no
+        except Exception:
+            pass
         self.full_clean()
         result = super().save(*a,**kw)
         # propagate doc_rec_remark to DocRec when present
         try:
             if self.doc_rec and getattr(self, 'doc_rec_remark', None) is not None:
-                if getattr(self.doc_rec, 'doc_rec_remark', None) != self.doc_rec_remark:
-                    self.doc_rec.doc_rec_remark = self.doc_rec_remark
-                    self.doc_rec.save(update_fields=['doc_rec_remark'])
+                dr = DocRec.objects.filter(doc_rec_id=self.doc_rec).first()
+                if dr and getattr(dr, 'doc_rec_remark', None) != self.doc_rec_remark:
+                    dr.doc_rec_remark = self.doc_rec_remark
+                    dr.save(update_fields=['doc_rec_remark'])
         except Exception:
             pass
         return result
@@ -249,18 +270,28 @@ class ProvisionalStatus(models.TextChoices):
 
 class ProvisionalRecord(models.Model):
     id = models.BigAutoField(primary_key=True)
-    doc_rec = models.ForeignKey(DocRec, on_delete=models.CASCADE, db_column='doc_rec_id', related_name='provisional_records')
-    enrollment = models.ForeignKey(Enrollment, to_field='enrollment_no', db_column='enrollment_no', on_delete=models.CASCADE, related_name='provisional_records', db_constraint=False)
-    student_name = models.CharField(max_length=255, db_column='student_name')
+    # NOTE: DB was changed so `doc_rec_id` is now a plain varchar (not a foreign-key).
+    # Keep the attribute name `doc_rec` for compatibility with existing code, but
+    # store the raw doc_rec_id string. When a DocRec object is needed, resolve
+    # it on demand via `self._docrec_obj()` helper.
+    doc_rec = models.CharField(max_length=100, db_column='doc_rec_id', null=True, blank=True)
+    # enrollment is optional in the DB schema (nullable)
+    enrollment = models.ForeignKey(Enrollment, to_field='enrollment_no', db_column='enrollment_no', on_delete=models.SET_NULL, related_name='provisional_records', null=True, blank=True, db_constraint=False)
+    # Allow blank/NULL student_name so CANCEL rows can be stored without a name.
+    # DB allows NULL for student_name according to schema; reflect that here.
+    student_name = models.CharField(max_length=255, db_column='student_name', null=True, blank=True)
     institute = models.ForeignKey(Institute, to_field='institute_id', db_column='institute_id', on_delete=models.CASCADE, related_name='provisional_records', null=True, blank=True)
     subcourse = models.ForeignKey(SubBranch, to_field='subcourse_id', db_column='subcourse_id', on_delete=models.CASCADE, related_name='provisional_records', null=True, blank=True)
     maincourse = models.ForeignKey(MainBranch, to_field='maincourse_id', db_column='maincourse_id', on_delete=models.CASCADE, related_name='provisional_records', null=True, blank=True)
     class_obtain = models.CharField(max_length=100, null=True, blank=True, db_column='class_obtain')
     prv_number = models.CharField(max_length=50, unique=True, db_column='prv_number')
     prv_date = models.DateField(db_column='prv_date')
-    passing_year = models.CharField(max_length=20, db_column='passing_year')
-    prv_status = models.CharField(max_length=20, choices=ProvisionalStatus.choices, default=ProvisionalStatus.PENDING, db_column='prv_status')
-    pay_rec_no = models.CharField(max_length=50, db_column='pay_rec_no')
+    passing_year = models.CharField(max_length=20, db_column='passing_year', null=True, blank=True)
+    # Degree name associated with the provisional certificate (optional)
+    prv_degree_name = models.CharField(max_length=255, null=True, blank=True, db_column='prv_degree_name')
+    # Allow NULL/blank for status and pay_rec_no. If status is blank/NULL we treat it as ISSUED in save().
+    prv_status = models.CharField(max_length=20, choices=ProvisionalStatus.choices, null=True, blank=True, db_column='prv_status')
+    pay_rec_no = models.CharField(max_length=50, db_column='pay_rec_no', null=True, blank=True)
     # short remark synced to DocRec
     doc_rec_remark = models.CharField(max_length=255, null=True, blank=True, db_column='doc_rec_remark') 
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='createdby', related_name='provisional_created')
@@ -275,10 +306,17 @@ class ProvisionalRecord(models.Model):
             models.Index(fields=['prv_number'], name='idx_prv_number'),
         ]
     def clean(self):
-        if not self.pay_rec_no and self.doc_rec and self.doc_rec.pay_rec_no:
-            self.pay_rec_no = self.doc_rec.pay_rec_no
-        if not self.pay_rec_no:
-            raise ValidationError({'pay_rec_no': 'pay_rec_no is required (copied from related DocRec).'})
+        # Default pay_rec_no from DocRec if available; do not raise if missing because
+        # DB allows NULL for this column and bulk imports may intentionally omit it.
+        # Since `doc_rec` is now stored as a string (doc_rec_id), try to resolve
+        # the DocRec object when needed.
+        try:
+            if not self.pay_rec_no and self.doc_rec:
+                dr = DocRec.objects.filter(doc_rec_id=self.doc_rec).first()
+                if dr and getattr(dr, 'pay_rec_no', None):
+                    self.pay_rec_no = dr.pay_rec_no
+        except Exception:
+            pass
     def save(self,*a,**kw):
         # Try to default institute/main/subcourse from linked enrollment when missing
         try:
@@ -296,17 +334,29 @@ class ProvisionalRecord(models.Model):
         except Exception:
             pass
 
-        # default pay_rec_no from DocRec
-        if not self.pay_rec_no and self.doc_rec and self.doc_rec.pay_rec_no:
-            self.pay_rec_no = self.doc_rec.pay_rec_no
+        # default pay_rec_no from DocRec (doc_rec stored as string)
+        try:
+            if not self.pay_rec_no and self.doc_rec:
+                dr = DocRec.objects.filter(doc_rec_id=self.doc_rec).first()
+                if dr and getattr(dr, 'pay_rec_no', None):
+                    self.pay_rec_no = dr.pay_rec_no
+        except Exception:
+            pass
+        # Treat NULL/blank status as ISSUED by default to match requested behavior
+        if not getattr(self, 'prv_status', None):
+            try:
+                self.prv_status = ProvisionalStatus.ISSUED
+            except Exception:
+                self.prv_status = 'Issued'
         self.full_clean()
         res = super().save(*a,**kw)
-        # propagate doc_rec_remark
+        # propagate doc_rec_remark to the referenced DocRec when possible
         try:
             if self.doc_rec and getattr(self, 'doc_rec_remark', None) is not None:
-                if getattr(self.doc_rec, 'doc_rec_remark', None) != self.doc_rec_remark:
-                    self.doc_rec.doc_rec_remark = self.doc_rec_remark
-                    self.doc_rec.save(update_fields=['doc_rec_remark'])
+                dr = DocRec.objects.filter(doc_rec_id=self.doc_rec).first()
+                if dr and getattr(dr, 'doc_rec_remark', None) != self.doc_rec_remark:
+                    dr.doc_rec_remark = self.doc_rec_remark
+                    dr.save(update_fields=['doc_rec_remark'])
         except Exception:
             pass
         return res

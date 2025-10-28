@@ -15,35 +15,60 @@ class Migration(migrations.Migration):
             old_name='eca_mail_status',
             new_name='eca_status',
         ),
-        migrations.RemoveField(
-            model_name='verification',
-            name='eca_history',
+        # Remove several ECA-related columns from the verification table. Use
+        # SeparateDatabaseAndState with DROP COLUMN IF EXISTS to avoid failure on
+        # databases where the columns were already removed manually or by earlier
+        # partial migrations.
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunSQL("""
+                    ALTER TABLE verification DROP COLUMN IF EXISTS eca_history;
+                    ALTER TABLE verification DROP COLUMN IF EXISTS eca_last_action_at;
+                    ALTER TABLE verification DROP COLUMN IF EXISTS eca_last_to_email;
+                    ALTER TABLE verification DROP COLUMN IF EXISTS eca_resend_count;
+                    ALTER TABLE verification DROP COLUMN IF EXISTS eca_submit_date;
+                """, migrations.RunSQL.noop),
+            ],
+            state_operations=[
+                migrations.RemoveField(model_name='verification', name='eca_history'),
+                migrations.RemoveField(model_name='verification', name='eca_last_action_at'),
+                migrations.RemoveField(model_name='verification', name='eca_last_to_email'),
+                migrations.RemoveField(model_name='verification', name='eca_resend_count'),
+                migrations.RemoveField(model_name='verification', name='eca_submit_date'),
+            ],
         ),
-        migrations.RemoveField(
-            model_name='verification',
-            name='eca_last_action_at',
+        # Add new date fields if they do not already exist in the DB. Use
+        # SeparateDatabaseAndState so we can safely operate on databases where
+        # these columns may already be present.
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunSQL(
+                    "ALTER TABLE verification ADD COLUMN IF NOT EXISTS eca_resubmit_date DATE;",
+                    migrations.RunSQL.noop
+                ),
+            ],
+            state_operations=[
+                migrations.AddField(
+                    model_name='verification',
+                    name='eca_resubmit_date',
+                    field=models.DateField(blank=True, db_column='eca_resubmit_date', null=True),
+                ),
+            ],
         ),
-        migrations.RemoveField(
-            model_name='verification',
-            name='eca_last_to_email',
-        ),
-        migrations.RemoveField(
-            model_name='verification',
-            name='eca_resend_count',
-        ),
-        migrations.RemoveField(
-            model_name='verification',
-            name='eca_submit_date',
-        ),
-        migrations.AddField(
-            model_name='verification',
-            name='eca_resubmit_date',
-            field=models.DateField(blank=True, db_column='eca_resubmit_date', null=True),
-        ),
-        migrations.AddField(
-            model_name='verification',
-            name='eca_send_date',
-            field=models.DateField(blank=True, db_column='eca_send_date', null=True),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunSQL(
+                    "ALTER TABLE verification ADD COLUMN IF NOT EXISTS eca_send_date DATE;",
+                    migrations.RunSQL.noop
+                ),
+            ],
+            state_operations=[
+                migrations.AddField(
+                    model_name='verification',
+                    name='eca_send_date',
+                    field=models.DateField(blank=True, db_column='eca_send_date', null=True),
+                ),
+            ],
         ),
         migrations.AlterField(
             model_name='verification',

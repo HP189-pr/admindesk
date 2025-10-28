@@ -65,6 +65,28 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     exam_year: "",
     admission_year: "",
   });
+  const [related, setRelated] = useState({ migration: [], provisional: [], verification: [] });
+
+  const fetchRelatedForDocRec = async (docRecId) => {
+    if (!docRecId) return;
+    try{
+      const token = localStorage.getItem('access_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      // Migration & Provisional store doc_rec as string; verification may be FK -> filter by doc_rec__doc_rec_id
+      const fetchOpts = { headers, credentials: 'include' };
+      const [mgRes, prRes, vrRes] = await Promise.all([
+        fetch(`/api/migration/?doc_rec=${encodeURIComponent(docRecId)}`, fetchOpts),
+        fetch(`/api/provisional/?doc_rec=${encodeURIComponent(docRecId)}`, fetchOpts),
+        fetch(`/api/verification/?doc_rec=${encodeURIComponent(docRecId)}`, fetchOpts),
+      ]);
+      const mg = mgRes.ok ? await mgRes.json() : (await mgRes.text());
+      const pr = prRes.ok ? await prRes.json() : (await prRes.text());
+      const vr = vrRes.ok ? await vrRes.json() : (await vrRes.text());
+      // Depending on list endpoints, data may be paginated {results:[]}
+      const unwrap = (d) => (d && d.results ? d.results : Array.isArray(d) ? d : (d && d.objects ? d.objects : []));
+      setRelated({ migration: unwrap(mg), provisional: unwrap(pr), verification: unwrap(vr) });
+    }catch(e){ console.warn('fetchRelatedForDocRec error', e); }
+  };
 
   const handleChange = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -96,6 +118,34 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     if (form.apply_for) run();
     return () => ctrl.abort();
   }, [form.apply_for]);
+
+  // Listen for bulk upload completion events from other tabs/components
+  useEffect(()=>{
+    let bc;
+    const handler = (ev) => {
+      try{
+        const msg = ev.data || ev;
+        if (msg && msg.type === 'bulk_upload_complete'){
+          // Refresh related records for current doc_rec_id
+          fetchRelatedForDocRec(form.doc_rec_id);
+        }
+      }catch(e){ }
+    };
+    if (typeof BroadcastChannel !== 'undefined'){
+      try{ bc = new BroadcastChannel('admindesk-updates'); bc.addEventListener('message', handler); }
+      catch(e){ bc = null; }
+    }
+    const storageHandler = (e) => {
+      try{ if (e.key === 'admindesk_last_bulk') handler({ data: { type: 'bulk_upload_complete' } }); }catch(_){}
+    };
+    window.addEventListener('storage', storageHandler);
+    return ()=>{ if(bc) try{ bc.close(); }catch(e){}; window.removeEventListener('storage', storageHandler); };
+  }, [form.doc_rec_id]);
+
+  // When doc_rec_id changes (e.g., after creating a DocRec), fetch related records
+  useEffect(()=>{
+    if (form.doc_rec_id) fetchRelatedForDocRec(form.doc_rec_id);
+  }, [form.doc_rec_id]);
 
   const authHeaders = () => {
     const token = localStorage.getItem("access_token");

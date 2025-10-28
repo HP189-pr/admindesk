@@ -19,9 +19,11 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
   const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
   const headersForFetch = token ? { Authorization: `Bearer ${token}` } : {};
 
-  const postForm = (fd) => fetch(uploadApi + (uploadApi.includes('?') ? '&' : '?') + 'action=init', { method: 'POST', body: fd, credentials: 'same-origin', headers: headersForFetch });
+  // Use credentials: 'include' to allow cross-origin cookies to be sent when
+  // frontend runs on a different origin (Vite dev server) than the Django backend.
+  const postForm = (fd) => fetch(uploadApi + (uploadApi.includes('?') ? '&' : '?') + 'action=init', { method: 'POST', body: fd, credentials: 'include', headers: headersForFetch });
 
-  const postGeneric = (fd) => fetch(uploadApi + (uploadApi.includes('?') ? '&' : '?') + 'action=preview', { method: 'POST', body: fd, credentials: 'same-origin', headers: headersForFetch });
+  const postGeneric = (fd) => fetch(uploadApi + (uploadApi.includes('?') ? '&' : '?') + 'action=preview', { method: 'POST', body: fd, credentials: 'include', headers: headersForFetch });
 
   const postWithProgress = (fd, onProgress) => {
     return new Promise((resolve, reject)=>{
@@ -32,7 +34,21 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
         // set Authorization header if token present
         try{ if(token) xhr.setRequestHeader('Authorization', `Bearer ${token}`); }catch(e){}
       xhr.upload.onprogress = (e)=>{ if(e.lengthComputable && onProgress) onProgress(Math.round((e.loaded/e.total)*100)); };
-      xhr.onreadystatechange = ()=>{ if(xhr.readyState===4){ try{ resolve(JSON.parse(xhr.responseText||'{}')); }catch(e){ reject(e); } } };
+      // Tolerant JSON parsing: sometimes server may return HTML wrapper (Django error page)
+      // so attempt to extract JSON substring if direct parse fails.
+      xhr.onreadystatechange = ()=>{ if(xhr.readyState===4){ try{ resolve(JSON.parse(xhr.responseText||'{}')); }catch(e){
+          try{
+            const txt = xhr.responseText||'';
+            const first = txt.indexOf('{');
+            const last = txt.lastIndexOf('}');
+            if(first>=0 && last>first){
+              const sub = txt.substring(first, last+1);
+              return resolve(JSON.parse(sub));
+            }
+          }catch(_){ /* fallthrough */ }
+          // if still failing, resolve with raw text so caller can display it
+          return resolve({error:true, detail: 'Invalid JSON response from server', raw: xhr.responseText});
+        } } };
       xhr.onerror = (e)=> reject(e);
       xhr.send(fd);
     });
@@ -112,7 +128,49 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
         const obj = {};
         selected.forEach(col => {
           const idx = header.findIndex(h => String(h).trim() === String(col).trim());
-          obj[col] = idx >= 0 ? (r[idx] ?? '') : '';
+          let val = idx >= 0 ? (r[idx] ?? '') : '';
+          // Normalize passing_year: if numeric (Excel serial) convert to MON-YYYY
+          if (String(col).trim().toLowerCase() === 'passing_year' && val !== ''){
+            try{
+              if (typeof val === 'number'){
+                // use XLSX.SSF.parse_date_code when available
+                const parsed = XLSX.SSF ? XLSX.SSF.parse_date_code(val) : null;
+                if (parsed && parsed.y){
+                  const monthNames = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+                  const monAbbrev = monthNames[(parsed.m-1)] || parsed.m;
+                  val = `${monAbbrev}-${parsed.y}`;
+                } else {
+                  // fallback: convert serial to JS Date (Excel epoch 1899-12-30)
+                  const epoch = new Date(Date.UTC(1899,11,30));
+                  const dt = new Date(epoch.getTime() + (val * 24 * 60 * 60 * 1000));
+                  const monthNames = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+                  val = `${monthNames[dt.getUTCMonth()]}-${dt.getUTCFullYear()}`;
+                }
+              } else {
+                // try parse string like 'Jul-16' or '2016-07-01'
+                const s = String(val).trim();
+                const m = s.match(/([A-Za-z]{3,9})[\s\-_/]*(\d{2,4})/);
+                if (m){
+                  let mon = m[1].substr(0,3).toUpperCase();
+                  let yr = m[2]; if (yr.length===2) yr = String(2000 + parseInt(yr,10));
+                  val = `${mon}-${yr}`;
+                }
+              }
+            }catch(e){ /* keep val as-is on error */ }
+          }
+          // Format numeric "*_number" or prv_number fields without trailing .0
+          if ((String(col).trim().toLowerCase().endsWith('_number') || String(col).trim().toLowerCase() === 'prv_number') && val !== ''){
+            try{
+              if (typeof val === 'number' && Number.isInteger(val)) val = String(val);
+              else if (typeof val === 'number') {
+                if (Number.isInteger(val)) val = String(val); else val = String(val);
+              } else {
+                const sv = String(val).trim();
+                if (/^\d+\.?0+$/.test(sv)) val = sv.split('.')[0];
+              }
+            }catch(e){ }
+          }
+          obj[col] = val;
         });
         return obj;
       });
@@ -127,8 +185,26 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
     try{
       setUploadPct(0); setMessage('Uploading...'); setIsUploading(true);
       const data = await postWithProgress(fd, (pct)=>{ setUploadPct(pct); });
-      if (data.error) return setMessage(data.detail || 'Upload error');
-      setResult(data); setMessage('Upload complete'); setStep(4);
+      if (data.error) {
+        // If server returned a raw HTML/text payload, include it in message for debugging
+        const detail = data.detail || (data.raw ? 'Server returned non-JSON response (see console)' : 'Upload error');
+        console.warn('Upload response (error):', data);
+        return setMessage(detail);
+      }
+      setResult(data || {}); setMessage('Upload complete'); setStep(4);
+      try{
+        // notify other tabs/pages that a bulk upload completed so they can refresh
+        if (typeof BroadcastChannel !== 'undefined'){
+          try{
+            const bc = new BroadcastChannel('admindesk-updates');
+            bc.postMessage({ type: 'bulk_upload_complete', service, result: data });
+            bc.close();
+          }catch(e){ /* ignore */ }
+        } else if (typeof window !== 'undefined') {
+          // fallback: localStorage event
+          try{ localStorage.setItem('admindesk_last_bulk', JSON.stringify({ ts: Date.now(), service })); }catch(e){}
+        }
+      }catch(e){/* ignore */}
       // handle base64 xlsx log if returned
       if (data.log_xlsx && data.log_name){
         try{
@@ -216,8 +292,14 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
 
       {step === 4 && result && (
         <div className="mt-2">
-          <div className="text-sm">OK: {result.summary?.ok} | Fail: {result.summary?.fail} | Total: {result.summary?.total}</div>
-          {result.log_url && (<a className="text-blue-500 underline" href={result.log_url} target="_blank" rel="noreferrer">Download Log (server)</a>)}
+          <div className="text-sm">OK: {result.summary?.ok ?? 0} | Fail: {result.summary?.fail ?? 0} | Total: {result.summary?.total ?? 0}</div>
+          {(result.log_url || result.log_xlsx) && (
+            <div className="mt-1">
+              {result.log_url && (<a className="text-blue-500 underline mr-3" href={result.log_url} target="_blank" rel="noreferrer">Download Log (server)</a>)}
+              {/* If base64 blob present, offer client-side download as well */}
+              {result.log_xlsx && result.log_name && (<a className="text-blue-500 underline" href="#" onClick={(e)=>{e.preventDefault(); try{ const bytes = atob(result.log_xlsx); const buf = new Uint8Array(bytes.length); for(let i=0;i<bytes.length;i++) buf[i]=bytes.charCodeAt(i); const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=result.log_name || 'upload_log.xlsx'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(url); a.remove();},500);}catch(err){console.error('Download failed',err);}}}>Download Log (client)</a>)}
+            </div>
+          )}
         </div>
       )}
     </div>

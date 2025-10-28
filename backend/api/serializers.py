@@ -21,7 +21,7 @@ from django.contrib.auth.hashers import check_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.utils import timezone
 from django.db import transaction
-from .models import Holiday, UserProfile, User, Module, Menu, UserPermission,Enrollment, Institute, MainBranch, SubBranch, InstituteCourseOffering, Verification, VerificationStatus, DocRec, MigrationRecord, ProvisionalRecord, InstVerificationMain, InstVerificationStudent, Eca, StudentProfile
+from .models import Holiday, UserProfile, User, Module, Menu, UserPermission,Enrollment, Institute, MainBranch, SubBranch, InstituteCourseOffering, Verification, VerificationStatus, DocRec, MigrationRecord, ProvisionalRecord, InstVerificationMain, InstVerificationStudent, Eca, StudentProfile, ProvisionalStatus
 from django.conf import settings
 
 # --- Holiday Serializer ---
@@ -457,12 +457,10 @@ class DocRecSerializer(serializers.ModelSerializer):
 
 
 class MigrationRecordSerializer(serializers.ModelSerializer):
-    # Allow binding doc_rec by its public doc_rec_id string
-    doc_rec_key = serializers.SlugRelatedField(
-        slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False
-    )
-    # Expose public doc_rec id string
-    doc_rec = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
+    # Allow binding doc_rec by its public doc_rec_id string (raw string input)
+    doc_rec_key = serializers.CharField(write_only=True, required=False, allow_null=True, allow_blank=True)
+    # Expose stored doc_rec_id (string)
+    doc_rec = serializers.CharField(read_only=True)
     class Meta:
         model = MigrationRecord
         fields = '__all__'
@@ -472,6 +470,10 @@ class MigrationRecordSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and request.user and request.user.is_authenticated:
             validated['created_by'] = request.user
+        # Copy raw doc_rec_key into stored doc_rec string if provided
+        if 'doc_rec_key' in validated:
+            val = validated.pop('doc_rec_key')
+            validated['doc_rec'] = val if val not in (None, '') else None
         # Auto-populate from enrollment when provided
         enr = validated.get('enrollment')
         if enr:
@@ -487,10 +489,17 @@ class MigrationRecordSerializer(serializers.ModelSerializer):
 
 
 class ProvisionalRecordSerializer(serializers.ModelSerializer):
-    doc_rec_key = serializers.SlugRelatedField(
-        slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False
+    # Accept a raw doc_rec_id string on write (uploads or API clients may send the public key)
+    doc_rec_key = serializers.CharField(write_only=True, required=False, allow_null=True, allow_blank=True)
+    # Expose the stored doc_rec_id (string) on read
+    doc_rec = serializers.CharField(read_only=True)
+    # Allow blank/nullable student_name from uploads
+    student_name = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    # Allow binding enrollment using its enrollment_no (slug) when creating via API
+    enrollment_no = serializers.SlugRelatedField(
+        slug_field='enrollment_no', queryset=Enrollment.objects.all(), source='enrollment', write_only=True, required=False, allow_null=True
     )
-    doc_rec = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
+    enrollment = serializers.CharField(source='enrollment.enrollment_no', read_only=True)
     class Meta:
         model = ProvisionalRecord
         fields = '__all__'
@@ -500,6 +509,11 @@ class ProvisionalRecordSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and request.user and request.user.is_authenticated:
             validated['created_by'] = request.user
+        # If the client supplied a doc_rec_key (string), store it into doc_rec (raw string)
+        if 'doc_rec_key' in validated:
+            val = validated.pop('doc_rec_key')
+            # allow None/blank
+            validated['doc_rec'] = val if val not in (None, '') else None
         # Auto-populate from enrollment when provided
         enr = validated.get('enrollment')
         if enr:
@@ -511,6 +525,12 @@ class ProvisionalRecordSerializer(serializers.ModelSerializer):
                 validated['subcourse'] = enr.subcourse
             if not validated.get('maincourse'):
                 validated['maincourse'] = enr.maincourse
+        # Treat blank/NULL status as ISSUED by default
+        if not validated.get('prv_status'):
+            try:
+                validated['prv_status'] = ProvisionalStatus.ISSUED
+            except Exception:
+                validated['prv_status'] = 'Issued'
         return super().create(validated)
 
 

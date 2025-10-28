@@ -114,6 +114,7 @@ from .models import (
     DocRec, PayPrefixRule, Eca, InstVerificationMain, InstVerificationStudent,
     MigrationRecord, ProvisionalRecord, StudentProfile, Verification
 )
+from .models import ProvisionalStatus
 
 User = get_user_model()
 
@@ -239,7 +240,7 @@ def get_import_spec(model) -> Dict[str, Any]:
         StudentProfile: {"allowed_columns": ["enrollment_no", "gender", "birth_date", "address1", "address2", "city1", "city2", "contact_no", "email", "fees", "hostel_required", "aadhar_no", "abc_id", "mobile_adhar", "name_adhar", "mother_name", "category", "photo_uploaded", "is_d2d", "program_medium"], "required_keys": ["enrollment_no"], "create_requires": ["enrollment_no"]},
     DocRec: {"allowed_columns": ["apply_for", "doc_rec_id", "pay_by", "pay_rec_no_pre", "pay_rec_no", "pay_amount", "doc_rec_date", "doc_rec_remark"], "required_keys": ["apply_for", "doc_rec_id", "pay_by"], "create_requires": ["apply_for", "doc_rec_id", "pay_by"]},
     MigrationRecord: {"allowed_columns": ["doc_rec_id", "enrollment_no", "student_name", "institute_id", "maincourse_id", "subcourse_id", "mg_number", "mg_date", "exam_year", "admission_year", "exam_details", "mg_status", "pay_rec_no"], "required_keys": ["doc_rec_id"], "create_requires": ["doc_rec_id"]},
-    ProvisionalRecord: {"allowed_columns": ["doc_rec_id", "enrollment_no", "student_name", "institute_id", "maincourse_id", "subcourse_id", "prv_number", "prv_date", "class_obtain", "passing_year", "prv_status", "pay_rec_no"], "required_keys": ["doc_rec_id"], "create_requires": ["doc_rec_id"]},
+    ProvisionalRecord: {"allowed_columns": ["doc_rec_id", "enrollment_no", "student_name", "institute_id", "maincourse_id", "subcourse_id", "prv_number", "prv_date", "class_obtain", "prv_degree_name", "passing_year", "prv_status", "pay_rec_no"], "required_keys": ["doc_rec_id"], "create_requires": ["doc_rec_id"]},
     Verification: {"allowed_columns": ["doc_rec_id", "date", "enrollment_no", "second_enrollment_no", "student_name", "no_of_transcript", "no_of_marksheet", "no_of_degree", "no_of_moi", "no_of_backlog", "status", "final_no", "pay_rec_no", "vr_done_date", "mail_status", "eca_required", "eca_name", "eca_ref_no", "eca_submit_date", "eca_remark", "doc_rec_remark"], "required_keys": ["doc_rec_id"], "create_requires": ["doc_rec_id"]},
     }
     for klass, spec in specs.items():
@@ -751,7 +752,8 @@ class ExcelUploadMixin:
                                     if existing_for_enr:
                                         counts["skipped"] += 1; add_log(i, "skipped", f"Migration already exists for enrollment {enr.enrollment_no}"); continue
 
-                                obj, created = MigrationRecord.objects.get_or_create(doc_rec=dr, defaults={})
+                                # store doc_rec as doc_rec_id string
+                                obj, created = MigrationRecord.objects.get_or_create(doc_rec=(dr.doc_rec_id if dr else None), defaults={})
                                 # Populate fields (keep tolerant): for CANCEL store only minimal fields
                                 if "enrollment_no" in eff and enr:
                                     obj.enrollment = enr
@@ -759,6 +761,14 @@ class ExcelUploadMixin:
                                     # student_name may be absent in sheet; fall back to enrollment or existing value
                                     if "student_name" in eff:
                                         obj.student_name = (_clean_cell(r.get("student_name")) or (enr.student_name if enr else getattr(obj, 'student_name', '')))
+                                else:
+                                    # For CANCEL rows ensure student_name is at least empty string so
+                                    # model.full_clean() (which runs on save) does not reject the row.
+                                    try:
+                                        if not getattr(obj, 'student_name', None):
+                                            obj.student_name = ''
+                                    except Exception:
+                                        obj.student_name = ''
                                     if inst: obj.institute = inst
                                     if main: obj.maincourse = main
                                     if sub: obj.subcourse = sub
@@ -850,7 +860,8 @@ class ExcelUploadMixin:
                                 prv_date = parse_excel_date(r.get("prv_date")) if "prv_date" in eff else None
                                 if "prv_date" in eff and not prv_date:  # required non-null
                                     counts["skipped"] += 1; add_log(i, "skipped", "Missing prv_date"); continue
-                                obj, created = ProvisionalRecord.objects.get_or_create(doc_rec=dr, defaults={})
+                                # store doc_rec as the doc_rec_id string (DB stores varchar)
+                                obj, created = ProvisionalRecord.objects.get_or_create(doc_rec=(dr.doc_rec_id if dr else None), defaults={})
                                 if "enrollment_no" in eff: obj.enrollment = enr
                                 if "student_name" in eff: obj.student_name = r.get("student_name") or (enr.student_name if enr else getattr(obj, 'student_name', ''))
                                 if "institute_id" in eff: obj.institute = inst
@@ -860,7 +871,26 @@ class ExcelUploadMixin:
                                 if "prv_date" in eff and prv_date: obj.prv_date = prv_date
                                 if "class_obtain" in eff: obj.class_obtain = r.get("class_obtain")
                                 if "passing_year" in eff: obj.passing_year = r.get("passing_year")
-                                if "prv_status" in eff: obj.prv_status = r.get("prv_status") or getattr(obj, 'prv_status', None)
+                                # Normalize prv_status: treat blank as ISSUED, map CANCEL synonyms
+                                prv_status_raw = _clean_cell(r.get("prv_status")) or ''
+                                try:
+                                    prv_status_norm = str(prv_status_raw).strip().upper()
+                                except Exception:
+                                    prv_status_norm = ''
+                                if prv_status_norm == '':
+                                    prv_status_norm = 'ISSUED'
+                                    prv_status_raw = 'ISSUED'
+                                if prv_status_norm.startswith('CANCEL') or prv_status_norm in ('CANCELED','CANCELLED'):
+                                    # Ensure minimal required fields for CANCEL; set student_name to empty if not provided
+                                    try:
+                                        if not getattr(obj, 'student_name', None):
+                                            obj.student_name = ''
+                                    except Exception:
+                                        obj.student_name = ''
+                                    obj.prv_status = ProvisionalStatus.CANCELLED
+                                else:
+                                    if "prv_status" in eff:
+                                        obj.prv_status = (prv_status_raw or getattr(obj, 'prv_status', None))
                                 if "pay_rec_no" in eff: obj.pay_rec_no = r.get("pay_rec_no") or (dr.pay_rec_no if dr else getattr(obj, 'pay_rec_no', ''))
                                 # Defensive FK coercion similar to migration block
                                 try:
@@ -1151,8 +1181,10 @@ class InstVerificationMainAdmin(admin.ModelAdmin):
 class MigrationRecordAdmin(CommonAdminMixin):
     list_display = ("id", "mg_number", "mg_date", "student_name", "enrollment", "institute", "maincourse", "subcourse", "mg_status", "doc_rec", "pay_rec_no", "created_by", "created_at")
     list_filter = ("mg_status", "mg_date", "institute")
-    search_fields = ("mg_number", "student_name", "enrollment__enrollment_no", "doc_rec__doc_rec_id")
-    autocomplete_fields = ("doc_rec", "enrollment", "institute", "maincourse", "subcourse", "created_by")
+    # doc_rec is stored as a varchar (doc_rec_id string) so search on the field directly
+    search_fields = ("mg_number", "student_name", "enrollment__enrollment_no", "doc_rec")
+    # remove doc_rec from autocomplete_fields because it's not a FK anymore
+    autocomplete_fields = ("enrollment", "institute", "maincourse", "subcourse", "created_by")
     readonly_fields = ("created_at", "updated_at")
     def save_model(self, request, obj, form, change):  # type: ignore[override]
         if not change and not obj.created_by:
@@ -1163,8 +1195,8 @@ class MigrationRecordAdmin(CommonAdminMixin):
 class ProvisionalRecordAdmin(CommonAdminMixin):
     list_display = ("id", "prv_number", "prv_date", "student_name", "enrollment", "institute", "maincourse", "subcourse", "prv_status", "doc_rec", "pay_rec_no", "created_by", "created_at")
     list_filter = ("prv_status", "prv_date", "institute")
-    search_fields = ("prv_number", "student_name", "enrollment__enrollment_no", "doc_rec__doc_rec_id")
-    autocomplete_fields = ("doc_rec", "enrollment", "institute", "maincourse", "subcourse", "created_by")
+    search_fields = ("prv_number", "student_name", "enrollment__enrollment_no", "doc_rec")
+    autocomplete_fields = ("enrollment", "institute", "maincourse", "subcourse", "created_by")
     readonly_fields = ("created_at", "updated_at")
     def save_model(self, request, obj, form, change):  # type: ignore[override]
         if not change and not obj.created_by:
@@ -1365,8 +1397,15 @@ class VerificationAdmin(CommonAdminMixin):
             new_remark = None
         if new_remark is not None and getattr(obj, 'doc_rec', None):
             try:
-                obj.doc_rec.doc_rec_remark = new_remark
-                obj.doc_rec.save()
+                # obj.doc_rec might be a DocRec instance or a raw doc_rec_id string
+                if isinstance(obj.doc_rec, str):
+                    dr = DocRec.objects.filter(doc_rec_id=obj.doc_rec).first()
+                    if dr:
+                        dr.doc_rec_remark = new_remark
+                        dr.save()
+                else:
+                    obj.doc_rec.doc_rec_remark = new_remark
+                    obj.doc_rec.save()
             except Exception:
                 pass
 
@@ -1380,7 +1419,15 @@ class VerificationAdmin(CommonAdminMixin):
                 super().__init__(*a, **kw)
                 # Prepopulate from obj if editing
                 if obj and getattr(obj, 'doc_rec', None):
-                    self_inner.fields['doc_rec_remark'].initial = obj.doc_rec.doc_rec_remark
+                    try:
+                        if isinstance(obj.doc_rec, str):
+                            dr = DocRec.objects.filter(doc_rec_id=obj.doc_rec).first()
+                            if dr:
+                                self_inner.fields['doc_rec_remark'].initial = dr.doc_rec_remark
+                        else:
+                            self_inner.fields['doc_rec_remark'].initial = obj.doc_rec.doc_rec_remark
+                    except Exception:
+                        pass
         return WrappedForm
 
 
