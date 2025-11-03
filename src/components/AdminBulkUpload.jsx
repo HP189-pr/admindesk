@@ -225,7 +225,6 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
       <div className="mb-2 text-sm">{message}</div>
       <div className="mb-2">
         <input type="file" accept=".xlsx,.xls,.csv" onChange={e=>setFile(e.target.files?.[0]||null)} />
-        <span style={{marginLeft:8}}>{file ? file.name : 'No file chosen'}</span>
         <button className="ml-2 px-3 py-1 bg-blue-600 text-white rounded" onClick={handleFetch} disabled={!file}>Fetch Sheets</button>
       </div>
 

@@ -137,6 +137,8 @@ class InstVerificationMain(models.Model):
     rec_inst_city = models.CharField(max_length=255, null=True, blank=True, db_column='rec_inst_city')
     rec_inst_pin = models.CharField(max_length=20, null=True, blank=True, db_column='rec_inst_pin')
     rec_inst_email = models.EmailField(null=True, blank=True, db_column='rec_inst_email')
+    # New field added directly in DB: free-text comma-separated document types associated with this inst verification
+    doc_types = models.CharField(max_length=255, null=True, blank=True, db_column='doc_types')
     rec_by = models.CharField(max_length=255, null=True, blank=True, db_column='rec_by')
     doc_rec_date = models.DateField(null=True, blank=True, db_column='doc_rec_date')
     inst_ref_no = models.CharField(max_length=100, null=True, blank=True, db_column='inst_ref_no')
@@ -156,6 +158,10 @@ class InstVerificationStudent(models.Model):
     doc_rec = models.ForeignKey(DocRec, to_field='doc_rec_id', db_column='doc_rec_id', on_delete=models.SET_NULL, related_name='inst_verification_students', null=True, blank=True)
     sr_no = models.PositiveIntegerField(null=True, blank=True, db_column='sr_no')
     enrollment = models.ForeignKey(Enrollment, to_field='enrollment_no', db_column='enrollment_no', on_delete=models.SET_NULL, related_name='inst_verification_students', null=True, blank=True)
+    # Preserve raw enrollment number provided in uploads when the Enrollment
+    # object is not yet present. This allows later background sync to link
+    # the student row once the Enrollment is created.
+    enrollment_no_text = models.CharField(max_length=64, null=True, blank=True, db_column='enrollment_no_text')
     student_name = models.CharField(max_length=255, null=True, blank=True, db_column='student_name')
     institute = models.ForeignKey(Institute, on_delete=models.SET_NULL, db_column='institute_id', related_name='inst_verification_students', null=True, blank=True)
     sub_course = models.ForeignKey(SubBranch, to_field='subcourse_id', db_column='sub_course', on_delete=models.SET_NULL, related_name='inst_verification_students', null=True, blank=True)
@@ -163,6 +169,9 @@ class InstVerificationStudent(models.Model):
     type_of_credential = models.CharField(max_length=50, null=True, blank=True, db_column='type_of_credential')
     month_year = models.CharField(max_length=20, null=True, blank=True, db_column='month_year')
     verification_status = models.CharField(max_length=20, null=True, blank=True, db_column='verification_status', choices=VerificationStatus.choices)
+    # Degree name field: may have been added manually in some DBs. Keep nullable so
+    # bulk uploads and older rows are compatible.
+    iv_degree_name = models.CharField(max_length=255, null=True, blank=True, db_column='iv_degree_name')
     class Meta:
         db_table = 'inst_verification_student'
         indexes = [

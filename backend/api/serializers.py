@@ -555,9 +555,14 @@ class InstVerificationStudentSerializer(serializers.ModelSerializer):
         slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False
     )
     doc_rec = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
+    # Expose iv_degree_name if present in the DB/model
+    iv_degree_name = serializers.CharField(allow_null=True, allow_blank=True, required=False)
+    enrollment_no_text = serializers.CharField(allow_null=True, allow_blank=True, required=False)
 
     class Meta:
         model = InstVerificationStudent
+        # include all model fields; explicit iv_degree_name added above to ensure
+        # serializer reads/writes it even if the model was recently changed in DB.
         fields = '__all__'
 
 

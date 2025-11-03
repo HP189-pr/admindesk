@@ -65,7 +65,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     exam_year: "",
     admission_year: "",
   });
-  const [related, setRelated] = useState({ migration: [], provisional: [], verification: [] });
+  const [related, setRelated] = useState({ migration: [], provisional: [], verification: [], inst_verification_main: [], inst_verification_students: [] });
 
   const fetchRelatedForDocRec = async (docRecId) => {
     if (!docRecId) return;
@@ -74,17 +74,21 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       // Migration & Provisional store doc_rec as string; verification may be FK -> filter by doc_rec__doc_rec_id
       const fetchOpts = { headers, credentials: 'include' };
-      const [mgRes, prRes, vrRes] = await Promise.all([
+      const [mgRes, prRes, vrRes, imRes, isRes] = await Promise.all([
         fetch(`/api/migration/?doc_rec=${encodeURIComponent(docRecId)}`, fetchOpts),
         fetch(`/api/provisional/?doc_rec=${encodeURIComponent(docRecId)}`, fetchOpts),
         fetch(`/api/verification/?doc_rec=${encodeURIComponent(docRecId)}`, fetchOpts),
+        fetch(`/api/inst-verification-main/?doc_rec=${encodeURIComponent(docRecId)}`, fetchOpts),
+        fetch(`/api/inst-verification-student/?doc_rec=${encodeURIComponent(docRecId)}`, fetchOpts),
       ]);
       const mg = mgRes.ok ? await mgRes.json() : (await mgRes.text());
       const pr = prRes.ok ? await prRes.json() : (await prRes.text());
       const vr = vrRes.ok ? await vrRes.json() : (await vrRes.text());
+      const im = imRes.ok ? await imRes.json() : (await imRes.text());
+      const ists = isRes.ok ? await isRes.json() : (await isRes.text());
       // Depending on list endpoints, data may be paginated {results:[]}
       const unwrap = (d) => (d && d.results ? d.results : Array.isArray(d) ? d : (d && d.objects ? d.objects : []));
-      setRelated({ migration: unwrap(mg), provisional: unwrap(pr), verification: unwrap(vr) });
+      setRelated({ migration: unwrap(mg), provisional: unwrap(pr), verification: unwrap(vr), inst_verification_main: unwrap(im), inst_verification_students: unwrap(ists) });
     }catch(e){ console.warn('fetchRelatedForDocRec error', e); }
   };
 
@@ -146,6 +150,63 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
   useEffect(()=>{
     if (form.doc_rec_id) fetchRelatedForDocRec(form.doc_rec_id);
   }, [form.doc_rec_id]);
+
+  // Recent Receipts: search/filter and display
+  const [recentRecords, setRecentRecords] = useState([]);
+  const [recentLoading, setRecentLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [serviceFilter, setServiceFilter] = useState('all'); // all | docrec | migration | provisional | verification
+
+  const fetchRecentRecords = async (term = '', service = 'all') => {
+    setRecentLoading(true);
+    try{
+      const token = localStorage.getItem('access_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const opts = { headers, credentials: 'include' };
+      let url;
+  if (service === 'migration') url = `/api/migration/?search=${encodeURIComponent(term)}`;
+      else if (service === 'provisional') url = `/api/provisional/?search=${encodeURIComponent(term)}`;
+  else if (service === 'verification') url = `/api/verification/?search=${encodeURIComponent(term)}`;
+  else if (service === 'inst-verification') url = `/api/inst-verification-main/?search=${encodeURIComponent(term)}`;
+      else url = `/api/docrec/?search=${encodeURIComponent(term)}`; // docrec or all default
+
+      const res = await fetch(url, opts);
+      if (!res.ok) {
+        const text = await res.text();
+        console.warn('fetchRecentRecords failed', res.status, text);
+        setRecentRecords([]);
+        return;
+      }
+      const data = await res.json();
+      // support paginated results with `results`
+      const list = data && data.results ? data.results : Array.isArray(data) ? data : (data && data.objects ? data.objects : []);
+      // Normalize entries to a common shape with a `type` key
+      const normalized = list.map(item => {
+        // Heuristics to detect type
+        if (service === 'migration' || item.mg_date || item.mg_remark) return { type: 'migration', raw: item };
+        if (service === 'provisional' || item.prv_date || item.prv_number) return { type: 'provisional', raw: item };
+        if (service === 'verification' || item.vr_date || item.verification_no) return { type: 'verification', raw: item };
+        if (service === 'inst-verification' || item.inst_veri_number || item.rec_inst_name) return { type: 'inst-verification', raw: item };
+        // docrec fallback
+        return { type: 'docrec', raw: item };
+      });
+      setRecentRecords(normalized);
+    }catch(e){ console.warn('fetchRecentRecords error', e); setRecentRecords([]); }
+    finally{ setRecentLoading(false); }
+  };
+
+  // initial load
+  useEffect(()=>{ fetchRecentRecords('', 'all'); }, []);
+
+  const onRecordClick = (rec) => {
+    const r = rec.raw || rec;
+    // Some records have doc_rec or doc_rec_id or id
+    const docRecId = r.doc_rec || r.doc_rec_id || r.id || r.doc_rec_id_string;
+    const studentName = r.student_name || r.student || r.name || '';
+    const enrollmentNo = r.enrollment_no || r.enrollment_no_string || r.enrollment_no || r.enrollment || '';
+    setForm(prev=>({ ...prev, doc_rec_id: docRecId || prev.doc_rec_id, student_name: studentName || prev.student_name, enrollment_no: enrollmentNo || prev.enrollment_no }));
+    if (docRecId) fetchRelatedForDocRec(docRecId);
+  };
 
   const authHeaders = () => {
     const token = localStorage.getItem("access_token");
@@ -487,7 +548,60 @@ v.trim())}`, { headers: { ...authHeaders() } });                                
       {/* Placeholder table of latest DocRecs could go below; wire as needed */}
       <div className="border rounded-2xl p-3">
         <div className="font-semibold mb-2">Recent Receipts</div>
-        <div className="text-sm text-gray-500">Coming soon…</div>
+        <div className="card-body">
+            <h6 className="mt-0">Recent Receipts</h6>
+            <div className="mb-3 grid grid-cols-1 md:grid-cols-3 gap-2">
+              <input
+                className="form-input"
+                placeholder="Search by doc_rec_id, name, enrollment_no"
+                value={searchTerm}
+                onChange={(e)=>{ setSearchTerm(e.target.value); }}
+                onKeyDown={(e)=>{ if (e.key === 'Enter') fetchRecentRecords(searchTerm, serviceFilter); }}
+              />
+              <select className="form-select" value={serviceFilter} onChange={(e)=>{ setServiceFilter(e.target.value); fetchRecentRecords(searchTerm, e.target.value); }}>
+                <option value="all">All / DocRec</option>
+                <option value="docrec">DocRec</option>
+                <option value="migration">Migration</option>
+                <option value="provisional">Provisional</option>
+                <option value="verification">Verification</option>
+                <option value="inst-verification">Inst-Verification</option>
+              </select>
+              <div className="flex items-center">
+                <button className="btn btn-primary mr-2" onClick={()=>fetchRecentRecords(searchTerm, serviceFilter)} disabled={recentLoading}>Search</button>
+                <button className="btn" onClick={()=>{ setSearchTerm(''); setServiceFilter('all'); fetchRecentRecords('', 'all'); }}>Reset</button>
+              </div>
+            </div>
+
+            <div>
+              {recentLoading && <div className="text-muted">Loading...</div>}
+              {!recentLoading && recentRecords.length === 0 && <div className="text-muted">No records found.</div>}
+              <div className="space-y-2">
+                {recentRecords.map((rec, idx) => {
+                  const r = rec.raw || rec;
+                  const type = rec.type || 'docrec';
+                  const docId = r.doc_rec || r.doc_rec_id || r.id || '';
+                  const name = (type === 'inst-verification') ? (r.rec_inst_name || r.rec_inst_city || '') : (r.student_name || r.name || r.full_name || '');
+                  const enr = r.enrollment_no || r.enrollment || r.enrollment_no_string || '';
+                  const date = r.prv_date || r.mg_date || r.vr_date || r.inst_veri_date || r.created_at || r.received_at || '';
+                  const docNumber = type === 'inst-verification' ? (r.inst_veri_number || '') : (type === 'migration' ? (r.mg_number || '') : (type === 'provisional' ? (r.prv_number || '') : (type === 'verification' ? (r.final_no || '') : '')));
+                  return (
+                    <div key={`${type}-${docId}-${idx}`} className="p-2 border rounded hover:bg-gray-50 cursor-pointer" onClick={()=>onRecordClick(rec)}>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="text-sm font-medium">{docId || '(no doc_rec)'}{docNumber ? ` · ${docNumber}` : ''}</div>
+                          <div className="text-xs text-gray-600">{name} {enr ? `· ${enr}` : ''}</div>
+                        </div>
+                        <div className="text-xs text-right">
+                          <div className="uppercase text-[10px] px-2 py-1 rounded bg-gray-100">{type}</div>
+                          <div className="text-xs text-gray-500">{date}</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
       </div>
     </div>
   );

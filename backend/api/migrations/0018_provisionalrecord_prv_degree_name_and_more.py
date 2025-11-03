@@ -10,11 +10,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='provisionalrecord',
-            name='prv_degree_name',
-            field=models.CharField(blank=True, db_column='prv_degree_name', max_length=255, null=True),
-        ),
+        # Column 'prv_degree_name' already exists in the database (manually added earlier).
+        # The AddField operation is skipped to avoid DuplicateColumn errors.
         migrations.AlterField(
             model_name='migrationrecord',
             name='doc_rec',

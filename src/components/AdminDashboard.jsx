@@ -7,6 +7,7 @@ import Addcourse from "../hooks/Addcourse";
 import { useAuth } from "../hooks/AuthContext";
 import axios from "../api/axiosInstance";
 import AuthUpload from "../hooks/AuthUpload.jsx";
+import AdminBulkUpload from "./AdminBulkUpload.jsx";
 import DataAnalysis from "../hooks/DataAnalysis.jsx";
 import AuthEmp from "../hooks/AuthEmp.jsx";
 import AuthLeave from "../hooks/AuthLeave.jsx";
@@ -137,7 +138,15 @@ const AdminDashboard = ({ selectedTopbarMenu, onToggleSidebar, onToggleChatbox, 
       case "Add Course":
         return <Addcourse />;
       case "Upload":
-        return <AuthUpload />;
+        // Provide the admin upload area — AuthUpload contains the service
+        // dropdown and will render the correct AdminBulkUpload based on
+        // the selected service. Do not render a second, always-visible
+        // AdminBulkUpload here (it caused duplicate UI/filename display).
+        return (
+          <div>
+            <AuthUpload />
+          </div>
+        );
       case "Data Analysis":
         return <DataAnalysis />;
       case "Employee Profiles":

@@ -192,6 +192,23 @@ class InstVerificationStudentViewSet(viewsets.ModelViewSet):
     queryset = InstVerificationStudent.objects.select_related('doc_rec', 'enrollment', 'institute', 'sub_course', 'main_course').order_by('-id')
     serializer_class = InstVerificationStudentSerializer
     permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """Allow filtering students by the parent doc_rec identifier.
+        Supports query params:
+          - doc_rec: the DocRec.doc_rec_id string (preferred)
+          - doc_rec_id: alias for doc_rec
+        Returns the base queryset filtered when these params are present.
+        """
+        qs = super().get_queryset()
+        req = self.request
+        if not req:
+            return qs
+        doc_rec_param = req.query_params.get('doc_rec') or req.query_params.get('doc_rec_id')
+        if doc_rec_param:
+            # doc_rec is a FK to DocRec using to_field='doc_rec_id', so filter via the related field
+            return qs.filter(doc_rec__doc_rec_id=doc_rec_param)
+        return qs
 
 
 # -------- Bulk Upload & Data Analysis --------
@@ -206,6 +223,7 @@ class BulkService(str):
     # Added services
     EMP_PROFILE = 'EMP_PROFILE'
     LEAVE = 'LEAVE'
+    INSTITUTIONAL_VERIFICATION = 'INSTITUTIONAL_VERIFICATION'
 
 
 def _parse_excel_date_safe(val):
@@ -398,6 +416,13 @@ class BulkUploadView(APIView):
             ],
             BulkService.INSTITUTE: [
                 "institute_id","institute_code","institute_name","institute_campus","institute_address","institute_city"
+            ],
+            BulkService.INSTITUTIONAL_VERIFICATION: [
+                # Main fields
+                "doc_rec_id","inst_veri_number","inst_veri_date","rec_inst_name","rec_inst_address_1","rec_inst_address_2",
+                "rec_inst_location","rec_inst_city","rec_inst_pin","rec_inst_email","rec_by","doc_rec_date","inst_ref_no","ref_date","institute_id",
+                # Student-level fields (if provided per-row)
+                "sr_no","student_name","iv_degree_name","type_of_credential","month_year","verification_status","enrollment_no","maincourse_id","subcourse_id",
             ],
             BulkService.ENROLLMENT: [
                 "student_name","institute_id","batch","enrollment_date","subcourse_id","maincourse_id","enrollment_no","temp_enroll_no","admission_date"
@@ -723,8 +748,13 @@ class BulkUploadView(APIView):
                                                     break
                                             except Exception:
                                                 continue
-                                except Exception:
-                                    pass
+                                except Exception as e:
+                                    # Record failure for this student row so the upload log shows the reason
+                                    try:
+                                        key_ident = s.get('enrollment') or s.get('sr_no') or None
+                                        _log(idx, key_ident or doc_rec_id_raw, f"Student create/update error: {e}", False)
+                                    except Exception:
+                                        _log(idx, doc_rec_id_raw, "Student create/update error (exception while logging)", False)
                         enr_key = _clean_cell(row.get("enrollment_no"))
                         enr = None
                         # Robust enrollment lookup: try exact, iexact, and a normalized-space match
@@ -1021,8 +1051,12 @@ class BulkUploadView(APIView):
                                                     break
                                             except Exception:
                                                 continue
-                                except Exception:
-                                    pass
+                                except Exception as e:
+                                    try:
+                                        key_ident = row.get('enrollment_no') or row.get('sr_no') or None
+                                        _log(idx, key_ident or doc_rec_id_raw, f"Student create/update error: {e}", False)
+                                    except Exception:
+                                        _log(idx, doc_rec_id_raw, "Student create/update error (exception while logging)", False)
                         # If doc_rec is missing and the caller asked for auto-creation, try to create it
                         if not doc_rec and auto_create_docrec:
                             try:
@@ -1383,6 +1417,243 @@ class BulkUploadView(APIView):
                         _log(idx, row.get("final_no") or row.get("enrollment_no"), "Upserted", True)
                     except Exception as e:
                         _log(idx, row.get("final_no") or row.get("enrollment_no"), str(e), False)
+                    _cache_progress(idx+1)
+            elif service == BulkService.INSTITUTIONAL_VERIFICATION:
+                last_doc_rec = None
+                last_doc_rec_id_raw = None
+                for idx, row in df.iterrows():
+                    try:
+                        # Identify or create DocRec
+                        doc_rec_id_raw = _clean_cell(row.get('doc_rec_id'))
+                        # If this row doesn't repeat doc_rec_id but a previous main row
+                        # exists in the sheet, attach student rows to that last main
+                        # record. This accommodates templates where main info is
+                        # shown once with subsequent student rows omitting doc_rec_id.
+                        if not doc_rec_id_raw and last_doc_rec_id_raw:
+                            doc_rec_id_raw = last_doc_rec_id_raw
+                        doc_rec = None
+                        if doc_rec_id_raw:
+                            key = str(doc_rec_id_raw).strip()
+                            doc_rec = DocRec.objects.filter(doc_rec_id=key).first() or DocRec.objects.filter(doc_rec_id__iexact=key).first()
+                        if not doc_rec and auto_create_docrec:
+                            try:
+                                dr_date = _parse_excel_date_safe(row.get('doc_rec_date')) or timezone.now().date()
+                                doc_rec = DocRec.objects.create(doc_rec_id=(str(doc_rec_id_raw).strip() if doc_rec_id_raw else None), apply_for='IV', doc_rec_date=dr_date, created_by=user)
+                            except Exception:
+                                doc_rec = None
+
+                        if not doc_rec:
+                            # If no doc_rec found and we had a last_doc_rec object, use it
+                            if last_doc_rec:
+                                doc_rec = last_doc_rec
+                            else:
+                                _log(idx, doc_rec_id_raw or row.get('inst_veri_number'), 'Missing or invalid doc_rec_id', False); _cache_progress(idx+1); continue
+
+                        # Upsert main record (one per doc_rec)
+                        main = InstVerificationMain.objects.filter(doc_rec=doc_rec).first()
+                        main_fields = dict(
+                            inst_veri_number = row.get('inst_veri_number') or None,
+                            inst_veri_date = _parse_excel_date_safe(row.get('inst_veri_date')) or None,
+                            rec_inst_name = row.get('rec_inst_name') or None,
+                            rec_inst_address_1 = row.get('rec_inst_address_1') or None,
+                            rec_inst_address_2 = row.get('rec_inst_address_2') or None,
+                            rec_inst_location = row.get('rec_inst_location') or None,
+                            rec_inst_city = row.get('rec_inst_city') or None,
+                            rec_inst_pin = row.get('rec_inst_pin') or None,
+                            rec_inst_email = row.get('rec_inst_email') or None,
+                            doc_types = row.get('doc_types') or None,
+                            rec_by = row.get('rec_by') or None,
+                            doc_rec_date = _parse_excel_date_safe(row.get('doc_rec_date')) or None,
+                            inst_ref_no = row.get('inst_ref_no') or None,
+                            ref_date = _parse_excel_date_safe(row.get('ref_date')) or None,
+                            institute_id = row.get('institute_id') or None,
+                        )
+                        if not main:
+                            InstVerificationMain.objects.create(doc_rec=doc_rec, **main_fields)
+                            # remember last main for carry-forward
+                            last_doc_rec = doc_rec
+                            last_doc_rec_id_raw = doc_rec_id_raw
+                        else:
+                            updated = False
+                            for k, v in main_fields.items():
+                                if v is not None and getattr(main, k, None) != v:
+                                    setattr(main, k, v)
+                                    updated = True
+                            if updated:
+                                main.save()
+                            # remember last main for carry-forward
+                            last_doc_rec = main.doc_rec
+                            last_doc_rec_id_raw = getattr(main.doc_rec, 'doc_rec_id', None)
+
+                        # Students: either nested 'students' JSON-like cell or per-row student columns
+                        students = row.get('students') if isinstance(row.get('students'), list) else None
+                        student_created = False
+                        if students and isinstance(students, list):
+                            for s in students:
+                                try:
+                                    exists = None
+                                    if s.get('enrollment'):
+                                        # Try to resolve Enrollment object; if not found, keep raw value in enrollment_no_text
+                                        enr_obj = None
+                                        try:
+                                            enr_obj = Enrollment.objects.filter(enrollment_no=str(s.get('enrollment')).strip()).first()
+                                        except Exception:
+                                            enr_obj = None
+                                        if enr_obj:
+                                            exists = InstVerificationStudent.objects.filter(doc_rec=doc_rec, enrollment=enr_obj).first()
+                                        else:
+                                            exists = InstVerificationStudent.objects.filter(doc_rec=doc_rec, enrollment_no_text=str(s.get('enrollment')).strip()).first()
+                                    if not exists and s.get('sr_no') is not None:
+                                        exists = InstVerificationStudent.objects.filter(doc_rec=doc_rec, sr_no=s.get('sr_no')).first()
+                                    if exists:
+                                        # update fields
+                                            changed = False
+                                            for fld in ('student_name','type_of_credential','month_year','verification_status','iv_degree_name'):
+                                                if s.get(fld) is not None:
+                                                    val = s.get(fld)
+                                                    # normalize month_year via helper
+                                                    if fld == 'month_year':
+                                                        val = _normalize_month_year(val)
+                                                    # ensure varchar(20) limits are respected
+                                                    if isinstance(val, str) and len(val) > 20:
+                                                        val = val[:20]
+                                                    if getattr(exists, fld, None) != val:
+                                                        setattr(exists, fld, val)
+                                                        changed = True
+                                            if changed:
+                                                exists.save()
+                                    else:
+                                        # Prepare enrollment resolution
+                                        enr_val = s.get('enrollment')
+                                        enr_obj = None
+                                        enr_text = None
+                                        if enr_val:
+                                            try:
+                                                enr_obj = Enrollment.objects.filter(enrollment_no=str(enr_val).strip()).first()
+                                            except Exception:
+                                                enr_obj = None
+                                            if not enr_obj:
+                                                enr_text = str(enr_val).strip()
+
+                                        # Normalize/truncate fields to avoid DB length errors
+                                        my = _normalize_month_year(s.get('month_year')) or None
+                                        if isinstance(my, str) and len(my) > 20:
+                                            my = my[:20]
+                                        vs = s.get('verification_status') or None
+                                        if isinstance(vs, str) and len(vs) > 20:
+                                            vs = vs[:20]
+                                        InstVerificationStudent.objects.create(
+                                            doc_rec=doc_rec,
+                                            sr_no = s.get('sr_no') or None,
+                                            student_name = s.get('student_name') or None,
+                                            iv_degree_name = s.get('iv_degree_name') or None,
+                                            type_of_credential = s.get('type_of_credential') or None,
+                                            month_year = my,
+                                            verification_status = vs,
+                                            enrollment = enr_obj,
+                                            enrollment_no_text = enr_text,
+                                            institute_id = s.get('institute_id') or None,
+                                            main_course_id = s.get('main_course') or None,
+                                            sub_course_id = s.get('sub_course') or None,
+                                        )
+                                        student_created = True
+                                except Exception as e:
+                                    # Record student-level failure with context so uploader log shows why
+                                    try:
+                                        key = None
+                                        try:
+                                            key = s.get('sr_no') or s.get('enrollment') or s.get('student_name')
+                                        except Exception:
+                                            key = None
+                                        # Build rich message: exception type, message, and raw student JSON
+                                        try:
+                                            import json
+                                            row_payload = json.dumps(s, default=str, ensure_ascii=False)
+                                        except Exception:
+                                            row_payload = repr(s)
+                                        msg = f"{type(e).__name__}: {str(e)} | data={row_payload}"
+                                        _log(idx, key or f'student_row_{idx}', msg, False)
+                                        logging.exception('Failed creating/updating inst verification student (nested students list)')
+                                    except Exception:
+                                        # best-effort: do not let logging errors break processing
+                                        pass
+                        else:
+                            # Single student-per-row path
+                            if row.get('student_name') or row.get('enrollment_no'):
+                                try:
+                                    enr_key = _clean_cell(row.get('enrollment_no'))
+                                    enr = None
+                                    enr_text = None
+                                    if enr_key:
+                                        try:
+                                            enr = Enrollment.objects.filter(enrollment_no=str(enr_key).strip()).first()
+                                        except Exception:
+                                            enr = None
+                                        if not enr:
+                                            enr_text = str(enr_key).strip()
+                                    exists = None
+                                    if enr:
+                                        exists = InstVerificationStudent.objects.filter(doc_rec=doc_rec, enrollment=enr).first()
+                                    if not exists and row.get('sr_no') is not None:
+                                        exists = InstVerificationStudent.objects.filter(doc_rec=doc_rec, sr_no=row.get('sr_no')).first()
+                                    if exists:
+                                        changed = False
+                                        for fld in ('student_name','type_of_credential','month_year','verification_status','iv_degree_name'):
+                                            val = row.get(fld)
+                                            if val is not None:
+                                                if fld == 'month_year':
+                                                    val = _normalize_month_year(val)
+                                                # enforce varchar(20) limit for short fields
+                                                if fld in ('month_year','verification_status') and isinstance(val, str) and len(val) > 20:
+                                                    val = val[:20]
+                                                if getattr(exists, fld, None) != val:
+                                                    setattr(exists, fld, val)
+                                                    changed = True
+                                        if changed:
+                                            exists.save()
+                                    else:
+                                        my = _normalize_month_year(row.get('month_year')) or None
+                                        if isinstance(my, str) and len(my) > 20:
+                                            my = my[:20]
+                                        vs = row.get('verification_status') or None
+                                        if isinstance(vs, str) and len(vs) > 20:
+                                            vs = vs[:20]
+                                        InstVerificationStudent.objects.create(
+                                            doc_rec=doc_rec,
+                                            sr_no = row.get('sr_no') or None,
+                                            student_name = row.get('student_name') or None,
+                                            iv_degree_name = row.get('iv_degree_name') or None,
+                                            type_of_credential = row.get('type_of_credential') or None,
+                                            month_year = my,
+                                            verification_status = vs,
+                                            enrollment = enr,
+                                            enrollment_no_text = enr_text,
+                                            institute_id = row.get('institute_id') or None,
+                                            main_course_id = row.get('maincourse_id') or None,
+                                            sub_course_id = row.get('subcourse_id') or None,
+                                        )
+                                        student_created = True
+                                except Exception as e:
+                                    # Record student-level failure with context so uploader log shows why
+                                    try:
+                                        key = row.get('sr_no') or row.get('enrollment_no') or row.get('student_name') or doc_rec_id_raw or row.get('inst_veri_number')
+                                        try:
+                                            import json
+                                            row_payload = json.dumps(row.to_dict() if hasattr(row, 'to_dict') else dict(row), default=str, ensure_ascii=False)
+                                        except Exception:
+                                            try:
+                                                row_payload = repr(row)
+                                            except Exception:
+                                                row_payload = '<unserializable row>'
+                                        msg = f"{type(e).__name__}: {str(e)} | data={row_payload}"
+                                        _log(idx, key or f'student_row_{idx}', msg, False)
+                                        logging.exception('Failed creating/updating inst verification student (single-row)')
+                                    except Exception:
+                                        pass
+
+                        _log(idx, doc_rec_id_raw or row.get('inst_veri_number'), "Upserted", True)
+                    except Exception as e:
+                        _log(idx, row.get('inst_veri_number') or row.get('doc_rec_id'), str(e), False)
                     _cache_progress(idx+1)
             else:
                 return {"error": True, "detail": f"Service {service} not implemented"}
