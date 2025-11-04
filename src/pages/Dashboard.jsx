@@ -47,7 +47,7 @@ const Dashboard = () => {
 
                 <div className="h-[1rem] bg-white"></div>
                 <div className="flex-grow p-4 overflow-auto bg-gray-100">
-                <WorkArea selectedMenuItem={selectedMenuItem} selectedSubmenu={selectedSubmenu} />
+                <WorkArea selectedMenuItem={selectedMenuItem} setSelectedMenuItem={setSelectedMenuItem} selectedSubmenu={selectedSubmenu} isSidebarOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} />
 
                 </div>
             </div>
