@@ -5,6 +5,7 @@ import Provisional from "./Provisional";
 import Enrollment from "./Enrollment";
 import Degree from "./Degree";
 import InstitutionalVerification from "./Inst-Verification";
+import CustomDashboard from './CustomDashboard';
 import DocReceive from "./doc-receive";
 import AdminDashboard from "../components/AdminDashboard";
 import ProfileUpdate from "../components/ProfileUpdate";
@@ -14,7 +15,7 @@ import EmpLeavePage from "./emp-leave.jsx";
 
 // Pages will render their own topbars; WorkArea only decides which page to show.
 
-const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebarOpen, isChatboxOpen }) => {
+const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebarOpen, isChatboxOpen, setSelectedMenuItem, selectedMenuItem, setSidebarOpen }) => {
   // Keep a per-page ephemeral action if a page needs it
   const [selectedTopbarMenu, setSelectedTopbarMenu] = useState(null);
 
@@ -46,6 +47,7 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
     const s = (selectedSubmenu || "").toString();
     const l = s.toLowerCase();
     let key = "";
+  if (l.includes("dash")) key = "dashboard";
   if (l.includes("enroll")) key = "enrollment";
   // Prefer explicit 'inst' / 'inst-verification' labels so they don't fall through to the generic 'verification' page
   else if (l.includes("inst") || l.includes("inst-") || l.includes("institution")) key = "inst_ver";
@@ -99,6 +101,10 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
             onToggleSidebar={onToggleSidebar}
             onToggleChatbox={onToggleChatbox}
           />
+        );
+      case "dashboard":
+        return (
+          <CustomDashboard selectedMenuItem={selectedMenuItem} setSelectedMenuItem={setSelectedMenuItem} isSidebarOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} />
         );
       case "doc_receive":
         return (
