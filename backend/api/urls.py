@@ -19,6 +19,8 @@ try:
         ModuleViewSet, MenuViewSet, UserPermissionViewSet, InstituteCourseOfferingViewSet, MainBranchViewSet,
         SubBranchViewSet, InstituteViewSet, EnrollmentViewSet,
     )
+    from .views_mail_request import GoogleFormSubmissionViewSet
+    from .view_transcript_generate import TranscriptRequestViewSet
     from .views import (
         DocRecViewSet, VerificationViewSet, MigrationRecordViewSet, ProvisionalRecordViewSet,
         InstVerificationMainViewSet, InstVerificationStudentViewSet, StudentProfileViewSet, EcaViewSet,
@@ -34,6 +36,9 @@ try:
         VerifyAdminPanelPasswordView, CustomTokenObtainPairView, ProfilePictureView, CheckAdminAccessView,
         MyNavigationView, UserAPIView, UserDetailAPIView, AdminChangePasswordView,
     )
+    # PDF generation view for inst verification
+    from .view_inst_verification import GenerateInstVerificationPDF
+    from .view_inst_verification import SuggestDocRec
 
     # Register router and API endpoints (normal path when DRF is installed)
     router = DefaultRouter()
@@ -54,6 +59,8 @@ try:
     router.register(r'inst-verification-student', InstVerificationStudentViewSet, basename='inst-verification-student')
     router.register(r'eca', EcaViewSet, basename='eca')
     router.register(r'student-profiles', StudentProfileViewSet, basename='student-profiles')
+    router.register(r'mail-requests', GoogleFormSubmissionViewSet, basename='mail-requests')
+    router.register(r'transcript-requests', TranscriptRequestViewSet, basename='transcript-requests')
     router.register(r'empprofile', EmpProfileViewSet, basename='empprofile')
     # Leave management endpoints
     from .views_emp import LeavePeriodListView, LeaveAllocationListView, MyLeaveBalanceView, LeaveTypeViewSet, LeavePeriodViewSet, SeedLeaveAllocationsView, LeaveTypeCompatView, LeaveTypeCompatDetailView, LeavePeriodCompatView, LeaveReportView
@@ -84,6 +91,8 @@ try:
         path('verify-password/', VerifyPasswordView.as_view(), name='verify-password'),
     path('verify-admin-panel-password/', VerifyAdminPanelPasswordView.as_view(), name='verify-admin-panel-password'),
         path('profile-picture/', ProfilePictureView.as_view(), name='profile-picture'),
+    path('inst-verification/generate-pdf/', GenerateInstVerificationPDF.as_view(), name='inst-verification-generate-pdf'),
+    path('inst-verification/suggest-doc-rec/', SuggestDocRec.as_view(), name='inst-verification-suggest-doc-rec'),
     path('my-navigation/', MyNavigationView.as_view(), name='my-navigation'),
     path('leaveperiods/', LeavePeriodListView.as_view(), name='leaveperiods'),
     # Note: leaveperiods is available both as router resource and legacy list-create; keep both for compatibility

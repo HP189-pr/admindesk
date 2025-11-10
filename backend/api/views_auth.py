@@ -39,6 +39,7 @@ from rest_framework.decorators import action  # (retained if future expansions n
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
@@ -200,7 +201,8 @@ class ChangePasswordView(APIView):
 class UserProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]
-    parser_classes = []  # parser_classes provided in original; will inherit DRF defaults unless needed.
+    # Accept multipart/form-data for profile picture uploads
+    parser_classes = [MultiPartParser, FormParser]
 
     def get_object(self):
         profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
@@ -224,7 +226,9 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
                     logger.warning("Error deleting old profile picture: %s", e)
 
             extension = profile_picture_file.name.split('.')[-1]
-            filename = f"{request.user.username}_{int(datetime.time.time())}.{extension}"
+            # Use current timestamp for a unique filename. datetime.time has no 'time' method —
+            # use datetime.datetime.now().timestamp() instead.
+            filename = f"{request.user.username}_{int(datetime.datetime.now().timestamp())}.{extension}"
             file_path = os.path.join(settings.MEDIA_ROOT, "profile_pictures", filename)
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             with open(file_path, "wb+") as destination:
@@ -369,12 +373,12 @@ class MyNavigationView(APIView):
                     except ObjectDoesNotExist:  # pragma: no cover
                         pass
                 menus_payload.append({
-                    "id": getattr(mn, 'menuid', mn.id),
+                    "id": getattr(mn, 'menuid', None) or mn.pk,
                     "name": mn.name,
                     "rights": rights,
                 })
             modules.append({
-                "id": getattr(mod, 'moduleid', mod.id),
+                "id": getattr(mod, 'moduleid', None) or mod.pk,
                 "name": mod.name,
                 "menus": menus_payload,
             })

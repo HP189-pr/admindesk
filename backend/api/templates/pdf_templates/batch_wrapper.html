@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page { margin: 2cm; }
+        .page-break { page-break-after: always; }
+    </style>
+</head>
+<body>
+    {% for page in pages %}
+        {{ page|safe }}
+        {% if not forloop.last %}<div class="page-break"></div>{% endif %}
+    {% endfor %}
+</body>
+</html>

@@ -61,7 +61,11 @@ class DocRec(models.Model):
             models.Index(fields=['pay_rec_no'], name='idx_doc_pay_rec')
         ]
     def __str__(self):
-        return f"{self.doc_rec_id} - {self.apply_for} - {self.pay_by}"
+        # Prefer showing the raw identifier in lists and related displays.
+        # Previously this returned extra metadata (apply_for, pay_by) which
+        # caused admin lists to show values like "iv_25_021 - IV - NA".
+        # The user prefers the raw doc_rec_id (e.g. "iv_25_021").
+        return f"{self.doc_rec_id}"
     def _prefix_for_apply(self) -> str:
         return {
             ApplyFor.VERIFICATION: 'vr',

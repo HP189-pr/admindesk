@@ -1,0 +1,110 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+  @page { size: A4; margin: 50mm 6mm 6mm 10mm; }
+  body { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; color: #000; font-size:12pt; line-height:1.7; letter-spacing:0.1px; padding-bottom:16px; }
+  .header { margin-bottom: 8px; position:relative; }
+  .letter-meta { display:flex; justify-content:space-between; align-items:flex-start; font-weight:bold; font-size:14pt; }
+  .letter-meta .meta-right { text-align:right; }
+  .issuer-block { text-align:right; line-height:1.4; margin-left:auto; margin-top:16px; font-weight:bold; }
+  .recipient-block { margin-top:12px; font-weight:bold; }
+  .recipient-block .recipient-lines { font-weight:normal; }
+  .subject-line { margin-top:10px; font-weight:bold; }
+  .subject-line strong { font-weight:bold; }
+  .ref-line { margin-top:4px; font-weight:bold; }
+  .ref-line span { font-weight:normal; }
+  .cell-strong { font-weight:bold; }
+  table { width:100%; border-collapse:collapse; font-size:12pt; }
+    th, td { border:1px solid #bfbfbf; padding:8px 10px; white-space:normal; word-break:break-word; }
+    th { background:#f3f3f3; text-align:center; vertical-align:middle; }
+    td { text-align:center; vertical-align:top; }
+  td.cell-label { text-align:left; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    {% if main.inst_veri_number or main.inst_veri_date %}
+    <div class="letter-meta">
+      <div class="meta-left">
+        {% if main.inst_veri_number %}<div>Ref: KSV/{{ main.inst_veri_number }}</div>{% endif %}
+      </div>
+      <div class="meta-right">
+        {% if main.inst_veri_date %}<div>{{ main.inst_veri_date }}</div>{% endif %}
+      </div>
+    </div>
+    <div style="height:20px"></div>
+    {% endif %}
+    <div class="issuer-block" align="right">
+      <div>Office of the Registrar,</div>
+      <div>Kadi Sarva Vishwavidyalaya,</div>
+      <div>Sector -15,</div>
+      <div>Gandhinagar- 382015</div>
+    </div>
+  <div class="recipient-block" style="line-height:1.8;">
+      {% if main.rec_inst_name %}<div>{{ main.rec_inst_name }}</div>{% endif %}
+      <div class="recipient-lines">
+        {% if main.rec_inst_sfx_name %}<div>{{ main.rec_inst_sfx_name }}</div>{% endif %}
+        {% if main.rec_inst_address_1 %}<div>{{ main.rec_inst_address_1 }}</div>{% endif %}
+        {% if main.rec_inst_address_2 or main.rec_inst_location or main.rec_inst_city or main.rec_inst_pin %}
+        <div>
+          {% if main.rec_inst_address_2 %}{{ main.rec_inst_address_2 }}{% endif %}
+          {% if main.rec_inst_location %}{% if main.rec_inst_address_2 %}, {% endif %}{{ main.rec_inst_location }}{% endif %}
+          {% if main.rec_inst_city %}{% if main.rec_inst_address_2 or main.rec_inst_location %}, {% endif %}{{ main.rec_inst_city }}{% endif %}
+          {% if main.rec_inst_pin %}{% if main.rec_inst_address_2 or main.rec_inst_location or main.rec_inst_city %}, {% endif %}{{ main.rec_inst_pin }}{% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  <div style="height:10px"></div>
+    <div class="subject-line" style="margin:0 0 2px 3.5cm;">
+      Sub: Educational Verification of <strong>{% if main.doc_types %}{% with doc=main.doc_types %}{{ doc }}{% if 'certificate' not in doc|lower %} certificate{% endif %}{% endwith %}{% else %}Certificate{% endif %}</strong>.
+    </div>
+    <div class="ref-line" style="margin:0 0 0 3.5cm;">
+      Ref:
+      <span>
+        Your Ref
+        {% if main.inst_ref_no %}<strong> {{ main.inst_ref_no }}</strong>{% endif %}
+        {% if main.rec_by %}<strong> {{ main.rec_by }}</strong>{% endif %}
+        {% if not main.inst_ref_no and not main.rec_by %}<strong> N/A</strong>{% endif %}
+      </span>
+      {% if main.ref_date %}
+        <span> Dated on <strong>{{ main.ref_date }}</strong></span>
+      {% endif %}
+    </div>
+    <div style="height:16px"></div>
+    <div style="line-height:1.7;text-align:justify;">
+      Regarding the subject and reference mentioned above, I am delighted to confirm that upon thorough verification, the documents pertaining to the candidate in question have been meticulously examined and found to be in accordance with our office records. Below are the details of the provided <strong>{% if main.doc_types %}{% with doc=main.doc_types %}{{ doc }}{% if 'certificate' not in doc|lower %} Certificate{% endif %}{% endwith %}{% else %}Certificate{% endif %}</strong>:
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+  <th style="width:6%">Sr. No.</th>
+  <th style="width:36%">Candidate Name</th>
+  <th style="width:21%">Enrollment Number</th>
+  <th style="width:21%">Branch</th>
+  <th style="width:16%">{{ credential_header|default:"Type of Credential" }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in students %}
+      <tr>
+    <td>{{ forloop.counter }}</td>
+    <td class="cell-label cell-strong">{{ s.student_name }}</td>
+    <td class="cell-strong">{% if s.enrollment_no %}{{ s.enrollment_no }}{% else %}{{ s.enrollment }}{% endif %}</td>
+    <td class="cell-strong">{% if s.iv_degree_name %}{{ s.iv_degree_name }}{% else %}{{ s.branch }}{% endif %}</td>
+  <td class="cell-strong">{% if s.month_year %}{{ s.month_year }}{% else %}{{ s.type_of_credential }}{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div style="height:16px"></div>
+  <div><strong>Remark:</strong> The above record has been verified and found correct as per university records.</div>
+  <div style="height:22px"></div>
+  <div>Should you require any additional information or have further inquiries, please do not hesitate to reach out to us.</div>
+  <div style="height:74px"></div>
+  <div>Registrar</div>
+</body>
+</html>

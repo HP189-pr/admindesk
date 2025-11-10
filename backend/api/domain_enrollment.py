@@ -63,3 +63,5 @@ class StudentProfile(models.Model):
         ]
     def __str__(self):
         return f"Profile for {getattr(self.enrollment, 'enrollment_no', None) or '-'}"
+
+

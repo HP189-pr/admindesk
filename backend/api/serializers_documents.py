@@ -218,6 +218,48 @@ class InstVerificationMainSerializer(serializers.ModelSerializer):
         model = InstVerificationMain
         fields = '__all__'
 
+    def to_representation(self, instance):
+        """Return a sanitized representation so API consumers (frontend) don't get
+        placeholder values like numeric-only codes or 'nan' that would render as
+        bracketed placeholders in the printed template.
+        """
+        import re
+        def _sanitize(val):
+            try:
+                if val is None:
+                    return ''
+                if isinstance(val, (list, tuple)):
+                    return '' if len(val) == 0 else str(val)
+                s = str(val).strip()
+                if not s:
+                    return ''
+                s2 = re.sub(r'^\[\s*|\s*\]$', '', s)
+                if re.fullmatch(r'\d+', s2):
+                    return ''
+                if s2.strip().lower() in ('nan', 'none', 'null', 'n/a'):
+                    return ''
+                return s2
+            except Exception:
+                return ''
+
+        data = super().to_representation(instance)
+        # sanitize the fields used in templates
+        for k in ('rec_inst_sfx_name','rec_inst_name','rec_inst_address_1','rec_inst_address_2','rec_inst_location','rec_inst_city','rec_inst_pin','rec_inst_email','doc_types','inst_ref_no','rec_by'):
+            if k in data:
+                data[k] = _sanitize(data.get(k))
+        # format date fields consistently
+        for df in ('inst_veri_date','ref_date','doc_rec_date'):
+            v = data.get(df)
+            try:
+                if not v:
+                    data[df] = ''
+                else:
+                    # keep string; assume backend returns ISO or already formatted
+                    data[df] = str(v)
+            except Exception:
+                data[df] = ''
+        return data
+
     def get_doc_rec_remark(self, obj):
         try:
             return obj.doc_rec.doc_rec_remark if obj.doc_rec else None
@@ -243,6 +285,8 @@ class InstVerificationMainSerializer(serializers.ModelSerializer):
         return obj
 
 class InstVerificationStudentSerializer(serializers.ModelSerializer):
+    # Expose enrollment number (FK uses to_field='enrollment_no') for templates and consumers
+    enrollment_no = serializers.CharField(source='enrollment.enrollment_no', read_only=True)
     doc_rec_key = serializers.SlugRelatedField(slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False)
     doc_rec = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
     class Meta:

@@ -5,7 +5,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 import json
 
-from .models import DocRec, Verification, MigrationRecord, ProvisionalRecord, InstVerificationMain, InstVerificationStudent
+from .models import DocRec, Verification, MigrationRecord, ProvisionalRecord, InstVerificationMain, InstVerificationStudent, Enrollment, Institute, MainBranch, SubBranch
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -103,6 +103,9 @@ class UploadDocRecView(View):
                             rec_inst_pin = r.get('rec_inst_pin') or None,
                             rec_inst_email = r.get('rec_inst_email') or None,
                             doc_types = r.get('doc_types') or None,
+                            rec_inst_sfx_name = r.get('rec_inst_sfx_name') or None,
+                            study_mode = r.get('study_mode') or None,
+                            iv_status = r.get('iv_status') or None,
                             rec_by = r.get('rec_by') or None,
                             doc_rec_date = r.get('doc_rec_date') or None,
                             inst_ref_no = r.get('inst_ref_no') or None,
@@ -131,22 +134,86 @@ class UploadDocRecView(View):
                                 try:
                                     # Avoid simple duplicates: check by doc_rec + enrollment or doc_rec + sr_no
                                     exists = None
+                                    enr_obj = None
+                                    enr_text = None
                                     if s.get('enrollment'):
-                                        exists = InstVerificationStudent.objects.filter(doc_rec=docrec, enrollment=s.get('enrollment')).first()
+                                        try:
+                                            enr_obj = Enrollment.objects.filter(enrollment_no=str(s.get('enrollment')).strip()).first()
+                                        except Exception:
+                                            enr_obj = None
+                                        if not enr_obj:
+                                            enr_text = str(s.get('enrollment')).strip()
+                                        else:
+                                            exists = InstVerificationStudent.objects.filter(doc_rec=docrec, enrollment=enr_obj).first()
+                                    else:
+                                        exists = None
                                     if not exists and s.get('sr_no') is not None:
                                         exists = InstVerificationStudent.objects.filter(doc_rec=docrec, sr_no=s.get('sr_no')).first()
                                     if exists:
                                         # update some fields if provided
                                         changed = False
-                                        for fld in ('student_name','type_of_credential','month_year','verification_status','institute_id','main_course_id','sub_course_id'):
-                                            if s.get(fld.replace('_id','')) is not None:
-                                                val = s.get(fld.replace('_id',''))
-                                                if getattr(exists, fld.replace('_id',''), None) != val:
-                                                    setattr(exists, fld.replace('_id',''), val)
+                                        for fld in ('student_name','type_of_credential','month_year','verification_status'):
+                                            if s.get(fld) is not None:
+                                                val = s.get(fld)
+                                                if getattr(exists, fld, None) != val:
+                                                    setattr(exists, fld, val)
                                                     changed = True
+                                        # sync enrollment and related institute/main/subcourse when enrollment provided
+                                        try:
+                                            if enr_obj:
+                                                if getattr(exists, 'enrollment', None) != enr_obj:
+                                                    exists.enrollment = enr_obj
+                                                    changed = True
+                                                try:
+                                                    if getattr(enr_obj, 'institute', None) and getattr(exists, 'institute', None) != enr_obj.institute:
+                                                        exists.institute = enr_obj.institute
+                                                        changed = True
+                                                except Exception:
+                                                    pass
+                                                try:
+                                                    if getattr(enr_obj, 'maincourse', None) and getattr(exists, 'main_course', None) != enr_obj.maincourse:
+                                                        exists.main_course = enr_obj.maincourse
+                                                        changed = True
+                                                except Exception:
+                                                    pass
+                                                try:
+                                                    if getattr(enr_obj, 'subcourse', None) and getattr(exists, 'sub_course', None) != enr_obj.subcourse:
+                                                        exists.sub_course = enr_obj.subcourse
+                                                        changed = True
+                                                except Exception:
+                                                    pass
+                                                if getattr(exists, 'enrollment_no_text', None):
+                                                    exists.enrollment_no_text = None
+                                                    changed = True
+                                        except Exception:
+                                            pass
                                         if changed:
                                             exists.save()
                                     else:
+                                        # Prepare institute/main/subcourse from enrollment if available
+                                        inst_obj = None
+                                        main_obj = None
+                                        sub_obj = None
+                                        if enr_obj:
+                                            inst_obj = getattr(enr_obj, 'institute', None)
+                                            main_obj = getattr(enr_obj, 'maincourse', None)
+                                            sub_obj = getattr(enr_obj, 'subcourse', None)
+                                        else:
+                                            if s.get('institute_id'):
+                                                try:
+                                                    inst_obj = Institute.objects.filter(pk=s.get('institute_id')).first()
+                                                except Exception:
+                                                    inst_obj = None
+                                            if s.get('main_course'):
+                                                try:
+                                                    main_obj = MainBranch.objects.filter(pk=s.get('main_course')).first()
+                                                except Exception:
+                                                    main_obj = None
+                                            if s.get('sub_course'):
+                                                try:
+                                                    sub_obj = SubBranch.objects.filter(pk=s.get('sub_course')).first()
+                                                except Exception:
+                                                    sub_obj = None
                                         InstVerificationStudent.objects.create(
                                             doc_rec=docrec,
                                             sr_no = s.get('sr_no') or None,
@@ -154,10 +221,11 @@ class UploadDocRecView(View):
                                             type_of_credential = s.get('type_of_credential') or None,
                                             month_year = s.get('month_year') or None,
                                             verification_status = s.get('verification_status') or None,
-                                            enrollment = s.get('enrollment') or None,
-                                            institute_id = s.get('institute_id') or None,
-                                            main_course_id = s.get('main_course') or None,
-                                            sub_course_id = s.get('sub_course') or None,
+                                            enrollment = enr_obj if enr_obj else None,
+                                            enrollment_no_text = enr_text,
+                                            institute = inst_obj,
+                                            main_course = main_obj,
+                                            sub_course = sub_obj,
                                         )
                                         student_created = True
                                 except Exception:
@@ -168,6 +236,39 @@ class UploadDocRecView(View):
                         else:
                             if r.get('student_name') or r.get('enrollment'):
                                 try:
+                                    # Try to resolve enrollment and copy related institute/main/subcourse
+                                    enr_obj = None
+                                    enr_text = None
+                                    if r.get('enrollment'):
+                                        try:
+                                            enr_obj = Enrollment.objects.filter(enrollment_no=str(r.get('enrollment')).strip()).first()
+                                        except Exception:
+                                            enr_obj = None
+                                        if not enr_obj:
+                                            enr_text = str(r.get('enrollment')).strip()
+                                    inst_obj = None
+                                    main_obj = None
+                                    sub_obj = None
+                                    if enr_obj:
+                                        inst_obj = getattr(enr_obj, 'institute', None)
+                                        main_obj = getattr(enr_obj, 'maincourse', None)
+                                        sub_obj = getattr(enr_obj, 'subcourse', None)
+                                    else:
+                                        if r.get('institute_id'):
+                                            try:
+                                                inst_obj = Institute.objects.filter(pk=r.get('institute_id')).first()
+                                            except Exception:
+                                                inst_obj = None
+                                        if r.get('main_course'):
+                                            try:
+                                                main_obj = MainBranch.objects.filter(pk=r.get('main_course')).first()
+                                            except Exception:
+                                                main_obj = None
+                                        if r.get('sub_course'):
+                                            try:
+                                                sub_obj = SubBranch.objects.filter(pk=r.get('sub_course')).first()
+                                            except Exception:
+                                                sub_obj = None
                                     InstVerificationStudent.objects.create(
                                         doc_rec=docrec,
                                         sr_no = r.get('sr_no') or None,
@@ -175,10 +276,11 @@ class UploadDocRecView(View):
                                         type_of_credential = r.get('type_of_credential') or None,
                                         month_year = r.get('month_year') or None,
                                         verification_status = r.get('verification_status') or None,
-                                        enrollment = r.get('enrollment') or None,
-                                        institute_id = r.get('institute_id') or None,
-                                        main_course_id = r.get('main_course') or None,
-                                        sub_course_id = r.get('sub_course') or None,
+                                        enrollment = enr_obj if enr_obj else None,
+                                        enrollment_no_text = enr_text,
+                                        institute = inst_obj,
+                                        main_course = main_obj,
+                                        sub_course = sub_obj,
                                     )
                                     student_created = True
                                 except Exception:

@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; font-size:14px; }
+    .notfound { padding:40px; text-align:center; }
+  </style>
+</head>
+<body>
+  <div class="notfound">
+    <h2>Record not found</h2>
+    <p>Requested record <strong>{{ doc_rec }}</strong> was not found.</p>
+    {% if attempts %}
+      <div style="margin-top:12px;font-size:12px;color:#333;">
+        <div><strong>Search attempts:</strong></div>
+        <ul>
+        {% for a in attempts %}
+          <li>{{ a }}</li>
+        {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+  </div>
+</body>
+</html>

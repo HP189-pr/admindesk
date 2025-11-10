@@ -14,6 +14,7 @@ from rest_framework.views import APIView
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework import status
 from django.utils import timezone
 from django.db import models
 from django.db.models import Value, Q
@@ -156,7 +157,36 @@ class InstVerificationMainViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        search = self.request.query_params.get('search', '').strip()
+        params = getattr(self.request, 'query_params', {})
+
+        doc_rec_param = None
+        iv_record_no_param = None
+        inst_veri_number_param = None
+
+        try:
+            doc_rec_param = params.get('doc_rec') or params.get('doc_rec_id')
+        except Exception:
+            doc_rec_param = None
+        try:
+            iv_record_no_param = params.get('iv_record_no')
+        except Exception:
+            iv_record_no_param = None
+        try:
+            inst_veri_number_param = params.get('inst_veri_number')
+        except Exception:
+            inst_veri_number_param = None
+
+        if doc_rec_param:
+            qs = qs.filter(doc_rec__doc_rec_id=doc_rec_param)
+        if iv_record_no_param:
+            try:
+                qs = qs.filter(iv_record_no=int(str(iv_record_no_param).strip()))
+            except Exception:
+                qs = qs.filter(iv_record_no=iv_record_no_param)
+        if inst_veri_number_param:
+            qs = qs.filter(inst_veri_number=inst_veri_number_param)
+
+        search = params.get('search', '').strip() if hasattr(params, 'get') else ''
         if search:
             norm_q = ''.join(search.split()).lower()
             qs = qs.annotate(
@@ -209,6 +239,52 @@ class InstVerificationStudentViewSet(viewsets.ModelViewSet):
             # doc_rec is a FK to DocRec using to_field='doc_rec_id', so filter via the related field
             return qs.filter(doc_rec__doc_rec_id=doc_rec_param)
         return qs
+    def create(self, request, *args, **kwargs):
+        # If an enrollment identifier is provided, attempt to resolve the Enrollment
+        # and copy institute/main/subcourse fields onto the student record so that
+        # data created via API matches the behaviour of the bulk importer.
+        data = request.data.copy() if hasattr(request, 'data') else {}
+        enr_key = data.get('enrollment') or data.get('enrollment_no') or data.get('enrollment_no_text')
+        try:
+            if enr_key:
+                enr_obj = Enrollment.objects.filter(enrollment_no=str(enr_key).strip()).first()
+                if enr_obj:
+                    if getattr(enr_obj, 'institute', None):
+                        data['institute'] = getattr(enr_obj.institute, 'id', None) or getattr(enr_obj.institute, 'pk', None)
+                    if getattr(enr_obj, 'maincourse', None):
+                        data['main_course'] = getattr(enr_obj.maincourse, 'id', None) or getattr(enr_obj.maincourse, 'pk', None)
+                    if getattr(enr_obj, 'subcourse', None):
+                        data['sub_course'] = getattr(enr_obj.subcourse, 'id', None) or getattr(enr_obj.subcourse, 'pk', None)
+        except Exception:
+            # best-effort: do not fail creation if sync fails
+            pass
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        data = request.data.copy() if hasattr(request, 'data') else {}
+        enr_key = data.get('enrollment') or data.get('enrollment_no') or data.get('enrollment_no_text')
+        try:
+            if enr_key:
+                enr_obj = Enrollment.objects.filter(enrollment_no=str(enr_key).strip()).first()
+                if enr_obj:
+                    if getattr(enr_obj, 'institute', None):
+                        data['institute'] = getattr(enr_obj.institute, 'id', None) or getattr(enr_obj.institute, 'pk', None)
+                    if getattr(enr_obj, 'maincourse', None):
+                        data['main_course'] = getattr(enr_obj.maincourse, 'id', None) or getattr(enr_obj.maincourse, 'pk', None)
+                    if getattr(enr_obj, 'subcourse', None):
+                        data['sub_course'] = getattr(enr_obj.subcourse, 'id', None) or getattr(enr_obj.subcourse, 'pk', None)
+        except Exception:
+            pass
+        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
 
 
 # -------- Bulk Upload & Data Analysis --------
@@ -1462,6 +1538,9 @@ class BulkUploadView(APIView):
                             rec_inst_pin = row.get('rec_inst_pin') or None,
                             rec_inst_email = row.get('rec_inst_email') or None,
                             doc_types = row.get('doc_types') or None,
+                            rec_inst_sfx_name = row.get('rec_inst_sfx_name') or None,
+                            study_mode = row.get('study_mode') or None,
+                            iv_status = row.get('iv_status') or None,
                             rec_by = row.get('rec_by') or None,
                             doc_rec_date = _parse_excel_date_safe(row.get('doc_rec_date')) or None,
                             inst_ref_no = row.get('inst_ref_no') or None,
@@ -1507,21 +1586,58 @@ class BulkUploadView(APIView):
                                         exists = InstVerificationStudent.objects.filter(doc_rec=doc_rec, sr_no=s.get('sr_no')).first()
                                     if exists:
                                         # update fields
-                                            changed = False
-                                            for fld in ('student_name','type_of_credential','month_year','verification_status','iv_degree_name'):
-                                                if s.get(fld) is not None:
-                                                    val = s.get(fld)
-                                                    # normalize month_year via helper
-                                                    if fld == 'month_year':
-                                                        val = _normalize_month_year(val)
-                                                    # ensure varchar(20) limits are respected
-                                                    if isinstance(val, str) and len(val) > 20:
-                                                        val = val[:20]
-                                                    if getattr(exists, fld, None) != val:
-                                                        setattr(exists, fld, val)
+                                        changed = False
+                                        for fld in ('student_name','type_of_credential','month_year','verification_status','iv_degree_name'):
+                                            if s.get(fld) is not None:
+                                                val = s.get(fld)
+                                                # normalize month_year via helper
+                                                if fld == 'month_year':
+                                                    val = _normalize_month_year(val)
+                                                # ensure varchar(20) limits are respected
+                                                if isinstance(val, str) and len(val) > 20:
+                                                    val = val[:20]
+                                                if getattr(exists, fld, None) != val:
+                                                    setattr(exists, fld, val)
+                                                    changed = True
+                                        if changed:
+                                            exists.save()
+
+                                        # If an enrollment value was provided and resolved to an Enrollment
+                                        # object, ensure the student row links to that enrollment and
+                                        # copies institute/main/subcourse from the Enrollment for sync.
+                                        try:
+                                            if s.get('enrollment'):
+                                                if enr_obj:
+                                                    if getattr(exists, 'enrollment', None) != enr_obj:
+                                                        exists.enrollment = enr_obj
+                                                        changed = True
+                                                    # copy institute/main/subcourse from enrollment when present
+                                                    try:
+                                                        if getattr(enr_obj, 'institute', None) and getattr(exists, 'institute', None) != enr_obj.institute:
+                                                            exists.institute = enr_obj.institute
+                                                            changed = True
+                                                    except Exception:
+                                                        pass
+                                                    try:
+                                                        if getattr(enr_obj, 'maincourse', None) and getattr(exists, 'main_course', None) != enr_obj.maincourse:
+                                                            exists.main_course = enr_obj.maincourse
+                                                            changed = True
+                                                    except Exception:
+                                                        pass
+                                                    try:
+                                                        if getattr(enr_obj, 'subcourse', None) and getattr(exists, 'sub_course', None) != enr_obj.subcourse:
+                                                            exists.sub_course = enr_obj.subcourse
+                                                            changed = True
+                                                    except Exception:
+                                                        pass
+                                                    # clear enrollment text copy if we now have Enrollment FK
+                                                    if getattr(exists, 'enrollment_no_text', None):
+                                                        exists.enrollment_no_text = None
                                                         changed = True
                                             if changed:
                                                 exists.save()
+                                        except Exception:
+                                            pass
                                     else:
                                         # Prepare enrollment resolution
                                         enr_val = s.get('enrollment')
@@ -1552,9 +1668,10 @@ class BulkUploadView(APIView):
                                             verification_status = vs,
                                             enrollment = enr_obj,
                                             enrollment_no_text = enr_text,
-                                            institute_id = s.get('institute_id') or None,
-                                            main_course_id = s.get('main_course') or None,
-                                            sub_course_id = s.get('sub_course') or None,
+                                            # If enrollment resolved, copy related institute/main/subcourse
+                                            institute = (enr_obj.institute if enr_obj and getattr(enr_obj, 'institute', None) else (Institute.objects.filter(pk=s.get('institute_id')).first() if s.get('institute_id') else None)),
+                                            main_course = (enr_obj.maincourse if enr_obj and getattr(enr_obj, 'maincourse', None) else (MainBranch.objects.filter(pk=s.get('main_course')).first() if s.get('main_course') else None)),
+                                            sub_course = (enr_obj.subcourse if enr_obj and getattr(enr_obj, 'subcourse', None) else (SubBranch.objects.filter(pk=s.get('sub_course')).first() if s.get('sub_course') else None)),
                                         )
                                         student_created = True
                                 except Exception as e:
@@ -1611,6 +1728,38 @@ class BulkUploadView(APIView):
                                                     changed = True
                                         if changed:
                                             exists.save()
+                                        # If enrollment present in the row and we resolved an Enrollment
+                                        # ensure FK links and copy institute/main/subcourse
+                                        try:
+                                            if enr:
+                                                if getattr(exists, 'enrollment', None) != enr:
+                                                    exists.enrollment = enr
+                                                    changed = True
+                                                try:
+                                                    if getattr(enr, 'institute', None) and getattr(exists, 'institute', None) != enr.institute:
+                                                        exists.institute = enr.institute
+                                                        changed = True
+                                                except Exception:
+                                                    pass
+                                                try:
+                                                    if getattr(enr, 'maincourse', None) and getattr(exists, 'main_course', None) != enr.maincourse:
+                                                        exists.main_course = enr.maincourse
+                                                        changed = True
+                                                except Exception:
+                                                    pass
+                                                try:
+                                                    if getattr(enr, 'subcourse', None) and getattr(exists, 'sub_course', None) != enr.subcourse:
+                                                        exists.sub_course = enr.subcourse
+                                                        changed = True
+                                                except Exception:
+                                                    pass
+                                                if getattr(exists, 'enrollment_no_text', None):
+                                                    exists.enrollment_no_text = None
+                                                    changed = True
+                                            if changed:
+                                                exists.save()
+                                        except Exception:
+                                            pass
                                     else:
                                         my = _normalize_month_year(row.get('month_year')) or None
                                         if isinstance(my, str) and len(my) > 20:
@@ -1628,9 +1777,9 @@ class BulkUploadView(APIView):
                                             verification_status = vs,
                                             enrollment = enr,
                                             enrollment_no_text = enr_text,
-                                            institute_id = row.get('institute_id') or None,
-                                            main_course_id = row.get('maincourse_id') or None,
-                                            sub_course_id = row.get('subcourse_id') or None,
+                                            institute = (enr.institute if enr and getattr(enr, 'institute', None) else (Institute.objects.filter(pk=row.get('institute_id')).first() if row.get('institute_id') else None)),
+                                            main_course = (enr.maincourse if enr and getattr(enr, 'maincourse', None) else (MainBranch.objects.filter(pk=row.get('maincourse_id')).first() if row.get('maincourse_id') else None)),
+                                            sub_course = (enr.subcourse if enr and getattr(enr, 'subcourse', None) else (SubBranch.objects.filter(pk=row.get('subcourse_id')).first() if row.get('subcourse_id') else None)),
                                         )
                                         student_created = True
                                 except Exception as e:

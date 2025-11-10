@@ -1174,8 +1174,8 @@ class EcaAdmin(admin.ModelAdmin):
 
 @admin.register(InstVerificationMain)
 class InstVerificationMainAdmin(admin.ModelAdmin):
-    list_display = ("id", "doc_rec", "inst_veri_number", "inst_veri_date", "institute", "rec_inst_city", "doc_types")
-    list_filter = ("inst_veri_date", "institute")
+    list_display = ("id", "doc_rec", "inst_veri_number", "inst_veri_date", "institute", "rec_inst_city", "doc_types", 'rec_inst_sfx_name', 'study_mode', 'iv_status')
+    list_filter = ("inst_veri_date", "institute", 'iv_status')
 
 @admin.register(MigrationRecord)
 class MigrationRecordAdmin(CommonAdminMixin):

@@ -14,6 +14,7 @@ from the modular files where practical.
 from .serializers_core import *  # noqa: F401,F403
 from .serializers_courses import *  # noqa: F401,F403
 from .serializers_documents import *  # noqa: F401,F403
+from .serializers_mail_request import *  # noqa: F401,F403
 
 
 from rest_framework import serializers
@@ -547,6 +548,43 @@ class InstVerificationMainSerializer(serializers.ModelSerializer):
     class Meta:
         model = InstVerificationMain
         fields = '__all__'
+
+    def to_representation(self, instance):
+        """Sanitize commonly-used header fields so templates don't print importer
+        placeholders like numeric ids or 'nan'. This mirrors behaviour in
+        serializers_documents.py and keeps output consistent across APIs.
+        """
+        import re
+        def _sanitize(val):
+            try:
+                if val is None:
+                    return ''
+                if isinstance(val, (list, tuple)):
+                    return '' if len(val) == 0 else str(val)
+                s = str(val).strip()
+                if not s:
+                    return ''
+                s2 = re.sub(r'^\[\s*|\s*\]$', '', s)
+                if re.fullmatch(r'\d+', s2):
+                    return ''
+                if s2.strip().lower() in ('nan', 'none', 'null', 'n/a'):
+                    return ''
+                return s2
+            except Exception:
+                return ''
+
+        data = super().to_representation(instance)
+        for k in ('rec_inst_sfx_name','rec_inst_name','rec_inst_address_1','rec_inst_address_2','rec_inst_location','rec_inst_city','rec_inst_pin','rec_inst_email','doc_types','inst_ref_no','rec_by'):
+            if k in data:
+                data[k] = _sanitize(data.get(k))
+        # ensure date fields are string/blank
+        for df in ('inst_veri_date','ref_date','doc_rec_date'):
+            v = data.get(df)
+            try:
+                data[df] = '' if not v else str(v)
+            except Exception:
+                data[df] = ''
+        return data
 
 
 class InstVerificationStudentSerializer(serializers.ModelSerializer):

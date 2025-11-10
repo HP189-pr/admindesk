@@ -2,6 +2,7 @@
 """
 from django.db import models
 from django.utils import timezone
+import re
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from .domain_enrollment import Enrollment
@@ -130,6 +131,8 @@ class InstVerificationMain(models.Model):
     inst_veri_number = models.CharField(max_length=100, null=True, blank=True, db_column='inst_veri_number')
     inst_veri_date = models.DateField(null=True, blank=True, db_column='inst_veri_date')
     institute = models.ForeignKey(Institute, on_delete=models.SET_NULL, db_column='institute_id', related_name='inst_verification_main', null=True, blank=True)
+    # Auto-computed integer record number derived from inst_veri_number (e.g., 2025/001 -> 25001)
+    iv_record_no = models.IntegerField(null=True, blank=True, db_column='iv_record_no', db_index=True)
     rec_inst_name = models.CharField(max_length=255, null=True, blank=True, db_column='rec_inst_name')
     rec_inst_address_1 = models.CharField(max_length=255, null=True, blank=True, db_column='rec_inst_address_1')
     rec_inst_address_2 = models.CharField(max_length=255, null=True, blank=True, db_column='rec_inst_address_2')
@@ -139,6 +142,18 @@ class InstVerificationMain(models.Model):
     rec_inst_email = models.EmailField(null=True, blank=True, db_column='rec_inst_email')
     # New field added directly in DB: free-text comma-separated document types associated with this inst verification
     doc_types = models.CharField(max_length=255, null=True, blank=True, db_column='doc_types')
+    # Optional suffix for recipient institute name (e.g., campus or office suffix)
+    rec_inst_sfx_name = models.CharField(max_length=255, null=True, blank=True, db_column='rec_inst_sfx_name')
+    # Study mode: single character flag (e.g., F=Full-time, P=Part-time, O=Online). Keep flexible as DB uses CHAR
+    study_mode = models.CharField(max_length=1, null=True, blank=True, db_column='study_mode')
+    class InstVerificationStatus(models.TextChoices):
+        PENDING = 'Pending', 'Pending'
+        DONE = 'Done', 'Done'
+        CORRECTION = 'Correction', 'Correction'
+        POST = 'Post', 'Post'
+        MAIL = 'Mail', 'Mail'
+    # Status specific to institutional verification process
+    iv_status = models.CharField(max_length=20, choices=InstVerificationStatus.choices, null=True, blank=True, db_column='iv_status')
     rec_by = models.CharField(max_length=255, null=True, blank=True, db_column='rec_by')
     doc_rec_date = models.DateField(null=True, blank=True, db_column='doc_rec_date')
     inst_ref_no = models.CharField(max_length=100, null=True, blank=True, db_column='inst_ref_no')
@@ -149,9 +164,56 @@ class InstVerificationMain(models.Model):
             models.Index(fields=['doc_rec'], name='idx_ivm_doc_rec'),
             models.Index(fields=['institute'], name='idx_ivm_institute'),
             models.Index(fields=['inst_veri_number'], name='idx_ivm_veri_no'),
+            models.Index(fields=['iv_record_no'], name='idx_ivm_record_no'),
         ]
     def __str__(self):
         return f"InstVeri {self.inst_veri_number or '-'} for {getattr(self.doc_rec, 'doc_rec_id', None) or '-'}"
+
+    @staticmethod
+    def compute_iv_record_no_from_inst_veri(inst_veri_number: str):
+        """
+        Convert inst_veri_number like '2025/001' or '25-001' to integer 25001.
+        Returns None if it cannot be parsed.
+        """
+        if not inst_veri_number:
+            return None
+        s = str(inst_veri_number).strip()
+        # match year (2 or 4 digits) and sequence at end
+        m = re.search(r"(\d{2,4})\D*0*([0-9]+)$", s)
+        if not m:
+            digits = re.sub(r"\D", "", s)
+            if len(digits) >= 3:
+                y_part = digits[:-3]
+                seq = digits[-3:]
+                if len(y_part) >= 2:
+                    try:
+                        return int(y_part[-2:] + seq)
+                    except Exception:
+                        return None
+                try:
+                    return int(digits)
+                except Exception:
+                    return None
+            return None
+        year_part = m.group(1)
+        # get sequence preserving any leading zeros as present in string
+        seq_digits = re.search(r"(\d+)\s*$", s)
+        seq = seq_digits.group(1) if seq_digits else m.group(2)
+        year2 = year_part[-2:]
+        try:
+            return int(f"{year2}{seq}")
+        except Exception:
+            return None
+
+    def save(self, *a, **kw):
+        try:
+            iv_no = self.compute_iv_record_no_from_inst_veri(getattr(self, 'inst_veri_number', '') or '')
+            if iv_no is not None:
+                self.iv_record_no = iv_no
+        except Exception:
+            # do not block saving on compute errors
+            pass
+        super().save(*a, **kw)
 
 class InstVerificationStudent(models.Model):
     id = models.BigAutoField(primary_key=True)
@@ -168,7 +230,7 @@ class InstVerificationStudent(models.Model):
     main_course = models.ForeignKey(MainBranch, to_field='maincourse_id', db_column='main_course', on_delete=models.SET_NULL, related_name='inst_verification_students', null=True, blank=True)
     type_of_credential = models.CharField(max_length=50, null=True, blank=True, db_column='type_of_credential')
     month_year = models.CharField(max_length=20, null=True, blank=True, db_column='month_year')
-    verification_status = models.CharField(max_length=20, null=True, blank=True, db_column='verification_status', choices=VerificationStatus.choices)
+    verification_status = models.CharField(max_length=100, null=True, blank=True, db_column='verification_status', choices=VerificationStatus.choices)
     # Degree name field: may have been added manually in some DBs. Keep nullable so
     # bulk uploads and older rows are compatible.
     iv_degree_name = models.CharField(max_length=255, null=True, blank=True, db_column='iv_degree_name')

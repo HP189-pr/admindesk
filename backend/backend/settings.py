@@ -232,6 +232,22 @@ SIMPLE_JWT = {
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
+# Optional: path to wkhtmltopdf binary for server-side PDF generation (pdfkit)
+# Example on Windows: set environment variable WKHTMLTOPDF_CMD=C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltopdf.exe
+WKHTMLTOPDF_CMD = os.getenv('WKHTMLTOPDF_CMD', None)
+if not WKHTMLTOPDF_CMD:
+    # Common default install locations we can auto-detect (Windows + Linux)
+    candidate_paths = [
+        r"C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltopdf.exe",
+        r"C:\\Program Files (x86)\\wkhtmltopdf\\bin\\wkhtmltopdf.exe",
+        '/usr/local/bin/wkhtmltopdf',
+        '/usr/bin/wkhtmltopdf',
+    ]
+    for _path in candidate_paths:
+        if os.path.exists(_path):
+            WKHTMLTOPDF_CMD = _path
+            break
+
 # Use the default Django User model
 AUTH_USER_MODEL = 'auth.User'  # Django's default User model
 
