@@ -63,9 +63,12 @@ try:
     router.register(r'transcript-requests', TranscriptRequestViewSet, basename='transcript-requests')
     router.register(r'empprofile', EmpProfileViewSet, basename='empprofile')
     # Leave management endpoints
-    from .views_emp import LeavePeriodListView, LeaveAllocationListView, MyLeaveBalanceView, LeaveTypeViewSet, LeavePeriodViewSet, SeedLeaveAllocationsView, LeaveTypeCompatView, LeaveTypeCompatDetailView, LeavePeriodCompatView, LeaveReportView
+    from .views_emp import LeavePeriodListView, LeaveAllocationListView, MyLeaveBalanceView, LeaveTypeViewSet, LeavePeriodViewSet, SeedLeaveAllocationsView, LeaveTypeCompatView, LeaveTypeCompatDetailView, LeavePeriodCompatView, LeaveReportView, LeaveEntryViewSet, LeaveAllocationDetailView
     router.register(r'leavetype', LeaveTypeViewSet, basename='leavetype')
     router.register(r'leaveperiods', LeavePeriodViewSet, basename='leaveperiods')
+    # expose leave entry endpoints (normal and legacy-style)
+    router.register(r'leaveentry', LeaveEntryViewSet, basename='leaveentry')
+    router.register(r'leave_entry', LeaveEntryViewSet, basename='leave_entry')
 
     urlpatterns = [
         # Include all registered routes automatically
@@ -98,6 +101,7 @@ try:
     # Note: leaveperiods is available both as router resource and legacy list-create; keep both for compatibility
     path('leave-allocations/', LeaveAllocationListView.as_view(), name='leave-allocations'),
     path('seed-leave-allocations/', SeedLeaveAllocationsView.as_view(), name='seed-leave-allocations'),
+    path('leave-allocations/<int:pk>/', LeaveAllocationDetailView.as_view(), name='leave-allocation-detail'),
     path('leavetype-compat/', LeaveTypeCompatView.as_view(), name='leavetype-compat'),
     path('leavetype-compat/<int:pk>/', LeaveTypeCompatDetailView.as_view(), name='leavetype-compat-detail'),
     path('leaveperiods-compat/', LeavePeriodCompatView.as_view(), name='leaveperiods-compat'),
@@ -121,11 +125,15 @@ except Exception as e:
     traceback.print_exc()
     # Fallback: DRF (or simplejwt) not installed or import failed.
     # Provide a simple endpoint so Django can start and admin works.
+    # NOTE: capture the exception text into a local variable because the
+    # exception variable is cleared after the except block; referencing `e`
+    # inside the nested function later causes NameError (observed).
+    error_text = str(e)
     def api_unavailable(request, *args, **kwargs):
         msg = (
             "API unavailable: required packages missing (djangorestframework / simplejwt).\n"
             "Install with: pip install djangorestframework djangorestframework-simplejwt\n"
-            f"Server import error: {e}"
+            f"Server import error: {error_text}"
         )
         return HttpResponse(msg, status=503, content_type="text/plain")
 

@@ -361,6 +361,40 @@ def _parse_excel_date_safe(val):
             continue
     return None
 
+def _safe_num(val, default=0):
+    """Coerce a value to a float (or numeric) but treat pandas NA/'nan'/NaN as missing.
+    Returns default when the value is None, empty string, or not a valid number.
+    """
+    try:
+        import pandas as _pd
+    except Exception:
+        _pd = None
+    # None or empty
+    if val is None:
+        return default
+    if isinstance(val, str):
+        s = val.strip()
+        if s == "":
+            return default
+        # treat literal strings that represent missing values
+        if s.lower() in ("nan", "nat", "none", "<na>"):
+            return default
+    # pandas NA/NaT/NaN
+    try:
+        if _pd is not None and _pd.isna(val):
+            return default
+    except Exception:
+        pass
+    # numeric conversion
+    try:
+        f = float(val)
+        # guard against IEEE NaN/Inf
+        import math
+        if math.isnan(f) or f == float('inf') or f == float('-inf'):
+            return default
+        return f
+    except Exception:
+        return default
 
 def _normalize_month_year(val):
     """Normalize month-year values to format 'Mon-YYYY' (e.g., 'Apr-2010', 'Jul-2016').
@@ -1306,10 +1340,10 @@ class BulkUploadView(APIView):
                             "department_joining": row.get("department_joining") or None,
                             "institute_id": row.get("institute_id") or None,
                             "status": row.get("status") or "Active",
-                            "el_balance": float(row.get("el_balance") or 0) if row.get("el_balance") not in (None, "") else 0,
-                            "sl_balance": float(row.get("sl_balance") or 0) if row.get("sl_balance") not in (None, "") else 0,
-                            "cl_balance": float(row.get("cl_balance") or 0) if row.get("cl_balance") not in (None, "") else 0,
-                            "vacation_balance": float(row.get("vacation_balance") or 0) if row.get("vacation_balance") not in (None, "") else 0,
+                            "el_balance": _safe_num(row.get("el_balance"), 0),
+                            "sl_balance": _safe_num(row.get("sl_balance"), 0),
+                            "cl_balance": _safe_num(row.get("cl_balance"), 0),
+                            "vacation_balance": _safe_num(row.get("vacation_balance"), 0),
                         }
                         obj, created = EmpProfile.objects.update_or_create(
                             emp_id=emp_id,
@@ -1337,11 +1371,8 @@ class BulkUploadView(APIView):
                         start_date = _parse_excel_date_safe(row.get("start_date"))
                         end_date = _parse_excel_date_safe(row.get("end_date"))
                         total_days = None
-                        try:
-                            if row.get("total_days") not in (None, ""):
-                                total_days = float(row.get("total_days"))
-                        except Exception:
-                            total_days = None
+                        if row.get("total_days") not in (None, ""):
+                            total_days = _safe_num(row.get("total_days"), None)
                         approved_at = _parse_excel_date_safe(row.get("approved_at"))
                         obj, created = LeaveEntry.objects.update_or_create(
                             leave_report_no=leave_report_no,

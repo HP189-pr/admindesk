@@ -57,7 +57,7 @@ class LeaveType(models.Model):
 	def __str__(self):
 		return f"{self.leave_code} - {self.leave_name}"
 	class Meta:
-		db_table = 'leave_type'
+		db_table = 'api_leavetype'
 		managed = False
 
 class LeaveEntry(models.Model):
@@ -68,7 +68,19 @@ class LeaveEntry(models.Model):
 	end_date = models.DateField()
 	total_days = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
 	reason = models.TextField(blank=True, null=True)
-	status = models.CharField(max_length=20, default='Pending')
+	# Allowed status values for leave entries. Default is Pending.
+	STATUS_APPROVED = 'Approved'
+	STATUS_PENDING = 'Pending'
+	STATUS_CANCEL = 'Cancel'
+	STATUS_CHOICES = (
+		(STATUS_APPROVED, 'Approved'),
+		(STATUS_PENDING, 'Pending'),
+		(STATUS_CANCEL, 'Cancel'),
+	)
+	status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+	# New fields requested: report_date and leave_remark
+	report_date = models.DateField(blank=True, null=True)
+	leave_remark = models.CharField(max_length=100, blank=True, null=True)
 	created_by = models.CharField(max_length=50, blank=True, null=True)
 	created_at = models.DateTimeField(default=timezone.now)
 	approved_by = models.CharField(max_length=50, blank=True, null=True)
@@ -92,7 +104,25 @@ class LeaveEntry(models.Model):
 		if self.start_date and self.end_date:
 			delta = (self.end_date - self.start_date).days + 1
 			self.total_days = delta * float(self.leave_type.day_value if self.leave_type else 1)
+		# Ensure emp_name mirrors the referenced EmpProfile (auto-update)
+		try:
+			if hasattr(self, 'emp') and getattr(self, 'emp') is not None:
+				# emp is a FK to EmpProfile (to_field='emp_id')
+				self.emp_name = getattr(self.emp, 'emp_name', None)
+		except Exception:
+			# don't block save for any unexpected FK resolution errors
+			pass
 		super().save(*args, **kwargs)
+
+	# Provide a non-persistent property so admin/list_display and other
+	# inspectors can resolve `emp_name` even if the DB does not have a
+	# dedicated column. This avoids the admin.E108 system check error.
+	@property
+	def emp_name(self):
+		try:
+			return getattr(self.emp, 'emp_name', None)
+		except Exception:
+			return None
 
 	def __str__(self):
 		# leave_type may be a FK or a plain code depending on legacy schema
@@ -103,7 +133,7 @@ class LeaveEntry(models.Model):
 		return f"{self.leave_report_no} - {self.emp.emp_name} ({lt_name})"
 
 	class Meta:
-		db_table = 'leave_entry'
+		db_table = 'api_leaveentry'
 		managed = False
 
 
@@ -119,7 +149,7 @@ class LeavePeriod(models.Model):
 	def __str__(self):
 		return f"{self.period_name} ({self.start_date} - {self.end_date})"
 	class Meta:
-		db_table = 'leave_period'
+		db_table = 'api_leaveperiod'
 		managed = False
 
 
@@ -163,9 +193,8 @@ class LeaveAllocation(models.Model):
 		return f"{self.profile} - {self.leave_type} ({self.period.period_name})"
 
 	class Meta:
-		# Note: legacy allocation table has a different shape (allocated_el/allocated_cl/...)
-		# We don't manage it with migrations to avoid destructive schema changes.
-		db_table = 'leavea_llocation_general'
+		# Use the migration-created table name for allocations
+		db_table = 'api_leaveallocation'
 		managed = False
 
 
@@ -210,7 +239,7 @@ class LeaveBalanceSnapshot(models.Model):
 
 	class Meta:
 		unique_together = ('profile', 'balance_date')
-		db_table = 'leave_balances'
+		db_table = 'api_leavebalancesnapshot'
 		managed = False
 
 	def __str__(self):

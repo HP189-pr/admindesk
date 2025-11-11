@@ -15,6 +15,10 @@ const EmpLeavePage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [filterEmp, setFilterEmp] = useState('');
+  const [yearFilter, setYearFilter] = useState('');
+  const [monthFilter, setMonthFilter] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [debugOpen, setDebugOpen] = useState(false);
   const [myBalances, setMyBalances] = useState([]);
   const [allocations, setAllocations] = useState([]);
 
@@ -45,14 +49,15 @@ const EmpLeavePage = () => {
       } catch (e) { setPeriods([]); }
     });
 
-    // Load employee profiles
-    axios.get('/api/empprofile/').then(r => { setProfiles(r.data || []); const me = (r.data || []).find(p => p.userid === user?.username || String(p.emp_id) === String(user?.username)); setProfile(me || null); }).catch(() => setProfiles([]));
+  // Load employee profiles
+  axios.get('/api/empprofile/').then(r => { setProfiles(r.data || []); const me = (r.data || []).find(p => (p.username === user?.username) || (p.usercode === user?.username) || String(p.emp_id) === String(user?.username)); setProfile(me || null); }).catch(() => setProfiles([]));
 
     // Load leave entries with a fallback to legacy table endpoint
-    axios.get('/api/leaveentry/').then(r => setLeaveEntries(r.data || [])).catch(async () => {
+    axios.get('/api/leaveentry/').then(r => { console.debug('leaveentry:', r.data); setLeaveEntries(r.data || []); }).catch(async () => {
       try {
-        const r2 = await axios.get('/api/leave_entry/'); setLeaveEntries(r2.data || []);
+        const r2 = await axios.get('/api/leave_entry/'); console.debug('leave_entry (legacy):', r2.data); setLeaveEntries(r2.data || []);
       } catch (e) {
+        console.debug('leaveentry fetch failed', e);
         setLeaveEntries([]);
       }
     });
@@ -157,17 +162,67 @@ const EmpLeavePage = () => {
         end_date: toISO(form.end_date),
         reason: form.reason
       };
-      await axios.post('/api/leaveentry/', payload);
+      if (editingId) {
+        // patch existing
+        await axios.patch(`/api/leaveentry/${editingId}/`, payload);
+      } else {
+        await axios.post('/api/leaveentry/', payload);
+      }
       setForm({ emp_id: '', leave_type: '', leave_type_code: '', start_date: '', end_date: '', reason: '', total_days: '' });
+      setEditingId(null);
       const r = await axios.get('/api/leaveentry/'); setLeaveEntries(r.data || []);
     } catch (err) { setError('Failed to apply for leave.'); }
     setLoading(false);
   };
 
-  const filteredEntries = filterEmp ? leaveEntries.filter(le => String(le.emp) === String(filterEmp)) : leaveEntries;
+  // derive year/month from leave_report_no prefix and start_date
+  const parseReportYearSeq = (rrn) => {
+    if (!rrn) return { year: null, seq: 0 };
+    const parts = String(rrn).split('_');
+    if (parts.length < 2) return { year: null, seq: 0 };
+    const prefix = parts[0];
+    const seq = parseInt(parts[1], 10) || 0;
+    const year = 2000 + (parseInt(prefix, 10) || 0);
+    return { year, seq };
+  };
+
+  const filteredEntries = (leaveEntries || []).filter(le => {
+    if (filterEmp && String(le.emp) !== String(filterEmp)) return false;
+    if (yearFilter) {
+      const p = parseReportYearSeq(le.leave_report_no);
+      if (String(p.year) !== String(yearFilter)) return false;
+    }
+    if (monthFilter) {
+      // use start_date month (1-12)
+      const sd = le.start_date;
+      if (!sd) return false;
+      const m = (new Date(sd)).getMonth() + 1;
+      if (String(m) !== String(monthFilter)) return false;
+    }
+    return true;
+  }).sort((a, b) => {
+    // sort by year then seq, descending to show latest first
+    const pa = parseReportYearSeq(a.leave_report_no);
+    const pb = parseReportYearSeq(b.leave_report_no);
+    if (pa.year !== pb.year) return pb.year - pa.year;
+    return pb.seq - pa.seq;
+  });
 
   return (
     <div className="p-4 md:p-6 space-y-4">
+      {/* Debug panel to help trace why records may not appear */}
+      <div className="flex gap-2 items-center">
+        <button onClick={() => setDebugOpen(o => !o)} className="px-2 py-1 text-xs border rounded">{debugOpen ? 'Hide' : 'Show'} Debug</button>
+        <div className="text-xs text-gray-500">(shows matched profile and a preview of fetched leave entries)</div>
+      </div>
+      {debugOpen && (
+        <div className="border rounded p-3 bg-white text-xs">
+          <div><strong>Auth username:</strong> {user?.username || 'anonymous'}</div>
+          <div><strong>Matched profile:</strong> {JSON.stringify(profile || null)}</div>
+          <div className="mt-2"><strong>Fetched leaveEntries (preview):</strong></div>
+          <pre className="text-xs max-h-40 overflow-auto bg-gray-100 p-2">{JSON.stringify((leaveEntries||[]).slice(0,5), null, 2)}</pre>
+        </div>
+      )}
       <div className="sticky top-0 z-30 flex items-center justify-between bg-white border-b px-3 py-2">
         <div className="flex items-center gap-2">
           <span className="text-2xl text-indigo-700"><FaUserTie /></span>
@@ -232,7 +287,8 @@ const EmpLeavePage = () => {
 
                 <div className="flex items-center">
                   {error && <div className="text-red-500 mr-3 text-sm">{error}</div>}
-                  <button type="submit" className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm h-10 w-20 flex items-center justify-center" disabled={loading}>{loading ? 'Applying...' : 'Apply'}</button>
+                  <button type="submit" className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm h-10 w-20 flex items-center justify-center" disabled={loading}>{loading ? (editingId ? 'Saving...' : 'Applying...') : (editingId ? 'Save' : 'Apply')}</button>
+                  {editingId && <button type="button" onClick={() => { setEditingId(null); setForm({ emp_id: '', leave_type: '', leave_type_code: '', start_date: '', end_date: '', reason: '', total_days: '' }); }} className="ml-2 px-3 py-2 rounded-lg border text-sm">Cancel</button>}
                 </div>
               </form>
             )}
@@ -261,8 +317,7 @@ const EmpLeavePage = () => {
                     }} className="px-3 py-2 bg-blue-600 text-white rounded">Refresh</button>
                   </div>
                 </div>
-
-                <div className="overflow-auto">
+                  <div className="overflow-auto">
                   {/* Build a wide table aggregated by employee and leave type */}
                   <table className="min-w-full text-sm table-auto">
                     <thead>
@@ -344,6 +399,61 @@ const EmpLeavePage = () => {
                   </table>
                 </div>
               </div>
+              {/* Editable allocations list for managers */}
+              <div className="mt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="font-semibold">Allocations (editable)</div>
+                  <div className="text-sm text-gray-500">{allocations.length} allocation(s)</div>
+                </div>
+                {allocations.length === 0 ? (
+                  <div className="text-gray-500">No allocations for selected period</div>
+                ) : (
+                  <div className="overflow-auto">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="py-2 px-3 text-left">Emp</th>
+                          <th className="py-2 px-3 text-left">Leave Type</th>
+                          <th className="py-2 px-3 text-left">Allocated</th>
+                          <th className="py-2 px-3 text-left">Used</th>
+                          <th className="py-2 px-3 text-left">Balance</th>
+                          <th className="py-2 px-3 text-left">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allocations.map(a => (
+                          <tr key={a.id} className="border-b hover:bg-gray-50">
+                            <td className="py-2 px-3">{a.profile_name || a.profile || a.profile_id}</td>
+                            <td className="py-2 px-3">{a.leave_type_name || a.leave_type}</td>
+                            <td className="py-2 px-3">
+                              <input type="number" step="0.5" defaultValue={a.allocated} id={"alloc-" + a.id} className="border rounded p-1 w-28 text-sm" />
+                            </td>
+                            <td className="py-2 px-3">{typeof a.used !== 'undefined' ? a.used : (typeof a.used_days !== 'undefined' ? a.used_days : 0)}</td>
+                            <td className="py-2 px-3">{typeof a.balance !== 'undefined' ? a.balance : ''}</td>
+                            <td className="py-2 px-3">
+                              {(user?.is_staff || user?.is_superuser) ? (
+                                <button onClick={async () => {
+                                  const el = document.getElementById(`alloc-${a.id}`);
+                                  const val = el ? el.value : a.allocated;
+                                  try {
+                                    await axios.patch(`/api/leave-allocations/${a.id}/`, { allocated: val });
+                                    // refresh allocations
+                                    const params = selectedPeriod ? `?period=${selectedPeriod}` : '';
+                                    const r = await axios.get(`/api/leave-allocations/${params}`);
+                                    setAllocations(r.data || []);
+                                  } catch (e) {
+                                    alert('Failed to update allocation');
+                                  }
+                                }} className="px-2 py-1 rounded bg-green-600 text-white text-sm">Save</button>
+                              ) : (<span className="text-xs text-gray-400">No access</span>)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             )}
 
             {selectedPanel === 'Balance Certificate' && (
@@ -375,7 +485,31 @@ const EmpLeavePage = () => {
             <div className="text-sm text-gray-500">{leaveEntries.length} record(s)</div>
           </div>
 
-          <div className="overflow-auto flex-1">
+            <div className="p-3 bg-white border-b flex items-center gap-3">
+              <div>
+                <label className="text-xs block">Year</label>
+                <select value={yearFilter} onChange={e => setYearFilter(e.target.value)} className="border rounded p-1 text-sm">
+                  <option value="">All</option>
+                  {[...new Set((leaveEntries||[]).map(le => parseReportYearSeq(le.leave_report_no).year).filter(Boolean))].sort((a,b)=>b-a).map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs block">Month</label>
+                <select value={monthFilter} onChange={e => setMonthFilter(e.target.value)} className="border rounded p-1 text-sm">
+                  <option value="">All</option>
+                  {Array.from({length:12}).map((_,i)=>{
+                    const val = i+1; return <option key={val} value={val}>{val}</option>;
+                  })}
+                </select>
+              </div>
+
+              <div className="ml-auto">
+                <button onClick={async ()=>{ try { const r = await axios.get('/api/leaveentry/'); setLeaveEntries(r.data || []); } catch(e){ } }} className="px-3 py-1 rounded bg-blue-600 text-white text-sm">Refresh</button>
+              </div>
+            </div>
+
+            <div className="overflow-auto flex-1">
             <table className="min-w-full text-sm">
               <thead className="bg-gray-50">
                 <tr>
@@ -388,13 +522,23 @@ const EmpLeavePage = () => {
                 </tr>
               </thead>
               <tbody>
-                {leaveEntries.length === 0 ? (
+                {filteredEntries.length === 0 ? (
                   <tr><td colSpan={6} className="py-6 text-center text-gray-500">No records</td></tr>
-                ) : leaveEntries.map((le) => (
-                  <tr key={le.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => { setForm({ leave_type: le.leave_type, start_date: le.start_date, end_date: le.end_date, reason: le.reason || '' }); setProfile(profiles.find(p => p.id === le.emp) || profile); setSelectedPanel('Entry Leave'); setPanelOpen(true); }}>
+                ) : filteredEntries.map((le) => (
+                  <tr key={le.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => {
+                    // load record into entry panel for editing
+                    setForm({ emp_id: '', leave_type: le.leave_type, leave_type_code: le.leave_type_code || '', start_date: le.start_date, end_date: le.end_date, reason: le.reason || '', total_days: le.total_days || '' });
+                    // try match profile from loaded profiles
+                    const p = profiles.find(p => String(p.id) === String(le.emp) || String(p.emp_id) === String(le.emp));
+                    if (p) setProfile(p);
+                    // if we have an emp_id string on profile, set it
+                    setForm(f => ({ ...f, emp_id: (p?.emp_id || f.emp_id) }));
+                    setSelectedPanel('Entry Leave'); setPanelOpen(true);
+                    setEditingId(le.id);
+                  }}>
                     <td className="py-2 px-3">{le.leave_report_no}</td>
                     <td className="py-2 px-3">{le.emp_name}</td>
-                    <td className="py-2 px-3">{le.leave_type_name}</td>
+                    <td className="py-2 px-3">{le.leave_type_name || le.leave_type}</td>
                     <td className="py-2 px-3">{le.start_date} - {le.end_date}</td>
                     <td className="py-2 px-3">{le.total_days}</td>
                     <td className="py-2 px-3">{le.status}</td>
@@ -405,8 +549,8 @@ const EmpLeavePage = () => {
           </div>
 
           <div className="p-3 bg-gray-50 flex items-center justify-between">
-            <div className="text-xs text-gray-500">Tip: use the Report panel to filter quickly.</div>
-            <div className="text-xs text-gray-500">Showing latest records first.</div>
+            <div className="text-xs text-gray-500">Tip: click a record to open it in the Add panel for editing. Use Refresh after external uploads.</div>
+            <div className="text-xs text-gray-500">Showing filtered records (latest first).</div>
           </div>
         </div>
       )}

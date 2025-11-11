@@ -38,12 +38,12 @@ export default function AuthEmp() {
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
-              <th className="text-left py-2 px-3">Emp ID</th>
-              <th className="text-left py-2 px-3">Name</th>
-              <th className="text-left py-2 px-3">UserID</th>
-              <th className="text-left py-2 px-3">Status</th>
-              <th className="text-left py-2 px-3">Institute</th>
-            </tr>
+                <th className="text-left py-2 px-3">Emp ID</th>
+                <th className="text-left py-2 px-3">Name</th>
+                <th className="text-left py-2 px-3">Username / Usercode</th>
+                <th className="text-left py-2 px-3">Status</th>
+                <th className="text-left py-2 px-3">Institute</th>
+              </tr>
           </thead>
           <tbody>
             {profiles.length === 0 ? (
@@ -52,7 +52,7 @@ export default function AuthEmp() {
               <tr key={p.id} className="border-b hover:bg-gray-50">
                 <td className="py-2 px-3">{p.emp_id}</td>
                 <td className="py-2 px-3">{p.emp_name}</td>
-                <td className="py-2 px-3">{p.userid}</td>
+                <td className="py-2 px-3">{p.username || p.usercode}</td>
                 <td className="py-2 px-3">{p.status}</td>
                 <td className="py-2 px-3">{p.institute_id}</td>
                 <td className="py-2 px-3">
@@ -66,12 +66,12 @@ export default function AuthEmp() {
       {editing && (
         <div className="mt-4 bg-white p-4 rounded shadow">
           <h4 className="font-semibold mb-2">{editing && editing.id ? 'Edit Employee' : 'Add Employee'}</h4>
-          <form onSubmit={async (e) => {
+            <form onSubmit={async (e) => {
             e.preventDefault();
             const fd = new FormData(e.target);
-            const payload = {
-              emp_id: fd.get('emp_id'), emp_name: fd.get('emp_name'), userid: fd.get('userid'), institute_id: fd.get('institute_id'), status: fd.get('status')
-            };
+              const payload = {
+                emp_id: fd.get('emp_id'), emp_name: fd.get('emp_name'), username: fd.get('username'), usercode: fd.get('usercode'), institute_id: fd.get('institute_id'), status: fd.get('status')
+              };
             try {
               if (editing.id) {
                 await axios.put(`/api/empprofile/${editing.id}/`, payload);

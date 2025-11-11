@@ -19,7 +19,7 @@ const UserRights = ({ fetchUserPermissions, updateUserPermission }) => {
 
   useEffect(() => {
     if (selectedUser) {
-      const uid = selectedUser?.id ?? selectedUser?.userid;
+      const uid = selectedUser?.id ?? selectedUser?.username ?? selectedUser?.usercode;
       fetchUserPermissions(uid).then((data) => {
         // normalize incoming menus/modules to expected keys
         setSelectedMenus(data.menus || {});
@@ -122,7 +122,7 @@ const UserRights = ({ fetchUserPermissions, updateUserPermission }) => {
         enrichedMenus[menuId] = { ...perms, module: moduleId };
       }
 
-  const userId = selectedUser?.id ?? selectedUser?.userid;
+  const userId = selectedUser?.id ?? selectedUser?.username ?? selectedUser?.usercode;
   const res = await updateUserPermission(userId, { menus: enrichedMenus, modules: selectedModules });
       if (res === false) {
         toast.error('Save failed (server returned failure).');
@@ -142,11 +142,11 @@ const UserRights = ({ fetchUserPermissions, updateUserPermission }) => {
 
       <select
         className="p-2 border rounded"
-        onChange={(e) => setSelectedUser(users.find((u) => String((u.id ?? u.userid)) === e.target.value))}
+        onChange={(e) => setSelectedUser(users.find((u) => String((u.id ?? u.username ?? u.usercode)) === e.target.value))}
       >
         <option value="">Select a user</option>
         {users.map((user) => (
-          <option key={(user.id ?? user.userid)} value={String((user.id ?? user.userid))}>
+          <option key={(user.id ?? user.username ?? user.usercode)} value={String((user.id ?? user.username ?? user.usercode))}>
             {user.username}
           </option>
         ))}

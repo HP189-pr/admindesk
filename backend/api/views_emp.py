@@ -9,6 +9,9 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from datetime import timedelta
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from django.utils import timezone
 
 
 def _user_identifiers(user):
@@ -108,6 +111,44 @@ class LeaveAllocationListView(generics.ListAPIView):
 		if institute:
 			qs = qs.filter(profile__institute_id__iexact=institute)
 		return qs
+
+
+class LeaveAllocationDetailView(APIView):
+	"""Allow authorized managers to update a single LeaveAllocation (allocated amount)."""
+	permission_classes = [IsLeaveManager]
+
+	def patch(self, request, pk, *args, **kwargs):
+		from django.db import connection
+		val = request.data.get('allocated')
+		if val is None:
+			return Response({'detail': 'allocated is required'}, status=status.HTTP_400_BAD_REQUEST)
+		try:
+			# use numeric cast safety
+			allocated = float(val)
+		except Exception:
+			return Response({'detail': 'allocated must be a number'}, status=status.HTTP_400_BAD_REQUEST)
+		try:
+			# update via ORM update to avoid managed=False save issues
+			updated = LeaveAllocation.objects.filter(pk=pk).update(allocated=allocated, updated_at=timezone.now())
+			if not updated:
+				return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+			return Response({'id': pk, 'allocated': allocated})
+		except Exception as e:
+			return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+	def get(self, request, pk, *args, **kwargs):
+		try:
+			obj = LeaveAllocation.objects.select_related('profile', 'leave_type', 'period').get(pk=pk)
+			data = {
+				'id': obj.id,
+				'profile': obj.profile.id if obj.profile else None,
+				'leave_type': getattr(obj.leave_type, 'leave_code', obj.leave_type),
+				'allocated': float(obj.allocated),
+				'period': obj.period.id if obj.period else None,
+			}
+			return Response(data)
+		except LeaveAllocation.DoesNotExist:
+			return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
 
 
 class MyLeaveBalanceView(generics.GenericAPIView):
@@ -680,7 +721,8 @@ class LeaveEntryViewSet(viewsets.ModelViewSet):
 			return qs.none()
 		lookup = Q()
 		for ident in identifiers:
-			lookup |= Q(emp__username__iexact=ident) | Q(emp__usercode__iexact=ident)
+			# Match by linked EmpProfile fields: username, usercode or emp_id
+			lookup |= Q(emp__username__iexact=ident) | Q(emp__usercode__iexact=ident) | Q(emp__emp_id__iexact=ident)
 		return qs.filter(lookup)
 
 	def perform_create(self, serializer):

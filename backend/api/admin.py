@@ -408,6 +408,18 @@ class ExcelUploadMixin:
                     if sheet not in frames:
                         return JsonResponse({"error": "Sheet not found"}, status=404)
                     df = frames[sheet]
+                    # Normalize column names (strip accidental whitespace) to match allowed columns
+                    try:
+                        df.columns = [str(c).strip() for c in df.columns]
+                    except Exception:
+                        pass
+
+                    # Replace literal string sentinels that may appear in Excel cells
+                    try:
+                        if pd is not None:
+                            df = df.replace({r'^\s*nan\s*$': None, r'^\s*NaN\s*$': None, r'^\s*None\s*$': None, '<NA>': None}, regex=True)
+                    except Exception:
+                        pass
                     total = len(df.index)
                     preview_df = df[selected].head(50).fillna("")
                     rows = [list(map(_sanitize, r)) for r in preview_df.values.tolist()]
@@ -452,6 +464,41 @@ class ExcelUploadMixin:
                                     df[fk_col] = df[fk_col].apply(lambda v: None if (pd.isna(v) or (isinstance(v, str) and str(v).strip().lower() in ("nan","none","<na>"))) else v)
                     except Exception:
                         # be tolerant: proceed without vectorized cleaning if something fails
+                        pass
+                    # Clean decimal-like numeric columns (avoid passing 'nan' strings to DecimalField)
+                    try:
+                        if pd is not None:
+                            # Common decimal columns across models (EmpProfile, LeaveAllocation snapshot, etc.)
+                            decimal_cols = [
+                                "el_balance", "sl_balance", "cl_balance", "vacation_balance",
+                                "joining_year_allocation_el", "joining_year_allocation_cl", "joining_year_allocation_sl", "joining_year_allocation_vac",
+                                "total_days", "pay_amount", "allocated",
+                            ]
+                            for c in decimal_cols:
+                                if c in df.columns:
+                                    try:
+                                        # coerce non-numeric (including pandas NA/NaN and strings like 'nan') to NaN
+                                        df[c] = pd.to_numeric(df[c], errors='coerce')
+                                        # replace NaN with 0 to satisfy DecimalField (most balance fields default to 0)
+                                        df[c] = df[c].fillna(0)
+                                    except Exception:
+                                        # best-effort: fallback to per-cell cleaning
+                                        def _clean_num(v):
+                                            try:
+                                                if pd.isna(v):
+                                                    return 0
+                                            except Exception:
+                                                pass
+                                            try:
+                                                s = str(v).strip()
+                                                if s.lower() in ("", "nan", "none", "<na>"):
+                                                    return 0
+                                                return float(s)
+                                            except Exception:
+                                                return 0
+                                        df[c] = df[c].apply(_clean_num)
+                    except Exception:
+                        # tolerate any issues here and continue; row-level handling will still skip bad rows
                         pass
                     # Vectorized date normalization to plain date objects (prevents NaTType tz issues)
                     if pd is not None:
@@ -1245,10 +1292,56 @@ except Exception:
 @admin.register(EmpProfile)
 class EmpProfileUploadAdmin(CommonAdminMixin):
     # Preserve the existing admin configuration while adding upload support
-    list_display = ('emp_id', 'emp_name', 'emp_designation', 'status', 'username', 'usercode', 'el_balance', 'sl_balance', 'cl_balance', 'vacation_balance')
+    # Use display helpers so admin shows integers when balances are whole numbers
+    list_display = (
+        'emp_id', 'emp_name', 'emp_designation', 'status', 'username', 'usercode',
+        'el_balance_display', 'sl_balance_display', 'cl_balance_display', 'vacation_balance_display',
+        'actual_joining_display'
+    )
     search_fields = ('emp_id', 'emp_name', 'username', 'usercode')
     list_filter = ('status', 'leave_group', 'department_joining', 'institute_id')
     inlines = (LeaveAllocationInline, LeaveEntryInline)
+
+    def _fmt_decimal(self, val):
+        try:
+            from decimal import Decimal
+            if val is None:
+                return ''
+            d = val if isinstance(val, Decimal) else Decimal(str(val))
+            if d == d.to_integral():
+                return str(int(d))
+            # remove trailing zeros
+            return str(d.normalize())
+        except Exception:
+            return str(val)
+
+    def _fmt_date(self, val):
+        if not val:
+            return ''
+        try:
+            return val.strftime('%d-%m-%Y')
+        except Exception:
+            return str(val)
+
+    def el_balance_display(self, obj):
+        return self._fmt_decimal(getattr(obj, 'el_balance', None))
+    el_balance_display.short_description = 'EL Balance'
+
+    def sl_balance_display(self, obj):
+        return self._fmt_decimal(getattr(obj, 'sl_balance', None))
+    sl_balance_display.short_description = 'SL Balance'
+
+    def cl_balance_display(self, obj):
+        return self._fmt_decimal(getattr(obj, 'cl_balance', None))
+    cl_balance_display.short_description = 'CL Balance'
+
+    def vacation_balance_display(self, obj):
+        return self._fmt_decimal(getattr(obj, 'vacation_balance', None))
+    vacation_balance_display.short_description = 'Vacation'
+
+    def actual_joining_display(self, obj):
+        return self._fmt_date(getattr(obj, 'actual_joining', None))
+    actual_joining_display.short_description = 'Joining Date'
 
 
 try:
@@ -1259,7 +1352,7 @@ except Exception:
 
 @admin.register(LeaveEntry)
 class LeaveEntryUploadAdmin(CommonAdminMixin):
-    list_display = ('leave_report_no', 'emp', 'leave_type', 'start_date', 'end_date', 'total_days', 'status', 'created_by', 'approved_by')
+    list_display = ('leave_report_no', 'emp', 'emp_name', 'leave_type', 'start_date', 'end_date', 'total_days', 'status', 'report_date', 'leave_remark', 'created_by', 'approved_by')
     search_fields = ('leave_report_no', 'emp__emp_name', 'leave_type__leave_name')
     list_filter = ('status', 'leave_type', 'emp')
     readonly_fields = ('leave_report_no', 'total_days')

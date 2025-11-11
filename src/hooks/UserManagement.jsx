@@ -40,7 +40,7 @@ const UserManagement = ({ selectedTopbarMenu }) => {
   // 🔹 Handle Delete User
   const handleDelete = (userId) => {
     if (window.confirm("Are you sure you want to delete this user?")) {
-      setUsers(users.filter((user) => user.userid !== userId));
+      setUsers(users.filter((user) => (user.id ?? user.username ?? user.usercode) !== userId));
       alert(`User deleted: ${userId}`);
     }
   };
@@ -108,7 +108,7 @@ const UserManagement = ({ selectedTopbarMenu }) => {
                   </thead>
                   <tbody>
                     {users.map((user) => (
-                      <tr key={(user.id ?? user.userid)} className="text-center">
+                      <tr key={(user.id ?? user.username ?? user.usercode)} className="text-center">
                         <td className="px-4 py-2 border">
                           <img
                             src={user.profile_picture || "/profilepic/default-profile.png"}
@@ -122,7 +122,7 @@ const UserManagement = ({ selectedTopbarMenu }) => {
                         <td className="px-4 py-2 border">{user.last_name}</td>
                         <td className="px-4 py-2 border">
                           <button
-                            onClick={() => handleEdit(user.id ?? user.userid)}
+                            onClick={() => handleEdit(user.id ?? user.username ?? user.usercode)}
                             className="bg-yellow-500 text-white px-3 py-1 rounded"
                           >
                             Edit
@@ -130,7 +130,7 @@ const UserManagement = ({ selectedTopbarMenu }) => {
                         </td>
                         <td className="px-4 py-2 border">
                           <button
-                            onClick={() => handleChangePassword(user.id ?? user.userid)}
+                            onClick={() => handleChangePassword(user.id ?? user.username ?? user.usercode)}
                             className="bg-blue-500 text-white px-3 py-1 rounded"
                           >
                             Change
@@ -138,7 +138,7 @@ const UserManagement = ({ selectedTopbarMenu }) => {
                         </td>
                         <td className="px-4 py-2 border">
                           <button
-                            onClick={() => handleDelete(user.id ?? user.userid)}
+                            onClick={() => handleDelete(user.id ?? user.username ?? user.usercode)}
                             className="bg-red-500 text-white px-3 py-1 rounded"
                           >
                             Delete
