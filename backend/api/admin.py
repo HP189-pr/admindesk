@@ -5,8 +5,8 @@ from .domain_logs import UserActivityLog, ErrorLog
 
 @admin.register(EmpProfile)
 class EmpProfileAdmin(admin.ModelAdmin):
-    list_display = ('emp_id', 'emp_name', 'emp_designation', 'status', 'userid', 'el_balance', 'sl_balance', 'cl_balance', 'vacation_balance')
-    search_fields = ('emp_id', 'emp_name', 'userid')
+    list_display = ('emp_id', 'emp_name', 'emp_designation', 'status', 'username', 'usercode', 'el_balance', 'sl_balance', 'cl_balance', 'vacation_balance')
+    search_fields = ('emp_id', 'emp_name', 'username', 'usercode')
     list_filter = ('status', 'leave_group', 'department_joining', 'institute_id')
     # allow inline management of allocations and leave entries from the employee page
     # Inlines are defined later and injected here via ModelAdmin.inlines assignment below.
@@ -234,7 +234,7 @@ def get_import_spec(model) -> Dict[str, Any]:
         Institute: {"allowed_columns": ["institute_id", "institute_code", "institute_name", "institute_campus", "institute_address", "institute_city"], "required_keys": ["institute_id"], "create_requires": ["institute_id", "institute_code"]},
         Enrollment: {"allowed_columns": ["enrollment_no", "student_name", "batch", "institute_id", "subcourse_id", "maincourse_id", "temp_enroll_no", "enrollment_date", "admission_date"], "required_keys": ["enrollment_no"], "create_requires": ["enrollment_no", "student_name", "batch", "institute_id", "subcourse_id", "maincourse_id"]},
             # Employee (EmpProfile) bulk upload
-            EmpProfile: {"allowed_columns": ["emp_id", "emp_name", "emp_designation", "userid", "actual_joining", "emp_birth_date", "usr_birth_date", "department_joining", "institute_id", "status", "el_balance", "sl_balance", "cl_balance", "vacation_balance", "joining_year_allocation_el", "joining_year_allocation_cl", "joining_year_allocation_sl", "joining_year_allocation_vac", "leave_calculation_date", "emp_short"], "required_keys": ["emp_id"], "create_requires": ["emp_id", "emp_name"]},
+            EmpProfile: {"allowed_columns": ["emp_id", "emp_name", "emp_designation", "username", "usercode", "actual_joining", "emp_birth_date", "usr_birth_date", "department_joining", "institute_id", "status", "el_balance", "sl_balance", "cl_balance", "vacation_balance", "joining_year_allocation_el", "joining_year_allocation_cl", "joining_year_allocation_sl", "joining_year_allocation_vac", "leave_calculation_date", "emp_short"], "required_keys": ["emp_id"], "create_requires": ["emp_id", "emp_name"]},
             # LeaveEntry bulk upload
             LeaveEntry: {"allowed_columns": ["leave_report_no", "emp_id", "leave_code", "start_date", "end_date", "total_days", "reason", "status", "created_by", "approved_by", "approved_at"], "required_keys": ["leave_report_no"], "create_requires": ["leave_report_no", "emp_id", "leave_code", "start_date"]},
         StudentProfile: {"allowed_columns": ["enrollment_no", "gender", "birth_date", "address1", "address2", "city1", "city2", "contact_no", "email", "fees", "hostel_required", "aadhar_no", "abc_id", "mobile_adhar", "name_adhar", "mother_name", "category", "photo_uploaded", "is_d2d", "program_medium"], "required_keys": ["enrollment_no"], "create_requires": ["enrollment_no"]},
@@ -1245,8 +1245,8 @@ except Exception:
 @admin.register(EmpProfile)
 class EmpProfileUploadAdmin(CommonAdminMixin):
     # Preserve the existing admin configuration while adding upload support
-    list_display = ('emp_id', 'emp_name', 'emp_designation', 'status', 'userid', 'el_balance', 'sl_balance', 'cl_balance', 'vacation_balance')
-    search_fields = ('emp_id', 'emp_name', 'userid')
+    list_display = ('emp_id', 'emp_name', 'emp_designation', 'status', 'username', 'usercode', 'el_balance', 'sl_balance', 'cl_balance', 'vacation_balance')
+    search_fields = ('emp_id', 'emp_name', 'username', 'usercode')
     list_filter = ('status', 'leave_group', 'department_joining', 'institute_id')
     inlines = (LeaveAllocationInline, LeaveEntryInline)
 

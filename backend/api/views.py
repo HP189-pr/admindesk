@@ -514,7 +514,7 @@ class BulkUploadView(APIView):
             ],
             BulkService.DEGREE: None,
             BulkService.EMP_PROFILE: [
-                "emp_id","emp_name","emp_designation","userid","actual_joining","emp_birth_date","usr_birth_date","department_joining","institute_id","status","el_balance","sl_balance","cl_balance","vacation_balance",
+                "emp_id","emp_name","emp_designation","username","usercode","actual_joining","emp_birth_date","usr_birth_date","department_joining","institute_id","status","el_balance","sl_balance","cl_balance","vacation_balance",
                 "joining_year_allocation_el","joining_year_allocation_cl","joining_year_allocation_sl","joining_year_allocation_vac","leave_calculation_date","emp_short"
             ],
             BulkService.LEAVE: [
@@ -540,8 +540,10 @@ class BulkUploadView(APIView):
                     example[c] = 'John Doe'
                 elif 'designation' in lc:
                     example[c] = 'Manager'
-                elif 'userid' in lc:
+                elif 'username' in lc:
                     example[c] = 'jdoe'
+                elif 'usercode' in lc:
+                    example[c] = 'EMP001'
                 elif 'joining' in lc and 'date' in lc or lc in ('actual_joining',):
                     example[c] = today.strftime('%Y-%m-%d')
                 elif 'birth' in lc and 'date' in lc or 'birth_date' in lc:
@@ -1293,7 +1295,11 @@ class BulkUploadView(APIView):
                         defaults = {
                             "emp_name": row.get("emp_name") or "",
                             "emp_designation": row.get("emp_designation") or None,
-                            "userid": row.get("userid") or None,
+                                # legacy `userid` removed; accept username/usercode instead
+                                "username": row.get("username") or None,
+                                "usercode": row.get("usercode") or None,
+                            "username": row.get("username") or None,
+                            "usercode": row.get("usercode") or None,
                             "actual_joining": actual_joining,
                             "emp_birth_date": emp_birth,
                             "usr_birth_date": usr_birth,

@@ -5,11 +5,13 @@ import Provisional from "./Provisional";
 import Enrollment from "./Enrollment";
 import Degree from "./Degree";
 import InstitutionalVerification from "./Inst-Verification";
-import CustomDashboard from './CustomDashboard';
+import CustomDashboard from './CustomDashboardClean';
 import DocReceive from "./doc-receive";
 import AdminDashboard from "../components/AdminDashboard";
 import ProfileUpdate from "../components/ProfileUpdate";
 import EmpLeavePage from "./emp-leave.jsx";
+import MailRequestPage from "./mail_request";
+import TranscriptRequestPage from "./transcript_request";
 
 
 
@@ -56,6 +58,8 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
   else if (l.includes("provisional")) key = "provisional";
   else if (l.includes("degree")) key = "degree";
   else if ((l.includes("document") || l.includes("doc")) && l.includes("receive")) key = "doc_receive";
+  else if ((l.includes("mail") && l.includes("status")) || l.includes("mail request")) key = "mail_request";
+  else if (l.includes("transcript")) key = "transcript_request";
   else if (l.includes("leave management")) key = "emp_leave";
   else if (l.includes("leave report")) key = "emp_leave_report";
   else if (l.includes("balance certificate")) key = "emp_balance_certificate";
@@ -109,6 +113,20 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
       case "doc_receive":
         return (
           <DocReceive
+            onToggleSidebar={onToggleSidebar}
+            onToggleChatbox={onToggleChatbox}
+          />
+        );
+      case "mail_request":
+        return (
+          <MailRequestPage
+            onToggleSidebar={onToggleSidebar}
+            onToggleChatbox={onToggleChatbox}
+          />
+        );
+      case "transcript_request":
+        return (
+          <TranscriptRequestPage
             onToggleSidebar={onToggleSidebar}
             onToggleChatbox={onToggleChatbox}
           />

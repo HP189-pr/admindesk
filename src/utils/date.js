@@ -6,11 +6,22 @@ export function pad2(n) {
 
 export function isoToDMY(iso) {
   if (!iso) return '';
+  const s = String(iso).trim();
   // Accept full ISO or plain yyyy-mm-dd
-  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!m) return '';
-  const [, y, mo, d] = m;
-  return `${d}-${mo}-${y}`;
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) {
+    const [, y, mo, d] = m;
+    return `${d}-${mo}-${y}`;
+  }
+  // Already in dd-mm-yyyy: return normalized form
+  m = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (m) {
+    let [, d, mo, y] = m;
+    d = pad2(d);
+    mo = pad2(mo);
+    return `${d}-${mo}-${y}`;
+  }
+  return '';
 }
 
 export function dmyToISO(dmy) {

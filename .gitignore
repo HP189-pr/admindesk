@@ -7,6 +7,7 @@ dist/
 backend/__pycache__/
 backend/db.sqlite3
 backend/.env
+backend/secrets/
 venv/
 
 # VS Code and OS-specific files

@@ -1,0 +1,661 @@
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import axios from 'axios';
+import PageTopbar from '../components/PageTopbar';
+import {
+  fetchTranscriptRequests,
+  updateTranscriptRequest,
+  bulkUpdateTranscriptStatus,
+} from '../services/transcriptreqService';
+
+const API_BASE_URL = 'http://127.0.0.1:8000';
+const ACTIONS = ['🔍 Filter', '🧰 Tools', '📝 Edit'];
+
+const STATUS_LABELS = {
+  pending: 'Pending',
+  progress: 'In Progress',
+  done: 'Sent',
+};
+
+const STATUS_OPTIONS = [
+  { value: '', label: 'All' },
+  { value: 'pending', label: STATUS_LABELS.pending },
+  { value: 'progress', label: STATUS_LABELS.progress },
+  { value: 'done', label: STATUS_LABELS.done },
+];
+
+const RIGHTS_FALLBACK = { can_view: false, can_create: false, can_edit: false, can_delete: false };
+const RIGHTS_DEFAULT = { can_view: true, can_create: false, can_edit: true, can_delete: false };
+
+const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
+  const [statusFilter, setStatusFilter] = useState('');
+  const [instituteFilter, setInstituteFilter] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [selectedAction, setSelectedAction] = useState(ACTIONS[0]);
+  const [panelOpen, setPanelOpen] = useState(true);
+  const [rows, setRows] = useState([]);
+  const [rawResponse, setRawResponse] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [flash, setFlash] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [activeRow, setActiveRow] = useState(null);
+  const [editForm, setEditForm] = useState({ mail_status: 'pending', transcript_remark: '' });
+  const activeRowRef = useRef(null);
+  const [updatingId, setUpdatingId] = useState(null);
+  const [bulkStatus, setBulkStatus] = useState('');
+  const [rights, setRights] = useState(RIGHTS_FALLBACK);
+  const [rightsLoaded, setRightsLoaded] = useState(false);
+
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 350);
+    return () => clearTimeout(handle);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      setRights(RIGHTS_FALLBACK);
+      setRightsLoaded(true);
+      return;
+    }
+    const loadRights = async () => {
+      try {
+        const { data } = await axios.get(`${API_BASE_URL}/api/my-navigation/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const modules = data?.modules || [];
+        const targetKeywords = ['transcript request', 'transcript'];
+        let match = RIGHTS_FALLBACK;
+        for (const mod of modules) {
+          for (const menu of mod?.menus || []) {
+            const name = (menu?.name || '').toLowerCase();
+            if (targetKeywords.some((kw) => name.includes(kw))) {
+              match = {
+                can_view: !!menu?.rights?.can_view || !!menu?.rights?.view,
+                can_create: !!menu?.rights?.can_create || !!menu?.rights?.add,
+                can_edit: !!menu?.rights?.can_edit || !!menu?.rights?.edit,
+                can_delete: !!menu?.rights?.can_delete || !!menu?.rights?.delete,
+              };
+              break;
+            }
+          }
+          if (match !== RIGHTS_FALLBACK) break;
+        }
+        if (match === RIGHTS_FALLBACK) {
+          match = RIGHTS_DEFAULT;
+        }
+        setRights(match);
+      } catch (err) {
+        setRights(RIGHTS_DEFAULT);
+      } finally {
+        setRightsLoaded(true);
+      }
+    };
+    loadRights();
+  }, []);
+
+  const setFlashMessage = useCallback((type, text) => {
+    setFlash({ type, text });
+    if (text) {
+      setTimeout(() => setFlash(null), 3500);
+    }
+  }, []);
+
+  const loadRows = useCallback(async () => {
+    if (!rights.can_view) return;
+    setLoading(true);
+    setError('');
+    try {
+      const { rows: dataRows, raw } = await fetchTranscriptRequests({
+        status: statusFilter || undefined,
+        search: debouncedSearch || undefined,
+        institute: instituteFilter || undefined,
+      });
+      setRows(dataRows);
+      setRawResponse(raw);
+      setSelectedIds((prev) => prev.filter((id) => dataRows.some((row) => row.id === id)));
+      setActiveRow((prev) => {
+        if (!dataRows.length) return null;
+        if (!prev) return dataRows[0];
+        const match = dataRows.find((row) => row.id === prev.id);
+        return match || dataRows[0];
+      });
+    } catch (err) {
+      setError(err.message || 'Failed to load transcript requests.');
+      setRows([]);
+      setActiveRow(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [rights.can_view, statusFilter, debouncedSearch, instituteFilter]);
+
+  useEffect(() => {
+    if (!rightsLoaded || !rights.can_view) {
+      if (rightsLoaded && !rights.can_view) setRows([]);
+      return;
+    }
+    loadRows();
+  }, [loadRows, rightsLoaded, rights.can_view]);
+
+  useEffect(() => {
+    if (rightsLoaded && !rights.can_view) {
+      setActiveRow(null);
+      setSelectedIds([]);
+    }
+  }, [rightsLoaded, rights.can_view]);
+
+  useEffect(() => {
+    if (!activeRow) {
+      setEditForm({ mail_status: 'pending', transcript_remark: '' });
+      return;
+    }
+    activeRowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setEditForm({
+      mail_status: activeRow.mail_status || 'pending',
+      transcript_remark: activeRow.transcript_remark || '',
+    });
+  }, [activeRow]);
+
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const toggleSelectAll = () => {
+    if (!rows.length) return;
+    const selectableIds = rows.map((row) => row.id);
+    const allSelected = selectableIds.every((id) => selectedIds.includes(id));
+    if (allSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !selectableIds.includes(id)));
+    } else {
+      setSelectedIds(Array.from(new Set([...selectedIds, ...selectableIds])));
+    }
+  };
+
+  const handleRowSelect = useCallback((row) => {
+    if (!row) return;
+    setActiveRow(row);
+    setEditForm({
+      mail_status: row.mail_status || 'pending',
+      transcript_remark: row.transcript_remark || '',
+    });
+    setSelectedAction(ACTIONS[2]);
+    setPanelOpen(true);
+  }, []);
+
+  const applyUpdate = async (rowId, overrideForm) => {
+    const row = rows.find((r) => r.id === rowId);
+    if (!row) return;
+    const form = overrideForm || editForm;
+    const payload = {};
+    const nextStatus = form.mail_status ?? row.mail_status ?? 'pending';
+    const nextRemark = form.transcript_remark ?? row.transcript_remark ?? '';
+    if (nextStatus !== row.mail_status) payload.mail_status = nextStatus;
+    if ((nextRemark || '') !== (row.transcript_remark || '')) payload.transcript_remark = nextRemark || '';
+    if (Object.keys(payload).length === 0) {
+      setFlashMessage('info', 'No changes to save.');
+      return;
+    }
+
+    setUpdatingId(rowId);
+    try {
+      const updated = await updateTranscriptRequest(rowId, payload);
+      setRows((prev) => prev.map((item) => (item.id === rowId ? updated : item)));
+      if (rowId === activeRow?.id) {
+        setActiveRow(updated);
+        setEditForm({
+          mail_status: updated.mail_status || 'pending',
+          transcript_remark: updated.transcript_remark || '',
+        });
+      }
+      setFlashMessage('success', 'Transcript request updated.');
+    } catch (err) {
+      setFlashMessage('error', err.message || 'Failed to update transcript request.');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleBulkStatusUpdate = async () => {
+    if (!selectedIds.length) {
+      setFlashMessage('info', 'Select at least one request.');
+      return;
+    }
+    if (!bulkStatus) {
+      setFlashMessage('info', 'Choose a status to apply.');
+      return;
+    }
+    try {
+      await bulkUpdateTranscriptStatus(selectedIds, bulkStatus);
+      await loadRows();
+      setSelectedIds([]);
+      setBulkStatus('');
+      setFlashMessage('success', 'Status updated for selected requests.');
+    } catch (err) {
+      setFlashMessage('error', err.message || 'Bulk update failed.');
+    }
+  };
+
+  const handleReload = () => loadRows();
+
+  const statusCounts = useMemo(() => {
+    const counts = { pending: 0, progress: 0, done: 0 };
+    rows.forEach((row) => {
+      const key = (row.mail_status || '').toLowerCase();
+      if (counts[key] !== undefined) counts[key] += 1;
+    });
+    return counts;
+  }, [rows]);
+
+  const formatDateTime = (value) => {
+    if (!value) return 'N/A';
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return value;
+    return `${dt.toLocaleDateString()} ${dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  };
+
+  const formatStatus = (value) => {
+    if (!value) return STATUS_LABELS.pending;
+    const lookup = STATUS_LABELS[String(value).toLowerCase()];
+    return lookup || STATUS_LABELS.pending;
+  };
+
+  const statusBadgeClass = (value) => {
+    const base = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium';
+    const normalized = (value || '').toLowerCase();
+    if (normalized === 'done') return `${base} bg-green-100 text-green-700`;
+    if (normalized === 'progress') return `${base} bg-blue-100 text-blue-700`;
+    return `${base} bg-yellow-100 text-yellow-700`;
+  };
+
+  return (
+    <div className="p-4 md:p-6 space-y-4 h-full">
+      <PageTopbar
+        title="Transcript Requests"
+        leftSlot={<div className="h-10 w-10 flex items-center justify-center rounded-xl bg-purple-600 text-white text-xl">📜</div>}
+        actions={ACTIONS}
+        selected={selectedAction}
+        onSelect={(action) => {
+          setSelectedAction(action);
+          setPanelOpen(true);
+        }}
+        actionsOnLeft
+        onToggleSidebar={onToggleSidebar}
+        onToggleChatbox={onToggleChatbox}
+        rightSlot={
+          rights.can_view ? (
+            <button
+              onClick={handleReload}
+              className="px-3 py-1.5 rounded bg-purple-600 text-white hover:bg-purple-700 text-sm"
+              disabled={loading}
+            >
+              ↻ Refresh
+            </button>
+          ) : null
+        }
+      />
+
+      {!rightsLoaded && (
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-4 text-gray-600">
+          Loading permissions...
+        </div>
+      )}
+
+      {rightsLoaded && !rights.can_view && (
+        <div className="bg-white border border-red-200 text-red-700 px-4 py-3 rounded-2xl shadow-sm">
+          You do not have permission to view this page.
+        </div>
+      )}
+
+      {rightsLoaded && rights.can_view && (
+        <>
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+            <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
+              <div className="font-semibold text-gray-800">{selectedAction}</div>
+              <button
+                onClick={() => setPanelOpen((open) => !open)}
+                className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
+              >
+                {panelOpen ? 'Collapse' : 'Expand'}
+              </button>
+            </div>
+
+            {panelOpen && selectedAction === ACTIONS[0] && (
+              <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-600 mb-1">Search</label>
+                  <input
+                    type="search"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    placeholder="Enrollment number, student name, or email"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">Mail Status</label>
+                  <select
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                  >
+                    {STATUS_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">Institute</label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    placeholder="Institute name"
+                    value={instituteFilter}
+                    onChange={(e) => setInstituteFilter(e.target.value)}
+                  />
+                </div>
+                <div className="md:col-span-4 flex flex-wrap gap-3 text-sm text-gray-600">
+                  <span>Pending: {statusCounts.pending}</span>
+                  <span>In Progress: {statusCounts.progress}</span>
+                  <span>Sent: {statusCounts.done}</span>
+                  <span className="text-xs text-gray-500">Selected rows: {selectedIds.length}</span>
+                </div>
+              </div>
+            )}
+
+            {panelOpen && selectedAction === ACTIONS[1] && (
+              <div className="p-4 space-y-3 text-sm text-gray-700">
+                <p>
+                  Apply a status to every selected request. Pick the status below and click Update after choosing the
+                  rows in the table.
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    value={bulkStatus}
+                    onChange={(e) => setBulkStatus(e.target.value)}
+                    disabled={!rights.can_edit}
+                  >
+                    <option value="">Choose status</option>
+                    {STATUS_OPTIONS.filter((opt) => opt.value).map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleBulkStatusUpdate}
+                    className="px-3 py-2 rounded-lg bg-purple-600 text-white text-sm disabled:bg-purple-300"
+                    disabled={!rights.can_edit || !selectedIds.length || loading}
+                  >
+                    Update Selected
+                  </button>
+                  <span className="text-xs text-gray-500">Currently selected: {selectedIds.length} request(s).</span>
+                </div>
+                <ul className="list-disc pl-5 text-xs text-gray-500 space-y-1">
+                  <li>Select rows using the checkboxes in the records table.</li>
+                  <li>Bulk update only modifies the mail status field.</li>
+                </ul>
+              </div>
+            )}
+
+            {panelOpen && selectedAction === ACTIONS[2] && (
+              <div ref={activeRowRef} className="p-4 space-y-4 text-sm text-gray-700">
+                {activeRow ? (
+                  <>
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                      <div>
+                        <h2 className="text-lg font-semibold text-gray-800">
+                          {activeRow.student_name || 'Transcript Request'}
+                        </h2>
+                        <p className="text-xs text-gray-500">
+                          Enrollment: {activeRow.enrollment_no || 'N/A'} • Reference: {activeRow.request_ref_no || 'N/A'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={statusBadgeClass(activeRow.mail_status)}>
+                          {formatStatus(activeRow.mail_status)}
+                        </span>
+                        <span className="text-xs text-gray-500 whitespace-nowrap">
+                          Row #{activeRow.sheet_row_number ?? '—'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Requested At</div>
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
+                          {formatDateTime(activeRow.requested_at)}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Submit Mail</div>
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 break-all">
+                          {activeRow.submit_mail || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">PDF Generated</div>
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
+                          {activeRow.pdf_generate || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Receipt</div>
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
+                          {activeRow.transcript_receipt || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Institute</div>
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
+                          {activeRow.institute_name || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Contact</div>
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 space-y-1">
+                          <div>Email: {activeRow.email || 'N/A'}</div>
+                          <div>Phone: {activeRow.mobile_no || 'N/A'}</div>
+                        </div>
+                      </div>
+                      <div className="md:col-span-2">
+                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Address</div>
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 min-h-[3rem]">
+                          {activeRow.address || 'N/A'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <label className="flex flex-col text-sm text-gray-700 gap-1">
+                        <span className="text-xs uppercase tracking-wide text-gray-500">Mail Status</span>
+                        <select
+                          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          value={editForm.mail_status}
+                          onChange={(e) => setEditForm((prev) => ({ ...prev, mail_status: e.target.value }))}
+                          disabled={rightsLoaded && !rights.can_edit}
+                        >
+                          {STATUS_OPTIONS.filter((opt) => opt.value).map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="flex flex-col text-sm text-gray-700 gap-1">
+                        <span className="text-xs uppercase tracking-wide text-gray-500">Transcript Remark</span>
+                        <textarea
+                          className="border border-gray-300 rounded-lg px-3 py-2 text-sm min-h-[6rem]"
+                          value={editForm.transcript_remark}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({ ...prev, transcript_remark: e.target.value.slice(0, 2000) }))
+                          }
+                          disabled={rightsLoaded && !rights.can_edit}
+                        />
+                      </label>
+                    </div>
+
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 text-xs text-gray-500">
+                      <span>Last updated: {formatDateTime(activeRow.updated_at || activeRow.modified_at)}</span>
+                      <button
+                        onClick={() => applyUpdate(activeRow.id)}
+                        className="px-4 py-2 rounded bg-purple-600 text-white text-sm disabled:bg-purple-300"
+                        disabled={!rights.can_edit || updatingId === activeRow.id}
+                      >
+                        {updatingId === activeRow.id ? 'Saving...' : 'Save Changes'}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-sm text-gray-600">Select a request from the table to review and edit details.</div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {flash && (
+            <div
+              className={`px-4 py-2 rounded-2xl border text-sm shadow-sm ${
+                flash.type === 'success'
+                  ? 'bg-green-50 border-green-200 text-green-700'
+                  : flash.type === 'error'
+                  ? 'bg-red-50 border-red-200 text-red-700'
+                  : 'bg-blue-50 border-blue-200 text-blue-700'
+              }`}
+            >
+              {flash.text}
+            </div>
+          )}
+
+          {error && (
+            <div className="bg-white border border-red-200 text-red-700 px-4 py-3 rounded-2xl shadow-sm">
+              {error}
+            </div>
+          )}
+
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm flex flex-col">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 px-4 py-3 bg-gray-50 border-b">
+              <div className="font-semibold text-gray-800">Transcript Request Records</div>
+              <div className="flex items-center gap-2 text-xs text-gray-600">
+                <span>Selected: {selectedIds.length}</span>
+                <button
+                  onClick={handleBulkStatusUpdate}
+                  className="px-3 py-1.5 rounded bg-purple-600 text-white disabled:bg-purple-300"
+                  disabled={!rights.can_edit || !selectedIds.length || loading || !bulkStatus}
+                >
+                  Apply Status
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-100 text-gray-700 uppercase text-xs">
+                  <tr>
+                    <th className="px-3 py-2 text-left">
+                      <input
+                        type="checkbox"
+                        onChange={toggleSelectAll}
+                        checked={rows.length > 0 && rows.every((row) => selectedIds.includes(row.id))}
+                        aria-label="Select all"
+                      />
+                    </th>
+                    <th className="px-3 py-2 text-left">Requested At</th>
+                    <th className="px-3 py-2 text-left">Reference</th>
+                    <th className="px-3 py-2 text-left">Enrollment No</th>
+                    <th className="px-3 py-2 text-left">Student</th>
+                    <th className="px-3 py-2 text-left">Institute</th>
+                    <th className="px-3 py-2 text-left">Receipt</th>
+                    <th className="px-3 py-2 text-left">Submit Mail</th>
+                    <th className="px-3 py-2 text-left">PDF Generated</th>
+                    <th className="px-3 py-2 text-left">Mail Status</th>
+                    <th className="px-3 py-2 text-left">Transcript Remark</th>
+                    <th className="px-3 py-2 text-left">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading && (
+                    <tr>
+                      <td colSpan={12} className="px-4 py-6 text-center text-gray-500">
+                        Loading transcript requests...
+                      </td>
+                    </tr>
+                  )}
+                  {!loading && rows.length === 0 && (
+                    <tr>
+                      <td colSpan={12} className="px-4 py-6 text-center text-gray-500">
+                        No transcript requests found.
+                      </td>
+                    </tr>
+                  )}
+                  {!loading && rows.map((row) => {
+                    const isActive = activeRow?.id === row.id;
+                    return (
+                      <tr
+                        key={row.id}
+                        onClick={() => handleRowSelect(row)}
+                        className={`border-b last:border-b-0 cursor-pointer transition-colors ${
+                          isActive ? 'bg-blue-50' : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <td className="px-3 py-2 align-top">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(row.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={() => toggleSelect(row.id)}
+                            aria-label={`Select request ${row.id}`}
+                          />
+                        </td>
+                        <td className="px-3 py-2 align-top whitespace-nowrap">{formatDateTime(row.requested_at)}</td>
+                        <td className="px-3 py-2 align-top">{row.request_ref_no || 'N/A'}</td>
+                        <td className="px-3 py-2 align-top">{row.enrollment_no || 'N/A'}</td>
+                        <td className="px-3 py-2 align-top">{row.student_name || 'N/A'}</td>
+                        <td className="px-3 py-2 align-top">{row.institute_name || 'N/A'}</td>
+                        <td className="px-3 py-2 align-top">{row.transcript_receipt || 'N/A'}</td>
+                        <td className="px-3 py-2 align-top">{row.submit_mail || 'N/A'}</td>
+                        <td className="px-3 py-2 align-top">{row.pdf_generate || 'N/A'}</td>
+                        <td className="px-3 py-2 align-top">
+                          <span className={statusBadgeClass(row.mail_status)}>{formatStatus(row.mail_status)}</span>
+                        </td>
+                        <td className="px-3 py-2 align-top text-xs text-gray-600 max-w-[18rem]">
+                          {row.transcript_remark ? row.transcript_remark : '—'}
+                        </td>
+                        <td className="px-3 py-2 align-top">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRowSelect(row);
+                            }}
+                            className="px-3 py-1.5 rounded bg-purple-600 text-white text-xs hover:bg-purple-700"
+                          >
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {rawResponse && (
+            <details className="bg-white border border-gray-200 rounded-2xl shadow-sm">
+              <summary className="cursor-pointer px-4 py-3 text-sm text-gray-600">Raw API response (debug)</summary>
+              <pre className="px-4 py-3 text-xs text-gray-600 overflow-auto max-h-60 bg-gray-50">
+                {JSON.stringify(rawResponse, null, 2)}
+              </pre>
+            </details>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
+export default TranscriptRequestPage;

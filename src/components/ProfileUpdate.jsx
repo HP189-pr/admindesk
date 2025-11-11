@@ -22,6 +22,8 @@ const ProfileUpdate = ({ setWorkArea }) => {
     // Populate form with user data
     useEffect(() => {
         if (user) {
+            // be permissive about where the profile picture URL may live in the user object
+            const picUrl = user.profile_picture || user.profile_picture_url || user.photoUrl || user.usrpic || "";
             setProfile({
                 username: user.username || "",
                 first_name: user.first_name || "",
@@ -30,7 +32,7 @@ const ProfileUpdate = ({ setWorkArea }) => {
                 phone: user.phone || "",
                 address: user.address || "",
                 city: user.city || "",
-                profile_picture_url: user.profile_picture_url || "",  // from backend
+                profile_picture_url: picUrl,  // from backend (could be relative)
                 profile_picture_file: null  // no file initially
             });
         }
@@ -66,16 +68,17 @@ const ProfileUpdate = ({ setWorkArea }) => {
         appendIfExists("address", profile.address);
         appendIfExists("city", profile.city);
 
-        // Append file if selected
+        // Append file if selected. Django backend expects 'profile_picture' (see UserProfileView).
         if (profile.profile_picture_file) {
             formData.append("profile_picture", profile.profile_picture_file);
         }
 
         try {
+            // IMPORTANT: do NOT set the Content-Type header manually for multipart/form-data.
+            // Let axios/browser set the proper Content-Type with boundary.
             const response = await axios.patch(`${API_BASE_URL}/api/profile/`, formData, {
                 headers: {
                     Authorization: `Bearer ${token}`,
-                    "Content-Type": "multipart/form-data"
                 },
             });
 
@@ -90,7 +93,12 @@ const ProfileUpdate = ({ setWorkArea }) => {
     // Choose displayed picture (uploaded file preview or backend URL)
     const displayedProfilePicture = profile.profile_picture_file
         ? URL.createObjectURL(profile.profile_picture_file)
-        : profile.profile_picture_url || "/default-profile.png";  // Use profile_picture_url for display
+        : (function () {
+            const p = profile.profile_picture_url || "/default-profile.png";
+            // If backend returns a relative path like /media/Profpic/filename, prefix API_BASE_URL
+            if (p && typeof p === 'string' && p.startsWith('/')) return `${API_BASE_URL}${p}`;
+            return p;
+        })();  // Use profile_picture_url for display
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">

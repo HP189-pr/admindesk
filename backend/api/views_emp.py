@@ -11,6 +11,43 @@ from rest_framework.permissions import IsAuthenticated
 from datetime import timedelta
 
 
+def _user_identifiers(user):
+	values = []
+	for attr in ('username', 'usercode'):
+		try:
+			val = getattr(user, attr, None)
+		except Exception:
+			val = None
+		if val:
+			values.append(str(val))
+	return values
+
+
+def _profiles_matching_identifiers(qs, identifiers):
+	valid = [i for i in identifiers if i]
+	if not valid:
+		return qs.none()
+	lookup = Q()
+	for ident in valid:
+		lookup |= Q(username__iexact=ident) | Q(usercode__iexact=ident)
+	return qs.filter(lookup)
+
+
+def _first_profile_for_user(user):
+	return _profiles_matching_identifiers(EmpProfile.objects.all(), _user_identifiers(user)).first()
+
+
+def _profile_matches_user(profile, user):
+	identifiers = {i.lower() for i in _user_identifiers(user)}
+	if not identifiers:
+		return False
+	for attr in ('username', 'usercode'):
+		val = getattr(profile, attr, None)
+		if val and str(val).lower() in identifiers:
+			return True
+	return False
+
+
 class IsLeaveManager(permissions.BasePermission):
 	"""Allow access if user is staff/superuser or belongs to leave_management group."""
 	def has_permission(self, request, view):
@@ -28,12 +65,24 @@ class IsOwnerOrHR(permissions.BasePermission):
 		return request.user and (request.user.is_staff or request.user.is_superuser or request.user.is_authenticated)
 
 	def has_object_permission(self, request, view, obj):
-		# Employees: can only see own leaves
-		if hasattr(obj, 'userid'):
-			return obj.userid == getattr(request.user, 'username', None) or request.user.is_staff or request.user.is_superuser
-		if hasattr(obj, 'emp'):
-			return obj.emp.userid == getattr(request.user, 'username', None) or request.user.is_staff or request.user.is_superuser
-		return request.user.is_staff or request.user.is_superuser
+		user = request.user
+		if not user or not user.is_authenticated:
+			return False
+		if user.is_staff or user.is_superuser:
+			return True
+		if isinstance(obj, EmpProfile):
+			return _profile_matches_user(obj, user)
+		if hasattr(obj, 'emp') and isinstance(getattr(obj, 'emp'), EmpProfile):
+			return _profile_matches_user(getattr(obj, 'emp'), user)
+		identifiers = {i.lower() for i in _user_identifiers(user)}
+		if not identifiers:
+			return False
+		for attr in ('username', 'usercode'):
+			if hasattr(obj, attr):
+				val = getattr(obj, attr)
+				if val and str(val).lower() in identifiers:
+					return True
+		return False
 
 
 class LeavePeriodListView(generics.ListCreateAPIView):
@@ -65,11 +114,9 @@ class MyLeaveBalanceView(generics.GenericAPIView):
 	permission_classes = [IsAuthenticated]
 
 	def get(self, request, *args, **kwargs):
-		# find profile by userid
-		user = request.user
-		try:
-			profile = EmpProfile.objects.get(userid=getattr(user, 'username', None))
-		except EmpProfile.DoesNotExist:
+		# find profile linked to the authenticated user via userid/username/usercode
+		profile = _first_profile_for_user(request.user)
+		if not profile:
 			return Response({'detail': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
 
 		period = LeavePeriod.objects.filter(is_active=True).first()
@@ -395,42 +442,42 @@ class EmpProfileViewSet(viewsets.ModelViewSet):
 			print("[DEBUG] Serializer errors:", serializer.errors)
 			return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 		self.perform_create(serializer)
-		# After create, synchronize usr_birth_date into auth_user and set default password if needed
+		# After create, synchronize usr_birth_date/usercode into auth_user and set default password if needed
 		try:
 			profile = EmpProfile.objects.get(emp_id=serializer.data.get('emp_id') or serializer.data.get('emp_id'))
-			# prefer explicit usr_birth_date if provided, otherwise use emp_birth_date
 			birth = profile.usr_birth_date or profile.emp_birth_date
-			# Update auth_user.usr_birth_date if user exists
-			if profile.userid:
+			identifiers = [i for i in (profile.username, profile.usercode) if i]
+			if identifiers:
 				from django.db import connection
 				try:
 					with connection.cursor() as cur:
-						# add column if missing will be handled by migrations; write value if column exists
 						cur.execute("SELECT 1 FROM information_schema.columns WHERE table_name='auth_user' AND column_name='usr_birth_date'")
-						if cur.fetchone():
-							if birth:
-								cur.execute("UPDATE auth_user SET usr_birth_date = %s WHERE username = %s", [birth, profile.userid])
-							else:
-								# ensure null if not provided
-								cur.execute("UPDATE auth_user SET usr_birth_date = NULL WHERE username = %s", [profile.userid])
-						# set default password if blank or unusable
-						from django.contrib.auth import get_user_model
-						User = get_user_model()
-						u = User.objects.filter(username=profile.userid).first()
-						if u:
-							# Determine if password should be set: only if user has no usable password or password is empty
-							try:
-								needs = (not u.has_usable_password()) or (not u.password)
-							except Exception:
-								needs = not u.password
-							if needs and birth:
-								# format ddmmyy (two-digit year)
-								pw = birth.strftime('%d%m%y')
-								u.set_password(pw)
-								u.save()
+						has_birth_column = bool(cur.fetchone())
+						cur.execute("SELECT 1 FROM information_schema.columns WHERE table_name='auth_user' AND column_name='usercode'")
+						has_usercode_column = bool(cur.fetchone())
+						for ident in identifiers:
+							if has_birth_column:
+								if birth:
+									cur.execute("UPDATE auth_user SET usr_birth_date = %s WHERE username = %s", [birth, ident])
+								else:
+									cur.execute("UPDATE auth_user SET usr_birth_date = NULL WHERE username = %s", [ident])
+							if has_usercode_column:
+								cur.execute("UPDATE auth_user SET usercode = %s WHERE username = %s", [profile.usercode, ident])
 				except Exception:
-					# ignore DB sync errors
-						pass
+					# ignore DB sync errors for auth_user updates
+					pass
+				from django.contrib.auth import get_user_model
+				User = get_user_model()
+				u = User.objects.filter(username__in=identifiers).first()
+				if u:
+					try:
+						needs = (not u.has_usable_password()) or (not u.password)
+					except Exception:
+						needs = not u.password
+					if needs and birth:
+						pw = birth.strftime('%d%m%y')
+						u.set_password(pw)
+						u.save()
 		except Exception as e:
 			print("[DEBUG] Post-create sync failed:", e)
 		headers = self.get_success_headers(serializer.data)
@@ -444,7 +491,7 @@ class EmpProfileViewSet(viewsets.ModelViewSet):
 		if user.is_staff or user.is_superuser or IsLeaveManager().has_permission(self.request, self):
 			return qs
 		# Regular users see only their own profile
-		return qs.filter(userid=getattr(user, 'username', None))
+		return _profiles_matching_identifiers(qs, _user_identifiers(user))
 
 class LeaveTypeViewSet(viewsets.ModelViewSet):
 	queryset = LeaveType.objects.all()
@@ -628,7 +675,13 @@ class LeaveEntryViewSet(viewsets.ModelViewSet):
 		if user.is_staff or user.is_superuser or IsLeaveManager().has_permission(self.request, self):
 			return qs
 		# Employees: see own leaves only
-		return qs.filter(emp__userid=getattr(user, 'username', None))
+		identifiers = _user_identifiers(user)
+		if not identifiers:
+			return qs.none()
+		lookup = Q()
+		for ident in identifiers:
+			lookup |= Q(emp__username__iexact=ident) | Q(emp__usercode__iexact=ident)
+		return qs.filter(lookup)
 
 	def perform_create(self, serializer):
 		# Managers can create entries for any employee. Regular users may create only for themselves.
@@ -639,9 +692,8 @@ class LeaveEntryViewSet(viewsets.ModelViewSet):
 			return
 		# regular user: ensure emp in payload matches their profile
 		from rest_framework.exceptions import PermissionDenied
-		try:
-			my_profile = EmpProfile.objects.get(userid=getattr(user, 'username', None))
-		except EmpProfile.DoesNotExist:
+		my_profile = _first_profile_for_user(user)
+		if not my_profile:
 			raise PermissionDenied('Profile not found for current user')
 		emp_payload = serializer.validated_data.get('emp')
 		# emp_payload might be EmpProfile instance or emp_id string
