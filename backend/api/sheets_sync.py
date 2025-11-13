@@ -10,6 +10,8 @@ from typing import Dict, Iterable, Mapping, Optional
 import gspread
 from django.conf import settings
 from gspread.utils import rowcol_to_a1
+from django.utils import timezone
+from datetime import datetime
 
 from .domain_transcript_generate import TranscriptRequest
 
@@ -282,3 +284,181 @@ def sync_transcript_request_to_sheet(instance, changed_fields: Mapping[str, obje
         updates["transcript_remark"] = getattr(instance, "transcript_remark", "")
     if updates:
         _apply_updates(sheet_id, gid, row_number, updates, TRANSCRIPT_FIELD_ALIASES)
+
+
+def import_transcript_requests_from_sheet(sheet_id: Optional[str] = None, worksheet_gid: Optional[int] = None, limit: Optional[int] = None) -> Dict[str, int]:
+    """Import transcript request rows from the Google Sheet into the database.
+
+    The function attempts to match rows to existing TranscriptRequest instances by
+    request_ref_no, enrollment_no or submit_mail. If no match is found a new
+    instance is created. The raw_row field is preserved and the discovered
+    sheet row number is persisted into raw_row.__row_number.
+
+    Returns a summary dict with counts: created, updated, total.
+    """
+    sheet_id = sheet_id or _get_setting("GOOGLE_TRANSCRIPT_SPREADSHEET_ID")
+    if not sheet_id:
+        return {"created": 0, "updated": 0, "total": 0}
+    worksheet_gid = worksheet_gid or _get_setting("GOOGLE_TRANSCRIPT_WORKSHEET_GID")
+    gid = int(worksheet_gid) if worksheet_gid and isinstance(worksheet_gid, str) and worksheet_gid.isdigit() else worksheet_gid
+
+    worksheet = _get_worksheet(sheet_id, gid)
+    try:
+        records = worksheet.get_all_records()
+    except Exception:
+        # Fall back to reading values if get_all_records is not available
+        values = worksheet.get_all_values()
+        if not values or len(values) < 2:
+            return {"created": 0, "updated": 0, "total": 0}
+        headers = [h.strip().lower() for h in values[0]]
+        records = []
+        for row in values[1:]:
+            rec = {headers[i]: (row[i] if i < len(row) else "") for i in range(len(headers))}
+            records.append(rec)
+
+    created = 0
+    updated = 0
+    total = 0
+
+    def pick(norm_row, *keys):
+        for k in keys:
+            if k and k in norm_row:
+                v = norm_row.get(k)
+                if v is not None and str(v).strip() != "":
+                    return v
+        return None
+
+    for idx, raw in enumerate(records):
+        if limit and total >= limit:
+            break
+        total += 1
+        # row numbers in sheets: header row is 1 -> first data row is 2
+        row_number = idx + 2
+        # normalize keys to lowercase stripped
+        norm_row = {str(k).strip().lower(): v for k, v in (raw.items() if isinstance(raw, Mapping) else {})}
+
+        # common header candidates
+        request_ref_no = pick(norm_row, 'request_ref_no', 'trn_reqest_ref_no', 'request ref no', 'ref no', 'reference', 'ref')
+        enrollment_no = pick(norm_row, 'enrollment_no', 'enrollment', 'enroll no', 'enroll')
+        student_name = pick(norm_row, 'student_name', 'name', 'student')
+        institute_name = pick(norm_row, 'institute_name', 'institute')
+        transcript_receipt = pick(norm_row, 'transcript_receipt', 'receipt', 'transcript receipt')
+        transcript_remark = pick(norm_row, 'transcript_remark', 'remark', 'remarks', 'comment')
+        submit_mail = pick(norm_row, 'submit_mail', 'submit mail', 'email', 'mail')
+        pdf_generate = pick(norm_row, 'pdf_generate', 'pdf', 'pdf generate')
+        mail_status_raw = pick(norm_row, 'mail_status', 'status', 'mail status')
+        requested_at_raw = pick(norm_row, 'requested_at', 'date', 'request date', 'trn_reqest_date')
+
+        # parse date if possible
+        requested_at = None
+        if requested_at_raw:
+            try:
+                if isinstance(requested_at_raw, datetime):
+                    requested_at = requested_at_raw
+                else:
+                    # try common ISO / dd-mm / mm/dd formats
+                    txt = str(requested_at_raw).strip()
+                    try:
+                        requested_at = datetime.fromisoformat(txt)
+                    except Exception:
+                        try:
+                            # try day-first common format
+                            requested_at = datetime.strptime(txt, '%d-%m-%Y')
+                        except Exception:
+                            try:
+                                requested_at = datetime.strptime(txt, '%d/%m/%Y')
+                            except Exception:
+                                requested_at = None
+            except Exception:
+                requested_at = None
+
+        if requested_at is None:
+            requested_at = timezone.now()
+
+        # try to find existing instance
+        instance = None
+        if request_ref_no:
+            instance = TranscriptRequest.objects.filter(request_ref_no__iexact=str(request_ref_no)).first()
+        if not instance and enrollment_no:
+            instance = TranscriptRequest.objects.filter(enrollment_no__iexact=str(enrollment_no)).first()
+        if not instance and submit_mail:
+            instance = TranscriptRequest.objects.filter(submit_mail__iexact=str(submit_mail)).first()
+
+        if instance:
+            changed = {}
+            # map and update fields if changed
+            if (getattr(instance, 'request_ref_no', '') or '') != (str(request_ref_no) if request_ref_no else ''):
+                instance.request_ref_no = str(request_ref_no or '')
+                changed['request_ref_no'] = instance.request_ref_no
+            if (instance.enrollment_no or '') != (str(enrollment_no) if enrollment_no else ''):
+                instance.enrollment_no = str(enrollment_no or '')
+                changed['enrollment_no'] = instance.enrollment_no
+            if (instance.student_name or '') != (str(student_name) if student_name else ''):
+                instance.student_name = str(student_name or '')
+                changed['student_name'] = instance.student_name
+            if (instance.institute_name or '') != (str(institute_name) if institute_name else ''):
+                instance.institute_name = str(institute_name or '')
+                changed['institute_name'] = instance.institute_name
+            if (instance.transcript_receipt or '') != (str(transcript_receipt) if transcript_receipt else ''):
+                instance.transcript_receipt = str(transcript_receipt or '')
+                changed['transcript_receipt'] = instance.transcript_receipt
+            if (instance.transcript_remark or '') != (str(transcript_remark) if transcript_remark else ''):
+                instance.transcript_remark = str(transcript_remark or '')
+                changed['transcript_remark'] = instance.transcript_remark
+            if (instance.submit_mail or '') != (str(submit_mail) if submit_mail else ''):
+                instance.submit_mail = str(submit_mail or '')
+                changed['submit_mail'] = instance.submit_mail
+            if (instance.pdf_generate or '') != (str(pdf_generate) if pdf_generate else ''):
+                instance.pdf_generate = str(pdf_generate or '')
+                changed['pdf_generate'] = instance.pdf_generate
+            norm_status = TranscriptRequest.normalize_status(mail_status_raw)
+            if norm_status and instance.mail_status != norm_status:
+                instance.mail_status = norm_status
+                changed['mail_status'] = instance.mail_status
+            elif not norm_status and not (instance.mail_status):
+                # When the sheet has no explicit status and the DB value is empty,
+                # treat it as In Progress by default rather than Pending.
+                instance.mail_status = TranscriptRequest.STATUS_PROGRESS
+                changed['mail_status'] = instance.mail_status
+
+            # persist raw_row row number
+            raw_copy = dict(raw) if isinstance(raw, Mapping) else {}
+            raw_copy.update({'__row_number': row_number, 'row_number': row_number})
+            if instance.raw_row != raw_copy:
+                instance.raw_row = raw_copy
+                changed['raw_row'] = instance.raw_row
+
+            if changed:
+                try:
+                    # save changed fields
+                    instance.save()
+                    _persist_row_number(instance, row_number)
+                    updated += 1
+                except Exception:
+                    logger.exception('Failed to update transcript request from sheet for row %s', row_number)
+            else:
+                # still ensure we store the row number if missing
+                _persist_row_number(instance, row_number)
+        else:
+            try:
+                obj = TranscriptRequest(
+                    requested_at=requested_at,
+                    request_ref_no=str(request_ref_no or ''),
+                    enrollment_no=str(enrollment_no or ''),
+                    student_name=str(student_name or ''),
+                    institute_name=str(institute_name or ''),
+                    transcript_receipt=str(transcript_receipt or ''),
+                    transcript_remark=str(transcript_remark or ''),
+                    submit_mail=str(submit_mail or ''),
+                    pdf_generate=str(pdf_generate or ''),
+                    mail_status=TranscriptRequest.normalize_status(mail_status_raw) or TranscriptRequest.STATUS_PROGRESS,
+                    raw_row=(dict(raw) if isinstance(raw, Mapping) else {}),
+                )
+                obj.raw_row = obj.raw_row or {}
+                obj.raw_row.update({'__row_number': row_number, 'row_number': row_number})
+                obj.save()
+                created += 1
+            except Exception:
+                logger.exception('Failed to create transcript request from sheet row %s', row_number)
+
+    return {"created": created, "updated": updated, "total": total}

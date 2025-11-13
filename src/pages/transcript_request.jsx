@@ -5,6 +5,9 @@ import {
   fetchTranscriptRequests,
   updateTranscriptRequest,
   bulkUpdateTranscriptStatus,
+  deleteTranscriptRequest,
+  bulkDeleteTranscriptRequests,
+  syncTranscriptRequestsFromSheet,
 } from '../services/transcriptreqService';
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
@@ -44,6 +47,7 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   const activeRowRef = useRef(null);
   const [updatingId, setUpdatingId] = useState(null);
   const [bulkStatus, setBulkStatus] = useState('');
+  const [polling, setPolling] = useState(false);
   const [rights, setRights] = useState(RIGHTS_FALLBACK);
   const [rightsLoaded, setRightsLoaded] = useState(false);
 
@@ -236,6 +240,53 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
     }
   };
 
+  const handleDelete = async (id) => {
+    if (!rights.can_delete) {
+      setFlashMessage('error', 'No permission to delete.');
+      return;
+    }
+    if (!confirm('Delete this transcript request? This cannot be undone.')) return;
+    try {
+      await deleteTranscriptRequest(id);
+      setFlashMessage('success', 'Request deleted.');
+      await loadRows();
+    } catch (err) {
+      setFlashMessage('error', err.message || 'Delete failed.');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!rights.can_delete) {
+      setFlashMessage('error', 'No permission to delete.');
+      return;
+    }
+    if (!selectedIds.length) return setFlashMessage('info', 'Select at least one request to delete.');
+    if (!confirm(`Delete ${selectedIds.length} selected requests? This cannot be undone.`)) return;
+    try {
+      await bulkDeleteTranscriptRequests(selectedIds);
+      setFlashMessage('success', 'Selected requests deleted.');
+      setSelectedIds([]);
+      await loadRows();
+    } catch (err) {
+      setFlashMessage('error', err.message || 'Bulk delete failed.');
+    }
+  };
+
+  // optional polling to auto-refresh list (every 10s) when enabled
+  useEffect(() => {
+    if (!polling || !rights.can_view) return undefined;
+    const id = setInterval(async () => {
+      try {
+        // first ask server to import any new rows from the sheet, then reload
+        await syncTranscriptRequestsFromSheet();
+        await loadRows();
+      } catch (err) {
+        // swallow errors; show a flash for the first error could be noisy so keep silent
+      }
+    }, 10000);
+    return () => clearInterval(id);
+  }, [polling, rights.can_view, loadRows]);
+
   const handleReload = () => loadRows();
 
   const statusCounts = useMemo(() => {
@@ -284,13 +335,33 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
         onToggleChatbox={onToggleChatbox}
         rightSlot={
           rights.can_view ? (
-            <button
-              onClick={handleReload}
-              className="px-3 py-1.5 rounded bg-purple-600 text-white hover:bg-purple-700 text-sm"
-              disabled={loading}
-            >
-              ↻ Refresh
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleReload}
+                className="px-3 py-1.5 rounded bg-purple-600 text-white hover:bg-purple-700 text-sm"
+                disabled={loading}
+              >
+                ↻ Refresh
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    setLoading(true);
+                    await syncTranscriptRequestsFromSheet();
+                    await loadRows();
+                    setFlashMessage('success', 'Sheet sync completed.');
+                  } catch (err) {
+                    setFlashMessage('error', err.message || 'Sheet sync failed.');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                className="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 text-sm"
+                disabled={loading}
+              >
+                ⤴ Sync Sheet
+              </button>
+            </div>
           ) : null
         }
       />
@@ -392,6 +463,16 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                   >
                     Update Selected
                   </button>
+                  <button
+                    onClick={handleBulkDelete}
+                    className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm disabled:bg-red-300"
+                    disabled={!rights.can_delete || !selectedIds.length || loading}
+                  >
+                    Delete Selected
+                  </button>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={polling} onChange={(e) => setPolling(e.target.checked)} /> Auto-sync
+                  </label>
                   <span className="text-xs text-gray-500">Currently selected: {selectedIds.length} request(s).</span>
                 </div>
                 <ul className="list-disc pl-5 text-xs text-gray-500 space-y-1">
@@ -501,13 +582,23 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
 
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 text-xs text-gray-500">
                       <span>Last updated: {formatDateTime(activeRow.updated_at || activeRow.modified_at)}</span>
-                      <button
-                        onClick={() => applyUpdate(activeRow.id)}
-                        className="px-4 py-2 rounded bg-purple-600 text-white text-sm disabled:bg-purple-300"
-                        disabled={!rights.can_edit || updatingId === activeRow.id}
-                      >
-                        {updatingId === activeRow.id ? 'Saving...' : 'Save Changes'}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => applyUpdate(activeRow.id)}
+                          className="px-4 py-2 rounded bg-purple-600 text-white text-sm disabled:bg-purple-300"
+                          disabled={!rights.can_edit || updatingId === activeRow.id}
+                        >
+                          {updatingId === activeRow.id ? 'Saving...' : 'Save Changes'}
+                        </button>
+                        {rights.can_delete && (
+                          <button
+                            onClick={() => handleDelete(activeRow.id)}
+                            className="px-3 py-2 rounded bg-red-600 text-white text-sm"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </>
                 ) : (

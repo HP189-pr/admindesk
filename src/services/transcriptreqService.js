@@ -48,12 +48,43 @@ export const updateTranscriptRequest = async (id, payload) => {
   }
 };
 
+export const deleteTranscriptRequest = async (id) => {
+  try {
+    const response = await API.delete(`${BASE_PATH}${id}/`);
+    return response.data;
+  } catch (error) {
+    throw new Error(extractMessage(error));
+  }
+};
+
 export const bulkUpdateTranscriptStatus = async (ids, mailStatus) => {
   try {
     const response = await API.post(`${BASE_PATH}bulk-status/`, {
       ids,
       mail_status: mailStatus,
     });
+    return response.data;
+  } catch (error) {
+    throw new Error(extractMessage(error));
+  }
+};
+
+export const bulkDeleteTranscriptRequests = async (ids) => {
+  try {
+    const results = [];
+    for (const id of ids) {
+      const r = await API.delete(`${BASE_PATH}${id}/`).then((res) => res.data).catch((err) => ({ error: extractMessage(err), id }));
+      results.push(r);
+    }
+    return results;
+  } catch (error) {
+    throw new Error(extractMessage(error));
+  }
+};
+
+export const syncTranscriptRequestsFromSheet = async () => {
+  try {
+    const response = await API.post(`${BASE_PATH}sync-from-sheet/`);
     return response.data;
   } catch (error) {
     throw new Error(extractMessage(error));

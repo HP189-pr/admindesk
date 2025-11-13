@@ -395,26 +395,147 @@ const EmpLeavePage = () => {
 
         {!selectedEmp ? (
           <div className="overflow-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="py-2 px-3 text-left">Emp ID</th>
-                  <th className="py-2 px-3 text-left">Employee</th>
-                  <th className="py-2 px-3 text-left">Position</th>
-                  <th className="py-2 px-3 text-left">Available</th>
-                  <th className="py-2 px-3 text-left">Action</th>
+            {/* Detailed aggregated report table (start balances, allocations, used, end balances) */}
+            <table className="min-w-full text-sm table-auto">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th rowSpan={2} className="p-2">Emp ID</th>
+                  <th rowSpan={2} className="p-2">Emp Name</th>
+                  <th rowSpan={2} className="p-2">Position</th>
+                  <th rowSpan={2} className="p-2">Leave Group</th>
+                  <th rowSpan={2} className="p-2">Joining Date</th>
+                  <th rowSpan={2} className="p-2">Leaving Date</th>
+                  {/* Starting balances (example: SL, EL) */}
+                  <th colSpan={2} className="p-2 text-center bg-amber-100">Balance: {periods.find(p=>String(p.id)===String(selectedPeriod))?.name || ''}</th>
+                  {/* Allocations for period */}
+                  <th colSpan={4} className="p-2 text-center bg-green-100">Leave Allocation for ({periods.find(p=>String(p.id)===String(selectedPeriod))?.name || ''})</th>
+                  {/* Used columns */}
+                  <th colSpan={8} className="p-2 text-center bg-sky-100">Used Leave (Period)</th>
+                  {/* Ending balances */}
+                  <th colSpan={4} className="p-2 text-center bg-orange-100">Balance: {periods.find(p=>String(p.id)===String(selectedPeriod))?.end_date ? '' : ''}</th>
+                </tr>
+                <tr className="bg-gray-50">
+                  <th className="p-1 text-xs">SL</th>
+                  <th className="p-1 text-xs">EL</th>
+                  <th className="p-1 text-xs">CL</th>
+                  <th className="p-1 text-xs">SL</th>
+                  <th className="p-1 text-xs">EL</th>
+                  <th className="p-1 text-xs">VAC</th>
+                  <th className="p-1 text-xs">CL</th>
+                  <th className="p-1 text-xs">SL</th>
+                  <th className="p-1 text-xs">EL</th>
+                  <th className="p-1 text-xs">Vacation</th>
+                  <th className="p-1 text-xs">DL</th>
+                  <th className="p-1 text-xs">LWP</th>
+                  <th className="p-1 text-xs">ML</th>
+                  <th className="p-1 text-xs">PL</th>
+                  <th className="p-1 text-xs">CL</th>
+                  <th className="p-1 text-xs">SL</th>
+                  <th className="p-1 text-xs">EL</th>
+                  <th className="p-1 text-xs">Vacation</th>
                 </tr>
               </thead>
               <tbody>
-                {(empList||[]).map(emp => (
-                  <tr key={emp.emp_id || emp.id} className="border-b hover:bg-gray-50">
-                    <td className="py-2 px-3">{emp.emp_id}</td>
-                    <td className="py-2 px-3">{emp.emp_name}</td>
-                    <td className="py-2 px-3">{emp.emp_designation}</td>
-                    <td className="py-2 px-3">{(allocations.find(a => String(a.profile) === String(emp.id) || String(a.profile) === String(emp.emp_id)) || {}).allocated ?? '-'}</td>
-                    <td className="py-2 px-3"><button onClick={() => setSelectedEmpId(emp.emp_id || emp.id)} className="px-2 py-1 rounded bg-indigo-600 text-white text-sm">View</button></td>
-                  </tr>
-                ))}
+                {profiles.length === 0 ? (
+                  <tr><td colSpan={20} className="py-6 text-center text-gray-500">No employees</td></tr>
+                ) : profiles.filter(emp => !filterEmp || String(emp.id) === String(filterEmp)).map(emp => {
+                  // helpers to get allocation and used values for this employee and a leave code
+                  const findAlloc = (codes) => {
+                    const c = Array.isArray(codes) ? codes : [codes];
+                    const a = allocations.find(x => {
+                      const matchProfile = String(x.profile) === String(emp.id) || String(x.profile) === String(emp.emp_id) || String(x.profile_id) === String(emp.id) || String(x.profile_id) === String(emp.emp_id);
+                      const lt = (x.leave_type || x.leave_code || '').toString().toLowerCase();
+                      return matchProfile && c.some(cc => lt.startsWith(cc));
+                    });
+                    if (!a) return 0;
+                    return Number(a.allocated ?? a.allocated_amount ?? a.allocated_el ?? a.allocated_cl ?? a.allocated_sl ?? a.allocated_vac ?? 0);
+                  };
+
+                  const sumUsed = (codes) => {
+                    const c = Array.isArray(codes) ? codes : [codes];
+                    const periodObj = periods.find(p => String(p.id) === String(selectedPeriod));
+                    const pstart = periodObj ? (parseDMY(periodObj.start_date) || new Date(periodObj.start_date)) : null;
+                    const pend = periodObj ? (parseDMY(periodObj.end_date) || new Date(periodObj.end_date)) : null;
+                    let total = 0;
+                    (leaveEntries || []).forEach(le => {
+                      const matchesEmp = String(le.emp) === String(emp.id) || String(le.emp) === String(emp.emp_id);
+                      if (!matchesEmp) return;
+                      if (!le.status || String(le.status).toLowerCase() !== 'approved') return;
+                      const lcode = (le.leave_type || le.leave_type_code || '').toString().toLowerCase();
+                      if (!c.some(cc => lcode.startsWith(cc))) return;
+                      const ls = parseDMY(le.start_date) || new Date(le.start_date);
+                      const ledd = parseDMY(le.end_date) || new Date(le.end_date);
+                      if (!ls || !ledd) return;
+                      const s = pstart ? (ls < pstart ? pstart : ls) : ls;
+                      const e = pend ? (ledd > pend ? pend : ledd) : ledd;
+                      if (e >= s) {
+                        const days = Math.round((e - s) / (1000*60*60*24)) + 1;
+                        // find day_value for this leave type
+                        const ltObj = leaveTypes.find(t => String(t.leave_code) === String(le.leave_type) || String(t.leave_code) === String(le.leave_type_code));
+                        const dayVal = ltObj ? Number(ltObj.day_value || 1) : 1;
+                        total += days * dayVal;
+                      }
+                    });
+                    return total;
+                  };
+
+                  // start balances
+                  const start_sl = Number(emp.sl_balance || 0);
+                  const start_el = Number(emp.el_balance || 0);
+
+                  // allocation columns (CL, SL, EL, VAC)
+                  const alloc_cl = findAlloc('cl');
+                  const alloc_sl = findAlloc('sl');
+                  const alloc_el = findAlloc('el');
+                  const alloc_vac = findAlloc('vac');
+
+                  // used columns
+                  const used_cl = sumUsed('cl');
+                  const used_sl = sumUsed('sl');
+                  const used_el = sumUsed('el');
+                  const used_vac = sumUsed('vac');
+
+                  const used_dl = sumUsed('dl');
+                  const used_lwp = sumUsed('lwp');
+                  const used_ml = sumUsed('ml');
+                  const used_pl = sumUsed('pl');
+
+                  // end balances (CL, SL, EL, VAC)
+                  const end_cl = +( (Number(emp.cl_balance || 0) + alloc_cl) - used_cl ).toFixed(2);
+                  const end_sl = +( (start_sl + alloc_sl) - used_sl ).toFixed(2);
+                  const end_el = +( (start_el + alloc_el) - used_el ).toFixed(2);
+                  const end_vac = +( (Number(emp.vacation_balance || 0) + alloc_vac) - used_vac ).toFixed(2);
+
+                  return (
+                    <tr key={emp.id} className="border-b hover:bg-gray-50">
+                      <td className="p-2">{emp.emp_id}</td>
+                      <td className="p-2">{emp.emp_name}</td>
+                      <td className="p-2">{emp.emp_designation}</td>
+                      <td className="p-2">{emp.leave_group}</td>
+                      <td className="p-2">{emp.actual_joining || ''}</td>
+                      <td className="p-2">{emp.left_date || 'Cont'}</td>
+                      <td className="p-1 text-right">{start_sl}</td>
+                      <td className="p-1 text-right">{start_el}</td>
+                      <td className="p-1 text-right">{alloc_cl}</td>
+                      <td className="p-1 text-right">{alloc_sl}</td>
+                      <td className="p-1 text-right">{alloc_el}</td>
+                      <td className="p-1 text-right">{alloc_vac}</td>
+                      <td className="p-1 text-right">{used_cl}</td>
+                      <td className="p-1 text-right">{used_sl}</td>
+                      <td className="p-1 text-right">{used_el}</td>
+                      <td className="p-1 text-right">{used_vac}</td>
+                      <td className="p-1 text-right">{used_dl}</td>
+                      <td className="p-1 text-right">{used_lwp}</td>
+                      <td className="p-1 text-right">{used_ml}</td>
+                      <td className="p-1 text-right">{used_pl}</td>
+                      
+                      <td className="p-1 text-right">{end_cl}</td>
+                      <td className="p-1 text-right">{end_sl}</td>
+                      <td className="p-1 text-right">{end_el}</td>
+                      <td className="p-1 text-right">{end_vac}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -478,9 +599,8 @@ const EmpLeavePage = () => {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="p-4 md:p-6">
       {/* Debug panel removed - simplified header */}
-      <div className="text-sm text-gray-600">Leave management: view or add leave entries. Use the buttons to switch panels.</div>
 
       <div className="sticky top-0 z-30 flex items-center justify-between bg-white border-b px-3 py-2">
         <div className="flex items-center gap-2">

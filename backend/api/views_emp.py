@@ -94,7 +94,12 @@ class LeavePeriodListView(generics.ListCreateAPIView):
 	permission_classes = [IsLeaveManager]
 
 
-class LeaveAllocationListView(generics.ListAPIView):
+class LeaveAllocationListView(generics.ListCreateAPIView):
+	"""List and create LeaveAllocation records.
+
+	POST payload expects fields (profile_id nullable), period_id, leave_type_code (or leave_type), allocated.
+	If profile_id is blank/null the implementation will insert a NULL profile allocation (legacy default row) using SQL.
+	"""
 	serializer_class = LeaveAllocationSerializer
 	permission_classes = [IsLeaveManager]
 
@@ -111,6 +116,63 @@ class LeaveAllocationListView(generics.ListAPIView):
 		if institute:
 			qs = qs.filter(profile__institute_id__iexact=institute)
 		return qs
+
+	def post(self, request, *args, **kwargs):
+		data = request.data or {}
+		profile_id = data.get('profile_id')
+		period_id = data.get('period_id') or data.get('period')
+		leave_code = data.get('leave_type_code') or data.get('leave_type')
+		allocated = data.get('allocated')
+
+		# validation
+		if not period_id:
+			return Response({'detail': 'period_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+		if not leave_code:
+			return Response({'detail': 'leave_type_code is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+		try:
+			# ensure period exists
+			period = LeavePeriod.objects.filter(id=period_id).first()
+			if not period:
+				return Response({'detail': 'LeavePeriod not found'}, status=status.HTTP_404_NOT_FOUND)
+
+			# ensure leave type exists
+			lt = LeaveType.objects.filter(leave_code=leave_code).first()
+			if not lt:
+				return Response({'detail': 'LeaveType not found'}, status=status.HTTP_404_NOT_FOUND)
+
+			# parse allocated
+			try:
+				allocated_val = float(allocated) if allocated is not None and allocated != '' else 0.0
+			except Exception:
+				return Response({'detail': 'allocated must be a number'}, status=status.HTTP_400_BAD_REQUEST)
+
+			# if profile_id provided and not blank, create via ORM
+			if profile_id not in (None, '', 'null'):
+				# accept numeric id
+				try:
+					prof = EmpProfile.objects.filter(id=int(profile_id)).first()
+				except Exception:
+					prof = EmpProfile.objects.filter(emp_id=str(profile_id)).first()
+				if not prof:
+					return Response({'detail': 'EmpProfile not found'}, status=status.HTTP_404_NOT_FOUND)
+
+				# create or update existing allocation
+				obj, created = LeaveAllocation.objects.get_or_create(profile=prof, leave_type=lt, period=period, defaults={'allocated': allocated_val})
+				if not created:
+					obj.allocated = allocated_val
+					obj.save()
+				return Response({'id': obj.id, 'profile': obj.profile.id if obj.profile else None, 'leave_type': getattr(obj.leave_type, 'leave_code', obj.leave_type), 'allocated': float(obj.allocated), 'period': obj.period.id})
+
+			# profile_id is null/blank -> insert a default allocation row with NULL profile_id using SQL (legacy table structure)
+			from django.db import connection
+			with connection.cursor() as cur:
+				# Attempt to insert into the underlying table. Columns may vary across deployments; use common columns.
+				cur.execute("INSERT INTO api_leaveallocation (profile_id, leave_code, allocated, period_id, created_at, updated_at) VALUES (NULL, %s, %s, %s, now(), now()) RETURNING id", [leave_code, allocated_val, period.id])
+				new_id = cur.fetchone()[0]
+			return Response({'id': new_id, 'profile': None, 'leave_type': leave_code, 'allocated': allocated_val, 'period': period.id}, status=status.HTTP_201_CREATED)
+		except Exception as e:
+			return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class LeaveAllocationDetailView(APIView):
@@ -149,6 +211,23 @@ class LeaveAllocationDetailView(APIView):
 			return Response(data)
 		except LeaveAllocation.DoesNotExist:
 			return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+
+	def delete(self, request, pk, *args, **kwargs):
+		# allow managers to delete an allocation row
+		try:
+			# attempt ORM delete first
+			deleted, _ = LeaveAllocation.objects.filter(pk=pk).delete()
+			if deleted:
+				return Response(status=status.HTTP_204_NO_CONTENT)
+			# fallback: try raw SQL delete for legacy table name
+			from django.db import connection
+			with connection.cursor() as cur:
+				cur.execute("DELETE FROM api_leaveallocation WHERE id=%s", [pk])
+				if cur.rowcount:
+					return Response(status=status.HTTP_204_NO_CONTENT)
+			return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+		except Exception as e:
+			return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class MyLeaveBalanceView(generics.GenericAPIView):
@@ -310,140 +389,156 @@ class LeaveReportView(APIView):
 				'leaving_date': str(p.left_date) if p.left_date else None,
 			}
 
-			# get previous snapshot
-			prev_snap = None
-			with connection.cursor() as cur:
-				cur.execute("SELECT id, el_balance, sl_balance, cl_balance, vacation_balance, balance_date FROM leave_balances WHERE profile_id=%s AND balance_date <= %s ORDER BY balance_date DESC LIMIT 1", [p.id, period.start_date])
-				row = cur.fetchone()
-				if row:
-					prev_snap = {'id': row[0], 'el_balance': float(row[1] or 0), 'sl_balance': float(row[2] or 0), 'cl_balance': float(row[3] or 0), 'vacation_balance': float(row[4] or 0), 'date': row[5]}
+			# baseline start date for iterative calculation
+			base_date = p.leave_calculation_date or None
+			# if no explicit calculation date, fallback to earliest snapshot before period.start_date
+			if not base_date:
+				from .domain_emp import LeaveBalanceSnapshot
+				snap = LeaveBalanceSnapshot.objects.filter(profile=p).order_by('balance_date').first()
+				if snap:
+					base_date = snap.balance_date
+			# final fallback: use the earliest period start
+			if not base_date:
+				first_period = LeavePeriod.objects.order_by('start_date').first()
+				base_date = first_period.start_date if first_period else period.start_date
 
-			# used days per leave code during period
-			used_map = {}
-			with connection.cursor() as cur:
-				cur.execute("SELECT leave_code, SUM(total_days) FROM leave_entry WHERE emp_id=%s AND status ILIKE 'Approved' AND NOT (end_date < %s OR start_date > %s) GROUP BY leave_code", [p.emp_id, period.start_date, period.end_date])
-				for rc in cur.fetchall():
-					used_map[rc[0]] = float(rc[1] or 0)
+			# initialize balances from profile values at base_date (use profile fields as snapshot)
+			bal_el = float(p.el_balance or 0)
+			bal_sl = float(p.sl_balance or 0)
+			bal_cl = float(p.cl_balance or 0)
+			bal_vac = float(p.vacation_balance or 0)
 
-			# allocations: prefer profile-specific then NULL profile defaults
-			alloc_map = {}
-			with connection.cursor() as cur:
-				cur.execute("SELECT id, profile_id, leave_code, allocated_el, allocated_cl, allocated_sl, allocated_vac, allocated_start_date, allocated_end_date FROM leavea_llocation_general WHERE period_id=%s", [period.id])
-				rows = cur.fetchall()
-				# index by profile_id then leave_code
-				by_profile = {}
-				for r in rows:
-					rid, profile_id, leave_code, a_el, a_cl, a_sl, a_vac, ast, aend = r
-					key = (profile_id, leave_code)
-					by_profile[key] = {'allocated_el': a_el or 0, 'allocated_cl': a_cl or 0, 'allocated_sl': a_sl or 0, 'allocated_vac': a_vac or 0}
+			# iterate ordered periods from base_date up to and including the requested period
+			periods_seq = list(LeavePeriod.objects.filter(start_date__lte=period.start_date).order_by('start_date'))
+			# keep only those starting at or after base_date
+			periods_seq = [pr for pr in periods_seq if pr.start_date >= base_date]
 
-			# compute per-type balances
-			balance_start = {'SL': 0.0, 'EL': 0.0, 'CL': 0.0}
-			allocation_vals = {'SL': 0.0, 'EL': 0.0, 'VAC': 0.0, 'CL': 0.0}
-			used_vals = {'CL': 0.0, 'SL': 0.0, 'EL': 0.0, 'Vacation': 0.0, 'DL': 0.0, 'LWP': 0.0, 'ML': 0.0, 'PL': 0.0}
+			# if no periods found in range, include the requested period only
+			if not periods_seq:
+				periods_seq = [period]
 
-			# starting balances: prefer snapshot, else profile fields
-			if prev_snap:
-				balance_start['EL'] = prev_snap['el_balance']
-				balance_start['SL'] = prev_snap['sl_balance']
-				# CL resets to 0 at period start
-				balance_start['CL'] = 0.0
-			else:
-				balance_start['EL'] = float(p.el_balance or 0)
-				balance_start['SL'] = float(p.sl_balance or 0)
-				balance_start['CL'] = 0.0
+			# helper: find allocation value for a profile, period and leave type
+			def get_alloc_for(prof, per, lt_obj):
+				# try ORM first
+				try:
+					al = LeaveAllocation.objects.filter(profile=prof, period=per, leave_type=lt_obj).first()
+					if al:
+						return float(al.allocated)
+				except Exception:
+					pass
+				# fallback: try legacy table
+				from django.db import connection
+				with connection.cursor() as cur:
+					cur.execute("SELECT allocated_el, allocated_cl, allocated_sl, allocated_vac FROM leavea_llocation_general WHERE period_id=%s AND leave_code=%s AND (profile_id=%s OR profile_id IS NULL) ORDER BY profile_id IS NOT NULL DESC LIMIT 1", [per.id, lt_obj.leave_code, prof.id])
+					row = cur.fetchone()
+					if row:
+						# pick appropriate column based on lt
+						code = (lt_obj.leave_code or '').lower()
+						if code.startswith('el'):
+							return float(row[2] or row[0] or 0)
+						if code.startswith('sl'):
+							return float(row[1] or row[0] or 0)
+						if code.startswith('cl'):
+							return float(row[1] or 0)
+						return float(row[3] or 0)
+				# final fallback: LeaveType annual allocation
+				try:
+					return float(lt_obj.annual_allocation or 0)
+				except Exception:
+					return 0.0
 
-			# fill used_vals by aggregating used_map prefix matches
-			for code, val in used_map.items():
-				lc = (code or '').lower()
-				if lc.startswith('cl'):
-					used_vals['CL'] += val
-				elif lc.startswith('sl'):
-					used_vals['SL'] += val
-				elif lc.startswith('el'):
-					used_vals['EL'] += val
-				elif lc.startswith('vac'):
-					used_vals['Vacation'] += val
-				elif lc.startswith('dl'):
-					used_vals['DL'] += val
-				elif lc.startswith('lwp'):
-					used_vals['LWP'] += val
-				elif lc.startswith('ml'):
-					used_vals['ML'] += val
-				elif lc.startswith('pl'):
-					used_vals['PL'] += val
-				else:
-					# group others under Vacation for now
-					used_vals['Vacation'] += val
+			# iterate
+			for per in periods_seq:
+				# CL resets to 0 at start of each period per rules
+				bal_cl = 0.0
+				period_days = (per.end_date - per.start_date).days + 1
+				# compute used for this profile during this period per leave code
+				entries = LeaveEntry.objects.filter(emp__emp_id=p.emp_id, status__iexact='Approved', end_date__gte=per.start_date, start_date__lte=per.end_date).select_related('leave_type')
+				used_this = {}
+				for e in entries:
+					start_clamped = max(e.start_date, per.start_date)
+					end_clamped = min(e.end_date, per.end_date)
+					if end_clamped >= start_clamped:
+						overlap_days = (end_clamped - start_clamped).days + 1
+						day_value = float(e.leave_type.day_value if getattr(e, 'leave_type', None) else 1)
+						used_days = overlap_days * day_value
+						code = (getattr(e.leave_type, 'leave_code', '') or '').lower()
+						used_this[code] = used_this.get(code, 0.0) + float(used_days)
 
-			# per leave type allocation
-			period_days = (period.end_date - period.start_date).days + 1
+				# for each leave type compute allocation, apply joiner rules and update balances
+				for lt in ltypes:
+					code = (lt.leave_code or '').lower()
+					alloc_val = get_alloc_for(p, per, lt)
+					computed_alloc = float(alloc_val or 0)
+					# joining & waiting rules for EL/SL
+					if p.actual_joining and code.startswith(('el', 'sl')):
+						wait_until = p.actual_joining + timedelta(days=365)
+						if wait_until > per.end_date:
+							computed_alloc = 0.0
+						else:
+							eff_start = max(per.start_date, wait_until)
+							remaining_days = (per.end_date - eff_start).days + 1
+							computed_alloc = round(float(alloc_val or 0) * (remaining_days / period_days), 2)
+							computed_alloc = round_half(computed_alloc)
+
+					# joining-year special allocation from profile fields
+					joining_alloc = 0.0
+					if 'el' in code:
+						joining_alloc = float(p.joining_year_allocation_el or 0)
+					elif 'sl' in code:
+						joining_alloc = float(p.joining_year_allocation_sl or 0)
+					elif 'cl' in code:
+						joining_alloc = float(p.joining_year_allocation_cl or 0)
+					else:
+						joining_alloc = float(p.joining_year_allocation_vac or 0)
+
+					used_val = 0.0
+					for k, v in used_this.items():
+						if k.startswith(code):
+							used_val += v
+
+					# update running balances
+					if code.startswith('el'):
+						bal_el = round_half(bal_el + joining_alloc + computed_alloc - used_val)
+					elif code.startswith('sl'):
+						bal_sl = round_half(bal_sl + joining_alloc + computed_alloc - used_val)
+					elif code.startswith('cl'):
+						bal_cl = round_half(bal_cl + joining_alloc + computed_alloc - used_val)
+					else:
+						bal_vac = round_half(bal_vac + joining_alloc + computed_alloc - used_val)
+
+			# capture used values from the last iterated period (used_last)
+			try:
+				used_last
+			except NameError:
+				used_last = {}
+
+			# compute allocation values for the requested period
+			alloc_cl = 0.0
+			alloc_sl = 0.0
+			alloc_el = 0.0
+			alloc_vac = 0.0
 			for lt in ltypes:
 				code = (lt.leave_code or '').lower()
-				# determine which allocated column to pick
-				col = None
-				if code.startswith('el'):
-					col = 'allocated_el'
-				elif code.startswith('sl'):
-					col = 'allocated_sl'
-				elif code.startswith('cl'):
-					col = 'allocated_cl'
-				else:
-					col = 'allocated_vac'
+				val = get_alloc_for(p, period, lt)
+				if code.startswith('cl') and alloc_cl == 0.0:
+					alloc_cl = val
+				elif code.startswith('sl') and alloc_sl == 0.0:
+					alloc_sl = val
+				elif code.startswith('el') and alloc_el == 0.0:
+					alloc_el = val
+				elif not code.startswith(('el', 'sl', 'cl')) and alloc_vac == 0.0:
+					alloc_vac = val
 
-				# find profile-specific allocation
-				prof_key = (p.id, lt.leave_code)
-				default_key = (None, lt.leave_code)
-				alloc_value = None
-				if prof_key in by_profile:
-					alloc_value = by_profile[prof_key].get(col, 0)
-				elif default_key in by_profile:
-					alloc_value = by_profile[default_key].get(col, 0)
-				else:
-					# fallback to LeaveType.annual_allocation or annual_limit
-					try:
-						alloc_value = float(lt.annual_allocation or 0)
-					except Exception:
-						alloc_value = 0.0
-
-				# joining & waiting rules for EL/SL
-				computed_alloc = float(alloc_value or 0)
-				if p.actual_joining and not prev_snap and code.startswith(('el', 'sl')):
-					wait_until = p.actual_joining + timedelta(days=365)
-					if wait_until > period.end_date:
-						computed_alloc = 0.0
-					else:
-						eff_start = max(period.start_date, wait_until)
-						remaining_days = (period.end_date - eff_start).days + 1
-						computed_alloc = round(float(alloc_value or 0) * (remaining_days / period_days), 2)
-						computed_alloc = round_half(computed_alloc)
-				else:
-					# if join during period but snapshot exists or non-EL/SL, prorate by join date if needed
-					if p.actual_joining and p.actual_joining > period.start_date and p.actual_joining <= period.end_date:
-						eff_days = (period.end_date - p.actual_joining).days + 1
-						computed_alloc = round(float(alloc_value or 0) * (eff_days / period_days), 2)
-						computed_alloc = round_half(computed_alloc)
-
-				# set into summary buckets
-				if code.startswith('el'):
-					allocation_vals['EL'] += computed_alloc
-				elif code.startswith('sl'):
-					allocation_vals['SL'] += computed_alloc
-				elif code.startswith('cl'):
-					allocation_vals['CL'] += computed_alloc
-				else:
-					allocation_vals['VAC'] += computed_alloc
-
-			# final balances
-			final_cl = round_half(balance_start['CL'] + allocation_vals['CL'] - used_vals['CL'])
-			final_sl = round_half(balance_start['SL'] + allocation_vals['SL'] - used_vals['SL'])
-			final_el = round_half(balance_start['EL'] + allocation_vals['EL'] - used_vals['EL'])
+			used_cl_val = sum(v for k, v in (used_last or {}).items() if k.startswith('cl'))
+			used_sl_val = sum(v for k, v in (used_last or {}).items() if k.startswith('sl'))
+			used_el_val = sum(v for k, v in (used_last or {}).items() if k.startswith('el'))
 
 			emp_row.update({
-				'balance_start': balance_start,
-				'allocation': allocation_vals,
-				'used': used_vals,
-				'balance_end': {'CL': final_cl, 'SL': final_sl, 'EL': final_el},
+				'balance_start': {'CL': 0.0, 'SL': float(p.sl_balance or 0), 'EL': float(p.el_balance or 0)},
+				'allocation': {'CL': alloc_cl, 'SL': alloc_sl, 'EL': alloc_el, 'VAC': alloc_vac},
+				'used': {'CL': used_cl_val, 'SL': used_sl_val, 'EL': used_el_val},
+				'balance_end': {'CL': bal_cl, 'SL': bal_sl, 'EL': bal_el},
 			})
 
 			report.append(emp_row)
@@ -730,6 +825,29 @@ class LeaveEntryViewSet(viewsets.ModelViewSet):
 		user = self.request.user
 		is_manager = (user.is_staff or user.is_superuser or IsLeaveManager().has_permission(self.request, self))
 		if is_manager:
+			# Managers may create entries directly; but if dates span multiple periods we will split into one-per-period rows
+			start = serializer.validated_data.get('start_date')
+			end = serializer.validated_data.get('end_date')
+			if start and end and end >= start:
+				# find overlapping periods and split
+				periods = LeavePeriod.objects.filter(end_date__gte=start, start_date__lte=end).order_by('start_date')
+				if periods.count() <= 1:
+					serializer.save(created_by=getattr(user, 'username', None))
+					return
+				# otherwise split per period
+				for per in periods:
+					s = max(start, per.start_date)
+					e = min(end, per.end_date)
+					data = dict(serializer.validated_data)
+					data['start_date'] = s
+					data['end_date'] = e
+					# create individual entry
+					from .serializers_emp import LeaveEntrySerializer
+					ss = LeaveEntrySerializer(data=data)
+					ss.is_valid(raise_exception=True)
+					ss.save(created_by=getattr(user, 'username', None))
+				return
+			# fallback
 			serializer.save(created_by=getattr(user, 'username', None))
 			return
 		# regular user: ensure emp in payload matches their profile

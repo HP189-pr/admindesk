@@ -14,7 +14,7 @@ from rest_framework.response import Response
 
 from .domain_transcript_generate import TranscriptRequest
 from .serializers_transcript_generate import TranscriptRequestSerializer
-from .sheets_sync import sync_transcript_request_to_sheet
+from .sheets_sync import sync_transcript_request_to_sheet, import_transcript_requests_from_sheet
 
 __all__ = [
     "TranscriptRequestViewSet",
@@ -115,3 +115,18 @@ class TranscriptRequestViewSet(viewsets.ModelViewSet):
             instance._prefetched_objects_cache = {}
 
         return Response(self.get_serializer(instance).data)
+
+    @action(detail=False, methods=["post"], url_path="sync-from-sheet")
+    def sync_from_sheet(self, request):
+        # restrict this operation to staff users
+        user = getattr(request, 'user', None)
+        if not user or not getattr(user, 'is_staff', False):
+            return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            summary = import_transcript_requests_from_sheet()
+        except Exception:  # pragma: no cover
+            logger.exception('Sheet import failed')
+            return Response({'detail': 'Failed to import from sheet.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({'detail': 'Import complete.', 'summary': summary}, status=status.HTTP_200_OK)
