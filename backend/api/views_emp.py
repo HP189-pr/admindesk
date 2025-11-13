@@ -105,6 +105,22 @@ class LeaveAllocationListView(generics.ListCreateAPIView):
 
 	def get_queryset(self):
 		qs = LeaveAllocation.objects.select_related('profile', 'leave_type', 'period').all()
+		# DEBUG: log caller identity and auth headers to help diagnose admin UI visibility issues
+		try:
+			user = getattr(self.request, 'user', None)
+			uname = getattr(user, 'username', None) if user else None
+			is_auth = bool(user and user.is_authenticated)
+			is_staff = bool(user and getattr(user, 'is_staff', False))
+			groups = []
+			try:
+				groups = [g.name for g in user.groups.all()] if user else []
+			except Exception:
+				groups = []
+			auth_hdr = self.request.META.get('HTTP_AUTHORIZATION') if hasattr(self.request, 'META') else None
+			print(f"[DEBUG] LeaveAllocationListView called by: user={uname} authenticated={is_auth} is_staff={is_staff} groups={groups} Authorization={'present' if auth_hdr else 'missing'})")
+		except Exception:
+			# avoid breaking the view on debug logging failures
+			pass
 		period = self.request.query_params.get('period')
 		institute = self.request.query_params.get('institute')
 		if period:
@@ -168,7 +184,9 @@ class LeaveAllocationListView(generics.ListCreateAPIView):
 			from django.db import connection
 			with connection.cursor() as cur:
 				# Attempt to insert into the underlying table. Columns may vary across deployments; use common columns.
-				cur.execute("INSERT INTO api_leaveallocation (profile_id, leave_code, allocated, period_id, created_at, updated_at) VALUES (NULL, %s, %s, %s, now(), now()) RETURNING id", [leave_code, allocated_val, period.id])
+				# use empty-string for leave_code when none provided to avoid NOT NULL constraint errors on some schemas
+				lc_param = leave_code if leave_code is not None else ''
+				cur.execute("INSERT INTO api_leaveallocation (profile_id, leave_code, allocated, period_id, created_at, updated_at) VALUES (NULL, %s, %s, %s, now(), now()) RETURNING id", [lc_param, allocated_val, period.id])
 				new_id = cur.fetchone()[0]
 			return Response({'id': new_id, 'profile': None, 'leave_type': leave_code, 'allocated': allocated_val, 'period': period.id}, status=status.HTTP_201_CREATED)
 		except Exception as e:
