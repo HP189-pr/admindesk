@@ -21,7 +21,8 @@ const EmpLeavePage = () => {
   // debug panel removed
   const [myBalances, setMyBalances] = useState([]);
   const [allocations, setAllocations] = useState([]);
-  const [allocEdits, setAllocEdits] = useState({}); // local edits keyed by allocation id
+  const [allocEdits, setAllocEdits] = useState({}); // local edits keyed by allocation id: { [id]: { allocated, allocated_cl, allocated_sl, allocated_el, allocated_vac, allocated_start_date, allocated_end_date } }
+  const [selectedEmp, setSelectedEmp] = useState(null);
 
   const PANELS = ['Entry Leave', 'Leave Report', 'Balance Certificate'];
   const [selectedPanel, setSelectedPanel] = useState(PANELS[0]);
@@ -33,6 +34,45 @@ const EmpLeavePage = () => {
     Object.entries(obj).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') params.set(k, v); });
     const s = params.toString();
     return s ? `?${s}` : '';
+  };
+
+  const toISODateString = (s) => {
+    const d = parseDMY(s);
+    if (!d) return null;
+    return d.toISOString().slice(0, 10);
+  };
+
+  const handleSaveAllocation = async (allocId) => {
+    const edits = allocEdits[allocId] || {};
+    if (!edits || Object.keys(edits).length === 0) {
+      alert('No changes to save');
+      return;
+    }
+    const payload = {};
+    ['allocated','allocated_cl','allocated_sl','allocated_el','allocated_vac'].forEach(k => {
+      if (typeof edits[k] !== 'undefined') {
+        const v = edits[k];
+        payload[k] = v === '' ? null : (isNaN(Number(v)) ? v : Number(v));
+      }
+    });
+    if (typeof edits.allocated_start_date !== 'undefined') payload.allocated_start_date = toISODateString(edits.allocated_start_date);
+    if (typeof edits.allocated_end_date !== 'undefined') payload.allocated_end_date = toISODateString(edits.allocated_end_date);
+    try {
+      await axios.patch(`/api/leave-allocations/${allocId}/`, payload);
+      // refresh allocations
+      if (selectedPanel === 'Leave Report') {
+        const params = q({ period: selectedPeriod });
+        const r = await axios.get(`/api/leave-allocations${params}`);
+        setAllocations(r.data || []);
+      } else {
+        const r = await axios.get('/api/leave-allocations');
+        setAllocations(r.data || []);
+      }
+      setAllocEdits(prev => { const next = { ...prev }; delete next[allocId]; return next; });
+    } catch (e) {
+      console.error(e);
+      alert('Failed to update allocation');
+    }
   };
 
   useEffect(() => {
@@ -104,6 +144,7 @@ const EmpLeavePage = () => {
 
   // load allocations when report panel is active OR period changes
   useEffect(() => {
+    // When viewing the Leave Report, fetch allocations for the selected period (or all if empty).
     if (selectedPanel === 'Leave Report') {
       const params = q({ period: selectedPeriod });
       axios.get(`/api/leave-allocations${params}`).then(r => setAllocations(r.data || [])).catch(async () => {
@@ -114,7 +155,24 @@ const EmpLeavePage = () => {
           setAllocations([]);
         }
       });
+      return;
     }
+
+    // When not on the Leave Report (e.g. manager allocations panel), show all allocations
+    // across periods by default so admins see every seeded/default allocation like Django admin.
+    (async () => {
+      try {
+        const r = await axios.get('/api/leave-allocations');
+        setAllocations(r.data || []);
+      } catch (err) {
+        try {
+          const r2 = await axios.get('/api/leavea_llocation_general');
+          setAllocations(r2.data || []);
+        } catch (e) {
+          setAllocations([]);
+        }
+      }
+    })();
   }, [selectedPanel, selectedPeriod]);
 
   const handleTopbarSelect = (panel) => {
@@ -142,6 +200,28 @@ const EmpLeavePage = () => {
     return null;
   };
 
+  // small helpers and UI actions for the report view
+  const clearSelected = () => setSelectedEmp(null);
+
+  const handleGeneratePdf = () => {
+    try {
+      // basic print fallback — callers can replace with a better export if needed
+      window.print();
+    } catch (e) {
+      console.debug('PDF generation not supported in this environment', e);
+    }
+  };
+
+  const fmtDate = (s) => {
+    if (!s) return '';
+    const d = parseDMY(s) || (s ? new Date(s) : null);
+    if (!d) return '';
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}-${mm}-${yyyy}`;
+  };
+
   const computeTotalDays = (startStr, endStr) => {
     const a = parseDMY(startStr);
     const b = parseDMY(endStr);
@@ -151,6 +231,7 @@ const EmpLeavePage = () => {
   };
 
   const handleChange = (e) => {
+    if (!e || !e.target) return;
     const { name, value } = e.target;
     setForm(f => {
       const next = { ...f, [name]: value };
@@ -161,56 +242,41 @@ const EmpLeavePage = () => {
     });
   };
 
-  const toISO = (s) => {
-    const d = parseDMY(s);
-    if (!d) return null; // return null to indicate invalid date
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
-  };
-
   const handleApply = async (e) => {
-    e.preventDefault(); setLoading(true); setError('');
+    if (e && e.preventDefault) e.preventDefault();
+    setLoading(true);
     try {
-      const empValue = form.emp_id || profile?.emp_id || profile?.id || '';
-      const leaveTypeValue = form.leave_type_code || form.leave_type;
       const payload = {
-        leave_report_no: form.report_no || undefined,
-        emp: empValue,
-        leave_type: leaveTypeValue,
-        start_date: toISO(form.start_date),
-        end_date: toISO(form.end_date),
-        reason: form.remark,
-        total_days: form.total_days || undefined,
-        status: form.status || undefined
+        leave_report_no: form.report_no || null,
+        emp: form.emp_id || null,
+        emp_name: form.emp_name || null,
+        leave_type: form.leave_type || form.leave_type_code || null,
+        start_date: toISODateString(form.start_date) || form.start_date || null,
+        end_date: toISODateString(form.end_date) || form.end_date || null,
+        total_days: form.total_days || null,
+        status: form.status || null,
+        remark: form.remark || null
       };
+
       if (editingId) {
         await axios.patch(`/api/leaveentry/${editingId}/`, payload);
       } else {
         await axios.post('/api/leaveentry/', payload);
       }
-      setForm({ report_no: '', emp_id: '', emp_name: '', leave_type: '', leave_type_code: '', start_date: '', end_date: '', remark: '', total_days: '' });
-      setEditingId(null);
-      const r = await axios.get('/api/leaveentry/'); setLeaveEntries(r.data || []);
-    } catch (err) { setError('Failed to apply for leave.'); }
-    setLoading(false);
-  };
 
-  // update a single allocation by id using local controlled input value
-  const handleSaveAllocation = async (allocId) => {
-    const val = allocEdits[allocId];
-    try {
-      await axios.patch(`/api/leave-allocations/${allocId}/`, { allocated: val });
-      const params = q({ period: selectedPeriod });
-      const r = await axios.get(`/api/leave-allocations${params}`);
-      setAllocations(r.data || []);
-      setAllocEdits(prev => { const next = { ...prev }; delete next[allocId]; return next; });
-    } catch (e) {
-      alert('Failed to update allocation');
+      // refresh list
+      const r = await axios.get('/api/leaveentry/');
+      setLeaveEntries(r.data || []);
+      // clear form
+      setForm({ report_no: '', emp_id: '', emp_name: '', leave_type: '', leave_type_code: '', start_date: '', end_date: '', remark: '', total_days: '', status: '' });
+      setEditingId(null);
+    } catch (err) {
+      console.error('Failed to save leave entry', err);
+      alert('Failed to save leave entry');
+    } finally {
+      setLoading(false);
     }
   };
-
   // derive year and sequence from leave_report_no
   // supports formats like '25_001', '25-001', '25001', '25_1' or '25-1'
   const parseReportYearSeq = (rrn) => {
@@ -337,62 +403,44 @@ const EmpLeavePage = () => {
     </div>
   );
 
-  // Report view: shows all employees or a single employee detail with their leave entries and balances
+  // Report view: shows aggregated allocations and balances per employee
   const ReportView = () => {
-    const [selectedEmpId, setSelectedEmpId] = useState('');
+    const empAllocations = selectedEmp ? (allocations || []).filter(a => {
+      const pid = String(a.emp_id ?? a.profile ?? '');
+      return pid === String(selectedEmp.id) || pid === String(selectedEmp.emp_id);
+    }) : [];
 
-    const clearSelected = () => setSelectedEmpId('');
-
-    const empList = profiles || [];
-
-    const selectedEmp = empList.find(e => String(e.emp_id) === String(selectedEmpId) || String(e.id) === String(selectedEmpId));
-
-    const empAllocations = allocations.filter(a => String(a.profile) === String(selectedEmp?.id) || String(a.profile) === String(selectedEmp?.emp_id) || String(a.profile_id) === String(selectedEmp?.id) || String(a.profile_id) === String(selectedEmp?.emp_id));
-
-    const empEntries = (leaveEntries || []).filter(le => String(le.emp) === String(selectedEmp?.id) || String(le.emp) === String(selectedEmp?.emp_id));
-
-    const fmtDate = (s) => {
-      if (!s) return '';
-      const d = parseDMY(s) || new Date(s);
-      if (!d) return s;
-      const dd = String(d.getDate()).padStart(2, '0');
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const yyyy = d.getFullYear();
-      return `${dd}-${mm}-${yyyy}`;
-    };
-
-    const handleGeneratePdf = () => {
-      if (!selectedEmp) {
-        // open cross-report for all employees (placeholder)
-        window.open(`/api/leave-report-pdf?period=${selectedPeriod || ''}`, '_blank');
-      } else {
-        window.open(`/api/leave-report-pdf?emp=${selectedEmp.emp_id || selectedEmp.id}&period=${selectedPeriod || ''}`, '_blank');
-      }
-    };
+    const empEntries = selectedEmp ? (leaveEntries || []).filter(le => (String(le.emp) === String(selectedEmp.id) || String(le.emp) === String(selectedEmp.emp_id))) : [];
 
     return (
       <div className="p-4">
-        <div className="flex items-center gap-3 mb-3">
-          <div>
-            <label className="text-xs block">Employee</label>
-            <select value={selectedEmpId} onChange={e => setSelectedEmpId(e.target.value)} className="border rounded p-1 text-sm">
-              <option value="">All</option>
-              {empList.map(emp => <option key={emp.emp_id || emp.id} value={emp.emp_id || emp.id}>{emp.emp_id} - {emp.emp_name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs block">Period</label>
-            <select value={selectedPeriod} onChange={e => setSelectedPeriod(e.target.value)} className="border rounded p-1 text-sm">
-              <option value="">All</option>
-              {(periods||[]).map(p => <option key={p.id} value={p.id}>{p.name || p.label || p.id}</option>)}
-            </select>
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            {selectedEmp && <button onClick={clearSelected} className="px-3 py-1 rounded border text-sm">Back</button>}
-            <button onClick={handleGeneratePdf} className="px-3 py-1 rounded bg-blue-600 text-white text-sm">Generate PDF</button>
-          </div>
-        </div>
+        <div className="flex items-center justify-between mb-3">
+            <div className="font-semibold">Leave Report</div>
+            <div className="flex items-center gap-3">
+              <button onClick={async () => {
+                try {
+                  const params = q({ period: selectedPeriod });
+                  const r = await axios.get(`/api/leave-allocations${params}`);
+                  setAllocations(r.data || []);
+                } catch (e) { console.error(e); }
+              }} className="px-3 py-1 rounded bg-blue-600 text-white text-sm">Refresh Allocations</button>
 
+              <div>
+                <label className="text-xs block">Period</label>
+                <select value={selectedPeriod} onChange={e => setSelectedPeriod(e.target.value)} className="border rounded p-1 text-sm">
+                  <option value="">All</option>
+                  {(periods||[]).map(p => <option key={p.id} value={p.id}>{p.name || p.label || p.id}</option>)}
+                </select>
+              </div>
+
+              <div className="ml-auto flex items-center gap-2">
+                {selectedEmp && <button onClick={clearSelected} className="px-3 py-1 rounded border text-sm">Back</button>}
+                <button onClick={handleGeneratePdf} className="px-3 py-1 rounded bg-blue-600 text-white text-sm">Generate PDF</button>
+              </div>
+            </div>
+          </div>
+
+        {/* Detailed aggregated report view (per-employee aggregates, allocations, editable allocations) */}
         {!selectedEmp ? (
           <div className="overflow-auto">
             {/* Detailed aggregated report table (start balances, allocations, used, end balances) */}
@@ -440,15 +488,48 @@ const EmpLeavePage = () => {
                   <tr><td colSpan={20} className="py-6 text-center text-gray-500">No employees</td></tr>
                 ) : profiles.filter(emp => !filterEmp || String(emp.id) === String(filterEmp)).map(emp => {
                   // helpers to get allocation and used values for this employee and a leave code
+                  const normaliseAllocValue = (allocObj) => {
+                    if (!allocObj) return 0;
+                    const numericCandidates = [
+                      allocObj.allocated,
+                      allocObj.allocated_amount,
+                      allocObj.allocated_el,
+                      allocObj.allocated_cl,
+                      allocObj.allocated_sl,
+                      allocObj.allocated_vac,
+                    ];
+                    for (const candidate of numericCandidates) {
+                      if (candidate === null || typeof candidate === 'undefined') continue;
+                      const parsed = Number(candidate);
+                      if (!Number.isNaN(parsed)) return parsed;
+                    }
+                    return 0;
+                  };
+
                   const findAlloc = (codes) => {
-                    const c = Array.isArray(codes) ? codes : [codes];
-                    const a = allocations.find(x => {
-                      const matchProfile = String(x.profile) === String(emp.id) || String(x.profile) === String(emp.emp_id) || String(x.profile_id) === String(emp.id) || String(x.profile_id) === String(emp.emp_id);
-                      const lt = (x.leave_type || x.leave_code || '').toString().toLowerCase();
-                      return matchProfile && c.some(cc => lt.startsWith(cc));
+                    const codeList = Array.isArray(codes) ? codes : [codes];
+                    const matchesCode = (allocObj) => {
+                      const ltRaw = (allocObj.leave_type || allocObj.leave_code || '').toString().toLowerCase();
+                      if (!ltRaw) return false;
+                      return codeList.some((codePrefix) => ltRaw.startsWith(String(codePrefix).toLowerCase()));
+                    };
+                    const matchesProfile = (allocObj) => {
+                      const profileToken = String(allocObj.emp_id ?? allocObj.profile ?? '').trim();
+                      if (!profileToken) return false;
+                      return profileToken === String(emp.id) || profileToken === String(emp.emp_id);
+                    };
+
+                    const specific = allocations.find((allocObj) => matchesProfile(allocObj) && matchesCode(allocObj));
+                    if (specific) return normaliseAllocValue(specific);
+
+                    const fallback = allocations.find((allocObj) => {
+                      if (!matchesCode(allocObj)) return false;
+                      const profileToken = String(allocObj.emp_id ?? allocObj.profile ?? '').trim().toLowerCase();
+                      return profileToken === '' || profileToken === 'none' || profileToken === 'null';
                     });
-                    if (!a) return 0;
-                    return Number(a.allocated ?? a.allocated_amount ?? a.allocated_el ?? a.allocated_cl ?? a.allocated_sl ?? a.allocated_vac ?? 0);
+                    if (fallback) return normaliseAllocValue(fallback);
+
+                    return 0;
                   };
 
                   const sumUsed = (codes) => {
@@ -597,7 +678,6 @@ const EmpLeavePage = () => {
       </div>
     );
   };
-
   return (
     <div className="p-4 md:p-6">
       {/* Debug panel removed - simplified header */}
@@ -727,7 +807,7 @@ const EmpLeavePage = () => {
             ) : profiles.filter(emp => !filterEmp || String(emp.id) === String(filterEmp)).map(emp => {
               const rowCells = leaveTypes.map(lt => {
                 const alloc = allocations.find(a => (
-                  String(a.profile) === String(emp.id) || String(a.profile) === String(emp.emp_id) || String(a.profile_id) === String(emp.id) || String(a.profile_id) === String(emp.emp_id)
+                  String(a.emp_id ?? a.profile ?? '') === String(emp.id) || String(a.emp_id ?? a.profile ?? '') === String(emp.emp_id)
                 ) && (
                   String(a.leave_type) === String(lt.leave_code) || String(a.leave_code) === String(lt.leave_code)
                 ));
@@ -789,26 +869,65 @@ const EmpLeavePage = () => {
             <table className="min-w-full text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="py-2 px-3 text-left">Emp</th>
-                  <th className="py-2 px-3 text-left">Leave Type</th>
+                  <th className="py-2 px-3 text-left">Emp ID</th>
+                  <th className="py-2 px-3 text-left">Leave Code</th>
+                  <th className="py-2 px-3 text-left">Period ID</th>
+                  <th className="py-2 px-3 text-left">CL</th>
+                  <th className="py-2 px-3 text-left">SL</th>
+                  <th className="py-2 px-3 text-left">EL</th>
+                  <th className="py-2 px-3 text-left">VAC</th>
+                  <th className="py-2 px-3 text-left">Start Date</th>
+                  <th className="py-2 px-3 text-left">End Date</th>
                   <th className="py-2 px-3 text-left">Allocated</th>
-                  <th className="py-2 px-3 text-left">Used</th>
-                  <th className="py-2 px-3 text-left">Balance</th>
                   <th className="py-2 px-3 text-left">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {allocations.map((a) => {
-                  const currentVal = typeof allocEdits[a.id] !== 'undefined' ? allocEdits[a.id] : (a.allocated ?? a.allocated_amount ?? 0);
+                  const edit = allocEdits[a.id] || {};
+                  const cur = {
+                    allocated: typeof edit.allocated !== 'undefined' ? edit.allocated : (a.allocated ?? a.allocated_amount ?? ''),
+                    allocated_cl: typeof edit.allocated_cl !== 'undefined' ? edit.allocated_cl : (a.allocated_cl ?? ''),
+                    allocated_sl: typeof edit.allocated_sl !== 'undefined' ? edit.allocated_sl : (a.allocated_sl ?? ''),
+                    allocated_el: typeof edit.allocated_el !== 'undefined' ? edit.allocated_el : (a.allocated_el ?? ''),
+                    allocated_vac: typeof edit.allocated_vac !== 'undefined' ? edit.allocated_vac : (a.allocated_vac ?? ''),
+                    allocated_start_date: typeof edit.allocated_start_date !== 'undefined' ? edit.allocated_start_date : (a.allocated_start_date ?? ''),
+                    allocated_end_date: typeof edit.allocated_end_date !== 'undefined' ? edit.allocated_end_date : (a.allocated_end_date ?? ''),
+                  };
+                  const empIdRaw = a.emp_id || (typeof a.profile === 'string' ? a.profile : a.profile?.emp_id) || null;
+                  const isForAll = !empIdRaw;
+                  const empIdDisplay = isForAll ? 'All' : empIdRaw;
+
+                  // For employee-specific allocations: show emp_id, leave_code, allocated, start/end dates
+                  // For default allocations (emp_id=null/All): show only CL/SL/EL/VAC and start/end dates
                   return (
                     <tr key={a.id} className="border-b hover:bg-gray-50">
-                      <td className="py-2 px-3">{a.profile_name || a.profile || a.profile_id}</td>
-                      <td className="py-2 px-3">{a.leave_type_name || a.leave_type}</td>
+                      <td className="py-2 px-3">{empIdDisplay}</td>
+                      <td className="py-2 px-3">{isForAll ? '' : (a.leave_type?.leave_code || a.leave_code || a.leave_type_name || a.leave_type || '')}</td>
+                      <td className="py-2 px-3">{a.period_id || a.period?.id || a.period}</td>
                       <td className="py-2 px-3">
-                        <input type="number" step="0.5" value={currentVal} onChange={e => setAllocEdits(prev => ({ ...prev, [a.id]: e.target.value }))} className="border rounded p-1 w-28 text-sm" />
+                        <input placeholder="CL" type="number" step="0.5" value={cur.allocated_cl ?? ''} onChange={e => setAllocEdits(prev => ({ ...prev, [a.id]: { ...(prev[a.id]||{}), allocated_cl: e.target.value } }))} className="border rounded p-1 w-20 text-sm" />
                       </td>
-                      <td className="py-2 px-3">{typeof a.used !== 'undefined' ? a.used : (typeof a.used_days !== 'undefined' ? a.used_days : 0)}</td>
-                      <td className="py-2 px-3">{typeof a.balance !== 'undefined' ? a.balance : ''}</td>
+                      <td className="py-2 px-3">
+                        <input placeholder="SL" type="number" step="0.5" value={cur.allocated_sl ?? ''} onChange={e => setAllocEdits(prev => ({ ...prev, [a.id]: { ...(prev[a.id]||{}), allocated_sl: e.target.value } }))} className="border rounded p-1 w-20 text-sm" />
+                      </td>
+                      <td className="py-2 px-3">
+                        <input placeholder="EL" type="number" step="0.5" value={cur.allocated_el ?? ''} onChange={e => setAllocEdits(prev => ({ ...prev, [a.id]: { ...(prev[a.id]||{}), allocated_el: e.target.value } }))} className="border rounded p-1 w-20 text-sm" />
+                      </td>
+                      <td className="py-2 px-3">
+                        <input placeholder="VAC" type="number" step="0.5" value={cur.allocated_vac ?? ''} onChange={e => setAllocEdits(prev => ({ ...prev, [a.id]: { ...(prev[a.id]||{}), allocated_vac: e.target.value } }))} className="border rounded p-1 w-20 text-sm" />
+                      </td>
+                      <td className="py-2 px-3">
+                        <input placeholder="Start dd-mm-yyyy" type="text" value={cur.allocated_start_date ?? ''} onChange={e => setAllocEdits(prev => ({ ...prev, [a.id]: { ...(prev[a.id]||{}), allocated_start_date: e.target.value } }))} className="border rounded p-1 w-32 text-sm" />
+                      </td>
+                      <td className="py-2 px-3">
+                        <input placeholder="End dd-mm-yyyy" type="text" value={cur.allocated_end_date ?? ''} onChange={e => setAllocEdits(prev => ({ ...prev, [a.id]: { ...(prev[a.id]||{}), allocated_end_date: e.target.value } }))} className="border rounded p-1 w-32 text-sm" />
+                      </td>
+                      <td className="py-2 px-3">
+                        {isForAll ? '' : (
+                          <input type="number" step="0.5" value={cur.allocated ?? ''} onChange={e => setAllocEdits(prev => ({ ...prev, [a.id]: { ...(prev[a.id]||{}), allocated: e.target.value } }))} className="border rounded p-1 w-28 text-sm" />
+                        )}
+                      </td>
                       <td className="py-2 px-3">
                         {(user && (user.is_staff || user.is_superuser)) ? (
                           <button onClick={() => handleSaveAllocation(a.id)} className="px-2 py-1 rounded bg-green-600 text-white text-sm">Save</button>

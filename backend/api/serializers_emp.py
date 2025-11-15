@@ -1,3 +1,4 @@
+import datetime
 from rest_framework import serializers
 from decimal import Decimal
 from .domain_emp import EmpProfile, LeaveType, LeaveEntry
@@ -96,25 +97,150 @@ class LeavePeriodSerializer(serializers.ModelSerializer):
 
 
 class LeaveAllocationSerializer(serializers.ModelSerializer):
-	leave_type_name = serializers.CharField(source='leave_type.leave_name', read_only=True)
+	leave_type_name = serializers.SerializerMethodField()
 	used = serializers.SerializerMethodField()
 	balance = serializers.SerializerMethodField()
 	allocated = serializers.SerializerMethodField()
+	emp_id = serializers.SerializerMethodField()
+	period_id = serializers.SerializerMethodField()
+	# Expose legacy per-column allocated values and allocation date range so frontend
+	# can render legacy rows that use allocated_el/allocated_cl/etc instead of the
+	# canonical `allocated` column.
+	allocated_el = serializers.SerializerMethodField()
+	allocated_cl = serializers.SerializerMethodField()
+	allocated_sl = serializers.SerializerMethodField()
+	allocated_vac = serializers.SerializerMethodField()
+	allocated_start_date = serializers.SerializerMethodField()
+	allocated_end_date = serializers.SerializerMethodField()
+	leave_code = serializers.SerializerMethodField()
+	profile_name = serializers.SerializerMethodField()
 
 	class Meta:
 		model = LeaveAllocation
-		fields = ('id', 'profile', 'leave_type', 'leave_type_name', 'period', 'allocated', 'used', 'balance')
+		fields = ('id', 'emp_id', 'profile', 'profile_name', 'leave_type', 'leave_type_name', 'leave_code', 'period', 'period_id', 'allocated',
+				  'allocated_el', 'allocated_cl', 'allocated_sl', 'allocated_vac', 'allocated_start_date', 'allocated_end_date',
+				  'used', 'balance')
+		read_only_fields = fields
+
+	def _format_date(self, value):
+		if not value:
+			return None
+		try:
+			if isinstance(value, str):
+				if not value.strip():
+					return None
+				for fmt in ('%Y-%m-%d', '%d-%m-%Y', '%d/%m/%Y', '%Y/%m/%d'):
+					try:
+						return datetime.datetime.strptime(value.strip(), fmt).strftime('%d-%m-%Y')
+					except Exception:
+						continue
+				return value
+			return value.strftime('%d-%m-%Y')
+		except Exception:
+			return None
 
 	def get_used(self, obj):
-		# used_days returns a float; if it's integral convert to int
-		return int(obj.used_days()) if float(obj.used_days()).is_integer() else float(obj.used_days())
+		# used_days may depend on related fields (leave_type, period). Be defensive
+		# and return 0 when computation fails or related objects are missing.
+		try:
+			val = obj.used_days()
+			if val is None:
+				return 0
+			return int(val) if float(val).is_integer() else float(val)
+		except Exception:
+			return 0
 
 	def get_balance(self, obj):
-		b = obj.balance
-		return int(b) if float(b).is_integer() else float(b)
+		# balance may depend on used_days which can raise when related objects
+		# are missing; be defensive and return 0 on error.
+		try:
+			b = obj.balance
+			if b is None:
+				return 0
+			return int(b) if float(b).is_integer() else float(b)
+		except Exception:
+			return 0
 
 	def get_allocated(self, obj):
-		return _format_decimal_for_json(getattr(obj, 'allocated', None))
+		# Prefer the canonical 'allocated' column; fall back to legacy specific columns.
+		for attr in ('allocated', 'allocated_el', 'allocated_cl', 'allocated_sl', 'allocated_vac'):
+			val = getattr(obj, attr, None)
+			if val is not None:
+				return _format_decimal_for_json(val)
+		return None
+
+	def get_allocated_el(self, obj):
+		return _format_decimal_for_json(getattr(obj, 'allocated_el', None))
+
+	def get_allocated_cl(self, obj):
+		return _format_decimal_for_json(getattr(obj, 'allocated_cl', None))
+
+	def get_allocated_sl(self, obj):
+		return _format_decimal_for_json(getattr(obj, 'allocated_sl', None))
+
+	def get_allocated_vac(self, obj):
+		return _format_decimal_for_json(getattr(obj, 'allocated_vac', None))
+
+	def get_emp_id(self, obj):
+		try:
+			emp_id = getattr(obj, 'profile_id', None)
+			if emp_id in (None, ''):
+				emp_id = getattr(obj, 'emp_id', None)
+			return emp_id if emp_id not in ('', None) else None
+		except Exception:
+			return None
+
+	def get_period_id(self, obj):
+		try:
+			return getattr(obj, 'period_id', None)
+		except Exception:
+			return None
+
+	def get_profile_name(self, obj):
+		try:
+			emp_id = getattr(obj, 'profile_id', None)
+			if emp_id in (None, ''):
+				emp_id = getattr(obj, 'emp_id', None)
+			if not emp_id:
+				return 'All'
+			cache = self.context.setdefault('_profile_name_cache', {})
+			if emp_id in cache:
+				return cache[emp_id]
+			profile = EmpProfile.objects.filter(emp_id=emp_id).only('emp_name').first()
+			name = getattr(profile, 'emp_name', None) if profile else None
+			cache[emp_id] = name
+			return name
+		except Exception:
+			return None
+
+	def get_leave_type_name(self, obj):
+		try:
+			lt = getattr(obj, 'leave_type', None)
+			if lt:
+				return getattr(lt, 'leave_name', None)
+			return None
+		except Exception:
+			return None
+
+	def get_allocated_start_date(self, obj):
+		val = getattr(obj, 'allocated_start_date', None) or getattr(obj, 'allocation_start_date', None)
+		return self._format_date(val)
+
+	def get_allocated_end_date(self, obj):
+		val = getattr(obj, 'allocated_end_date', None) or getattr(obj, 'allocation_end_date', None)
+		return self._format_date(val)
+
+	def get_leave_code(self, obj):
+		# The raw DB column for the FK is accessible as `leave_type_id` (it stores
+		# the leave_code when set). If the related object is present, prefer the
+		# related object's leave_code.
+		try:
+			if getattr(obj, 'leave_type', None):
+				return getattr(obj.leave_type, 'leave_code', None)
+			# fallback to raw stored value
+			return getattr(obj, 'leave_type_id', None)
+		except Exception:
+			return None
 
 
 class LeaveBalanceSnapshotSerializer(serializers.ModelSerializer):

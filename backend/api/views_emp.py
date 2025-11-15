@@ -8,10 +8,11 @@ from .serializers_emp import LeavePeriodSerializer, LeaveAllocationSerializer
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from datetime import timedelta
+from datetime import timedelta, date
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from django.utils import timezone
+from .domain_leave_balance import compute_leave_balances, LeaveComputationConfig
 
 
 def _user_identifiers(user):
@@ -275,296 +276,120 @@ class MyLeaveBalanceView(generics.GenericAPIView):
 			lt = a.leave_type
 			# previous balance snapshot (if any) taken before period start or as provided
 			snap = get_snapshot_before(profile, period.start_date)
-			# Determine previous balance -- for CL carry-forward is not allowed (reset to 0)
-			prev_bal = 0.0
-			if snap:
-				if lt.leave_code.lower().startswith('el'):
-					prev_bal = float(snap.el_balance)
-				elif lt.leave_code.lower().startswith('sl'):
-					prev_bal = float(snap.sl_balance)
-				elif lt.leave_code.lower().startswith('cl'):
-					# CL does not carry forward per general rules
-					prev_bal = 0.0
-				else:
-					prev_bal = float(snap.vacation_balance)
+	    # end for allocs
 
-			# joining year allocation (special one-time allocations stored on profile)
-			joining_alloc = 0.0
-			code = lt.leave_code.lower()
-			if 'el' in code:
-				joining_alloc = float(profile.joining_year_allocation_el or 0)
-			elif 'sl' in code:
-				joining_alloc = float(profile.joining_year_allocation_sl or 0)
-			elif 'cl' in code:
-				joining_alloc = float(profile.joining_year_allocation_cl or 0)
+	class LeaveReportView(APIView):
+		"""Return per-employee leave balances for a selected period."""
+
+		permission_classes = [IsLeaveManager]
+
+		def get(self, request, *args, **kwargs):
+			period_param = request.query_params.get('period')
+			emp_param = request.query_params.get('emp_id')
+
+			config = LeaveComputationConfig()
+			employee_ids = [emp_param] if emp_param else None
+			payload = compute_leave_balances(employee_ids=employee_ids, config=config)
+			metadata = payload.get('metadata', {})
+			periods_meta = metadata.get('periods', [])
+			tracked_codes = list(metadata.get('tracked_leave_codes', ())) or ['EL', 'CL', 'SL', 'VAC']
+
+			def _serialise_period(period_dict):
+				if not period_dict:
+					return None
+				return {
+					'id': period_dict.get('id'),
+					'name': period_dict.get('name'),
+					'start': period_dict.get('start').isoformat() if isinstance(period_dict.get('start'), date) else period_dict.get('start'),
+					'end': period_dict.get('end').isoformat() if isinstance(period_dict.get('end'), date) else period_dict.get('end'),
+				}
+
+			selected_period = None
+			if period_param:
+				try:
+					period_id = int(period_param)
+				except ValueError:
+					return Response({'detail': 'Invalid period parameter'}, status=status.HTTP_400_BAD_REQUEST)
+				selected_period = next((p for p in periods_meta if p['id'] == period_id), None)
 			else:
-				joining_alloc = float(profile.joining_year_allocation_vac or 0)
+				selected_period = periods_meta[-1] if periods_meta else None
 
-			# Determine period allocation considering several scenarios
-			period_days = (period.end_date - period.start_date).days + 1
-			base_alloc = float(a.allocated)
-			period_alloc = base_alloc
+			if not selected_period:
+				return Response({'detail': 'No leave periods found'}, status=status.HTTP_404_NOT_FOUND)
 
-			# Case A: transfer or snapshot exists before period start -> treat as existing employee (no 365 rule)
-			has_prior_snapshot = snap is not None
+			selected_period_id = selected_period['id']
+			employee_payload = payload.get('employees', [])
+			emp_ids = [emp['emp_id'] for emp in employee_payload if emp.get('emp_id')]
+			profiles = EmpProfile.objects.filter(emp_id__in=emp_ids)
+			profile_map = {prof.emp_id: prof for prof in profiles}
 
-			# Case B: fresh join after leave management started (no snapshot and actual_joining > period.start_date)
-			if profile.actual_joining and (not has_prior_snapshot) and profile.actual_joining > period.start_date:
-				# For EL/SL apply 365-day waiting period (no EL/SL until 1 year after joining)
-				if lt.leave_code.lower().startswith(('el', 'sl')):
-					wait_until = profile.actual_joining + timedelta(days=365)
-					# If waiting period extends beyond the period end, allocation this period is 0
-					if wait_until > period.end_date:
-						period_alloc = 0.0
-					else:
-						# prorate from wait_until (or period.start) to period.end_date
-						eff_start = max(period.start_date, wait_until)
-						remaining_days = (period.end_date - eff_start).days + 1
-						period_alloc = round(base_alloc * (remaining_days / period_days), 2)
-				else:
-					# For other leave types (CL/VAC), prorate from actual_joining to period end if needed
-					if profile.actual_joining > period.start_date and profile.actual_joining <= period.end_date:
-						rema = (period.end_date - profile.actual_joining).days + 1
-						period_alloc = round(base_alloc * (rema / period_days), 2)
-
-			# Case C: Joined before or on period.start_date OR has prior snapshot -> full allocation (or prorated by joining within period)
-			if profile.actual_joining and profile.actual_joining > period.start_date and profile.actual_joining <= period.end_date and has_prior_snapshot:
-				# If they have a snapshot and joined within the period window (unlikely), allow prorated allocation from actual_joining
-				effective_days = (period.end_date - profile.actual_joining).days + 1
-				period_alloc = round(base_alloc * (effective_days / period_days), 2)
-
-			# Final used days for allocation (overlap-aware)
-			used = a.used_days()
-
-			# Final balance = previous balance (subject to CL reset) + joining special allocation + period allocation - used
-			final_balance = prev_bal + joining_alloc + period_alloc - used
-
-			data.append({
-				'leave_type': lt.leave_code,
-				'leave_type_name': lt.leave_name,
-				'previous_balance': round(float(prev_bal), 2),
-				'joining_allocation': round(float(joining_alloc), 2),
-				'period_allocation': round(float(base_alloc), 2),
-				'computed_period_allocation': round(float(period_alloc), 2),
-				'used': round(float(used), 2),
-				'final_balance': round(float(final_balance), 2),
-			})
-
-		return Response(data)
-
-
-class LeaveReportView(APIView):
-	"""Return aggregated leave report per employee for a given period.
-
-	Query params: ?period=<id> (optional, defaults to active period)
-
-	Rules implemented (pragmatic approximation):
-	- Start balances come from latest LeaveBalanceSnapshot before period.start_date or from EmpProfile fields.
-	- Allocations are read from legacy table `leavea_llocation_general` (profile-specific first, then profile_id IS NULL as defaults).
-	- If no allocation row exists, fallback to LeaveType.annual_allocation.
-	- Used days are summed from `leave_entry` for Approved entries overlapping the period.
-	- CL does not carry forward (previous balance zeroed). EL/SL may carry forward from snapshot.
-	- New joiners: EL/SL subject to 365-day waiting rule (no EL/SL until 1 year after actual_joining) unless snapshot exists.
-	- Prorating and rounding: allocations prorated by days in period and rounded to nearest 0.5.
-	"""
-
-	permission_classes = [IsLeaveManager]
-
-	def get(self, request, *args, **kwargs):
-		from django.db import connection
-		period_id = request.query_params.get('period')
-		if period_id:
-			period = LeavePeriod.objects.filter(id=period_id).first()
-		else:
-			period = LeavePeriod.objects.filter(is_active=True).first()
-		if not period:
-			return Response({'detail': 'Leave period not found'}, status=status.HTTP_404_NOT_FOUND)
-
-		# helper rounding to 0.5
-		def round_half(x):
-			try:
-				return round(float(x) * 2) / 2.0
-			except Exception:
-				return 0.0
-
-		# load leave types
-		ltypes = list(LeaveType.objects.all())
-		# map code -> LeaveType
-		lt_map = {lt.leave_code: lt for lt in ltypes}
-
-		# fetch all employee profiles (respect permissions: managers can see all)
-		profiles = EmpProfile.objects.all()
-
-		report = []
-
-		for p in profiles:
-			emp_row = {
-				'emp_id': p.emp_id,
-				'emp_name': p.emp_name,
-				'position': p.emp_designation,
-				'leave_group': p.leave_group,
-				'joining_date': str(p.actual_joining) if p.actual_joining else None,
-				'leaving_date': str(p.left_date) if p.left_date else None,
+			default_meta = {
+				'original_allocation': 0.0,
+				'effective_allocation': 0.0,
+				'applied': False,
+				'reason': None,
 			}
 
-			# baseline start date for iterative calculation
-			base_date = p.leave_calculation_date or None
-			# if no explicit calculation date, fallback to earliest snapshot before period.start_date
-			if not base_date:
-				from .domain_emp import LeaveBalanceSnapshot
-				snap = LeaveBalanceSnapshot.objects.filter(profile=p).order_by('balance_date').first()
-				if snap:
-					base_date = snap.balance_date
-			# final fallback: use the earliest period start
-			if not base_date:
-				first_period = LeavePeriod.objects.order_by('start_date').first()
-				base_date = first_period.start_date if first_period else period.start_date
+			rows = []
+			for emp_data in employee_payload:
+				period_entry = next((p for p in emp_data.get('periods', []) if p['period_id'] == selected_period_id), None)
+				if not period_entry:
+					period_entry = {
+						'period_id': selected_period_id,
+						'period_name': selected_period.get('name'),
+						'period_start': selected_period.get('start'),
+						'period_end': selected_period.get('end'),
+						'starting': {code: 0.0 for code in tracked_codes},
+						'allocation': {code: 0.0 for code in tracked_codes},
+						'used': {code: 0.0 for code in tracked_codes},
+						'ending': {code: 0.0 for code in tracked_codes},
+						'allocation_meta': {code: default_meta.copy() for code in tracked_codes},
+					}
 
-			# initialize balances from profile values at base_date (use profile fields as snapshot)
-			bal_el = float(p.el_balance or 0)
-			bal_sl = float(p.sl_balance or 0)
-			bal_cl = float(p.cl_balance or 0)
-			bal_vac = float(p.vacation_balance or 0)
+				codes_payload = {}
+				for code in tracked_codes:
+					alloc_meta = period_entry.get('allocation_meta', {}).get(code)
+					if not alloc_meta:
+						alloc_meta = default_meta
+					codes_payload[code] = {
+						'starting_balance': float(period_entry['starting'].get(code, 0.0)),
+						'period_allocation': float(period_entry['allocation'].get(code, 0.0)),
+						'used_in_period': float(period_entry['used'].get(code, 0.0)),
+						'ending_balance': float(period_entry['ending'].get(code, 0.0)),
+						'allocation_applied': bool(alloc_meta.get('applied', False)),
+						'allocation_reason': alloc_meta.get('reason'),
+						'original_allocation': float(alloc_meta.get('original_allocation', period_entry['allocation'].get(code, 0.0))),
+						'effective_allocation': float(alloc_meta.get('effective_allocation', period_entry['allocation'].get(code, 0.0))),
+					}
 
-			# iterate ordered periods from base_date up to and including the requested period
-			periods_seq = list(LeavePeriod.objects.filter(start_date__lte=period.start_date).order_by('start_date'))
-			# keep only those starting at or after base_date
-			periods_seq = [pr for pr in periods_seq if pr.start_date >= base_date]
+				profile = profile_map.get(emp_data.get('emp_id'))
+				rows.append({
+					'emp_id': emp_data.get('emp_id'),
+					'emp_name': emp_data.get('emp_name'),
+					'position': getattr(profile, 'emp_designation', None) if profile else None,
+					'leave_group': getattr(profile, 'leave_group', None) if profile else None,
+					'joining_date': getattr(profile, 'actual_joining', None).isoformat() if profile and getattr(profile, 'actual_joining', None) else None,
+					'leaving_date': getattr(profile, 'left_date', None).isoformat() if profile and getattr(profile, 'left_date', None) else None,
+					'period': {
+						'id': period_entry['period_id'],
+						'name': period_entry.get('period_name'),
+						'start': period_entry.get('period_start').isoformat() if isinstance(period_entry.get('period_start'), date) else period_entry.get('period_start'),
+						'end': period_entry.get('period_end').isoformat() if isinstance(period_entry.get('period_end'), date) else period_entry.get('period_end'),
+					},
+					'codes': codes_payload,
+				})
 
-			# if no periods found in range, include the requested period only
-			if not periods_seq:
-				periods_seq = [period]
+			rows.sort(key=lambda r: (r['emp_id'] or ""))
 
-			# helper: find allocation value for a profile, period and leave type
-			def get_alloc_for(prof, per, lt_obj):
-				# try ORM first
-				try:
-					al = LeaveAllocation.objects.filter(profile=prof, period=per, leave_type=lt_obj).first()
-					if al:
-						return float(al.allocated)
-				except Exception:
-					pass
-				# fallback: try legacy table
-				from django.db import connection
-				with connection.cursor() as cur:
-					cur.execute("SELECT allocated_el, allocated_cl, allocated_sl, allocated_vac FROM leavea_llocation_general WHERE period_id=%s AND leave_code=%s AND (profile_id=%s OR profile_id IS NULL) ORDER BY profile_id IS NOT NULL DESC LIMIT 1", [per.id, lt_obj.leave_code, prof.id])
-					row = cur.fetchone()
-					if row:
-						# pick appropriate column based on lt
-						code = (lt_obj.leave_code or '').lower()
-						if code.startswith('el'):
-							return float(row[2] or row[0] or 0)
-						if code.startswith('sl'):
-							return float(row[1] or row[0] or 0)
-						if code.startswith('cl'):
-							return float(row[1] or 0)
-						return float(row[3] or 0)
-				# final fallback: LeaveType annual allocation
-				try:
-					return float(lt_obj.annual_allocation or 0)
-				except Exception:
-					return 0.0
-
-			# iterate
-			for per in periods_seq:
-				# CL resets to 0 at start of each period per rules
-				bal_cl = 0.0
-				period_days = (per.end_date - per.start_date).days + 1
-				# compute used for this profile during this period per leave code
-				entries = LeaveEntry.objects.filter(emp__emp_id=p.emp_id, status__iexact='Approved', end_date__gte=per.start_date, start_date__lte=per.end_date).select_related('leave_type')
-				used_this = {}
-				for e in entries:
-					start_clamped = max(e.start_date, per.start_date)
-					end_clamped = min(e.end_date, per.end_date)
-					if end_clamped >= start_clamped:
-						overlap_days = (end_clamped - start_clamped).days + 1
-						day_value = float(e.leave_type.day_value if getattr(e, 'leave_type', None) else 1)
-						used_days = overlap_days * day_value
-						code = (getattr(e.leave_type, 'leave_code', '') or '').lower()
-						used_this[code] = used_this.get(code, 0.0) + float(used_days)
-
-				# for each leave type compute allocation, apply joiner rules and update balances
-				for lt in ltypes:
-					code = (lt.leave_code or '').lower()
-					alloc_val = get_alloc_for(p, per, lt)
-					computed_alloc = float(alloc_val or 0)
-					# joining & waiting rules for EL/SL
-					if p.actual_joining and code.startswith(('el', 'sl')):
-						wait_until = p.actual_joining + timedelta(days=365)
-						if wait_until > per.end_date:
-							computed_alloc = 0.0
-						else:
-							eff_start = max(per.start_date, wait_until)
-							remaining_days = (per.end_date - eff_start).days + 1
-							computed_alloc = round(float(alloc_val or 0) * (remaining_days / period_days), 2)
-							computed_alloc = round_half(computed_alloc)
-
-					# joining-year special allocation from profile fields
-					joining_alloc = 0.0
-					if 'el' in code:
-						joining_alloc = float(p.joining_year_allocation_el or 0)
-					elif 'sl' in code:
-						joining_alloc = float(p.joining_year_allocation_sl or 0)
-					elif 'cl' in code:
-						joining_alloc = float(p.joining_year_allocation_cl or 0)
-					else:
-						joining_alloc = float(p.joining_year_allocation_vac or 0)
-
-					used_val = 0.0
-					for k, v in used_this.items():
-						if k.startswith(code):
-							used_val += v
-
-					# update running balances
-					if code.startswith('el'):
-						bal_el = round_half(bal_el + joining_alloc + computed_alloc - used_val)
-					elif code.startswith('sl'):
-						bal_sl = round_half(bal_sl + joining_alloc + computed_alloc - used_val)
-					elif code.startswith('cl'):
-						bal_cl = round_half(bal_cl + joining_alloc + computed_alloc - used_val)
-					else:
-						bal_vac = round_half(bal_vac + joining_alloc + computed_alloc - used_val)
-
-			# capture used values from the last iterated period (used_last)
-			try:
-				used_last
-			except NameError:
-				used_last = {}
-
-			# compute allocation values for the requested period
-			alloc_cl = 0.0
-			alloc_sl = 0.0
-			alloc_el = 0.0
-			alloc_vac = 0.0
-			for lt in ltypes:
-				code = (lt.leave_code or '').lower()
-				val = get_alloc_for(p, period, lt)
-				if code.startswith('cl') and alloc_cl == 0.0:
-					alloc_cl = val
-				elif code.startswith('sl') and alloc_sl == 0.0:
-					alloc_sl = val
-				elif code.startswith('el') and alloc_el == 0.0:
-					alloc_el = val
-				elif not code.startswith(('el', 'sl', 'cl')) and alloc_vac == 0.0:
-					alloc_vac = val
-
-			used_cl_val = sum(v for k, v in (used_last or {}).items() if k.startswith('cl'))
-			used_sl_val = sum(v for k, v in (used_last or {}).items() if k.startswith('sl'))
-			used_el_val = sum(v for k, v in (used_last or {}).items() if k.startswith('el'))
-
-			emp_row.update({
-				'balance_start': {'CL': 0.0, 'SL': float(p.sl_balance or 0), 'EL': float(p.el_balance or 0)},
-				'allocation': {'CL': alloc_cl, 'SL': alloc_sl, 'EL': alloc_el, 'VAC': alloc_vac},
-				'used': {'CL': used_cl_val, 'SL': used_sl_val, 'EL': used_el_val},
-				'balance_end': {'CL': bal_cl, 'SL': bal_sl, 'EL': bal_el},
+			return Response({
+				'period': _serialise_period(selected_period),
+				'periods': [_serialise_period(p) for p in periods_meta],
+				'tracked_codes': tracked_codes,
+				'rows': rows,
+				'overdrawn': metadata.get('overdrawn', []),
+				'generated_at': timezone.now().isoformat(),
+				'employee_count': len(rows),
 			})
-
-			report.append(emp_row)
-
-		return Response({'period': {'id': period.id, 'start_date': str(period.start_date), 'end_date': str(period.end_date)}, 'report': report})
-
- 
-
 class EmpProfileViewSet(viewsets.ModelViewSet):
 	queryset = EmpProfile.objects.all()
 	serializer_class = EmpProfileSerializer

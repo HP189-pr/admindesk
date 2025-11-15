@@ -154,15 +154,48 @@ class LeavePeriod(models.Model):
 
 
 class LeaveAllocation(models.Model):
-	profile = models.ForeignKey(EmpProfile, on_delete=models.CASCADE, related_name='leave_allocations')
-	leave_type = models.ForeignKey(LeaveType, to_field='leave_code', db_column='leave_code', on_delete=models.PROTECT, related_name='allocations')
+	# Legacy schema stores the FK as `emp_id` referencing EmpProfile.emp_id (not the PK).
+	# Map the Django FK accordingly so queries hit the correct column (no migrations).
+	profile = models.ForeignKey(
+		EmpProfile,
+		to_field='emp_id',
+		db_column='emp_id',
+		on_delete=models.CASCADE,
+		related_name='leave_allocations',
+		null=True,
+		blank=True,
+	)
+	leave_type = models.ForeignKey(
+		LeaveType,
+		to_field='leave_code',
+		db_column='leave_code',
+		on_delete=models.PROTECT,
+		related_name='allocations',
+		null=True,
+		blank=True,
+	)
 	period = models.ForeignKey(LeavePeriod, on_delete=models.CASCADE, related_name='allocations')
 	allocated = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+
+	# Legacy per-type allocation columns present in some installations.
+	# Map them here (managed=False on the model ensures no migrations).
+	allocated_el = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, db_column='allocated_el')
+	allocated_cl = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, db_column='allocated_cl')
+	allocated_sl = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, db_column='allocated_sl')
+	allocated_vac = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, db_column='allocated_vac')
+	allocated_start_date = models.DateField(null=True, blank=True, db_column='allocated_start_date')
+	allocated_end_date = models.DateField(null=True, blank=True, db_column='allocated_end_date')
+	# Note: do NOT declare a separate `leave_code` model field because the
+	# foreign key `leave_type` already maps to the DB column `leave_code` via
+	# `db_column='leave_code'`. Access the raw stored value using
+	# `instance.leave_type_id` (it contains the leave_code value when present).
 	created_at = models.DateTimeField(default=timezone.now)
 	updated_at = models.DateTimeField(auto_now=True)
 
 	class Meta:
 		unique_together = ('profile', 'leave_type', 'period')
+		db_table = 'api_leaveallocation'
+		managed = False
 
 	def used_days(self):
 		# Calculate used days for this allocation by summing overlap of approved leave entries
@@ -192,10 +225,7 @@ class LeaveAllocation(models.Model):
 	def __str__(self):
 		return f"{self.profile} - {self.leave_type} ({self.period.period_name})"
 
-	class Meta:
-		# Use the migration-created table name for allocations
-		db_table = 'api_leaveallocation'
-		managed = False
+	# (Meta declared above to avoid duplicate definitions)
 
 
 # Auto-seed allocations when a LeavePeriod becomes active

@@ -33,9 +33,98 @@ class LeavePeriodAdmin(admin.ModelAdmin):
 
 @admin.register(LeaveAllocation)
 class LeaveAllocationAdmin(admin.ModelAdmin):
-    list_display = ('profile', 'leave_type', 'period', 'allocated')
-    search_fields = ('profile__emp_name', 'leave_type__leave_name')
-    list_filter = ('period', 'leave_type')
+    # Show columns in requested sequence: emp_id, leave_code, period_id, allocated_cl/sl/el/vac, start/end dates
+    list_display = (
+        'id', 'emp_id_field', 'leave_code_field', 'period_id_field',
+        'allocated_cl', 'allocated_sl', 'allocated_el', 'allocated_vac',
+        'allocated_start_date', 'allocated_end_date', 'allocated_field',
+        'created_at', 'updated_at'
+    )
+    list_display_links = ('id',)
+    # Allow quick edits for allocation numeric/date columns directly in the changelist
+    list_editable = ('allocated_cl', 'allocated_sl', 'allocated_el', 'allocated_vac', 'allocated_start_date', 'allocated_end_date')
+    search_fields = ('profile__emp_name', 'leave_type__leave_name', 'profile__emp_id')
+    list_filter = ('period', 'leave_type', 'profile')
+    readonly_fields = ('created_at', 'updated_at')
+    fields = (
+        'profile', 'leave_type', 'period',
+        'allocated_cl', 'allocated_sl', 'allocated_el', 'allocated_vac',
+        'allocated_start_date', 'allocated_end_date', 'allocated',
+        'created_at', 'updated_at'
+    )
+    raw_id_fields = ('profile', 'leave_type', 'period')
+
+    def emp_id_field(self, obj):
+        """Display emp_id for employee-specific allocations, or 'All' for defaults"""
+        try:
+            if obj.profile:
+                return obj.profile.emp_id
+            return 'All'
+        except Exception:
+            return 'All'
+    emp_id_field.short_description = 'emp_id'
+    
+    def period_id_field(self, obj):
+        """Display period ID"""
+        try:
+            return obj.period.id if obj.period else None
+        except Exception:
+            return None
+    period_id_field.short_description = 'period_id'
+
+    def leave_code_field(self, obj):
+        """Display leave_code - empty for default allocations (emp_id=All)"""
+        try:
+            if obj.profile is None:
+                return ''
+            # The FK `leave_type` maps to DB column `leave_code`
+            if obj.leave_type:
+                return obj.leave_type.leave_code
+            return obj.leave_type_id or ''
+        except Exception:
+            return ''
+    leave_code_field.short_description = 'leave_code'
+
+    def allocated_field(self, obj):
+        """Display allocated only for employee-specific allocations"""
+        try:
+            if obj.profile is None:
+                return ''
+            return obj.allocated if obj.allocated else ''
+        except Exception:
+            return ''
+    allocated_field.short_description = 'allocated'
+
+    def period_id_field(self, obj):
+        try:
+            return getattr(obj, 'period_id', None)
+        except Exception:
+            return None
+    period_id_field.short_description = 'period_id'
+
+    def allocated_cl(self, obj):
+        return getattr(obj, 'allocated_cl', None)
+    allocated_cl.short_description = 'allocated_cl'
+
+    def allocated_sl(self, obj):
+        return getattr(obj, 'allocated_sl', None)
+    allocated_sl.short_description = 'allocated_sl'
+
+    def allocated_el(self, obj):
+        return getattr(obj, 'allocated_el', None)
+    allocated_el.short_description = 'allocated_el'
+
+    def allocated_vac(self, obj):
+        return getattr(obj, 'allocated_vac', None)
+    allocated_vac.short_description = 'allocated_vac'
+
+    def allocated_start_date(self, obj):
+        return getattr(obj, 'allocated_start_date', None)
+    allocated_start_date.short_description = 'allocated_start_date'
+
+    def allocated_end_date(self, obj):
+        return getattr(obj, 'allocated_end_date', None)
+    allocated_end_date.short_description = 'allocated_end_date'
 
 
 @admin.register(LeaveBalanceSnapshot)
@@ -52,7 +141,11 @@ from .domain_emp import LeaveEntry, LeaveAllocation
 class LeaveAllocationInline(admin.TabularInline):
     model = LeaveAllocation
     extra = 0
-    fields = ('leave_type', 'period', 'allocated')
+    fields = (
+        'leave_type', 'leave_code', 'period', 'allocated',
+        'allocated_cl', 'allocated_sl', 'allocated_el', 'allocated_vac',
+        'allocated_start_date', 'allocated_end_date'
+    )
     readonly_fields = ()
 
 
