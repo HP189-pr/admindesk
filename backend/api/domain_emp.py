@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
+from decimal import Decimal
 
 class EmpProfile(models.Model):
 	emp_id = models.CharField(max_length=20, unique=True)
@@ -100,10 +101,31 @@ class LeaveEntry(models.Model):
 			else:
 				last_num = 0
 			self.leave_report_no = f"{prefix}_{last_num+1:04d}"
-		# Auto-calc total_days
+		# Auto-calc total_days (respect half-day leave types)
 		if self.start_date and self.end_date:
 			delta = (self.end_date - self.start_date).days + 1
-			self.total_days = delta * float(self.leave_type.day_value if self.leave_type else 1)
+			# determine effective day value: prefer explicit day_value, but
+			# treat is_half types as 0.5 when no smaller day_value provided.
+			try:
+				lt = self.leave_type if getattr(self, 'leave_type', None) is not None else None
+				if lt is None:
+					day_value = Decimal('1')
+				else:
+					raw = getattr(lt, 'day_value', None)
+					try:
+						dv = Decimal(str(raw)) if raw not in (None, '') else None
+					except Exception:
+						dv = None
+					if bool(getattr(lt, 'is_half', False)):
+						if dv is None or dv >= Decimal('1'):
+							day_value = Decimal('0.5')
+						else:
+							day_value = dv
+					else:
+						day_value = dv if dv is not None else Decimal('1')
+			except Exception:
+				day_value = Decimal('1')
+			self.total_days = Decimal(delta) * Decimal(str(day_value))
 		# Ensure emp_name mirrors the referenced EmpProfile (auto-update)
 		try:
 			if hasattr(self, 'emp') and getattr(self, 'emp') is not None:
@@ -214,8 +236,26 @@ class LeaveAllocation(models.Model):
 			if end >= start:
 				overlap_days = (end - start).days + 1
 				# account for leave type day_value (half-day support)
-				day_value = float(e.leave_type.day_value if e.leave_type else 1)
-				total += overlap_days * day_value
+				try:
+					lt = e.leave_type if getattr(e, 'leave_type', None) is not None else None
+					if lt is None:
+						dv = Decimal('1')
+					else:
+						raw = getattr(lt, 'day_value', None)
+						try:
+							dv = Decimal(str(raw)) if raw not in (None, '') else None
+						except Exception:
+							dv = None
+						is_half = bool(getattr(lt, 'is_half', False))
+						if is_half:
+							if dv is None or dv >= Decimal('1'):
+								dv = Decimal('0.5')
+						else:
+							if dv is None:
+								dv = Decimal('1')
+				except Exception:
+					dv = Decimal('1')
+				total += float(Decimal(overlap_days) * dv)
 		return float(total)
 
 	@property

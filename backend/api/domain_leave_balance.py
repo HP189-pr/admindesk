@@ -74,6 +74,32 @@ def _to_decimal(value: Optional[Decimal]) -> Decimal:
     return Decimal(str(value))
 
 
+def _effective_day_value(leave_type) -> Decimal:
+    """Return the effective day value for a LeaveType, handling half-day types.
+
+    Rules:
+    - If leave_type is None, return 1
+    - If leave_type.is_half is True and reported day_value is missing or >= 1,
+      treat as 0.5
+    - Otherwise use the numeric leave_type.day_value if present, else 1
+    """
+    if leave_type is None:
+        return Decimal("1")
+    raw = getattr(leave_type, "day_value", None)
+    dv = None
+    try:
+        if raw not in (None, ""):
+            dv = Decimal(str(raw))
+    except Exception:
+        dv = None
+    is_half = bool(getattr(leave_type, "is_half", False))
+    if is_half:
+        if dv is None or dv >= Decimal("1"):
+            return Decimal("0.5")
+        return dv
+    return dv if dv is not None else Decimal("1")
+
+
 def _add_year_safe(d: date) -> date:
     """Return ``d`` + 1 year handling leap years gracefully."""
 
@@ -203,8 +229,12 @@ def _load_periods() -> List[_PeriodWindow]:
 def _load_allocations(period_ids: Sequence[int]) -> List[LeaveAllocation]:
     if not period_ids:
         return []
+    # Avoid select_related('profile') because some deployments store
+    # heterogeneous types for the emp/profile FK column and a join may
+    # fail due to type mismatch. We still join period and leave_type for
+    # convenience.
     return list(
-        LeaveAllocation.objects.select_related("period", "leave_type", "profile")
+        LeaveAllocation.objects.select_related("period", "leave_type")
         .filter(period_id__in=list(period_ids))
         .order_by("period__start_date", "period_id")
     )
@@ -477,7 +507,7 @@ def _split_entry_across_periods(entry: LeaveEntry, periods: Sequence[_PeriodWind
     if not leave_code:
         return {}
 
-    day_value = Decimal(str(getattr(entry.leave_type, "day_value", 1) or 1))
+    day_value = _effective_day_value(getattr(entry, 'leave_type', None))
     result: Dict[int, Dict[str, Decimal]] = {}
 
     for period in periods:

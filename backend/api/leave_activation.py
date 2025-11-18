@@ -82,7 +82,25 @@ def activate_period(period_id: int) -> dict:
                     s = max(e.start_date, prev.start_date)
                     t = min(e.end_date, prev.end_date)
                     if t >= s:
-                        used_total += days_inclusive(s, t) * float(e.leave_type.day_value if e.leave_type else 1)
+                        try:
+                            lt = e.leave_type if getattr(e, 'leave_type', None) is not None else None
+                            if lt is None:
+                                dv = Decimal('1')
+                            else:
+                                raw = getattr(lt, 'day_value', None)
+                                try:
+                                    dv = Decimal(str(raw)) if raw not in (None, '') else None
+                                except Exception:
+                                    dv = None
+                                if bool(getattr(lt, 'is_half', False)):
+                                    if dv is None or dv >= Decimal('1'):
+                                        dv = Decimal('0.5')
+                                else:
+                                    if dv is None:
+                                        dv = Decimal('1')
+                        except Exception:
+                            dv = Decimal('1')
+                        used_total += float(days_inclusive(s, t) * float(dv))
                 used_prev = used_total
 
                 # opening_prev try to read from allocation opening (not persisted separately in current schema)

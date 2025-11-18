@@ -162,7 +162,7 @@ class LeaveAllocationInline(admin.TabularInline):
     model = LeaveAllocation
     extra = 0
     fields = (
-        'leave_type', 'leave_code', 'period', 'allocated',
+        'leave_type', 'period', 'allocated',
         'allocated_cl', 'allocated_sl', 'allocated_el', 'allocated_vac',
         'allocated_start_date', 'allocated_end_date'
     )
@@ -1329,7 +1329,7 @@ class EcaAdmin(admin.ModelAdmin):
     readonly_fields = ("createdat", "updatedat")
     def save_model(self, request, obj, form, change):  # type: ignore[override]
         if not change and not obj.created_by:
-            obj.created_by = request.user
+            _assign_user_field(obj, request.user, 'created_by')
         super().save_model(request, obj, form, change)
 
 @admin.register(InstVerificationMain)
@@ -1348,7 +1348,7 @@ class MigrationRecordAdmin(CommonAdminMixin):
     readonly_fields = ("created_at", "updated_at")
     def save_model(self, request, obj, form, change):  # type: ignore[override]
         if not change and not obj.created_by:
-            obj.created_by = request.user
+            _assign_user_field(obj, request.user, 'created_by')
         super().save_model(request, obj, form, change)
 
 @admin.register(ProvisionalRecord)
@@ -1360,7 +1360,7 @@ class ProvisionalRecordAdmin(CommonAdminMixin):
     readonly_fields = ("created_at", "updated_at")
     def save_model(self, request, obj, form, change):  # type: ignore[override]
         if not change and not obj.created_by:
-            obj.created_by = request.user
+            _assign_user_field(obj, request.user, 'created_by')
         super().save_model(request, obj, form, change)
 
 @admin.register(MainBranch)
@@ -1591,7 +1591,7 @@ class VerificationAdmin(CommonAdminMixin):
         # Keep parity with other create-by patterns
         if not change and not getattr(obj, 'updatedby', None):
             try:
-                obj.updatedby = request.user  # type: ignore[attr-defined]
+                _assign_user_field(obj, request.user, 'updatedby')
             except Exception:
                 pass
         # Save Verification first
@@ -1641,7 +1641,7 @@ class VerificationAdmin(CommonAdminMixin):
         # Keep parity with other create-by patterns
         if not change and not getattr(obj, 'updatedby', None):
             try:
-                obj.updatedby = request.user  # type: ignore[attr-defined]
+                _assign_user_field(obj, request.user, 'updatedby')
             except Exception:
                 pass
         super().save_model(request, obj, form, change)

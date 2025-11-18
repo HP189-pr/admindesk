@@ -84,7 +84,8 @@ const EmpLeavePage = () => {
         leave_code: lt.leave_code ?? lt.id ?? lt.code,
         leave_name: lt.leave_name ?? lt.name,
         annual_allocation: lt.annual_allocation ?? lt.annual_limit ?? lt.allocation ?? 0,
-        day_value: lt.day_value ?? lt.leave_unit ?? 1
+        day_value: lt.day_value ?? lt.leave_unit ?? 1,
+        is_half: !!lt.is_half
       })));
     }).catch(async () => {
       try {
@@ -645,7 +646,18 @@ const EmpLeavePage = () => {
                         const days = Math.round((e - s) / (1000*60*60*24)) + 1;
                         // find day_value for this leave type
                         const ltObj = leaveTypes.find(t => String(t.leave_code) === String(le.leave_type) || String(t.leave_code) === String(le.leave_type_code));
-                        const dayVal = ltObj ? Number(ltObj.day_value || 1) : 1;
+                        // derive effective day value; if leave type is marked as half-day and
+                        // day_value is missing or >=1, treat as 0.5 to match backend logic.
+                        let dayVal = 1;
+                        if (ltObj) {
+                          const raw = (typeof ltObj.day_value !== 'undefined' && ltObj.day_value !== null && ltObj.day_value !== '') ? Number(ltObj.day_value) : null;
+                          const isHalf = !!ltObj.is_half;
+                          if (isHalf) {
+                            dayVal = (raw === null || raw >= 1) ? 0.5 : raw;
+                          } else {
+                            dayVal = raw === null ? 1 : raw;
+                          }
+                        }
                         total += days * dayVal;
                       }
                     });
@@ -733,6 +745,45 @@ const EmpLeavePage = () => {
                     }
                     return null;
                   };
+                  const getComputedUsed = (empObj, code) => {
+                    if (!computedReport) return null;
+                    const key = String(code).toUpperCase();
+                    if (Array.isArray(computedReport.rows)) {
+                      const row = computedReport.rows.find(r => String(r.emp_id) === String(empObj.emp_id) || String(r.emp_id) === String(empObj.id));
+                      if (!row) return null;
+                      if (row.codes) {
+                        const codeObj = row.codes[key] || row.codes[key.toLowerCase()];
+                        if (!codeObj) return null;
+                        if (typeof codeObj.period_used === 'number') return codeObj.period_used;
+                        if (typeof codeObj.used === 'number') return codeObj.used;
+                        if (typeof codeObj.used_days === 'number') return codeObj.used_days;
+                        return null;
+                      }
+                      const suff = key.toLowerCase();
+                      const usedKey = `used_${suff}`;
+                      const usedVal = row[usedKey] ?? row[`used_${suff}`];
+                      if (typeof usedVal === 'number') return usedVal;
+                      if (usedVal !== undefined && usedVal !== null) {
+                        const n = Number(usedVal);
+                        return Number.isNaN(n) ? null : n;
+                      }
+                      return null;
+                    }
+                    if (Array.isArray(computedReport.employees)) {
+                      const candidate = computedReport.employees.find(c => {
+                        const cid = String(c.emp_id ?? c.id ?? '');
+                        return cid && (cid === String(empObj.emp_id) || cid === String(empObj.id));
+                      });
+                      if (!candidate) return null;
+                      const periodMatch = (candidate.periods || []).find(pp => String(pp.period_id ?? pp.id ?? '') === String(selectedPeriod)) || (candidate.periods || [])[0];
+                      if (!periodMatch || !periodMatch.used) return null;
+                      const val = periodMatch.used[key];
+                      if (typeof val === 'number') return val;
+                      if (typeof val === 'string' && val !== '') { const n = Number(val); return Number.isNaN(n) ? null : n; }
+                      return null;
+                    }
+                    return null;
+                  };
 
                   const computed_cl = getComputedAlloc(emp, 'CL');
                   const computed_sl = getComputedAlloc(emp, 'SL');
@@ -750,9 +801,12 @@ const EmpLeavePage = () => {
                   const start_cl = (getComputedStart(emp, 'CL') !== null && getComputedStart(emp, 'CL') !== undefined) ? getComputedStart(emp, 'CL') : Number(emp.cl_balance || 0);
 
                   // used columns
-                  const used_cl = sumUsed('cl');
-                  const used_sl = sumUsed('sl');
-                  const used_el = sumUsed('el');
+                  const computed_used_cl = getComputedUsed(emp, 'CL');
+                  const computed_used_sl = getComputedUsed(emp, 'SL');
+                  const computed_used_el = getComputedUsed(emp, 'EL');
+                  const used_cl = (computed_used_cl !== null && typeof computed_used_cl !== 'undefined') ? computed_used_cl : sumUsed('cl');
+                  const used_sl = (computed_used_sl !== null && typeof computed_used_sl !== 'undefined') ? computed_used_sl : sumUsed('sl');
+                  const used_el = (computed_used_el !== null && typeof computed_used_el !== 'undefined') ? computed_used_el : sumUsed('el');
                   const used_vac = sumUsed('vac');
 
                   const used_dl = sumUsed('dl');
