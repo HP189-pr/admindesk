@@ -14,20 +14,18 @@ const Dashboard = () => {
     const [chatNotificationCount, setChatNotificationCount] = useState(0);
 
     const handleSecureNavigation = async (menuItem) => {
-      console.log(`Secure navigation triggered for ${menuItem}`);
       const password = prompt("Please confirm your password to access this section:");
   
       if (password) {
         const isVerified = await verifyPassword(password);
 
           if (isVerified) {
-              console.log(`Password verified, navigating to ${menuItem}`);
               setSelectedMenuItem(menuItem);
           } else {
               alert("Password verification failed.");
           }
       } else {
-          console.log("Password prompt cancelled");
+          // Password prompt cancelled
       }
   };
 

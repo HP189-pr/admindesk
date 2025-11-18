@@ -84,12 +84,11 @@ export const initUpload = async (file) => {
             headers: { 
                 'Content-Type': 'multipart/form-data',
             },
-            // Add this to see upload progress
             onUploadProgress: (progressEvent) => {
                 const percentCompleted = Math.round(
                     (progressEvent.loaded * 100) / progressEvent.total
                 );
-                console.log(`Upload progress: ${percentCompleted}%`);
+                // Upload progress tracking available if needed
             },
         });
         return response.data;

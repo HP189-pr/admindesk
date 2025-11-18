@@ -24,10 +24,9 @@ const AddModule = () => {
       }
   
       const response = await axios.get("http://127.0.0.1:8000/api/modules/", {
-        headers: { Authorization: `Bearer ${token}` }, // ✅ Correct format
+        headers: { Authorization: `Bearer ${token}` },
       });
   
-      console.log("📌 Modules Fetched:", response.data);
       setModules(response.data);
     } catch (error) {
       console.error("❌ Error fetching modules:", error.response?.data || error.message);
@@ -64,9 +63,7 @@ const AddModule = () => {
             },
         });
 
-        console.log(`📌 Menus for Module ${moduleId}:`, response.data);
-
-        // ✅ Store menus under moduleId to prevent overwriting other menus
+        // Store menus under moduleId to prevent overwriting other menus
         setMenus((prevMenus) => ({
             ...prevMenus,
             [moduleId]: response.data, 
@@ -91,7 +88,6 @@ const AddModule = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      console.log("✅ Module Added:", response.data);
       setNewModuleName("");
       fetchModules(); // Refresh the module list
     } catch (error) {
@@ -115,7 +111,6 @@ const AddModule = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      console.log("✅ Menu Added:", response.data);
       setNewMenuName("");
       fetchMenus(selectedModule); // Refresh the menu list for the module
     } catch (error) {

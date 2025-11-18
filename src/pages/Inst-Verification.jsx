@@ -269,7 +269,6 @@ const InstitutionalVerification = () => {
     };
     setMForm(prepared);
   setIsNewRecord(false);
-  console.log('openEdit loaded main record:', record, 'prepared form:', prepared);
     // load students for this doc_rec
     const docKey = record ? (record.doc_rec || record.doc_rec_id || (record.doc_rec && record.doc_rec.doc_rec_id) || '') : '';
     if (!docKey) {
@@ -283,7 +282,6 @@ const InstitutionalVerification = () => {
       if (!res.ok) throw new Error(`Failed to load students: ${res.status}`);
       const data = await res.json();
       setSrows(Array.isArray(data) ? data : data.results || []);
-      console.log('loaded students for', docKey, data);
     } catch (e) {
       console.error(e);
       setSrows([]);
@@ -1071,7 +1069,6 @@ const InstitutionalVerification = () => {
         }
         const mainObj = await fetchMainByDocRec(doc_rec);
         const students = await fetchStudentsForDocRec(doc_rec);
-        console.log('fetch result for', doc_rec, { main: mainObj, students });
         if (!mainObj && (!students || students.length === 0)) {
           // push a 'not found' page
           pages.push(`
@@ -1168,7 +1165,6 @@ const InstitutionalVerification = () => {
           const doc_rec = `iv_${year2}_${numStr}`;
           const mainObj = await fetchMainByDocRec(doc_rec);
           const students = await fetchStudentsForDocRec(doc_rec);
-          console.log('fetch result for', doc_rec, { main: mainObj, students });
           if (!mainObj && (!students || students.length === 0)) {
             pages.push(`
               <div style="page-break-after:always;padding:20px;font-family:'Calibri','Segoe UI',Arial,sans-serif;">Record <strong>${doc_rec}</strong> not found.</div>
