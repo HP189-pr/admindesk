@@ -1,15 +1,35 @@
 from django.contrib import admin
+from django.db import models as djmodels
 from .domain_emp import EmpProfile, LeaveType, LeaveEntry, LeavePeriod, LeaveAllocation
 from .domain_emp import LeaveBalanceSnapshot
 from .domain_logs import UserActivityLog, ErrorLog
 
 @admin.register(EmpProfile)
 class EmpProfileAdmin(admin.ModelAdmin):
-    list_display = ('emp_id', 'emp_name', 'emp_designation', 'status', 'username', 'usercode', 'el_balance', 'sl_balance', 'cl_balance', 'vacation_balance')
-    search_fields = ('emp_id', 'emp_name', 'username', 'usercode')
+    list_display = ('emp_id', 'emp_short', 'emp_name', 'emp_designation', 'status', 'username', 'usercode', 'el_balance', 'sl_balance', 'cl_balance', 'vacation_balance')
+    search_fields = ('emp_id', 'emp_short', 'emp_name', 'username', 'usercode')
     list_filter = ('status', 'leave_group', 'department_joining', 'institute_id')
     # allow inline management of allocations and leave entries from the employee page
     # Inlines are defined later and injected here via ModelAdmin.inlines assignment below.
+
+# Helper to assign a user value to a model field that may be either a FK or a CharField.
+def _assign_user_field(obj, user, field_name: str):
+    """Set `field_name` on `obj` to `user` or `user.username` depending on field type."""
+    try:
+        field = obj._meta.get_field(field_name)
+        ftype = field.get_internal_type()
+        if ftype in ('CharField', 'TextField'):
+            try:
+                setattr(obj, field_name, getattr(user, 'username', str(user)))
+            except Exception:
+                setattr(obj, field_name, str(user))
+        else:
+            setattr(obj, field_name, user)
+    except Exception:
+        try:
+            setattr(obj, field_name, getattr(user, 'username', str(user)))
+        except Exception:
+            pass
 
 @admin.register(LeaveType)
 class LeaveTypeAdmin(admin.ModelAdmin):
@@ -968,7 +988,7 @@ class ExcelUploadMixin:
                                         obj.subcourse = None
                                     except Exception:
                                         pass
-                                if not obj.created_by: obj.created_by = request.user
+                                if not obj.created_by: _assign_user_field(obj, request.user, 'created_by')
                                 obj.save()
                                 if created: counts["created"] += 1; add_log(i, "created", "Created", dr.doc_rec_id)
                                 else: counts["updated"] += 1; add_log(i, "updated", "Updated", dr.doc_rec_id)
@@ -1060,7 +1080,7 @@ class ExcelUploadMixin:
                                         obj.subcourse = None
                                     except Exception:
                                         pass
-                                if not obj.created_by: obj.created_by = request.user
+                                if not obj.created_by: _assign_user_field(obj, request.user, 'created_by')
                                 obj.save()
                                 if created: counts["created"] += 1; add_log(i, "created", "Created", dr.doc_rec_id)
                                 else: counts["updated"] += 1; add_log(i, "updated", "Updated", dr.doc_rec_id)
@@ -1134,7 +1154,7 @@ class ExcelUploadMixin:
                                 except Exception:
                                     # keep import tolerant; skip ECA details on error
                                     pass
-                                obj.updatedby = request.user
+                                _assign_user_field(obj, request.user, 'updatedby')
                                 obj.save()
                                 if created: counts["created"] += 1; add_log(i, "created", "Created", dr.doc_rec_id)
                                 else: counts["updated"] += 1; add_log(i, "updated", "Updated", dr.doc_rec_id)

@@ -64,6 +64,8 @@ try:
     router.register(r'empprofile', EmpProfileViewSet, basename='empprofile')
     # Leave management endpoints
     from .views_emp import LeavePeriodListView, LeaveAllocationListView, MyLeaveBalanceView, LeaveTypeViewSet, LeavePeriodViewSet, SeedLeaveAllocationsView, LeaveTypeCompatView, LeaveTypeCompatDetailView, LeavePeriodCompatView, LeaveReportView, LeaveEntryViewSet, LeaveAllocationDetailView
+    # Report views
+    from .views_reports import LeaveBalanceReportView, RecomputeSnapshotsView, ActivatePeriodView
     router.register(r'leavetype', LeaveTypeViewSet, basename='leavetype')
     router.register(r'leaveperiods', LeavePeriodViewSet, basename='leaveperiods')
     # expose leave entry endpoints (normal and legacy-style)
@@ -97,7 +99,8 @@ try:
     path('inst-verification/generate-pdf/', GenerateInstVerificationPDF.as_view(), name='inst-verification-generate-pdf'),
     path('inst-verification/suggest-doc-rec/', SuggestDocRec.as_view(), name='inst-verification-suggest-doc-rec'),
     path('my-navigation/', MyNavigationView.as_view(), name='my-navigation'),
-    path('leaveperiods/', LeavePeriodListView.as_view(), name='leaveperiods'),
+    # `leaveperiods` is exposed via the router already; avoid duplicate explicit path
+    # (keeps compatibility while preventing accidental URL collisions).
     # Note: leaveperiods is available both as router resource and legacy list-create; keep both for compatibility
     path('leave-allocations/', LeaveAllocationListView.as_view(), name='leave-allocations'),
     path('seed-leave-allocations/', SeedLeaveAllocationsView.as_view(), name='seed-leave-allocations'),
@@ -107,6 +110,11 @@ try:
     path('leaveperiods-compat/', LeavePeriodCompatView.as_view(), name='leaveperiods-compat'),
     path('my-leave-balance/', MyLeaveBalanceView.as_view(), name='my-leave-balance'),
     path('leave-report/', LeaveReportView.as_view(), name='leave-report'),
+    # Admin-friendly endpoints
+    path('recompute-snapshots/', RecomputeSnapshotsView.as_view(), name='recompute-snapshots'),
+    path('admin/activate-period/', ActivatePeriodView.as_view(), name='admin-activate-period'),
+    # Reports
+    path('reports/leave-balance', LeaveBalanceReportView.as_view(), name='reports-leave-balance'),
 
         # User API endpoints
         path("users/", UserAPIView.as_view(), name="user-list-create"),

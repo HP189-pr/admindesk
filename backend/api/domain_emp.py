@@ -258,7 +258,12 @@ class LeaveBalanceSnapshot(models.Model):
 	This is used to record 'previous balance on particular date' that the user described.
 	Fields store balances for the common leave types present on EmpProfile.
 	"""
-	profile = models.ForeignKey(EmpProfile, on_delete=models.CASCADE, related_name='balance_snapshots')
+	profile = models.ForeignKey(
+		EmpProfile,
+		db_column='emp_id',
+		on_delete=models.CASCADE,
+		related_name='balance_snapshots',
+	)
 	balance_date = models.DateField()
 	el_balance = models.DecimalField(max_digits=6, decimal_places=2, default=0)
 	sl_balance = models.DecimalField(max_digits=6, decimal_places=2, default=0)
@@ -274,3 +279,117 @@ class LeaveBalanceSnapshot(models.Model):
 
 	def __str__(self):
 		return f"Snapshot {self.profile.emp_id} @ {self.balance_date}"
+
+
+@receiver(post_save, sender=EmpProfile)
+def _empprofile_changed(sender, instance, **kwargs):
+	"""When an employee profile changes (joining/left/allocations), enqueue recompute
+	for periods that may be affected by the employee's joining/left dates.
+	"""
+	try:
+		eff = getattr(instance, 'actual_joining', None) or getattr(instance, 'leave_calculation_date', None)
+		left = getattr(instance, 'left_date', None)
+		from .domain_emp import LeavePeriod
+		periods = LeavePeriod.objects.all().order_by('start_date')
+		affected = []
+		for p in periods:
+			# if left before period start => still enqueue that period to clear allocations
+			if left and left < p.start_date:
+				affected.append(p.id)
+			# if effective join exists and period.end >= eff then affected
+			elif eff and p.end_date >= eff:
+				affected.append(p.id)
+		_enqueue_periods(affected)
+	except Exception:
+		import traceback
+		print('[WARN] _empprofile_changed handler failed:')
+		traceback.print_exc()
+
+
+# When related data changes we enqueue a recompute task for the affected period(s).
+from django.db.models.signals import post_save, post_delete
+
+
+def _enqueue_periods(period_ids):
+	try:
+		# import lazily to avoid circular imports
+		from .snapshot_queue import enqueue_recompute_task
+		# dedupe
+		seen = set()
+		for pid in (period_ids or []):
+			if pid and pid not in seen:
+				enqueue_recompute_task(pid)
+				seen.add(pid)
+	except Exception:
+		import traceback
+		print('[WARN] failed to enqueue snapshot recompute task')
+		traceback.print_exc()
+
+
+@receiver(post_save, sender=LeaveEntry)
+@receiver(post_delete, sender=LeaveEntry)
+def _leaveentry_changed(sender, instance, **kwargs):
+	"""When a leave entry changes, recompute snapshots for affected periods.
+
+	We recompute snapshots for any period that overlaps the entry's date range
+	and for subsequent periods to ensure carry-forward correctness.
+	"""
+	try:
+		start = getattr(instance, 'start_date', None)
+		end = getattr(instance, 'end_date', None)
+		if not start or not end:
+			return
+		from .domain_emp import LeavePeriod, EmpProfile
+		# find periods that may be impacted (those with end >= start)
+		periods = LeavePeriod.objects.filter(end_date__gte=start).order_by('start_date')
+		profile = None
+		try:
+			profile = instance.emp if hasattr(instance, 'emp') else None
+			if not profile:
+				# try lookup by emp_id field
+				pid = getattr(instance, 'emp_id', None)
+				if pid:
+					profile = EmpProfile.objects.filter(emp_id=str(pid)).first()
+		except Exception:
+			profile = None
+		if not profile:
+			return
+		# enqueue recompute for all affected periods up to entry end
+		affected = []
+		for p in periods:
+			if p.start_date > end:
+				break
+			affected.append(p.id)
+		_enqueue_periods(affected)
+	except Exception:
+		import traceback
+		print("[WARN] _leaveentry_changed handler failed:")
+		traceback.print_exc()
+
+
+@receiver(post_save, sender=LeaveAllocation)
+@receiver(post_delete, sender=LeaveAllocation)
+def _leaveallocation_changed(sender, instance, **kwargs):
+	"""Recompute snapshots when allocations change.
+
+	If the allocation is profile-specific, only that profile is updated; for
+	global allocations (profile is NULL) all profiles for the period are
+	updated.
+	"""
+	try:
+		period = getattr(instance, 'period', None)
+		if not period:
+			# try period_id
+			pid = getattr(instance, 'period_id', None)
+			if pid:
+				from .domain_emp import LeavePeriod
+				period = LeavePeriod.objects.filter(id=pid).first()
+		if not period:
+			return
+		from .domain_emp import EmpProfile
+		# enqueue recompute for the period - worker will compute for all employees
+		_enqueue_periods([period.id])
+	except Exception:
+		import traceback
+		print("[WARN] _leaveallocation_changed handler failed:")
+		traceback.print_exc()

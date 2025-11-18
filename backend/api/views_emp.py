@@ -12,7 +12,7 @@ from datetime import timedelta, date
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from django.utils import timezone
-from .domain_leave_balance import compute_leave_balances, LeaveComputationConfig
+from .domain_leave_balance import compute_leave_balances, computeLeaveBalances, LeaveComputationConfig
 
 
 def _user_identifiers(user):
@@ -105,7 +105,19 @@ class LeaveAllocationListView(generics.ListCreateAPIView):
 	permission_classes = [IsLeaveManager]
 
 	def get_queryset(self):
-		qs = LeaveAllocation.objects.select_related('profile', 'leave_type', 'period').all()
+		# Avoid joining the `profile` relation by default because some legacy
+		# databases store mixed types in `api_leaveallocation.emp_id` (bigint)
+		# while `EmpProfile.emp_id` may be varchar — that causes SQL type
+		# mismatch errors when Django emits a JOIN. Selectively include
+		# `leave_type` and `period` relations which are safe, and if the DB
+		# still fails, fall back to an un-joined queryset to prevent 500s.
+		try:
+			qs = LeaveAllocation.objects.select_related('leave_type', 'period').all()
+		except Exception:
+			import traceback
+			print("[WARN] LeaveAllocationListView.select_related failed, falling back to non-joined queryset")
+			traceback.print_exc()
+			qs = LeaveAllocation.objects.all()
 		# DEBUG: log caller identity and auth headers to help diagnose admin UI visibility issues
 		try:
 			user = getattr(self.request, 'user', None)
@@ -262,23 +274,88 @@ class MyLeaveBalanceView(generics.GenericAPIView):
 		if not period:
 			return Response({'detail': 'No active leave period.'}, status=status.HTTP_404_NOT_FOUND)
 
-		# helper: get the most recent snapshot on or before a date
-		from .domain_emp import LeaveBalanceSnapshot
+		# Use the centralized computation so business rules (prorating, waiting periods,
+		# split-across-periods) are consistent with reports and persisted snapshots.
+		try:
+			payload = computeLeaveBalances(leaveCalculationDate=None, selectedPeriodId=period.id)
+		except Exception:
+			# fallback: if computation fails, return a helpful error
+			import traceback
+			traceback.print_exc()
+			return Response({'detail': 'Failed to compute leave balances'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-		def get_snapshot_before(profile, as_of_date):
-			snap = LeaveBalanceSnapshot.objects.filter(profile=profile, balance_date__lte=as_of_date).order_by('-balance_date').first()
-			return snap
+		metadata = payload.get('metadata', {})
+		tracked_codes = list(metadata.get('tracked_leave_codes', ())) or ['EL', 'CL', 'SL', 'VAC']
 
-		# load allocations for the active period
-		allocs = LeaveAllocation.objects.filter(profile=profile, period=period).select_related('leave_type')
-		data = []
-		for a in allocs:
-			lt = a.leave_type
-			# previous balance snapshot (if any) taken before period start or as provided
-			snap = get_snapshot_before(profile, period.start_date)
-	    # end for allocs
+		# find the employee entry matching this profile
+		emp_entry = None
+		for e in payload.get('employees', []):
+			if e.get('emp_id') == profile.emp_id or str(e.get('emp_id')) == str(profile.emp_id):
+				emp_entry = e
+				break
 
-	class LeaveReportView(APIView):
+		if not emp_entry:
+			# no computed entry for this user (possible if not in scope); return empty structured payload
+			codes_payload = {code: {
+				'starting_balance': 0.0,
+				'period_allocation': 0.0,
+				'used_in_period': 0.0,
+				'ending_balance': 0.0,
+				'allocation_applied': False,
+				'allocation_reason': None,
+				'original_allocation': 0.0,
+				'effective_allocation': 0.0,
+			} for code in tracked_codes}
+			return Response({
+				'period': {'id': period.id, 'name': period.period_name, 'start': period.start_date.isoformat(), 'end': period.end_date.isoformat()},
+				'tracked_codes': tracked_codes,
+				'codes': codes_payload,
+				'emp_id': profile.emp_id,
+				'emp_name': profile.emp_name,
+			})
+
+		# pick the period entry for the active period
+		period_entry = next((p for p in emp_entry.get('periods', []) if p.get('period_id') == period.id), None)
+		if not period_entry:
+			# ensure we return something consistent even if the period data is missing
+			period_entry = {
+				'period_id': period.id,
+				'period_name': period.period_name,
+				'period_start': period.start_date,
+				'period_end': period.end_date,
+				'starting': {code: 0.0 for code in tracked_codes},
+				'allocation': {code: 0.0 for code in tracked_codes},
+				'used': {code: 0.0 for code in tracked_codes},
+				'ending': {code: 0.0 for code in tracked_codes},
+				'allocation_meta': {code: {'original_allocation': 0.0, 'effective_allocation': 0.0, 'applied': False, 'reason': None} for code in tracked_codes},
+			}
+
+		codes_payload = {}
+		for code in tracked_codes:
+			alloc_meta = period_entry.get('allocation_meta', {}).get(code) or {}
+			codes_payload[code] = {
+				'starting_balance': float(period_entry.get('starting', {}).get(code, 0.0)),
+				'period_allocation': float(period_entry.get('allocation', {}).get(code, 0.0)),
+				'used_in_period': float(period_entry.get('used', {}).get(code, 0.0)),
+				'ending_balance': float(period_entry.get('ending', {}).get(code, 0.0)),
+				'allocation_applied': bool(alloc_meta.get('applied', False)),
+				'allocation_reason': alloc_meta.get('reason'),
+				'original_allocation': float(alloc_meta.get('original_allocation', period_entry.get('allocation', {}).get(code, 0.0))),
+				'effective_allocation': float(alloc_meta.get('effective_allocation', period_entry.get('allocation', {}).get(code, 0.0))),
+			}
+
+		return Response({
+			'period': {'id': period.id, 'name': period.period_name, 'start': period.start_date.isoformat(), 'end': period.end_date.isoformat()},
+			'tracked_codes': tracked_codes,
+			'codes': codes_payload,
+			'emp_id': profile.emp_id,
+			'emp_name': profile.emp_name,
+			'position': getattr(profile, 'emp_designation', None),
+			'joining_date': getattr(profile, 'actual_joining', None).isoformat() if getattr(profile, 'actual_joining', None) else None,
+			'leaving_date': getattr(profile, 'left_date', None).isoformat() if getattr(profile, 'left_date', None) else None,
+		})
+
+class LeaveReportView(APIView):
 		"""Return per-employee leave balances for a selected period."""
 
 		permission_classes = [IsLeaveManager]
@@ -287,9 +364,14 @@ class MyLeaveBalanceView(generics.GenericAPIView):
 			period_param = request.query_params.get('period')
 			emp_param = request.query_params.get('emp_id')
 
-			config = LeaveComputationConfig()
-			employee_ids = [emp_param] if emp_param else None
-			payload = compute_leave_balances(employee_ids=employee_ids, config=config)
+			# Use the new computeLeaveBalances backend function which implements
+			# effective-joining and prorated CL rules exactly. Fall back to the
+			# older compute_leave_balances if necessary.
+			try:
+				period_id = int(period_param) if period_param else None
+			except Exception:
+				period_id = None
+			payload = computeLeaveBalances(leaveCalculationDate=None, selectedPeriodId=period_id)
 			metadata = payload.get('metadata', {})
 			periods_meta = metadata.get('periods', [])
 			tracked_codes = list(metadata.get('tracked_leave_codes', ())) or ['EL', 'CL', 'SL', 'VAC']

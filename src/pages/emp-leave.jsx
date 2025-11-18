@@ -21,6 +21,7 @@ const EmpLeavePage = () => {
   // debug panel removed
   const [myBalances, setMyBalances] = useState([]);
   const [allocations, setAllocations] = useState([]);
+  const [computedReport, setComputedReport] = useState(null);
   const [allocEdits, setAllocEdits] = useState({}); // local edits keyed by allocation id: { [id]: { allocated, allocated_cl, allocated_sl, allocated_el, allocated_vac, allocated_start_date, allocated_end_date } }
   const [selectedEmp, setSelectedEmp] = useState(null);
 
@@ -155,6 +156,24 @@ const EmpLeavePage = () => {
           setAllocations([]);
         }
       });
+      // Also attempt to fetch computed report (server-side balances) and keep as optional source.
+      // Try manager-level `/api/leave-report` first (newer payload), then fall back to `/api/reports/leave-balance` (auth users).
+      (async () => {
+        try {
+          const r = await axios.get(`/api/leave-report${params}`);
+          setComputedReport(r.data || null);
+        } catch (err) {
+          try {
+            const r2 = await axios.get(`/api/reports/leave-balance${params}`);
+            // `LeaveBalanceReportView` returns a flat array of rows; normalize to { rows: [...] }
+            const rows = Array.isArray(r2.data) ? r2.data : (r2.data && r2.data.rows) ? r2.data.rows : [];
+            const serverPeriod = (periods||[]).find(p => String(p.id) === String(selectedPeriod));
+            setComputedReport({ rows, period: serverPeriod ? { id: serverPeriod.id, name: serverPeriod.name || serverPeriod.period_name, start: serverPeriod.start_date || serverPeriod.start, end: serverPeriod.end_date || serverPeriod.end } : null });
+          } catch (e) {
+            setComputedReport(null);
+          }
+        }
+      })();
       return;
     }
 
@@ -412,19 +431,44 @@ const EmpLeavePage = () => {
 
     const empEntries = selectedEmp ? (leaveEntries || []).filter(le => (String(le.emp) === String(selectedEmp.id) || String(le.emp) === String(selectedEmp.emp_id))) : [];
 
+    // UI period helper: prefer server-provided period in computedReport, else lookup from periods
+    const uiPeriod = (computedReport && (computedReport.period || (computedReport.periods && computedReport.periods[0]))) || (periods || []).find(p => String(p.id) === String(selectedPeriod)) || null;
+    const periodStartLabel = uiPeriod ? fmtDate(uiPeriod.start || uiPeriod.start_date || uiPeriod.startDate || '') : '';
+    const periodEndLabel = uiPeriod ? fmtDate(uiPeriod.end || uiPeriod.end_date || uiPeriod.endDate || '') : '';
+
     return (
       <div className="p-4">
         <div className="flex items-center justify-between mb-3">
-            <div className="font-semibold">Leave Report</div>
-            <div className="flex items-center gap-3">
-              <button onClick={async () => {
-                try {
-                  const params = q({ period: selectedPeriod });
-                  const r = await axios.get(`/api/leave-allocations${params}`);
-                  setAllocations(r.data || []);
-                } catch (e) { console.error(e); }
-              }} className="px-3 py-1 rounded bg-blue-600 text-white text-sm">Refresh Allocations</button>
+            <div className="w-1/4">
+              <div className="font-semibold">Leave Report</div>
+            </div>
 
+            <div className="w-1/2 text-center">
+              {selectedPeriod ? (() => {
+                // Prefer server-computed period returned in computedReport when available
+                const serverPeriod = computedReport && (computedReport.period || computedReport.periods && computedReport.periods[0]);
+                if (serverPeriod) {
+                  return (
+                    <div className="inline-block rounded border px-4 py-3 bg-white shadow-sm">
+                      <div className="text-2xl font-bold text-indigo-700">{serverPeriod.name || serverPeriod.id}</div>
+                      <div className="text-sm text-red-600">{fmtDate(serverPeriod.start)} to {fmtDate(serverPeriod.end)}</div>
+                    </div>
+                  );
+                }
+                const p = (periods||[]).find(pp => String(pp.id) === String(selectedPeriod));
+                if (p) return (
+                  <div className="inline-block rounded border px-4 py-3 bg-white shadow-sm">
+                    <div className="text-2xl font-bold text-indigo-700">{p.name || p.label}</div>
+                    <div className="text-sm text-red-600">{fmtDate(p.start_date)} to {fmtDate(p.end_date)}</div>
+                  </div>
+                );
+                return null;
+              })() : (
+                <div className="text-sm text-gray-500">Select a period to view allocations</div>
+              )}
+            </div>
+
+            <div className="w-1/4 flex items-center justify-end gap-3">
               <div>
                 <label className="text-xs block">Period</label>
                 <select value={selectedPeriod} onChange={e => setSelectedPeriod(e.target.value)} className="border rounded p-1 text-sm">
@@ -433,7 +477,7 @@ const EmpLeavePage = () => {
                 </select>
               </div>
 
-              <div className="ml-auto flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 {selectedEmp && <button onClick={clearSelected} className="px-3 py-1 rounded border text-sm">Back</button>}
                 <button onClick={handleGeneratePdf} className="px-3 py-1 rounded bg-blue-600 text-white text-sm">Generate PDF</button>
               </div>
@@ -441,7 +485,7 @@ const EmpLeavePage = () => {
           </div>
 
         {/* Detailed aggregated report view (per-employee aggregates, allocations, editable allocations) */}
-        {!selectedEmp ? (
+              {!selectedEmp ? (
           <div className="overflow-auto">
             {/* Detailed aggregated report table (start balances, allocations, used, end balances) */}
             <table className="min-w-full text-sm table-auto">
@@ -454,13 +498,21 @@ const EmpLeavePage = () => {
                   <th rowSpan={2} className="p-2">Joining Date</th>
                   <th rowSpan={2} className="p-2">Leaving Date</th>
                   {/* Starting balances (example: SL, EL) */}
-                  <th colSpan={2} className="p-2 text-center bg-amber-100">Balance: {periods.find(p=>String(p.id)===String(selectedPeriod))?.name || ''}</th>
+                 <th colSpan={2} className="p-2 text-center bg-amber-100">
+                        Balance: {uiPeriod ? `Start: ${periodStartLabel}` : ''}
+                      </th>
                   {/* Allocations for period */}
-                  <th colSpan={4} className="p-2 text-center bg-green-100">Leave Allocation for ({periods.find(p=>String(p.id)===String(selectedPeriod))?.name || ''})</th>
+                  <th colSpan={4} className="p-2 text-center bg-green-100">
+                    Leave Allocation for ({uiPeriod ? `${uiPeriod.name || uiPeriod.period_name} ${periodStartLabel} to ${periodEndLabel}` : 'All'})
+                  </th>
                   {/* Used columns */}
-                  <th colSpan={8} className="p-2 text-center bg-sky-100">Used Leave (Period)</th>
+                  <th colSpan={8} className="p-2 text-center bg-sky-100">
+                      Used Leave (Period {uiPeriod ? `${periodStartLabel} to ${periodEndLabel}` : ''})
+                    </th>
                   {/* Ending balances */}
-                  <th colSpan={4} className="p-2 text-center bg-orange-100">Balance: {periods.find(p=>String(p.id)===String(selectedPeriod))?.end_date ? '' : ''}</th>
+                  <th colSpan={4} className="p-2 text-center bg-orange-100">
+                      Balance (as of {periodEndLabel || 'period end'})
+                    </th>
                 </tr>
                 <tr className="bg-gray-50">
                   <th className="p-1 text-xs">SL</th>
@@ -484,9 +536,49 @@ const EmpLeavePage = () => {
                 </tr>
               </thead>
               <tbody>
-                {profiles.length === 0 ? (
-                  <tr><td colSpan={20} className="py-6 text-center text-gray-500">No employees</td></tr>
-                ) : profiles.filter(emp => !filterEmp || String(emp.id) === String(filterEmp)).map(emp => {
+                {(() => {
+                  // Prefer server-provided employee rows when available (computedReport.rows or computedReport.employees).
+                  let source = null;
+                  if (computedReport && Array.isArray(computedReport.rows) && computedReport.rows.length > 0) {
+                    // Enrich server rows with `emp_short` from local `profiles` when available
+                    const _profiles_map = (profiles || []).reduce((m, p) => { m[String(p.emp_id)] = p; return m; }, {});
+                    source = (computedReport.rows || []).map(r => ({ ...(r || {}), emp_short: (r && (r.emp_short ?? r.short)) ?? (_profiles_map[String(r?.emp_id)] && _profiles_map[String(r?.emp_id)].emp_short) }));
+                  } else if (computedReport && Array.isArray(computedReport.employees) && computedReport.employees.length > 0) {
+                    source = computedReport.employees;
+                  } else {
+                    source = profiles;
+                  }
+
+                  // Sort source by `emp_short` when present (numeric), fall back to `emp_id`, then `id`.
+                  const _numericFrom = (v) => {
+                    if (v === null || typeof v === 'undefined') return NaN;
+                    const s = String(v).trim();
+                    const m = s.match(/(\d+)/);
+                    if (m) return Number(m[1]);
+                    const n = Number(s);
+                    return Number.isNaN(n) ? NaN : n;
+                  };
+                  const _sortCompare = (a, b) => {
+                    const aNum = _numericFrom(a?.emp_short ?? a?.emp_id ?? a?.id);
+                    const bNum = _numericFrom(b?.emp_short ?? b?.emp_id ?? b?.id);
+                    if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) return aNum - bNum;
+                    if (!Number.isNaN(aNum)) return -1;
+                    if (!Number.isNaN(bNum)) return 1;
+                    const aKey = (a?.emp_short ?? a?.emp_id ?? a?.id ?? '').toString();
+                    const bKey = (b?.emp_short ?? b?.emp_id ?? b?.id ?? '').toString();
+                    return aKey.localeCompare(bKey, undefined, {numeric: true});
+                  };
+                  try {
+                    source = (source || []).slice().sort(_sortCompare);
+                  } catch (e) {
+                    // keep original order on any unexpected error
+                  }
+
+                  if (!source || source.length === 0) {
+                    return (<tr><td colSpan={20} className="py-6 text-center text-gray-500">No employees</td></tr>);
+                  }
+
+                  return source.filter(emp => !filterEmp || String(emp.id || emp.emp_short || emp.emp_id) === String(filterEmp)).map(emp => {
                   // helpers to get allocation and used values for this employee and a leave code
                   const normaliseAllocValue = (allocObj) => {
                     if (!allocObj) return 0;
@@ -516,7 +608,7 @@ const EmpLeavePage = () => {
                     const matchesProfile = (allocObj) => {
                       const profileToken = String(allocObj.emp_id ?? allocObj.profile ?? '').trim();
                       if (!profileToken) return false;
-                      return profileToken === String(emp.id) || profileToken === String(emp.emp_id);
+                      return profileToken === String(emp.id) || profileToken === String(emp.emp_short) || profileToken === String(emp.emp_id);
                     };
 
                     const specific = allocations.find((allocObj) => matchesProfile(allocObj) && matchesCode(allocObj));
@@ -539,7 +631,7 @@ const EmpLeavePage = () => {
                     const pend = periodObj ? (parseDMY(periodObj.end_date) || new Date(periodObj.end_date)) : null;
                     let total = 0;
                     (leaveEntries || []).forEach(le => {
-                      const matchesEmp = String(le.emp) === String(emp.id) || String(le.emp) === String(emp.emp_id);
+                      const matchesEmp = String(le.emp) === String(emp.id) || String(le.emp) === String(emp.emp_short) || String(le.emp) === String(emp.emp_id);
                       if (!matchesEmp) return;
                       if (!le.status || String(le.status).toLowerCase() !== 'approved') return;
                       const lcode = (le.leave_type || le.leave_type_code || '').toString().toLowerCase();
@@ -560,15 +652,102 @@ const EmpLeavePage = () => {
                     return total;
                   };
 
-                  // start balances
-                  const start_sl = Number(emp.sl_balance || 0);
-                  const start_el = Number(emp.el_balance || 0);
+                  // Prefer computed report starting balances and allocations for the selected period when available
+                  const getComputedAlloc = (empObj, code) => {
+                    if (!computedReport) return null;
+                    const key = String(code).toUpperCase();
+                    // Newer view (`LeaveReportView`) returns `rows` with `codes` map
+                    if (Array.isArray(computedReport.rows)) {
+                      const row = computedReport.rows.find(r => String(r.emp_id) === String(empObj.emp_id) || String(r.emp_id) === String(empObj.id));
+                      if (!row) return null;
+                      // If the server returned the newer `rows[].codes` shape
+                      if (row.codes) {
+                        const codeObj = row.codes[key] || row.codes[key.toLowerCase()];
+                        if (!codeObj) return null;
+                        if (typeof codeObj.period_allocation === 'number') return codeObj.period_allocation;
+                        if (typeof codeObj.effective_allocation === 'number') return codeObj.effective_allocation;
+                        if (typeof codeObj.original_allocation === 'number') return codeObj.original_allocation;
+                        return null;
+                      }
+                      // Legacy flat row shape from `/api/reports/leave-balance` uses suffixed columns
+                      // e.g. allocated_el, allocated_cl, allocated_sl, starting_el, starting_cl, etc.
+                      const suff = key.toLowerCase();
+                      const allocatedKey = `allocated_${suff}`;
+                      const allocatedVal = row[allocatedKey] ?? row[`allocated_${suff}`];
+                      if (typeof allocatedVal === 'number') return allocatedVal;
+                      if (allocatedVal !== undefined && allocatedVal !== null) {
+                        const n = Number(allocatedVal);
+                        return Number.isNaN(n) ? null : n;
+                      }
+                      return null;
+                    }
+                    // Legacy/alternate payload: `employees` array with `periods[].allocation` structure
+                    if (Array.isArray(computedReport.employees)) {
+                      const candidate = computedReport.employees.find(c => {
+                        const cid = String(c.emp_id ?? c.id ?? '');
+                        return cid && (cid === String(empObj.emp_id) || cid === String(empObj.id));
+                      });
+                      if (!candidate) return null;
+                      const periodMatch = (candidate.periods || []).find(pp => String(pp.period_id ?? pp.id ?? '') === String(selectedPeriod)) || (candidate.periods || [])[0];
+                      if (!periodMatch || !periodMatch.allocation) return null;
+                      const val = periodMatch.allocation[key];
+                      if (typeof val === 'number') return val;
+                      if (typeof val === 'string' && val !== '') { const n = Number(val); return Number.isNaN(n) ? null : n; }
+                      return null;
+                    }
+                    return null;
+                  };
 
-                  // allocation columns (CL, SL, EL, VAC)
-                  const alloc_cl = findAlloc('cl');
-                  const alloc_sl = findAlloc('sl');
-                  const alloc_el = findAlloc('el');
-                  const alloc_vac = findAlloc('vac');
+                  const getComputedStart = (empObj, code) => {
+                    if (!computedReport) return null;
+                    const key = String(code).toUpperCase();
+                    if (Array.isArray(computedReport.rows)) {
+                      const row = computedReport.rows.find(r => String(r.emp_id) === String(empObj.emp_id) || String(r.emp_id) === String(empObj.id));
+                      if (!row) return null;
+                      if (row.codes) {
+                        const codeObj = row.codes[key] || row.codes[key.toLowerCase()];
+                        if (!codeObj) return null;
+                        if (typeof codeObj.starting_balance === 'number') return codeObj.starting_balance;
+                        return null;
+                      }
+                      // flat row with starting_el/starting_cl etc
+                      const suff = key.toLowerCase();
+                      const startingKey = `starting_${suff}`;
+                      const v = row[startingKey];
+                      if (typeof v === 'number') return v;
+                      if (v !== undefined && v !== null) { const n = Number(v); return Number.isNaN(n) ? null : n; }
+                      return null;
+                    }
+                    if (Array.isArray(computedReport.employees)) {
+                      const candidate = computedReport.employees.find(c => {
+                        const cid = String(c.emp_id ?? c.id ?? '');
+                        return cid && (cid === String(empObj.emp_id) || cid === String(empObj.id));
+                      });
+                      if (!candidate) return null;
+                      const periodMatch = (candidate.periods || []).find(pp => String(pp.period_id ?? pp.id ?? '') === String(selectedPeriod)) || (candidate.periods || [])[0];
+                      if (!periodMatch || !periodMatch.starting) return null;
+                      const val = periodMatch.starting[key];
+                      if (typeof val === 'number') return Number(val);
+                      if (typeof val === 'string' && val !== '') { const n = Number(val); return Number.isNaN(n) ? null : n; }
+                      return null;
+                    }
+                    return null;
+                  };
+
+                  const computed_cl = getComputedAlloc(emp, 'CL');
+                  const computed_sl = getComputedAlloc(emp, 'SL');
+                  const computed_el = getComputedAlloc(emp, 'EL');
+                  const computed_vac = getComputedAlloc(emp, 'VAC');
+
+                  const alloc_cl = (computed_cl !== null && computed_cl !== undefined) ? computed_cl : findAlloc('cl');
+                  const alloc_sl = (computed_sl !== null && computed_sl !== undefined) ? computed_sl : findAlloc('sl');
+                  const alloc_el = (computed_el !== null && computed_el !== undefined) ? computed_el : findAlloc('el');
+                  const alloc_vac = (computed_vac !== null && computed_vac !== undefined) ? computed_vac : findAlloc('vac');
+
+                  // start balances (prefer computed values)
+                  const start_sl = (getComputedStart(emp, 'SL') !== null && getComputedStart(emp, 'SL') !== undefined) ? getComputedStart(emp, 'SL') : Number(emp.sl_balance || 0);
+                  const start_el = (getComputedStart(emp, 'EL') !== null && getComputedStart(emp, 'EL') !== undefined) ? getComputedStart(emp, 'EL') : Number(emp.el_balance || 0);
+                  const start_cl = (getComputedStart(emp, 'CL') !== null && getComputedStart(emp, 'CL') !== undefined) ? getComputedStart(emp, 'CL') : Number(emp.cl_balance || 0);
 
                   // used columns
                   const used_cl = sumUsed('cl');
@@ -581,15 +760,15 @@ const EmpLeavePage = () => {
                   const used_ml = sumUsed('ml');
                   const used_pl = sumUsed('pl');
 
-                  // end balances (CL, SL, EL, VAC)
-                  const end_cl = +( (Number(emp.cl_balance || 0) + alloc_cl) - used_cl ).toFixed(2);
+                  // end balances (CL, SL, EL, VAC) - prefer computed starting balances
+                  const end_cl = +( (start_cl + alloc_cl) - used_cl ).toFixed(2);
                   const end_sl = +( (start_sl + alloc_sl) - used_sl ).toFixed(2);
                   const end_el = +( (start_el + alloc_el) - used_el ).toFixed(2);
-                  const end_vac = +( (Number(emp.vacation_balance || 0) + alloc_vac) - used_vac ).toFixed(2);
+                  const end_vac = +( ((getComputedStart(emp, 'VAC') !== null && getComputedStart(emp, 'VAC') !== undefined) ? getComputedStart(emp, 'VAC') : Number(emp.vacation_balance || 0)) + alloc_vac - used_vac ).toFixed(2);
 
                   return (
                     <tr key={emp.id} className="border-b hover:bg-gray-50">
-                      <td className="p-2">{emp.emp_id}</td>
+                      <td className="p-2">{emp.emp_short ?? emp.emp_id ?? emp.id}</td>
                       <td className="p-2">{emp.emp_name}</td>
                       <td className="p-2">{emp.emp_designation}</td>
                       <td className="p-2">{emp.leave_group}</td>
@@ -616,7 +795,8 @@ const EmpLeavePage = () => {
                       <td className="p-1 text-right">{end_vac}</td>
                     </tr>
                   );
-                })}
+                });
+              })()}
               </tbody>
             </table>
           </div>
@@ -624,7 +804,7 @@ const EmpLeavePage = () => {
           <div>
             <div className="mb-3 flex items-center justify-between">
               <div>
-                <div className="font-semibold">{selectedEmp.emp_name} ({selectedEmp.emp_id})</div>
+                <div className="font-semibold">{selectedEmp.emp_name} ({selectedEmp.emp_short ?? selectedEmp.emp_id ?? selectedEmp.id})</div>
                 <div className="text-xs text-gray-500">{selectedEmp.emp_designation}</div>
               </div>
               <div className="text-sm text-gray-600">Period: {periods.find(p=>String(p.id)===String(selectedPeriod))?.name || 'All'}</div>
@@ -633,14 +813,16 @@ const EmpLeavePage = () => {
             <div className="mb-3">
               <div className="font-semibold text-sm">Leave Balances</div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
-                {empAllocations.map(a => (
-                  <div key={a.id} className="border rounded p-2 text-xs">
-                    <div className="font-semibold">{a.leave_type_name || a.leave_type}</div>
-                    <div>Allocated: {a.allocated ?? a.allocated_amount}</div>
-                    <div>Used: {a.used ?? a.used_days ?? 0}</div>
-                    <div>Balance: {(a.allocated ?? a.allocated_amount ?? 0) - (a.used ?? a.used_days ?? 0)}</div>
-                  </div>
-                ))}
+                {empAllocations.map((a) => {
+                  return (
+                    <div key={a.id} className="border rounded p-2 text-xs">
+                      <div className="font-semibold">{a.leave_type_name || a.leave_type}</div>
+                      <div>Allocated: {a.allocated ?? a.allocated_amount}</div>
+                      <div>Used: {a.used ?? a.used_days ?? 0}</div>
+                      <div>Balance: {(a.allocated ?? a.allocated_amount ?? 0) - (a.used ?? a.used_days ?? 0)}</div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -804,10 +986,26 @@ const EmpLeavePage = () => {
           <tbody>
             {profiles.length === 0 ? (
               <tr><td colSpan={6 + leaveTypes.length * 4} className="py-6 text-center text-gray-500">No employees</td></tr>
-            ) : profiles.filter(emp => !filterEmp || String(emp.id) === String(filterEmp)).map(emp => {
+            ) : profiles.slice().sort((a,b) => {
+                const extract = (it) => {
+                  if (!it) return NaN;
+                  const s = String(it.emp_short ?? it.emp_id ?? it.id ?? '').trim();
+                  const m = s.match(/(\d+)/);
+                  if (m) return Number(m[1]);
+                  const n = Number(s);
+                  return Number.isNaN(n) ? NaN : n;
+                };
+                const an = extract(a); const bn = extract(b);
+                if (!Number.isNaN(an) && !Number.isNaN(bn)) return an - bn;
+                if (!Number.isNaN(an)) return -1;
+                if (!Number.isNaN(bn)) return 1;
+                const ak = (a?.emp_short ?? a?.emp_id ?? a?.id ?? '').toString();
+                const bk = (b?.emp_short ?? b?.emp_id ?? b?.id ?? '').toString();
+                return ak.localeCompare(bk, undefined, {numeric: true});
+              }).filter(emp => !filterEmp || String(emp.id || emp.emp_short || emp.emp_id) === String(filterEmp)).map(emp => {
               const rowCells = leaveTypes.map(lt => {
                 const alloc = allocations.find(a => (
-                  String(a.emp_id ?? a.profile ?? '') === String(emp.id) || String(a.emp_id ?? a.profile ?? '') === String(emp.emp_id)
+                  String(a.emp_id ?? a.profile ?? '') === String(emp.id) || String(a.emp_id ?? a.profile ?? '') === String(emp.emp_short) || String(a.emp_id ?? a.profile ?? '') === String(emp.emp_id)
                 ) && (
                   String(a.leave_type) === String(lt.leave_code) || String(a.leave_code) === String(lt.leave_code)
                 ));
@@ -834,7 +1032,7 @@ const EmpLeavePage = () => {
               });
               return (
                 <tr key={emp.id} className="border-b hover:bg-gray-50">
-                  <td className="p-2">{emp.emp_id}</td>
+                  <td className="p-2">{emp.emp_short ?? emp.emp_id ?? emp.id}</td>
                   <td className="p-2">{emp.emp_name}</td>
                   <td className="p-2">{emp.emp_designation}</td>
                   <td className="p-2">{emp.leave_group}</td>
