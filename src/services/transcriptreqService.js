@@ -82,9 +82,12 @@ export const bulkDeleteTranscriptRequests = async (ids) => {
   }
 };
 
-export const syncTranscriptRequestsFromSheet = async () => {
+export const syncTranscriptRequestsFromSheet = async ({ no_prune = false, force_overwrite_status = false } = {}) => {
   try {
-    const response = await API.post(`${BASE_PATH}sync-from-sheet/`);
+    const payload = {};
+    if (no_prune) payload.no_prune = true;
+    if (force_overwrite_status) payload.force_overwrite_status = true;
+    const response = await API.post(`${BASE_PATH}sync-from-sheet/`, payload);
     return response.data;
   } catch (error) {
     throw new Error(extractMessage(error));

@@ -13,10 +13,12 @@ __all__ = [
 
 class TranscriptRequestSerializer(serializers.ModelSerializer):
     created = serializers.DateTimeField(read_only=True)
+    tr_request_no = serializers.SerializerMethodField()
 
     class Meta:
         model = TranscriptRequest
         fields = [
+            "tr_request_no",
             "id",
             "requested_at",
             "request_ref_no",
@@ -40,6 +42,9 @@ class TranscriptRequestSerializer(serializers.ModelSerializer):
 
     def validate_mail_status(self, value: str) -> str:
         if not value:
+            # Treat empty incoming mail_status as Pending by default so the
+            # API and sheet-import behavior are consistent with a default
+            # 'Pending' state when no explicit status is provided.
             return TranscriptRequest.STATUS_PENDING
         normalized = TranscriptRequest.normalize_status(value)
         if normalized is None:
@@ -52,3 +57,7 @@ class TranscriptRequestSerializer(serializers.ModelSerializer):
                 f"Invalid mail status '{value}'. Use one of: {choices_text}."
             )
         return normalized
+
+    def get_tr_request_no(self, obj):
+        # expose tr_request_no if the model has it (DB migration may have added it)
+        return getattr(obj, 'tr_request_no', None)

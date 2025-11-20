@@ -28,7 +28,9 @@ FIELD_ALIASES: Dict[str, Tuple[str, ...]] = {
     ),
     "request_ref_no": (
         "trn_reqest_ref_no",
-        "trn_request_ref_no",
+            "trn_reqest_ref_no",
+            "tr_request_no",
+            "trn_request_no",
         "Request Ref No",
         "Reference",
     ),
@@ -72,6 +74,11 @@ FIELD_ALIASES: Dict[str, Tuple[str, ...]] = {
         "mail_status",
         "Mail Status",
         "Status",
+    ),
+    "tr_request_no": (
+        "tr_request_no",
+        "trn_request_no",
+        "tr_request",
     ),
 }
 
@@ -262,11 +269,16 @@ class Command(BaseCommand):
 
                 requested_at = normalized.pop("requested_at")
                 request_ref_no = normalized.get("request_ref_no")
-                lookup: Dict[str, Any] = {"requested_at": requested_at}
-                if request_ref_no:
-                    lookup["request_ref_no"] = request_ref_no
-                elif normalized.get("enrollment_no"):
-                    lookup["enrollment_no"] = normalized["enrollment_no"]
+                tr_no = normalized.get("tr_request_no")
+                # Prefer matching by tr_request_no when present.
+                if tr_no is not None:
+                    lookup: Dict[str, Any] = {"tr_request_no": tr_no}
+                else:
+                    lookup = {"requested_at": requested_at}
+                    if request_ref_no:
+                        lookup["request_ref_no"] = request_ref_no
+                    elif normalized.get("enrollment_no"):
+                        lookup["enrollment_no"] = normalized["enrollment_no"]
 
                 _, was_created = TranscriptRequest.objects.update_or_create(
                     defaults=normalized,
@@ -303,25 +315,44 @@ class Command(BaseCommand):
             return ""
 
         mail_status_raw = pick("mail_status")
-        mail_status = TranscriptRequest.normalize_status(mail_status_raw)
-        if mail_status is None:
-            if mail_status_raw:
-                logger.debug("Unknown mail status '%s', defaulting to pending.", mail_status_raw)
-            mail_status = TranscriptRequest.STATUS_PENDING
+        # Store the raw sheet value (trimmed) or empty string when missing.
+        mail_status = str(mail_status_raw).strip() if mail_status_raw is not None else ""
+
+        # treat receipt/remark/pdf as nullable: return None when blank
+        def maybe_null(val: str) -> str:
+            # keep empty string for fields to match model (no null=True)
+            if val is None:
+                return ''
+            t = str(val).strip()
+            return t if t != "" else ''
 
         normalized: Dict[str, Any] = {
             "requested_at": requested_at,
             "request_ref_no": pick("request_ref_no"),
+            "tr_request_no": None,
             "enrollment_no": pick("enrollment_no"),
             "student_name": pick("student_name"),
             "institute_name": pick("institute_name"),
-            "transcript_receipt": pick("transcript_receipt"),
-            "transcript_remark": pick("transcript_remark"),
+            "transcript_receipt": maybe_null(pick("transcript_receipt")),
+            "transcript_remark": maybe_null(pick("transcript_remark")),
             "submit_mail": pick("submit_mail"),
-            "pdf_generate": pick("pdf_generate"),
+            # store explicit 'Yes' only when the sheet contains 'yes' (case-insensitive)
+            "pdf_generate": ("Yes" if str(pick("pdf_generate") or "").strip().lower() == "yes" else ""),
             "mail_status": mail_status,
             "raw_row": self._serialize_raw_row(row),
         }
+
+        # parse tr_request_no if present
+        tr_raw = pick("tr_request_no")
+        if tr_raw:
+            try:
+                normalized["tr_request_no"] = int(str(tr_raw).strip())
+            except Exception:
+                import re
+
+                m = re.search(r"(\d+)", str(tr_raw))
+                if m:
+                    normalized["tr_request_no"] = int(m.group(1))
 
         return normalized
 

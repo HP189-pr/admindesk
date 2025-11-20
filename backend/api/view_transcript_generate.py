@@ -33,6 +33,28 @@ class TranscriptRequestViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        # Order by mail_status priority (done > progress > pending) then by
+        # tr_request_no (descending) so higher TR numbers appear first, and
+        # finally by requested_at desc as a fallback.
+        try:
+            from django.db.models import Case, When, IntegerField, Value
+
+            qs = qs.annotate(
+                _status_rank=Case(
+                    When(mail_status=TranscriptRequest.STATUS_DONE, then=Value(0)),
+                    When(mail_status=TranscriptRequest.STATUS_PROGRESS, then=Value(1)),
+                    When(mail_status=TranscriptRequest.STATUS_PENDING, then=Value(2)),
+                    default=Value(3),
+                    output_field=IntegerField(),
+                )
+            ).order_by('_status_rank', '-tr_request_no', '-requested_at')
+        except Exception:
+            # If annotation fails (older DB/backends), fall back to tr_request_no desc
+            if hasattr(TranscriptRequest, 'tr_request_no'):
+                try:
+                    qs = qs.order_by('-tr_request_no')
+                except Exception:
+                    qs = qs
         params = getattr(self.request, "query_params", {})
 
         status_param_raw = (params.get("mail_status") or params.get("status") or "").strip()
@@ -50,6 +72,13 @@ class TranscriptRequestViewSet(viewsets.ModelViewSet):
             ).filter(
                 Q(n_enrollment__contains=norm) | Q(n_name__contains=norm) | Q(n_mail__contains=norm)
             )
+            # If the user entered a numeric TR number, allow direct match on tr_request_no
+            if norm.isdigit():
+                try:
+                    tr_num = int(norm)
+                    qs = qs.filter(Q(tr_request_no=tr_num) | Q(request_ref_no__icontains=search_param) | Q(enrollment_no__icontains=search_param))
+                except Exception:
+                    pass
 
         institute = (params.get("institute_name") or "").strip()
         if institute:
@@ -124,7 +153,17 @@ class TranscriptRequestViewSet(viewsets.ModelViewSet):
             return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
 
         try:
-            summary = import_transcript_requests_from_sheet()
+            # allow caller to request skipping pruning by passing {"no_prune": true}
+            # and optionally force sheet status values into DB with
+            # {"force_overwrite_status": true}
+            no_prune = False
+            force_status = False
+            if isinstance(request.data, dict):
+                if request.data.get('no_prune'):
+                    no_prune = True
+                if request.data.get('force_overwrite_status'):
+                    force_status = True
+            summary = import_transcript_requests_from_sheet(no_prune=no_prune, force_overwrite_status=force_status)
         except Exception:  # pragma: no cover
             logger.exception('Sheet import failed')
             return Response({'detail': 'Failed to import from sheet.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

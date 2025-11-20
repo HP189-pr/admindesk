@@ -6,6 +6,7 @@ import {
   updateMailRequest,
   refreshMailRequest,
   bulkRefreshMailRequests,
+  syncMailRequestsFromSheet,
 } from '../services/mailRequestService';
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
@@ -15,7 +16,8 @@ const STATUS_OPTIONS = [
   { value: '', label: 'All' },
   { value: 'pending', label: 'Pending' },
   { value: 'progress', label: 'In Progress' },
-  { value: 'done', label: 'Done' },
+  { value: 'done', label: 'Sent' },
+  { value: 'cancel', label: 'Cancel' },
 ];
 
 const RIGHTS_FALLBACK = { can_view: false, can_create: false, can_edit: false, can_delete: false };
@@ -31,6 +33,9 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   const [rawResponse, setRawResponse] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [safeRefresh, setSafeRefresh] = useState(true);
+  const [syncModalOpen, setSyncModalOpen] = useState(false);
+  const [syncModalContent, setSyncModalContent] = useState('');
   const [flash, setFlash] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [drafts, setDrafts] = useState({});
@@ -269,15 +274,77 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
 
   const handleReload = () => loadRows();
 
+  // Sync from Google Sheet then reload rows
+  const handleSyncAndReload = async () => {
+    if (!rights.can_view) return;
+    setLoading(true);
+    setError('');
+    try {
+      setFlashMessage('info', 'Syncing from Google Sheet...');
+      const result = await syncMailRequestsFromSheet({ noPrune: safeRefresh });
+      // Show a short snippet in the flash and full output in modal (if available)
+      if (result && result.output) {
+        const lines = String(result.output).split('\n').filter(Boolean);
+        const snippet = lines.slice(0, 3).join(' | ');
+        setFlashMessage('info', `Sync output: ${snippet}`);
+        // display full output in modal for inspection
+        setSyncModalContent(result.output);
+        setSyncModalOpen(true);
+        // also log to console
+        // eslint-disable-next-line no-console
+        console.info('Sheet sync output:\n', result.output);
+      }
+      setFlashMessage('success', 'Sheet sync completed. Refreshing list...');
+      await loadRows();
+    } catch (err) {
+      const msg = err.message || 'Failed to sync from sheet.';
+      setError(msg);
+      setFlashMessage('error', msg);
+      setSyncModalContent(msg);
+      setSyncModalOpen(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const isRefreshing = (id) => refreshingIds.includes(id);
 
   const statusCounts = useMemo(() => {
-    const counts = { pending: 0, progress: 0, done: 0 };
+    const counts = { pending: 0, progress: 0, done: 0, cancel: 0 };
     rows.forEach((row) => {
-      const key = (row.mail_status || '').toLowerCase();
+      const key = (row.mail_status || '').toLowerCase() || 'pending';
       if (counts[key] !== undefined) counts[key] += 1;
     });
     return counts;
+  }, [rows]);
+
+  // sort rows for display: prefer status priority (pending first), then numeric `mail_req_no` (higher = newer),
+  // fall back to submitted_at desc.
+  const sortedRows = useMemo(() => {
+    const copy = Array.isArray(rows) ? [...rows] : [];
+    const statusOrder = { pending: 0, progress: 1, done: 2, cancel: 3 };
+    copy.sort((a, b) => {
+      const aStatus = (a?.mail_status || '').toLowerCase() || 'pending';
+      const bStatus = (b?.mail_status || '').toLowerCase() || 'pending';
+      const sa = statusOrder[aStatus] ?? 99;
+      const sb = statusOrder[bStatus] ?? 99;
+      if (sa !== sb) return sa - sb;
+
+      const aNo = a?.mail_req_no ?? NaN;
+      const bNo = b?.mail_req_no ?? NaN;
+      const aNoN = Number.isFinite(Number(aNo)) ? Number(aNo) : NaN;
+      const bNoN = Number.isFinite(Number(bNo)) ? Number(bNo) : NaN;
+      if (Number.isFinite(aNoN) || Number.isFinite(bNoN)) {
+        if (!Number.isFinite(aNoN)) return 1;
+        if (!Number.isFinite(bNoN)) return -1;
+        return bNoN - aNoN; // higher numbers first
+      }
+
+      const da = a?.submitted_at ? new Date(a.submitted_at).getTime() : 0;
+      const db = b?.submitted_at ? new Date(b.submitted_at).getTime() : 0;
+      return db - da;
+    });
+    return copy;
   }, [rows]);
 
   const formatDateTime = (value) => {
@@ -303,13 +370,25 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
         onToggleChatbox={onToggleChatbox}
         rightSlot={
           rights.can_view ? (
-            <button
-              onClick={handleReload}
-              className="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 text-sm"
-              disabled={loading}
-            >
-              ↻ Refresh
-            </button>
+            <div className="flex items-center gap-2">
+              <label className="inline-flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={safeRefresh}
+                  onChange={(e) => setSafeRefresh(e.target.checked)}
+                  className="form-checkbox h-4 w-4 text-indigo-600"
+                  title="When checked, the import will skip pruning DB rows (safe refresh)."
+                />
+                <span className="text-xs text-gray-700">Safe refresh</span>
+              </label>
+              <button
+                onClick={handleSyncAndReload}
+                className="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 text-sm"
+                disabled={loading}
+              >
+                ↻ Refresh
+              </button>
+            </div>
           ) : null
         }
       />
@@ -368,7 +447,8 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                 <div className="md:col-span-3 flex flex-wrap gap-3 text-sm text-gray-600">
                   <span>Pending: {statusCounts.pending}</span>
                   <span>In Progress: {statusCounts.progress}</span>
-                  <span>Done: {statusCounts.done}</span>
+                  <span>Sent: {statusCounts.done}</span>
+                  <span>Cancel: {statusCounts.cancel}</span>
                   <span className="text-xs text-gray-500">Selected rows: {selectedIds.length}</span>
                 </div>
               </div>
@@ -493,6 +573,24 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
             </div>
           )}
 
+          {syncModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center">
+              <div className="absolute inset-0 bg-black opacity-40" onClick={() => setSyncModalOpen(false)} />
+              <div className="relative bg-white rounded-lg shadow-lg w-11/12 max-w-3xl p-4">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-sm font-semibold">Sheet Sync Output</h3>
+                  <button
+                    onClick={() => setSyncModalOpen(false)}
+                    className="text-gray-500 hover:text-gray-700 text-sm px-2 py-1"
+                  >
+                    Close
+                  </button>
+                </div>
+                <pre className="whitespace-pre-wrap max-h-96 overflow-auto text-xs bg-gray-50 p-3 rounded">{syncModalContent}</pre>
+              </div>
+            </div>
+          )}
+
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm flex flex-col">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 px-4 py-3 bg-gray-50 border-b">
               <div className="font-semibold text-gray-800">Mail Request Records</div>
@@ -510,8 +608,24 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
 
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
-                <thead className="bg-gray-100 text-gray-700 uppercase text-xs">
+                <thead className="bg-white">
                   <tr>
+                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm"> </th>
+                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">mail_req_no</th>
+                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">enrollment_no</th>
+                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">student_name</th>
+                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">rec_institute_name</th>
+                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">rec_official_mail</th>
+                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">rec_ref_id</th>
+                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">send_doc_type</th>
+                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">mail_status</th>
+                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">remark</th>
+                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">submitted_at</th>
+                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">form_submit_mail</th>
+                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">verification</th>
+                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">actions</th>
+                  </tr>
+                  <tr className="bg-gray-100 text-gray-700 uppercase text-xs">
                     <th className="px-3 py-2 text-left">
                       <input
                         type="checkbox"
@@ -520,22 +634,25 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                         aria-label="Select all"
                       />
                     </th>
-                    <th className="px-3 py-2 text-left">Submitted</th>
-                    <th className="px-3 py-2 text-left">Enrollment</th>
-                    <th className="px-3 py-2 text-left">Student</th>
-                    <th className="px-3 py-2 text-left">Institute</th>
-                    <th className="px-3 py-2 text-left">Official Email</th>
-                    <th className="px-3 py-2 text-left">Form Email</th>
-                    <th className="px-3 py-2 text-left">Status</th>
-                    <th className="px-3 py-2 text-left">Remark</th>
-                    <th className="px-3 py-2 text-left">Verification</th>
-                    <th className="px-3 py-2 text-left">Actions</th>
+                    <th className="px-3 py-2 text-left">REQ NO</th>
+                    <th className="px-3 py-2 text-left">ENROLLMENT</th>
+                    <th className="px-3 py-2 text-left">STUDENT</th>
+                    <th className="px-3 py-2 text-left">INSTITUTE</th>
+                    <th className="px-3 py-2 text-left">OFFICIAL EMAIL</th>
+                    <th className="px-3 py-2 text-left">REF ID</th>
+                    <th className="px-3 py-2 text-left">DOC TYPE</th>
+                    <th className="px-3 py-2 text-left">STATUS</th>
+                    <th className="px-3 py-2 text-left">REMARK</th>
+                    <th className="px-3 py-2 text-left">SUBMITTED</th>
+                    <th className="px-3 py-2 text-left">FORM EMAIL</th>
+                    <th className="px-3 py-2 text-left">VERIFICATION</th>
+                    <th className="px-3 py-2 text-left">ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading && (
                     <tr>
-                      <td colSpan={11} className="px-4 py-8 text-center text-gray-500">
+                      <td colSpan={12} className="px-4 py-8 text-center text-gray-500">
                         Loading mail requests...
                       </td>
                     </tr>
@@ -543,7 +660,7 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
 
                   {!loading && error && (
                     <tr>
-                      <td colSpan={11} className="px-4 py-6 text-center text-red-600">
+                      <td colSpan={12} className="px-4 py-6 text-center text-red-600">
                         {error}
                       </td>
                     </tr>
@@ -551,13 +668,13 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
 
                   {!loading && !error && rows.length === 0 && (
                     <tr>
-                      <td colSpan={11} className="px-4 py-6 text-center text-gray-500">
+                      <td colSpan={12} className="px-4 py-6 text-center text-gray-500">
                         No submissions found.
                       </td>
                     </tr>
                   )}
 
-                  {!loading && !error && rows.map((row) => {
+                  {!loading && !error && sortedRows.map((row) => {
                     const draft = drafts[row.id] || {};
                     const mailStatus = draft.mail_status ?? row.mail_status ?? '';
                     const remark = draft.remark ?? row.remark ?? '';
@@ -581,15 +698,15 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                             onClick={(e) => e.stopPropagation()}
                           />
                         </td>
-                        <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{formatDateTime(row.submitted_at)}</td>
+                        <td className="px-3 py-2 text-gray-800">{row.mail_req_no ?? 'N/A'}</td>
                         <td className="px-3 py-2">
                           <div className="font-medium text-gray-900">{row.enrollment_no || 'N/A'}</div>
-                          {row.rec_ref_id && <div className="text-xs text-gray-500">Ref: {row.rec_ref_id}</div>}
                         </td>
                         <td className="px-3 py-2 text-gray-800">{row.student_name || 'N/A'}</td>
                         <td className="px-3 py-2 text-gray-800">{row.rec_institute_name || 'N/A'}</td>
                         <td className="px-3 py-2 break-all text-gray-700">{row.rec_official_mail || 'N/A'}</td>
-                        <td className="px-3 py-2 break-all text-gray-700">{row.form_submit_mail || 'N/A'}</td>
+                        <td className="px-3 py-2 text-gray-800">{row.rec_ref_id || 'N/A'}</td>
+                        <td className="px-3 py-2 text-gray-800">{row.send_doc_type || 'N/A'}</td>
                         <td className="px-3 py-2">
                           <select
                             className="border border-gray-300 rounded px-2 py-1 text-sm"
@@ -605,10 +722,10 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                             ))}
                           </select>
                         </td>
-                        <td className="px-3 py-2">
+                        <td className="px-3 py-2 align-top">
                           <textarea
                             rows={2}
-                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm min-h-[2.25rem]"
                             value={remark}
                             onChange={(e) => handleDraftChange(row.id, 'remark', e.target.value)}
                             disabled={!rights.can_edit || disabled}
@@ -616,11 +733,13 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                             onClick={(e) => e.stopPropagation()}
                           />
                         </td>
-                        <td className="px-3 py-2 text-sm text-gray-600">
+                        <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{formatDateTime(row.submitted_at)}</td>
+                        <td className="px-3 py-2 break-all text-gray-700">{row.form_submit_mail || 'N/A'}</td>
+                        <td className="px-3 py-2 text-sm text-gray-600 align-middle">
                           {row.student_verification || 'N/A'}
                         </td>
-                        <td className="px-3 py-2">
-                          <div className="flex flex-col gap-2">
+                        <td className="px-3 py-2 align-middle">
+                          <div className="flex flex-col gap-2 items-end justify-center h-full">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -652,7 +771,7 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
 
             <div className="border-t border-gray-100 px-4 py-2 text-xs text-gray-500 flex items-center justify-between">
               <div>
-                Showing {rows.length} submissions
+                Showing {sortedRows.length} submissions
                 {rawResponse?.count ? ` of ${rawResponse.count}` : ''}.
               </div>
               <div>Last updated: {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>

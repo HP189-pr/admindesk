@@ -16,11 +16,13 @@ class GoogleFormSubmission(models.Model):
 
     MAIL_STATUS_PENDING = 'pending'
     MAIL_STATUS_PROGRESS = 'progress'
+    MAIL_STATUS_CANCEL = 'cancel'
     MAIL_STATUS_DONE = 'done'
 
     MAIL_STATUS_CHOICES = [
         (MAIL_STATUS_PENDING, 'Pending'),
         (MAIL_STATUS_PROGRESS, 'Progress'),
+        (MAIL_STATUS_CANCEL, 'Cancel'),
         (MAIL_STATUS_DONE, 'Done'),
     ]
 
@@ -32,6 +34,7 @@ class GoogleFormSubmission(models.Model):
     rec_ref_id = models.CharField(max_length=128, blank=True, db_column='rec_ref_id')
     send_doc_type = models.CharField(max_length=255, blank=True, db_column='send_doc_type')
     form_submit_mail = models.CharField(max_length=255, blank=True, db_column='form_submit_mail')
+    mail_req_no = models.IntegerField(null=True, blank=True, db_column='mail_req_no')
     mail_status = models.CharField(
         max_length=32,
         blank=True,
@@ -49,6 +52,7 @@ class GoogleFormSubmission(models.Model):
         indexes = [
             models.Index(fields=['submitted_at'], name='idx_gfs_submitted_at'),
             models.Index(fields=['enrollment_no'], name='idx_gfs_enrollment'),
+            models.Index(fields=['mail_req_no'], name='idx_gfs_mail_req_no'),
         ]
 
     def __str__(self) -> str:  # pragma: no cover - simple representation

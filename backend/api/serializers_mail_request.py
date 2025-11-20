@@ -22,6 +22,7 @@ class GoogleFormSubmissionSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'submitted_at',
+            'mail_req_no',
             'enrollment_no',
             'student_name',
             'rec_institute_name',

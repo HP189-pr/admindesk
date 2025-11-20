@@ -48,8 +48,13 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   const [updatingId, setUpdatingId] = useState(null);
   const [bulkStatus, setBulkStatus] = useState('');
   const [polling, setPolling] = useState(false);
+  // Refresh will perform a sheet sync (sheet is source of truth)
+  const [safeRefresh] = useState(true);
+  const [forceStatus] = useState(true);
   const [rights, setRights] = useState(RIGHTS_FALLBACK);
   const [rightsLoaded, setRightsLoaded] = useState(false);
+  const [syncModalOpen, setSyncModalOpen] = useState(false);
+  const [syncModalContent, setSyncModalContent] = useState('');
 
   useEffect(() => {
     const handle = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 350);
@@ -292,10 +297,60 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   const statusCounts = useMemo(() => {
     const counts = { pending: 0, progress: 0, done: 0 };
     rows.forEach((row) => {
-      const key = (row.mail_status || '').toLowerCase();
+      const raw = (row.mail_status || '').toString().trim().toLowerCase();
+      let key = 'progress';
+      if (!raw) key = 'progress';
+      else if (['yes', 'done', 'sent'].includes(raw)) key = 'done';
+      else if (raw === 'pending') key = 'pending';
+      else if (['progress', 'in progress', 'processing'].includes(raw)) key = 'progress';
       if (counts[key] !== undefined) counts[key] += 1;
     });
     return counts;
+  }, [rows]);
+
+  // sort rows for display: prefer numeric `tr_request_no` (higher = newer),
+  // sort rows for display: first by mail_status priority (done > progress > pending),
+  // then by numeric `tr_request_no` (higher numbers first), then by requested_at desc.
+  const sortedRows = useMemo(() => {
+    const copy = Array.isArray(rows) ? [...rows] : [];
+    const statusRank = (s) => {
+      const v = (s || '').toString().toLowerCase();
+      if (v === 'done') return 0;
+      if (v === 'progress') return 1;
+      if (v === 'pending') return 2;
+      return 3;
+    };
+
+    const parseNumeric = (val) => {
+      if (val === null || val === undefined) return NaN;
+      const n = Number(val);
+      if (Number.isFinite(n)) return n;
+      const txt = String(val || '').replace(/[^0-9]/g, '');
+      const m = txt ? Number(txt) : NaN;
+      return Number.isFinite(m) ? m : NaN;
+    };
+
+    copy.sort((a, b) => {
+      const sa = statusRank(a?.mail_status);
+      const sb = statusRank(b?.mail_status);
+      if (sa !== sb) return sa - sb; // lower rank = higher priority
+
+      const aNo = parseNumeric(a?.tr_request_no ?? a?.request_ref_no);
+      const bNo = parseNumeric(b?.tr_request_no ?? b?.request_ref_no);
+      const aHas = Number.isFinite(aNo);
+      const bHas = Number.isFinite(bNo);
+      if (aHas || bHas) {
+        if (!aHas) return 1;
+        if (!bHas) return -1;
+        if (bNo !== aNo) return bNo - aNo; // higher numbers first
+      }
+
+      // fallback to requested_at desc
+      const da = a?.requested_at ? new Date(a.requested_at).getTime() : 0;
+      const db = b?.requested_at ? new Date(b.requested_at).getTime() : 0;
+      return db - da;
+    });
+    return copy;
   }, [rows]);
 
   const formatDateTime = (value) => {
@@ -306,16 +361,23 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   };
 
   const formatStatus = (value) => {
-    if (!value) return STATUS_LABELS.pending;
-    const lookup = STATUS_LABELS[String(value).toLowerCase()];
-    return lookup || STATUS_LABELS.pending;
+    // If sheet value is blank -> show In Progress
+    if (!value || String(value).trim() === '') return STATUS_LABELS.progress;
+    const text = String(value).trim().toLowerCase();
+    // treat yes/done/sent as Sent
+    if (['yes', 'done', 'sent'].includes(text)) return STATUS_LABELS.done;
+    if (['progress', 'in progress', 'in-progress', 'processing'].includes(text)) return STATUS_LABELS.progress;
+    if (['pending', 'pending approval'].includes(text)) return STATUS_LABELS.pending;
+    // fallback: if matches known labels
+    const lookup = STATUS_LABELS[text];
+    return lookup || STATUS_LABELS.progress;
   };
 
   const statusBadgeClass = (value) => {
     const base = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium';
-    const normalized = (value || '').toLowerCase();
-    if (normalized === 'done') return `${base} bg-green-100 text-green-700`;
-    if (normalized === 'progress') return `${base} bg-blue-100 text-blue-700`;
+    const label = formatStatus(value);
+    if (label === STATUS_LABELS.done) return `${base} bg-green-100 text-green-700`;
+    if (label === STATUS_LABELS.progress) return `${base} bg-blue-100 text-blue-700`;
     return `${base} bg-yellow-100 text-yellow-700`;
   };
 
@@ -334,35 +396,44 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
         onToggleSidebar={onToggleSidebar}
         onToggleChatbox={onToggleChatbox}
         rightSlot={
-          rights.can_view ? (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleReload}
-                className="px-3 py-1.5 rounded bg-purple-600 text-white hover:bg-purple-700 text-sm"
-                disabled={loading}
-              >
-                ↻ Refresh
-              </button>
-              <button
-                onClick={async () => {
-                  try {
-                    setLoading(true);
-                    await syncTranscriptRequestsFromSheet();
-                    await loadRows();
-                    setFlashMessage('success', 'Sheet sync completed.');
-                  } catch (err) {
-                    setFlashMessage('error', err.message || 'Sheet sync failed.');
-                  } finally {
-                    setLoading(false);
-                  }
-                }}
-                className="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 text-sm"
-                disabled={loading}
-              >
-                ⤴ Sync Sheet
-              </button>
-            </div>
-          ) : null
+              rights.can_view ? (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={async () => {
+                        // Refresh should sync from Google Sheet (sheet is source of truth)
+                        setLoading(true);
+                        setError('');
+                        try {
+                          setFlashMessage('info', 'Syncing from Google Sheet...');
+                          const result = await syncTranscriptRequestsFromSheet({ no_prune: true, force_overwrite_status: true });
+                          if (result && result.summary) {
+                            const summary = result.summary;
+                            setFlashMessage('info', `Imported: ${summary.created} created, ${summary.updated} updated, total ${summary.total}`);
+                            // build concise modal content with sample TR numbers
+                            const take = (arr, n = 20) => (Array.isArray(arr) ? arr.slice(0, n) : []);
+                            const createdSample = take(summary.created_trs).join(', ') || '—';
+                            const updatedSample = take(summary.updated_trs).join(', ') || '—';
+                            const modal = `Imported: ${summary.created} created\nUpdated: ${summary.updated}\nTotal rows in sheet: ${summary.total}\nPruned: ${summary.pruned || 0}\n\nCreated TRs (sample): ${createdSample}\nUpdated TRs (sample): ${updatedSample}`;
+                            setSyncModalContent(modal);
+                          }
+                          setSyncModalOpen(true);
+                          await loadRows();
+                          setFlashMessage('success', 'Refresh completed.');
+                        } catch (err) {
+                          setFlashMessage('error', err.message || 'Refresh and sync failed.');
+                          setSyncModalContent(err.message || 'Refresh and sync failed.');
+                          setSyncModalOpen(true);
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded bg-purple-600 text-white hover:bg-purple-700 text-sm"
+                      disabled={loading}
+                    >
+                      ↻ Refresh
+                    </button>
+                  </div>
+                ) : null
         }
       />
 
@@ -398,7 +469,7 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                   <input
                     type="search"
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                    placeholder="Enrollment number, student name, or email"
+                    placeholder="TR No, Enrollment number, student name, or email"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
@@ -520,14 +591,14 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                       </div>
                       <div>
                         <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">PDF Generated</div>
-                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
-                          {activeRow.pdf_generate || 'N/A'}
-                        </div>
+                            <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
+                              {activeRow.pdf_generate || ''}
+                            </div>
                       </div>
                       <div>
                         <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Receipt</div>
                         <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
-                          {activeRow.transcript_receipt || 'N/A'}
+                          {activeRow.transcript_receipt || ''}
                         </div>
                       </div>
                       <div>
@@ -655,16 +726,16 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                         aria-label="Select all"
                       />
                     </th>
-                    <th className="px-3 py-2 text-left">Requested At</th>
-                    <th className="px-3 py-2 text-left">Reference</th>
-                    <th className="px-3 py-2 text-left">Enrollment No</th>
-                    <th className="px-3 py-2 text-left">Student</th>
-                    <th className="px-3 py-2 text-left">Institute</th>
-                    <th className="px-3 py-2 text-left">Receipt</th>
-                    <th className="px-3 py-2 text-left">Submit Mail</th>
-                    <th className="px-3 py-2 text-left">PDF Generated</th>
-                    <th className="px-3 py-2 text-left">Mail Status</th>
-                    <th className="px-3 py-2 text-left">Transcript Remark</th>
+                      <th className="px-3 py-2 text-left">TR No</th>
+                      <th className="px-3 py-2 text-left">Enrollment No</th>
+                      <th className="px-3 py-2 text-left">Student</th>
+                      <th className="px-3 py-2 text-left">Reference</th>
+                      <th className="px-3 py-2 text-left">Institute</th>
+                      <th className="px-3 py-2 text-left">Receipt</th>
+                      <th className="px-3 py-2 text-left">Transcript Remark</th>
+                      <th className="px-3 py-2 text-left">PDF Generated</th>
+                      <th className="px-3 py-2 text-left">Mail Status</th>
+                      <th className="px-3 py-2 text-left">Submit Mail</th>
                     <th className="px-3 py-2 text-left">Actions</th>
                   </tr>
                 </thead>
@@ -683,7 +754,7 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                       </td>
                     </tr>
                   )}
-                  {!loading && rows.map((row) => {
+                  {!loading && sortedRows.map((row) => {
                     const isActive = activeRow?.id === row.id;
                     return (
                       <tr
@@ -702,20 +773,20 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                             aria-label={`Select request ${row.id}`}
                           />
                         </td>
-                        <td className="px-3 py-2 align-top whitespace-nowrap">{formatDateTime(row.requested_at)}</td>
-                        <td className="px-3 py-2 align-top">{row.request_ref_no || 'N/A'}</td>
+                        <td className="px-3 py-2 align-top">{row.tr_request_no ?? row.request_ref_no ?? 'N/A'}</td>
                         <td className="px-3 py-2 align-top">{row.enrollment_no || 'N/A'}</td>
                         <td className="px-3 py-2 align-top">{row.student_name || 'N/A'}</td>
+                        <td className="px-3 py-2 align-top">{row.request_ref_no || 'N/A'}</td>
                         <td className="px-3 py-2 align-top">{row.institute_name || 'N/A'}</td>
-                        <td className="px-3 py-2 align-top">{row.transcript_receipt || 'N/A'}</td>
-                        <td className="px-3 py-2 align-top">{row.submit_mail || 'N/A'}</td>
-                        <td className="px-3 py-2 align-top">{row.pdf_generate || 'N/A'}</td>
+                        <td className="px-3 py-2 align-top">{row.transcript_receipt || ''}</td>
+                        <td className="px-3 py-2 align-top text-xs text-gray-600 max-w-[18rem]">
+                          {row.transcript_remark ? row.transcript_remark : ''}
+                        </td>
+                        <td className="px-3 py-2 align-top">{row.pdf_generate || ''}</td>
                         <td className="px-3 py-2 align-top">
                           <span className={statusBadgeClass(row.mail_status)}>{formatStatus(row.mail_status)}</span>
                         </td>
-                        <td className="px-3 py-2 align-top text-xs text-gray-600 max-w-[18rem]">
-                          {row.transcript_remark ? row.transcript_remark : '—'}
-                        </td>
+                        <td className="px-3 py-2 align-top">{row.submit_mail || 'N/A'}</td>
                         <td className="px-3 py-2 align-top">
                           <button
                             onClick={(e) => {
@@ -742,6 +813,23 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                 {JSON.stringify(rawResponse, null, 2)}
               </pre>
             </details>
+          )}
+          {syncModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center">
+              <div className="absolute inset-0 bg-black opacity-40" onClick={() => setSyncModalOpen(false)} />
+              <div className="relative bg-white rounded-lg shadow-lg w-11/12 max-w-3xl p-4">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-sm font-semibold">Sheet Sync Output</h3>
+                  <button
+                    onClick={() => setSyncModalOpen(false)}
+                    className="text-gray-500 hover:text-gray-700 text-sm px-2 py-1"
+                  >
+                    Close
+                  </button>
+                </div>
+                <pre className="whitespace-pre-wrap max-h-96 overflow-auto text-xs bg-gray-50 p-3 rounded">{syncModalContent}</pre>
+              </div>
+            </div>
           )}
         </>
       )}

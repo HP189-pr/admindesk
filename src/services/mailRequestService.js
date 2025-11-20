@@ -64,3 +64,16 @@ export const bulkRefreshMailRequests = async (ids) => {
     throw new Error(extractMessage(error));
   }
 };
+
+export const syncMailRequestsFromSheet = async ({ serviceAccountFile, sheetUrl, noPrune } = {}) => {
+  try {
+    const payload = {};
+    if (serviceAccountFile) payload.service_account_file = serviceAccountFile;
+    if (sheetUrl) payload.sheet_url = sheetUrl;
+    if (noPrune) payload.no_prune = true;
+    const response = await API.post(`${BASE_PATH}sync-from-sheet/`, payload);
+    return response.data;
+  } catch (error) {
+    throw new Error(extractMessage(error));
+  }
+};

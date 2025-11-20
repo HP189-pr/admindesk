@@ -24,6 +24,7 @@ class TranscriptRequest(models.Model):
 
     STATUS_ALIASES = {
         "sent": STATUS_DONE,
+        "yes": STATUS_DONE,
         "sent to institute": STATUS_DONE,
         "completed": STATUS_DONE,
         "complete": STATUS_DONE,
@@ -38,6 +39,10 @@ class TranscriptRequest(models.Model):
 
     requested_at = models.DateTimeField(db_column="trn_reqest_date")
     request_ref_no = models.CharField(max_length=128, db_column="trn_reqest_ref_no", blank=True)
+    # Optional numeric transcript request number (added from Google Sheet as TR No).
+    # Use BigIntegerField to accommodate large numbers; allow null/blank for
+    # backward compatibility with existing rows.
+    tr_request_no = models.BigIntegerField(null=True, blank=True, db_column="tr_request_no")
     enrollment_no = models.CharField(max_length=64, db_column="enrollment_no", blank=True)
     student_name = models.CharField(max_length=255, db_column="student_name", blank=True)
     institute_name = models.CharField(max_length=255, db_column="institute_name", blank=True)
@@ -60,6 +65,7 @@ class TranscriptRequest(models.Model):
         indexes = [
             models.Index(fields=["requested_at"], name="idx_transcript_requested_at"),
             models.Index(fields=["enrollment_no"], name="idx_transcript_enrollment"),
+            models.Index(fields=["tr_request_no"], name="idx_transcript_tr_request_no"),
         ]
 
     def __str__(self) -> str:  # pragma: no cover - trivial representation

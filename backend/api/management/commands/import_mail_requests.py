@@ -13,6 +13,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
+from django.db.models import Max
 
 from api.domain_mail_request import GoogleFormSubmission
 
@@ -74,6 +75,13 @@ FIELD_ALIASES: Dict[str, Tuple[str, ...]] = {
         "Mail Status",
         "Status",
     ),
+    "mail_req_no": (
+        "mail_req_no",
+        "mail request no",
+        "mail_req",
+        "Mail Req No",
+        "Mail Request Number",
+    ),
 }
 
 TIME_FORMATS = (
@@ -91,6 +99,7 @@ VALID_STATUSES = {
     GoogleFormSubmission.MAIL_STATUS_PENDING,
     GoogleFormSubmission.MAIL_STATUS_PROGRESS,
     GoogleFormSubmission.MAIL_STATUS_DONE,
+    GoogleFormSubmission.MAIL_STATUS_CANCEL,
 }
 
 
@@ -136,6 +145,18 @@ class Command(BaseCommand):
             action="store_true",
             help="Parse the sheet and report changes without writing to the database.",
         )
+        parser.add_argument(
+            "--debug",
+            dest="debug",
+            action="store_true",
+            help="Print debugging diagnostics about parsed rows (non-destructive).",
+        )
+        parser.add_argument(
+            "--no-prune",
+            dest="no_prune",
+            action="store_true",
+            help="Do not delete DB rows that are not present in the sheet (safe refresh).",
+        )
 
     def handle(self, *args, **options) -> None:
         sa_file = self._resolve_option(options, "service_account_file", "GOOGLE_SERVICE_ACCOUNT_FILE")
@@ -144,6 +165,8 @@ class Command(BaseCommand):
         worksheet_gid = options.get("worksheet_gid")
         batch_size = options["batch_size"]
         dry_run = options["dry_run"]
+        no_prune = options.get("no_prune", False)
+        debug = options.get("debug", False)
 
         if not sa_file:
             raise CommandError("Service account file not provided. Use --service-account-file or set GOOGLE_SERVICE_ACCOUNT_FILE.")
@@ -158,6 +181,73 @@ class Command(BaseCommand):
             for index, row in enumerate(raw_rows, start=2)
         ]
 
+        # Build header mapping for optional sheet writes (mail_req_no column)
+        headers = worksheet.row_values(1)
+        header_map = {h.strip().lower(): i + 1 for i, h in enumerate(headers) if h}
+        def _find_mail_req_col():
+            for alias in FIELD_ALIASES.get("mail_req_no", ()): 
+                key = alias.strip().lower()
+                if key in header_map:
+                    return header_map[key]
+            return None
+        mail_req_col = _find_mail_req_col()
+
+        # Prepare normalized rows and assign missing mail_req_no values
+        # Determine next mail_req_no from DB
+        max_val = GoogleFormSubmission.objects.aggregate(max_mail=Max('mail_req_no'))['max_mail'] or 0
+        next_mail_req = int(max_val) + 1
+        normalized_rows: List[Dict[str, Any]] = []
+        write_back: List[Tuple[int, int]] = []  # (row_number, assigned_mail_req_no)
+        for raw in rows:
+            norm = self._normalize_row(raw)
+            if norm is None:
+                continue
+            # ensure mail_req_no is integer if present
+            mr = norm.get('mail_req_no')
+            if mr is None:
+                # assign next sequential id
+                norm['mail_req_no'] = next_mail_req
+                write_back.append((raw.get('__row_number'), next_mail_req))
+                next_mail_req += 1
+            else:
+                try:
+                    norm['mail_req_no'] = int(mr)
+                except Exception:
+                    # fallback to extracting digits
+                    import re
+                    m = re.search(r"(\d+)", str(mr))
+                    norm['mail_req_no'] = int(m.group(1)) if m else None
+            # preserve row number for later reference
+            norm['__row_number'] = raw.get('__row_number')
+            normalized_rows.append(norm)
+
+        # If debug mode requested, print simple diagnostics and samples
+        if debug:
+            total = len(normalized_rows)
+            has_mail_id = sum(1 for r in normalized_rows if r.get('mail_req_no') is not None)
+            missing_identifiers = sum(1 for r in normalized_rows if not r.get('enrollment_no') and not r.get('rec_official_mail'))
+            self.stdout.write(self.style.WARNING(f"Debug: normalized rows={total}, with_mail_req_no={has_mail_id}, missing_identifiers={missing_identifiers}"))
+            # print first few samples
+            for i, sample in enumerate(normalized_rows[:5], start=1):
+                # avoid dumping raw_row fully; show key fields
+                summary = {
+                    'mail_req_no': sample.get('mail_req_no'),
+                    'submitted_at': sample.get('submitted_at'),
+                    'enrollment_no': sample.get('enrollment_no'),
+                    'rec_official_mail': sample.get('rec_official_mail'),
+                    'mail_status': sample.get('mail_status'),
+                }
+                self.stdout.write(f"Sample {i}: {summary}")
+
+        # Write assigned mail_req_no values back to sheet if possible
+        if mail_req_col and write_back:
+            for row_num, assigned in write_back:
+                try:
+                    cell = worksheet.cell(row_num, mail_req_col)
+                    worksheet.update_cell(row_num, mail_req_col, str(assigned))
+                except Exception:
+                    logger.debug('Failed to write mail_req_no back to sheet at row %s', row_num)
+
         if not rows:
             self.stdout.write(self.style.WARNING("No rows found in the worksheet. Nothing to import."))
             return
@@ -170,7 +260,12 @@ class Command(BaseCommand):
         updated_total = 0
         processed = 0
 
-        for chunk in self._chunk(rows, batch_size):
+        # Now process the normalized rows in batches
+        def _chunk_norm(rows_list: List[Dict[str, Any]], size: int) -> Iterator[List[Dict[str, Any]]]:
+            for start in range(0, len(rows_list), size):
+                yield rows_list[start: start + size]
+
+        for chunk in _chunk_norm(normalized_rows, batch_size):
             created, updated = self._sync_batch(chunk, dry_run)
             created_total += created
             updated_total += updated
@@ -182,6 +277,19 @@ class Command(BaseCommand):
                 f"Import complete. Created: {created_total}, Updated: {updated_total}{' (dry run)' if dry_run else ''}"
             )
         )
+        # After successful import, remove DB records not present in the sheet
+        try:
+            sheet_ids = {r.get('mail_req_no') for r in normalized_rows if r.get('mail_req_no') is not None}
+            if not dry_run and not no_prune:
+                if sheet_ids:
+                    deleted_qs = GoogleFormSubmission.objects.exclude(mail_req_no__in=sheet_ids)
+                    deleted_count = deleted_qs.count()
+                    deleted_qs.delete()
+                    self.stdout.write(self.style.SUCCESS(f"Pruned {deleted_count} DB rows not present in sheet."))
+            elif not dry_run and no_prune:
+                self.stdout.write(self.style.WARNING("Prune skipped (--no-prune). DB rows will not be deleted."))
+        except Exception:
+            logger.exception('Failed to prune DB rows after import')
 
     def _resolve_option(self, options: Dict[str, Any], opt_key: str, env_key: str) -> str | None:
         explicit = options.get(opt_key)
@@ -253,7 +361,11 @@ class Command(BaseCommand):
 
         with transaction.atomic():
             for row in batch:
-                normalized = self._normalize_row(row)
+                # Accept either raw worksheet rows or already-normalized rows
+                if isinstance(row, dict) and isinstance(row.get('submitted_at'), datetime):
+                    normalized = dict(row)  # assume already-normalized
+                else:
+                    normalized = self._normalize_row(row)
                 if normalized is None:
                     skipped.append("timestamp")
                     continue
@@ -261,6 +373,12 @@ class Command(BaseCommand):
                 submitted_at = normalized.pop("submitted_at")
                 enrollment_no = normalized.get("enrollment_no")
                 rec_official_mail = normalized.get("rec_official_mail")
+
+                # Remove any internal-only keys that should not be sent to the ORM
+                # (e.g. '__row_number')
+                for k in list(normalized.keys()):
+                    if isinstance(k, str) and k.startswith('__'):
+                        normalized.pop(k, None)
 
                 if not enrollment_no and not rec_official_mail:
                     skipped.append("missing identifiers")
@@ -323,6 +441,34 @@ class Command(BaseCommand):
             "mail_status": mail_status,
             "raw_row": self._serialize_raw_row(row),
         }
+
+        # parse mail_req_no if present
+        mail_raw = pick("mail_req_no")
+        if mail_raw:
+            try:
+                normalized["mail_req_no"] = int(str(mail_raw).strip())
+            except Exception:
+                import re
+
+                m = re.search(r"(\d+)", str(mail_raw))
+                if m:
+                    normalized["mail_req_no"] = int(m.group(1))
+
+        # If the recipient official mail appears to be a private mailbox (gmail/yahoo/etc),
+        # mark this submission as Cancelled in remark and set mail_status to 'cancel'.
+        rec_mail = normalized.get("rec_official_mail") or ""
+        if isinstance(rec_mail, str) and "@" in rec_mail:
+            domain = rec_mail.split("@", 1)[1].lower()
+            # common private mail tokens
+            private_tokens = ("gmail", "googlemail", "yahoo", "ymail", "hotmail", "outlook", "live", "aol")
+            if any(tok in domain for tok in private_tokens):
+                # override remark and status to cancel
+                normalized["remark"] = "Cancel"
+                try:
+                    normalized["mail_status"] = GoogleFormSubmission.MAIL_STATUS_CANCEL
+                except Exception:
+                    # fallback: set raw value
+                    normalized["mail_status"] = "cancel"
 
         return normalized
 

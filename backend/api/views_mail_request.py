@@ -15,6 +15,7 @@ from rest_framework.response import Response
 from .domain_mail_request import GoogleFormSubmission
 from .serializers_mail_request import GoogleFormSubmissionSerializer
 from .sheets_sync import sync_mail_submission_to_sheet
+from django.core.management import call_command
 
 __all__ = [
     'GoogleFormSubmissionViewSet',
@@ -76,6 +77,47 @@ class GoogleFormSubmissionViewSet(viewsets.ModelViewSet):
             submission.save(update_fields=['student_verification'])
             updated.append(submission.pk)
         return Response({'updated_ids': updated}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='sync-from-sheet')
+    def sync_from_sheet(self, request):
+        """Trigger a sync from the configured Google Sheet into the database.
+
+        This wraps the management command `import_mail_requests` so the UI can
+        request an on-demand import. The call is synchronous and will block
+        until the import completes; the response will indicate success or
+        contain the error message on failure.
+        """
+        try:
+            # Allow optional overrides from the request body
+            sa_file = request.data.get('service_account_file') if isinstance(request.data, dict) else None
+            sheet_url = request.data.get('sheet_url') if isinstance(request.data, dict) else None
+            args = []
+            if sa_file:
+                args += ['--service-account-file', sa_file]
+            if sheet_url:
+                args += ['--sheet-url', sheet_url]
+            # allow caller to request a safe refresh that skips pruning
+            if isinstance(request.data, dict) and request.data.get('no_prune'):
+                args += ['--no-prune']
+
+            # Capture stdout/stderr from the management command so we can return it
+            import io
+            from django.core.management import CommandError
+
+            buf = io.StringIO()
+            try:
+                call_command('import_mail_requests', *args, stdout=buf)
+            except CommandError as ce:
+                # Known command errors (missing config, auth) -> return 400 with message
+                logger.warning('Import command failed: %s', ce)
+                return Response({'detail': str(ce), 'output': buf.getvalue()}, status=status.HTTP_400_BAD_REQUEST)
+
+            output = buf.getvalue()
+            logger.info('Import mail requests completed via API: %s', output[:1000])
+            return Response({'detail': 'Import completed', 'output': output}, status=status.HTTP_200_OK)
+        except Exception as exc:  # pragma: no cover - runtime errors
+            logger.exception('Failed to import mail requests from sheet: %s', exc)
+            return Response({'detail': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)

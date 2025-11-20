@@ -233,10 +233,13 @@ def _load_allocations(period_ids: Sequence[int]) -> List[LeaveAllocation]:
     # heterogeneous types for the emp/profile FK column and a join may
     # fail due to type mismatch. We still join period and leave_type for
     # convenience.
+    # Order allocations so that explicit/profile-specific rows with the
+    # newest updates appear first (we prefer newest explicit allocation
+    # when multiple exist for same profile+period).
     return list(
         LeaveAllocation.objects.select_related("period", "leave_type")
         .filter(period_id__in=list(period_ids))
-        .order_by("period__start_date", "period_id")
+        .order_by("period_id", "-updated_at")
     )
 
 
@@ -867,11 +870,16 @@ def _resolve_allocation_for_emp_period(emp_id, period_id, allocations):
     # allocations is list of LeaveAllocation objects
     # prefer employee-specific (profile emp_id) else global (profile NULL)
     emp_key = str(emp_id)
+    # Collect explicit allocations for this emp+period (ordered by updated_at desc by loader)
     specific = [a for a in allocations if getattr(a, 'profile_id', None) and str(getattr(a, 'profile_id')) == emp_key and a.period_id == period_id]
     if specific:
+        # allocations are pre-ordered with newest first; return the newest
         return specific[0]
-    global_alloc = next((a for a in allocations if (getattr(a, 'profile_id', None) in (None, '') ) and a.period_id == period_id), None)
-    return global_alloc
+    # fallback to global allocation for the period; prefer newest updated
+    global_allocs = [a for a in allocations if (getattr(a, 'profile_id', None) in (None, '')) and a.period_id == period_id]
+    if global_allocs:
+        return global_allocs[0]
+    return None
 
 
 def computeEmployeePeriodBalance(emp, period, alloc_obj, used_map):
@@ -989,31 +997,15 @@ def upsertSnapshot(emp, period, period_data, alloc_obj=None, emp_pk: Optional[in
     constraint doesn't exist this will raise; caller should ensure DB schema.
     """
     try:
-        starting = period_data['starting']
-        allocated = period_data['allocated']
-        used = period_data['used']
-        ending = period_data['ending']
-        carry = period_data['carry_forward']
+        starting = period_data.get('starting', {})
+        allocated = period_data.get('allocated', {})
+        used = period_data.get('used', {})
+        ending = period_data.get('ending', {})
+        carry = period_data.get('carry_forward', {})
         meta = period_data.get('allocation_meta', {})
         eff_join = period_data.get('effective_joining_date')
         alloc_start = period_data.get('allocation_start_date')
         alloc_end = period_data.get('allocation_end_date')
-        now = timezone.now()
-        # The checked-in migration and model show `api_leavebalancesnapshot` has
-        # only the profile/balance_date and balance columns (el/cl/sl/vac), plus
-        # a note and created_at. Use a conservative upsert that matches that
-        # schema so it succeeds against the existing DB layout.
-        sql = """
-        INSERT INTO api_leavebalancesnapshot
-        (emp_id, balance_date, el_balance, cl_balance, sl_balance, vacation_balance, note, created_at)
-        VALUES (%(emp_id)s, %(balance_date)s, %(el_balance)s, %(cl_balance)s, %(sl_balance)s, %(vacation_balance)s, %(note)s, %(created_at)s)
-        ON CONFLICT (emp_id, balance_date) DO UPDATE SET
-          el_balance = EXCLUDED.el_balance,
-          cl_balance = EXCLUDED.cl_balance,
-          sl_balance = EXCLUDED.sl_balance,
-          vacation_balance = EXCLUDED.vacation_balance,
-          note = EXCLUDED.note
-        """
 
         # Resolve profile PK if caller didn't pass it
         if emp_pk is None:
@@ -1027,21 +1019,132 @@ def upsertSnapshot(emp, period, period_data, alloc_obj=None, emp_pk: Optional[in
 
         params = {
             'emp_id': emp_pk,
+            'period_id': period.id,
             'balance_date': period.start,
-            'el_balance': ending.get('EL', 0.0),
-            'cl_balance': ending.get('CL', 0.0),
-            'sl_balance': ending.get('SL', 0.0),
-            'vacation_balance': ending.get('VAC', 0.0),
-            'note': json.dumps(meta, default=str),
-            'created_at': timezone.now(),
+            'allocation_id': getattr(alloc_obj, 'id', None) if alloc_obj is not None else None,
+            'allocation_start_date': alloc_start,
+            'allocation_end_date': alloc_end,
+            'effective_joining_date': eff_join,
+            'starting_el': starting.get('EL', 0.0),
+            'allocated_el': allocated.get('EL', 0.0),
+            'used_el': used.get('EL', 0.0),
+            'ending_el': ending.get('EL', 0.0),
+            'carry_forward_el': carry.get('EL', 0.0),
+            'starting_cl': starting.get('CL', 0.0),
+            'allocated_cl': allocated.get('CL', 0.0),
+            'used_cl': used.get('CL', 0.0),
+            'ending_cl': ending.get('CL', 0.0),
+            'carry_forward_cl': carry.get('CL', 0.0),
+            'starting_sl': starting.get('SL', 0.0),
+            'allocated_sl': allocated.get('SL', 0.0),
+            'used_sl': used.get('SL', 0.0),
+            'ending_sl': ending.get('SL', 0.0),
+            'carry_forward_sl': carry.get('SL', 0.0),
+            'ending_vacation': ending.get('VAC', 0.0),
+            'used_vacation': used.get('VAC', 0.0),
+            'notes': json.dumps(meta, default=str),
         }
 
         with connection.cursor() as cur:
-            cur.execute(sql, params)
+            # Safe upsert: do not rely on DB unique index changes. Select existing row by emp_id+period_id.
+            cur.execute("SELECT id FROM api_leavebalancesnapshot WHERE emp_id = %s AND period_id = %s", [params['emp_id'], params['period_id']])
+            row = cur.fetchone()
+            if row:
+                snap_id = row[0]
+                cur.execute(
+                    """
+                    UPDATE api_leavebalancesnapshot SET
+                      balance_date = %s,
+                      allocation_id = %s,
+                      allocation_start_date = %s,
+                      allocation_end_date = %s,
+                      effective_joining_date = %s,
+                      el_balance = %s,
+                      cl_balance = %s,
+                      sl_balance = %s,
+                      vacation_balance = %s,
+                      starting_el = %s,
+                      allocated_el = %s,
+                      used_el = %s,
+                      ending_el = %s,
+                      carry_forward_el = %s,
+                      starting_cl = %s,
+                      allocated_cl = %s,
+                      used_cl = %s,
+                      ending_cl = %s,
+                      starting_sl = %s,
+                      allocated_sl = %s,
+                      used_sl = %s,
+                      ending_sl = %s,
+                      carry_forward_sl = %s,
+                      ending_vacation = %s,
+                      used_vacation = %s,
+                      notes = %s,
+                      snapshot_date = now(),
+                      updated_at = now()
+                    WHERE id = %s
+                    """,
+                    [
+                        params['balance_date'],
+                        params['allocation_id'],
+                        params['allocation_start_date'],
+                        params['allocation_end_date'],
+                        params['effective_joining_date'],
+                        # system balance columns (not-null in legacy schema)
+                        params['ending_el'],
+                        params['ending_cl'],
+                        params['ending_sl'],
+                        params['ending_vacation'],
+                        # detailed columns
+                        params['starting_el'],
+                        params['allocated_el'],
+                        params['used_el'],
+                        params['ending_el'],
+                        params['carry_forward_el'],
+                        params['starting_cl'],
+                        params['allocated_cl'],
+                        params['used_cl'],
+                        params['ending_cl'],
+                        params['starting_sl'],
+                        params['allocated_sl'],
+                        params['used_sl'],
+                        params['ending_sl'],
+                        params['carry_forward_sl'],
+                        params['ending_vacation'],
+                        params['used_vacation'],
+                        params['notes'],
+                        snap_id,
+                    ],
+                )
+            else:
+                cur.execute(
+                    """
+                    INSERT INTO api_leavebalancesnapshot
+                    (emp_id, period_id, balance_date, allocation_id, allocation_start_date, allocation_end_date, effective_joining_date,
+                     el_balance, cl_balance, sl_balance, vacation_balance,
+                     starting_el, allocated_el, used_el, ending_el, carry_forward_el,
+                     starting_cl, allocated_cl, used_cl, ending_cl,
+                     starting_sl, allocated_sl, used_sl, ending_sl, carry_forward_sl,
+                     ending_vacation, used_vacation, notes, snapshot_date, created_at, updated_at)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,now(),now(),now())
+                    """,
+                    [
+                        params['emp_id'], params['period_id'], params['balance_date'], params['allocation_id'], params['allocation_start_date'], params['allocation_end_date'], params['effective_joining_date'],
+                        # main system balance columns
+                        params['ending_el'], params['ending_cl'], params['ending_sl'], params['ending_vacation'],
+                        # detailed columns
+                        params['starting_el'], params['allocated_el'], params['used_el'], params['ending_el'], params['carry_forward_el'],
+                        params['starting_cl'], params['allocated_cl'], params['used_cl'], params['ending_cl'],
+                        params['starting_sl'], params['allocated_sl'], params['used_sl'], params['ending_sl'], params['carry_forward_sl'],
+                        params['ending_vacation'], params['used_vacation'], params['notes'],
+                    ],
+                )
     except Exception:
         import traceback
         print('[WARN] upsertSnapshot failed:')
         traceback.print_exc()
+        # Re-raise so outer caller's savepoint/atomic can rollback cleanly
+        raise
 
 
 def compute_and_persist_leave_balances(period_id: Optional[int] = None):
@@ -1071,10 +1174,12 @@ def compute_and_persist_leave_balances(period_id: Optional[int] = None):
     emp_pk_map = {}
     if employee_ids:
         with connection.cursor() as cur:
+            # returns rows of (emp_id, id) where emp_id is the string identifier
             cur.execute("SELECT emp_id, id FROM api_empprofile WHERE emp_id = ANY(%s)", [employee_ids])
             for r in cur.fetchall():
                 emp_pk_map[str(r[0])] = r[1]
-    # Preload snapshots for previous periods when computing a single period
+
+    # Preload snapshots for previous period when computing a single period (seed starting balances)
     prev_snapshot_map = {}
     if period_id:
         # find previous period (by ordering)
@@ -1082,44 +1187,64 @@ def compute_and_persist_leave_balances(period_id: Optional[int] = None):
         prev_id = periods[idx - 1].id if idx is not None and idx > 0 else None
         if prev_id:
             with connection.cursor() as cur:
-                cur.execute("SELECT emp_id, ending_el, ending_cl, ending_sl FROM api_leavebalancesnapshot WHERE period_id = %s", [prev_id])
+                # join to api_empprofile to obtain the string emp_id key
+                cur.execute(
+                    "SELECT p.emp_id, s.ending_el, s.ending_cl, s.ending_sl, s.ending_vacation FROM api_leavebalancesnapshot s JOIN api_empprofile p ON p.id = s.emp_id WHERE s.period_id = %s",
+                    [prev_id],
+                )
                 for r in cur.fetchall():
-                    prev_snapshot_map[r[0]] = {'EL': _to_decimal(r[1] or 0), 'CL': _to_decimal(r[2] or 0), 'SL': _to_decimal(r[3] or 0)}
+                    prev_snapshot_map[str(r[0])] = {
+                        'EL': _to_decimal(r[1] or 0),
+                        'CL': _to_decimal(r[2] or 0),
+                        'SL': _to_decimal(r[3] or 0),
+                        'VAC': _to_decimal(r[4] or 0) if len(r) > 4 else DECIMAL_ZERO,
+                    }
 
-    # Run the persistence in a single transaction to ensure atomicity and better performance
-    with transaction.atomic():
+    # initialize starting balances on each employee object
+    for emp in employees:
+        emp._starting_balances = {
+            'EL': _to_decimal(getattr(emp, 'el_balance', DECIMAL_ZERO)) + _to_decimal(getattr(emp, 'joining_year_allocation_el', DECIMAL_ZERO)),
+            'CL': _to_decimal(getattr(emp, 'cl_balance', DECIMAL_ZERO)) + _to_decimal(getattr(emp, 'joining_year_allocation_cl', DECIMAL_ZERO)),
+            'SL': _to_decimal(getattr(emp, 'sl_balance', DECIMAL_ZERO)) + _to_decimal(getattr(emp, 'joining_year_allocation_sl', DECIMAL_ZERO)),
+            'VAC': _to_decimal(getattr(emp, 'vacation_balance', DECIMAL_ZERO)),
+        }
+        # if previous snapshot exists for this emp (when computing single period), seed
+        if period_id and prev_snapshot_map.get(emp.emp_id):
+            emp._starting_balances.update(prev_snapshot_map.get(emp.emp_id))
+
+    # Run persistence: iterate periods then employees to ensure one snapshot per emp+period.
+    # Each upsert runs inside its own atomic savepoint so a single failing upsert
+    # does not leave the connection in an aborted state and does not abort the
+    # whole batch.
+    for p in selected_periods:
         for emp in employees:
-            # find employee-specific P0 using leave_calculation_date or effective_joining_date
-            calc_date = getattr(emp, 'leave_calculation_date', None) or getattr(emp, 'effective_joining_date', None) or periods[0].start
-            # find first period that contains or is after calc_date
-            start_index = 0
-            for i, p in enumerate(periods):
-                if p.start <= calc_date <= p.end or calc_date <= p.start:
-                    start_index = i
-                    break
-
-            # initialize starting balances for P0 from profile
-            emp._starting_balances = {
-                'EL': _to_decimal(getattr(emp, 'el_balance', DECIMAL_ZERO)) + _to_decimal(getattr(emp, 'joining_year_allocation_el', DECIMAL_ZERO)),
-                'CL': _to_decimal(getattr(emp, 'cl_balance', DECIMAL_ZERO)) + _to_decimal(getattr(emp, 'joining_year_allocation_cl', DECIMAL_ZERO)),
-                'SL': _to_decimal(getattr(emp, 'sl_balance', DECIMAL_ZERO)) + _to_decimal(getattr(emp, 'joining_year_allocation_sl', DECIMAL_ZERO)),
-                'VAC': _to_decimal(getattr(emp, 'vacation_balance', DECIMAL_ZERO)),
-            }
-            # if computing a single period and previous snapshot exists, seed starting values
-            if period_id and prev_snapshot_map.get(emp.emp_id):
-                emp._starting_balances.update(prev_snapshot_map.get(emp.emp_id))
-
-        # iterate periods from start_index
-        for p in periods[start_index:]:
-            if period_id and p.id != period_id:
+            # skip employees who left before this period starts
+            left_date = getattr(emp, 'left_date', None)
+            if left_date and left_date < p.start:
                 continue
+
+            # skip periods before the employee's calculation start
+            calc_date = getattr(emp, 'leave_calculation_date', None) or getattr(emp, 'effective_joining_date', None) or periods[0].start
+            if p.end < calc_date:
+                continue
+
+            # resolve allocation for this emp & period
             alloc_obj = _resolve_allocation_for_emp_period(emp.emp_id, p.id, allocations)
+
             pdata = computeEmployeePeriodBalance(emp, p, alloc_obj, used_map)
-            # persist snapshot per spec (pass resolved emp_pk if available)
+
+            # persist snapshot per spec inside a savepoint/atomic to isolate failures
             emp_pk = emp_pk_map.get(str(getattr(emp, 'emp_id', '')))
-            upsertSnapshot(emp, p, pdata, alloc_obj, emp_pk=emp_pk)
+            try:
+                with transaction.atomic():
+                    upsertSnapshot(emp, p, pdata, alloc_obj, emp_pk=emp_pk)
+            except Exception:
+                # log and continue to next employee; individual failures rollback to savepoint
+                print(f"[WARN] upsert for emp {getattr(emp,'emp_id',None)} period {p.id} failed; continuing")
+
             # carry forward for next period
             emp._starting_balances = {code: _to_decimal(pdata['carry_forward'].get(code, DECIMAL_ZERO)) for code in ('EL','CL','SL','VAC')}
+
             # collect result for response
             results.append({'emp_id': emp.emp_id, 'period_id': p.id, 'data': pdata})
 
