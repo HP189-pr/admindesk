@@ -43,7 +43,7 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   const [flash, setFlash] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [activeRow, setActiveRow] = useState(null);
-  const [editForm, setEditForm] = useState({ mail_status: 'pending', transcript_remark: '' });
+  const [editForm, setEditForm] = useState({ mail_status: 'pending', transcript_remark: '', email: '', submit_mail: '', pdf_generate: '', institute_name: '', request_ref_no: '' });
   const activeRowRef = useRef(null);
   const [updatingId, setUpdatingId] = useState(null);
   const [bulkStatus, setBulkStatus] = useState('');
@@ -156,13 +156,27 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
 
   useEffect(() => {
     if (!activeRow) {
-      setEditForm({ mail_status: 'pending', transcript_remark: '' });
+      setEditForm({ mail_status: 'pending', transcript_remark: '', email: '' });
       return;
     }
     activeRowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const normalizeMailStatus = (value) => {
+      if (!value || String(value).trim() === '') return 'progress';
+      const txt = String(value).trim().toLowerCase();
+      if (['yes', 'done', 'sent'].includes(txt)) return 'done';
+      if (txt === 'pending') return 'pending';
+      if (['progress', 'in progress', 'in-progress', 'processing'].includes(txt)) return 'progress';
+      return 'progress';
+    };
+
     setEditForm({
-      mail_status: activeRow.mail_status || 'pending',
+      mail_status: normalizeMailStatus(activeRow.mail_status),
       transcript_remark: activeRow.transcript_remark || '',
+      email: activeRow.email || '',
+      submit_mail: activeRow.submit_mail || '',
+      pdf_generate: activeRow.pdf_generate || '',
+      institute_name: activeRow.institute_name || '',
+      request_ref_no: activeRow.request_ref_no || '',
     });
   }, [activeRow]);
 
@@ -184,9 +198,19 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   const handleRowSelect = useCallback((row) => {
     if (!row) return;
     setActiveRow(row);
+    const normalizeMailStatus = (value) => {
+      if (!value || String(value).trim() === '') return 'progress';
+      const txt = String(value).trim().toLowerCase();
+      if (['yes', 'done', 'sent'].includes(txt)) return 'done';
+      if (txt === 'pending') return 'pending';
+      if (['progress', 'in progress', 'in-progress', 'processing'].includes(txt)) return 'progress';
+      return 'progress';
+    };
+
     setEditForm({
-      mail_status: row.mail_status || 'pending',
+      mail_status: normalizeMailStatus(row.mail_status),
       transcript_remark: row.transcript_remark || '',
+      email: row.email || '',
     });
     setSelectedAction(ACTIONS[2]);
     setPanelOpen(true);
@@ -197,10 +221,36 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
     if (!row) return;
     const form = overrideForm || editForm;
     const payload = {};
-    const nextStatus = form.mail_status ?? row.mail_status ?? 'pending';
+    const normalizeMailStatus = (value) => {
+      if (!value || String(value).trim() === '') return 'progress';
+      const txt = String(value).trim().toLowerCase();
+      if (['yes', 'done', 'sent'].includes(txt)) return 'done';
+      if (txt === 'pending') return 'pending';
+      if (['progress', 'in progress', 'in-progress', 'processing'].includes(txt)) return 'progress';
+      return 'progress';
+    };
+
+    const originalStatus = normalizeMailStatus(row.mail_status);
+    const nextStatus = form.mail_status ?? originalStatus ?? 'pending';
     const nextRemark = form.transcript_remark ?? row.transcript_remark ?? '';
-    if (nextStatus !== row.mail_status) payload.mail_status = nextStatus;
+    if (nextStatus !== originalStatus) payload.mail_status = nextStatus;
     if ((nextRemark || '') !== (row.transcript_remark || '')) payload.transcript_remark = nextRemark || '';
+
+    // contact field (email) — phone and address editing removed
+    const nextEmail = form.email ?? row.email ?? '';
+    if ((nextEmail || '') !== (row.email || '')) payload.email = nextEmail || '';
+
+    const nextSubmitMail = form.submit_mail ?? row.submit_mail ?? '';
+    if ((nextSubmitMail || '') !== (row.submit_mail || '')) payload.submit_mail = nextSubmitMail || '';
+
+    const nextPdf = form.pdf_generate ?? row.pdf_generate ?? '';
+    if ((nextPdf || '') !== (row.pdf_generate || '')) payload.pdf_generate = nextPdf || '';
+
+    const nextInstitute = form.institute_name ?? row.institute_name ?? '';
+    if ((nextInstitute || '') !== (row.institute_name || '')) payload.institute_name = nextInstitute || '';
+
+    const nextRef = form.request_ref_no ?? row.request_ref_no ?? '';
+    if ((nextRef || '') !== (row.request_ref_no || '')) payload.request_ref_no = nextRef || '';
     if (Object.keys(payload).length === 0) {
       setFlashMessage('info', 'No changes to save.');
       return;
@@ -213,8 +263,9 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
       if (rowId === activeRow?.id) {
         setActiveRow(updated);
         setEditForm({
-          mail_status: updated.mail_status || 'pending',
+          mail_status: normalizeMailStatus(updated.mail_status),
           transcript_remark: updated.transcript_remark || '',
+          email: updated.email || '',
         });
       }
       setFlashMessage('success', 'Transcript request updated.');
@@ -576,91 +627,110 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
+                    <div className="grid grid-cols-12 gap-4 items-start">
+                      <div className="col-span-12 md:col-span-3">
                         <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Requested At</div>
-                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
-                          {formatDateTime(activeRow.requested_at)}
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm">{formatDateTime(activeRow.requested_at)}</div>
+                      </div>
+
+                      <div className="col-span-12 md:col-span-2">
+                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">TR No</div>
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm text-center font-mono">
+                          {(() => {
+                            const t = String(activeRow.tr_request_no ?? activeRow.request_ref_no ?? 'N/A');
+                            if (t === 'N/A') return t;
+                            return t.length > 8 ? t.slice(0, 8) + '…' : t;
+                          })()}
                         </div>
                       </div>
-                      <div>
-                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Submit Mail</div>
-                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 break-all">
-                          {activeRow.submit_mail || 'N/A'}
-                        </div>
+
+                      <div className="col-span-12 md:col-span-3">
+                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Enrollment</div>
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm">{activeRow.enrollment_no || 'N/A'}</div>
                       </div>
-                      <div>
-                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">PDF Generated</div>
-                            <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
-                              {activeRow.pdf_generate || ''}
-                            </div>
+
+                      <div className="col-span-12 md:col-span-4">
+                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Student Name</div>
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm">{activeRow.student_name || ''}</div>
                       </div>
-                      <div>
-                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Receipt</div>
-                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
-                          {activeRow.transcript_receipt || ''}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Institute</div>
-                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
-                          {activeRow.institute_name || 'N/A'}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Contact</div>
-                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 space-y-1">
-                          <div>Email: {activeRow.email || 'N/A'}</div>
-                          <div>Phone: {activeRow.mobile_no || 'N/A'}</div>
-                        </div>
-                      </div>
-                      <div className="md:col-span-2">
-                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Address</div>
-                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 min-h-[3rem]">
-                          {activeRow.address || 'N/A'}
-                        </div>
-                      </div>
+                      
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <label className="flex flex-col text-sm text-gray-700 gap-1">
-                        <span className="text-xs uppercase tracking-wide text-gray-500">Mail Status</span>
-                        <select
-                          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                          value={editForm.mail_status}
-                          onChange={(e) => setEditForm((prev) => ({ ...prev, mail_status: e.target.value }))}
-                          disabled={rightsLoaded && !rights.can_edit}
-                        >
-                          {STATUS_OPTIONS.filter((opt) => opt.value).map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="flex flex-col text-sm text-gray-700 gap-1">
-                        <span className="text-xs uppercase tracking-wide text-gray-500">Transcript Remark</span>
-                        <textarea
-                          className="border border-gray-300 rounded-lg px-3 py-2 text-sm min-h-[6rem]"
-                          value={editForm.transcript_remark}
-                          onChange={(e) =>
-                            setEditForm((prev) => ({ ...prev, transcript_remark: e.target.value.slice(0, 2000) }))
-                          }
-                          disabled={rightsLoaded && !rights.can_edit}
-                        />
-                      </label>
-                    </div>
+                    <div className="mt-3">
+                      <div className="grid grid-cols-12 gap-3 items-end">
+                        <div className="col-span-12 md:col-span-2">
+                          <label className="block text-xs font-medium text-gray-500 mb-1">Mail Status</label>
+                          <select
+                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                            value={editForm.mail_status}
+                            onChange={(e) => setEditForm((s) => ({ ...s, mail_status: e.target.value }))}
+                          >
+                            {STATUS_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value || ''}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
 
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 text-xs text-gray-500">
-                      <span>Last updated: {formatDateTime(activeRow.updated_at || activeRow.modified_at)}</span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => applyUpdate(activeRow.id)}
-                          className="px-4 py-2 rounded bg-purple-600 text-white text-sm disabled:bg-purple-300"
-                          disabled={!rights.can_edit || updatingId === activeRow.id}
-                        >
-                          {updatingId === activeRow.id ? 'Saving...' : 'Save Changes'}
-                        </button>
+                        <div className="col-span-12 md:col-span-2">
+                          <label className="block text-xs font-medium text-gray-500 mb-1">Submit Mail</label>
+                          <input
+                            type="text"
+                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                            value={editForm.submit_mail}
+                            onChange={(e) => setEditForm((s) => ({ ...s, submit_mail: e.target.value }))}
+                            placeholder="Submit mail"
+                          />
+                        </div>
+
+                        <div className="col-span-12 md:col-span-2">
+                          <label className="block text-xs font-medium text-gray-500 mb-1">PDF Generated</label>
+                          <select
+                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                            value={editForm.pdf_generate}
+                            onChange={(e) => setEditForm((s) => ({ ...s, pdf_generate: e.target.value }))}
+                          >
+                            <option value="">No</option>
+                            <option value="Yes">Yes</option>
+                          </select>
+                        </div>
+
+                        <div className="col-span-12 md:col-span-3">
+                          <label className="block text-xs font-medium text-gray-500 mb-1">Institute</label>
+                          <input
+                            type="text"
+                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                            value={editForm.institute_name}
+                            onChange={(e) => setEditForm((s) => ({ ...s, institute_name: e.target.value }))}
+                            placeholder="Institute"
+                          />
+                        </div>
+
+                        <div className="col-span-12 md:col-span-2">
+                          <label className="block text-xs font-medium text-gray-500 mb-1">Reference</label>
+                          <input
+                            type="text"
+                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                            value={editForm.request_ref_no}
+                            onChange={(e) => setEditForm((s) => ({ ...s, request_ref_no: e.target.value }))}
+                            placeholder="Ref #"
+                          />
+                        </div>
+
+                        <div className="col-span-12 md:col-span-1 flex md:justify-end">
+                          <button
+                            onClick={() => applyUpdate(activeRow.id)}
+                            className="px-3 py-2 rounded bg-purple-600 text-white text-sm disabled:bg-purple-300 w-full"
+                            disabled={!rights.can_edit || updatingId === activeRow.id}
+                          >
+                            {updatingId === activeRow.id ? 'Saving...' : 'Save'}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between mt-3 text-xs text-gray-500">
+                        <span>Last updated: {formatDateTime(activeRow.updated_at || activeRow.modified_at)}</span>
                         {rights.can_delete && (
                           <button
                             onClick={() => handleDelete(activeRow.id)}

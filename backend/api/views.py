@@ -59,6 +59,135 @@ class DocRecViewSet(viewsets.ModelViewSet):
     serializer_class = DocRecSerializer
     permission_classes = [IsAuthenticated]
 
+    def perform_create(self, serializer):
+        """Create DocRec and, when apply_for=VR and enrollment info supplied,
+        attempt to auto-create a linked Verification record on the server.
+
+        This is best-effort: we only create a Verification when an Enrollment
+        can be resolved (by numeric id or enrollment_no). Failures are
+        swallowed to avoid blocking the primary DocRec creation flow.
+        """
+        docrec = serializer.save()
+        try:
+            req_data = self.request.data if hasattr(self.request, 'data') else {}
+            # Only handle verification-type docrecs
+            if getattr(docrec, 'apply_for', '').upper() == 'VR':
+                enr_key = req_data.get('enrollment') or req_data.get('enrollment_no') or req_data.get('enrollment_no_text')
+                student_name = req_data.get('student_name') or req_data.get('student') or None
+                # Resolve Enrollment: try numeric PK first, then enrollment_no (case-insensitive)
+                enrollment_obj = None
+                if enr_key:
+                    try:
+                        sk = str(enr_key).strip()
+                        if sk.isdigit():
+                            enrollment_obj = Enrollment.objects.filter(id=int(sk)).first()
+                        if not enrollment_obj:
+                            enrollment_obj = Enrollment.objects.filter(enrollment_no__iexact=sk).first()
+                    except Exception:
+                        enrollment_obj = None
+                # Create a Verification record even if Enrollment couldn't be resolved.
+                # The model now allows `enrollment` to be NULL so we can create a placeholder
+                # verification and populate student_name/pay_rec_no if provided.
+                vr_kwargs = {
+                    'enrollment': enrollment_obj,
+                    'second_enrollment': None,
+                    'student_name': student_name or (getattr(enrollment_obj, 'student_name', '') if enrollment_obj else '') or '',
+                    'tr_count': int(req_data.get('tr_count') or req_data.get('tr') or 0),
+                    'ms_count': int(req_data.get('ms_count') or req_data.get('ms') or 0),
+                    'dg_count': int(req_data.get('dg_count') or req_data.get('dg') or 0),
+                    'moi_count': int(req_data.get('moi_count') or req_data.get('moi') or 0),
+                    'backlog_count': int(req_data.get('backlog_count') or req_data.get('backlog') or 0),
+                    'pay_rec_no': getattr(docrec, 'pay_rec_no', None),
+                    'doc_rec': docrec,
+                    'doc_rec_remark': getattr(docrec, 'doc_rec_remark', None),
+                    'status': VerificationStatus.IN_PROGRESS,
+                }
+                try:
+                    vr = Verification(**vr_kwargs)
+                    try:
+                        vr.full_clean()
+                    except Exception:
+                        # allow creation even if some fields missing; best-effort
+                        pass
+                    vr.save()
+                except Exception:
+                    # Best-effort: do not propagate verification creation errors
+                    pass
+        except Exception:
+            # swallow any unexpected errors to keep DocRec creation robust
+            pass
+    def perform_update(self, serializer):
+        """When a DocRec is updated via API, attempt to create/update the corresponding
+        service row (Verification/Migration/Provisional/InstVerificationMain) if
+        relevant data is present in the request. This is best-effort and will not
+        block the update if service sync fails.
+        """
+        docrec = serializer.save()
+        try:
+            req_data = self.request.data if hasattr(self.request, 'data') else {}
+            # If this is a verification docrec and enrollment or verification data provided,
+            # try to create or update a Verification row linked to this DocRec.
+            if getattr(docrec, 'apply_for', '').upper() == 'VR':
+                enr_key = req_data.get('enrollment') or req_data.get('enrollment_no') or None
+                # try to find existing verification linked to this docrec
+                existing = Verification.objects.filter(doc_rec=docrec).first()
+                if existing:
+                    # update counts and student_name/pay_rec_no if provided
+                    changed = False
+                    for fld in ('student_name','tr_count','ms_count','dg_count','moi_count','backlog_count','pay_rec_no','doc_rec_remark','status'):
+                        if fld in req_data:
+                            val = req_data.get(fld)
+                            try:
+                                if getattr(existing, fld, None) != val:
+                                    setattr(existing, fld, val)
+                                    changed = True
+                            except Exception:
+                                pass
+                    if changed:
+                        try:
+                            existing.full_clean()
+                        except Exception:
+                            pass
+                        try:
+                            existing.save()
+                        except Exception:
+                            pass
+                else:
+                    # no existing verification: attempt to create when enrollment can be resolved
+                    enrollment_obj = None
+                    if enr_key:
+                        try:
+                            sk = str(enr_key).strip()
+                            if sk.isdigit():
+                                enrollment_obj = Enrollment.objects.filter(id=int(sk)).first()
+                            if not enrollment_obj:
+                                enrollment_obj = Enrollment.objects.filter(enrollment_no__iexact=sk).first()
+                        except Exception:
+                            enrollment_obj = None
+                    # Attempt to create a placeholder Verification even without resolved enrollment
+                    try:
+                        vr = Verification(
+                            enrollment=enrollment_obj,
+                            student_name=req_data.get('student_name') or (getattr(enrollment_obj, 'student_name', '') if enrollment_obj else '') or '',
+                            tr_count=int(req_data.get('tr_count') or req_data.get('tr') or 0),
+                            ms_count=int(req_data.get('ms_count') or req_data.get('ms') or 0),
+                            dg_count=int(req_data.get('dg_count') or req_data.get('dg') or 0),
+                            moi_count=int(req_data.get('moi_count') or req_data.get('moi') or 0),
+                            backlog_count=int(req_data.get('backlog_count') or req_data.get('backlog') or 0),
+                            pay_rec_no=getattr(docrec, 'pay_rec_no', None),
+                            doc_rec=docrec,
+                            status='IN_PROGRESS',
+                        )
+                        try:
+                            vr.full_clean()
+                        except Exception:
+                            pass
+                        vr.save()
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
     @action(detail=False, methods=["get"], url_path="next-id")
     def next_id(self, request):
         """Return the next doc_rec_id that would be assigned for a given apply_for.
@@ -99,6 +228,13 @@ class VerificationViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        # Allow filtering by related DocRec identifier when called from DocReceive UI
+        try:
+            doc_rec_param = self.request.query_params.get('doc_rec') or self.request.query_params.get('doc_rec_id')
+        except Exception:
+            doc_rec_param = None
+        if doc_rec_param:
+            qs = qs.filter(doc_rec__doc_rec_id=doc_rec_param)
         search = self.request.query_params.get('search', '').strip()
         if search:
             norm_q = ''.join(search.split()).lower()
@@ -247,7 +383,7 @@ class InstVerificationStudentViewSet(viewsets.ModelViewSet):
         enr_key = data.get('enrollment') or data.get('enrollment_no') or data.get('enrollment_no_text')
         try:
             if enr_key:
-                enr_obj = Enrollment.objects.filter(enrollment_no=str(enr_key).strip()).first()
+                enr_obj = Enrollment.objects.filter(enrollment_no__iexact=str(enr_key).strip()).first()
                 if enr_obj:
                     if getattr(enr_obj, 'institute', None):
                         data['institute'] = getattr(enr_obj.institute, 'id', None) or getattr(enr_obj.institute, 'pk', None)
@@ -271,7 +407,7 @@ class InstVerificationStudentViewSet(viewsets.ModelViewSet):
         enr_key = data.get('enrollment') or data.get('enrollment_no') or data.get('enrollment_no_text')
         try:
             if enr_key:
-                enr_obj = Enrollment.objects.filter(enrollment_no=str(enr_key).strip()).first()
+                enr_obj = Enrollment.objects.filter(enrollment_no__iexact=str(enr_key).strip()).first()
                 if enr_obj:
                     if getattr(enr_obj, 'institute', None):
                         data['institute'] = getattr(enr_obj.institute, 'id', None) or getattr(enr_obj.institute, 'pk', None)
@@ -1397,22 +1533,71 @@ class BulkUploadView(APIView):
             elif service == BulkService.VERIFICATION:
                 for idx, row in df.iterrows():
                     try:
-                        dr_key = str(row.get("doc_rec_id") or '').strip()
-                        enr_key = str(row.get("enrollment_no") or '').strip()
-                        doc_rec = DocRec.objects.filter(doc_rec_id=dr_key).first() if dr_key else None
-                        enr = Enrollment.objects.filter(enrollment_no=enr_key).first() if enr_key else None
+                        dr_key_raw = _clean_cell(row.get("doc_rec_id"))
+                        dr_key = str(dr_key_raw).strip() if dr_key_raw is not None else ''
+                        enr_key_raw = _clean_cell(row.get("enrollment_no"))
+                        enr_key = str(enr_key_raw).strip() if enr_key_raw is not None else ''
+
+                        # Robust DocRec lookup: exact, iexact, then normalized fallback
+                        doc_rec = None
+                        if dr_key:
+                            try:
+                                doc_rec = DocRec.objects.filter(doc_rec_id=dr_key).first()
+                                if not doc_rec:
+                                    doc_rec = DocRec.objects.filter(doc_rec_id__iexact=dr_key).first()
+                            except Exception:
+                                doc_rec = None
+                            if not doc_rec:
+                                try:
+                                    import re
+                                    norm = re.sub(r'[^0-9a-zA-Z]', '', dr_key).lower()
+                                    if norm:
+                                        for dr in DocRec.objects.all()[:20000]:
+                                            try:
+                                                if re.sub(r'[^0-9a-zA-Z]', '', str(dr.doc_rec_id)).lower() == norm:
+                                                    doc_rec = dr
+                                                    break
+                                            except Exception:
+                                                continue
+                                except Exception:
+                                    doc_rec = None
+
+                        # Robust Enrollment lookup: try exact, iexact, then normalized (remove spaces, case-insensitive)
+                        enr = None
+                        if enr_key:
+                            try:
+                                k = enr_key
+                                enr = Enrollment.objects.filter(enrollment_no=k).first()
+                                if not enr:
+                                    enr = Enrollment.objects.filter(enrollment_no__iexact=k).first()
+                            except Exception:
+                                enr = None
+                            if not enr:
+                                try:
+                                    norm = ''.join(enr_key.split()).lower()
+                                    enr = (Enrollment.objects
+                                           .annotate(_norm=Replace(Lower(models.F('enrollment_no')), Value(' '), Value('')))
+                                           .filter(_norm=norm)
+                                           .first())
+                                except Exception:
+                                    enr = None
+
+                        # second enrollment
                         senr = None
-                        if str(row.get("second_enrollment_no") or '').strip():
-                            senr = Enrollment.objects.filter(enrollment_no=str(row.get("second_enrollment_no")).strip()).first()
+                        sec_key = _clean_cell(row.get("second_enrollment_no"))
+                        if sec_key:
+                            try:
+                                sk = str(sec_key).strip()
+                                senr = Enrollment.objects.filter(enrollment_no=sk).first() or Enrollment.objects.filter(enrollment_no__iexact=sk).first()
+                            except Exception:
+                                senr = None
 
                         # If DocRec missing and auto-create requested, create a minimal DocRec
                         if not doc_rec and auto_create_docrec and dr_key:
                             try:
                                 doc_date = _parse_excel_date_safe(row.get("doc_rec_date")) or timezone.now().date()
-                                # Collect optional fields from sheet if present
-                                pay_rec_no = (str(row.get('pay_rec_no') or '').strip() or None)
-                                remark = (str(row.get('doc_rec_remark') or '').strip() or None)
-                                # Create with available info; pay_by defaults to NA in model save() if not provided
+                                pay_rec_no = _clean_cell(row.get('pay_rec_no'))
+                                remark = _clean_cell(row.get('doc_rec_remark'))
                                 doc_rec = DocRec.objects.create(
                                     doc_rec_id=dr_key,
                                     apply_for='VR',
@@ -1435,7 +1620,10 @@ class BulkUploadView(APIView):
                             _cache_progress(idx+1)
                             continue
 
-                        date_v = _parse_excel_date_safe(row.get("date")) or timezone.now().date()
+                        # Prefer explicit `doc_rec_date` column, then `date` column,
+                        # then linked DocRec.doc_rec_date, then created-at
+                        parsed_doc_rec_date = _parse_excel_date_safe(row.get('doc_rec_date'))
+                        date_v = parsed_doc_rec_date or _parse_excel_date_safe(row.get("date")) or (getattr(doc_rec, 'doc_rec_date', None) if doc_rec else None) or timezone.now().date()
                         # Build defaults but only include status if provided in sheet (avoid forcing IN_PROGRESS on blank cells)
                         # normalize cell values: convert None/NaN/'nan'/'<NA>'/empty -> None, else trimmed string
                         def _normalize_cell(val):
@@ -1477,9 +1665,10 @@ class BulkUploadView(APIView):
                         norm_eca_name = _normalize_cell(row.get('eca_name'))
                         norm_eca_ref = _normalize_cell(row.get('eca_ref_no'))
 
+                        # Use `doc_rec_date` as the model field for the doc record date
                         defaults = {
                             "doc_rec": doc_rec,
-                            "date": date_v,
+                            "doc_rec_date": date_v,
                             "enrollment": enr,
                             "second_enrollment": senr,
                             "student_name": _normalize_cell(row.get("student_name")) or (enr.student_name if enr else ""),
@@ -1494,8 +1683,10 @@ class BulkUploadView(APIView):
                             "eca_name": norm_eca_name,
                             "eca_ref_no": norm_eca_ref,
                             "eca_send_date": _parse_excel_date_safe(row.get('eca_send_date')),
-                            "eca_status": (_map_mail_status(_normalize_cell(row.get('eca_status') or row.get('eca_send_status'))) or MailStatus.NOT_SENT),
+                            # allow NULL for eca_status when sheet cell is blank
+                            "eca_status": _map_mail_status(_normalize_cell(row.get('eca_status') or row.get('eca_send_status'))),
                             # mail send status for verification (accept common header names)
+                            # Keep existing behaviour for mail_status (defaults to NOT_SENT)
                             "mail_status": (_map_mail_status(_normalize_cell(row.get('mail_status') or row.get('mail_send_status') or row.get('mail_send'))) or MailStatus.NOT_SENT),
                             "updatedby": user,
                         }
@@ -1504,30 +1695,63 @@ class BulkUploadView(APIView):
 
                         final_no_val = _normalize_cell(row.get("final_no"))
 
-                        # If final_no provided, try to find existing object and update, otherwise create.
-                        if final_no_val:
+                        # Parse vr_done_date if present on sheet (accept common column names)
+                        vr_done_from_sheet = _parse_excel_date_safe(row.get('vr_done_date') or row.get('done_date') or row.get('vr_done'))
+
+                        # If sheet provided an explicit doc_rec_date, propagate it to the linked DocRec (best-effort)
+                        if doc_rec and parsed_doc_rec_date is not None:
+                            try:
+                                if getattr(doc_rec, 'doc_rec_date', None) != parsed_doc_rec_date:
+                                    doc_rec.doc_rec_date = parsed_doc_rec_date
+                                    doc_rec.save(update_fields=['doc_rec_date'])
+                            except Exception:
+                                pass
+
+                        # Upsert strategy: prefer doc_rec (unique doc_rec_id) for matching; fallback to final_no
+                        existing = None
+                        if doc_rec:
+                            existing = Verification.objects.filter(doc_rec=doc_rec).first()
+                        if not existing and final_no_val:
                             existing = Verification.objects.filter(final_no=final_no_val).first()
-                            if existing:
-                                # update fields except status unless provided
-                                for k, v in defaults.items():
+
+                        if existing:
+                            # update existing object selectively
+                            for k, v in defaults.items():
+                                try:
                                     setattr(existing, k, v)
-                                if has_status:
-                                    existing.status = status_val
-                                # else preserve existing.status
+                                except Exception:
+                                    pass
+                            # update vr_done_date when provided in sheet
+                            if vr_done_from_sheet is not None:
+                                existing.vr_done_date = vr_done_from_sheet
+                            # update status only if sheet provided it
+                            if has_status:
+                                existing.status = status_val
+                            # update final_no if provided
+                            if final_no_val:
+                                existing.final_no = final_no_val
+                            try:
                                 existing.full_clean()
+                            except Exception:
+                                pass
+                            try:
                                 existing.save()
-                            else:
-                                # create: if sheet didn't provide status, create with NULL status
-                                create_data = {**defaults}
-                                create_data['final_no'] = final_no_val
-                                create_data['status'] = status_val if has_status else None
-                                Verification.objects.create(**create_data)
+                                _log(idx, final_no_val or dr_key or enr_key, "Updated", True)
+                            except Exception as e:
+                                _log(idx, final_no_val or dr_key or enr_key, str(e), False)
                         else:
-                            # No final_no: create new record. If status blank -> keep NULL
+                            # create new record: include vr_done_date if provided
                             create_data = {**defaults}
                             create_data['status'] = status_val if has_status else None
-                            Verification.objects.create(**create_data)
-                        _log(idx, row.get("final_no") or row.get("enrollment_no"), "Upserted", True)
+                            if final_no_val:
+                                create_data['final_no'] = final_no_val
+                            if vr_done_from_sheet is not None:
+                                create_data['vr_done_date'] = vr_done_from_sheet
+                            try:
+                                Verification.objects.create(**create_data)
+                                _log(idx, final_no_val or dr_key or enr_key, "Created", True)
+                            except Exception as e:
+                                _log(idx, final_no_val or dr_key or enr_key, str(e), False)
                     except Exception as e:
                         _log(idx, row.get("final_no") or row.get("enrollment_no"), str(e), False)
                     _cache_progress(idx+1)

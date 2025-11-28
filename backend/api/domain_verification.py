@@ -25,11 +25,14 @@ class VerificationStatus(models.TextChoices):
     CORRECTION = 'CORRECTION', 'Correction'
     CANCEL = 'CANCEL', 'Cancel'
     DONE = 'DONE', 'Done'
+    DONE_WITH_REMARKS = 'DONE_WITH_REMARKS', 'Done With Remarks'
 
 class Verification(models.Model):
     id = models.BigAutoField(primary_key=True, db_column='id')
-    date = models.DateField(default=timezone.now, db_column='doc_rec_date', verbose_name='Doc Record Date')
-    enrollment = models.ForeignKey(Enrollment, on_delete=models.RESTRICT, db_column='enrollment_id', related_name='verifications')
+    doc_rec_date = models.DateField(default=timezone.now, db_column='doc_rec_date', verbose_name='Doc Record Date')
+    # Allow enrollment to be nullable so we can create placeholder Verification rows
+    # when a DocRec is created without an enrollment (frontend may supply later).
+    enrollment = models.ForeignKey(Enrollment, on_delete=models.RESTRICT, db_column='enrollment_id', related_name='verifications', null=True, blank=True)
     second_enrollment = models.ForeignKey(Enrollment, on_delete=models.RESTRICT, null=True, blank=True, db_column='second_enrollment_id', related_name='secondary_verifications')
     # Allow blank student_name so CANCEL rows can be stored without a name.
     # DB keeps this as NOT NULL (empty string) but Django validation will permit '' when blank=True.
@@ -53,7 +56,8 @@ class Verification(models.Model):
     eca_ref_no = models.CharField(max_length=100, null=True, blank=True, db_column='eca_ref_no')
     eca_send_date = models.DateField(null=True, blank=True, db_column='eca_send_date')
     eca_resubmit_date = models.DateField(null=True, blank=True, db_column='eca_resubmit_date')
-    eca_status = models.CharField(max_length=20, choices=MailStatus.choices, default=MailStatus.NOT_SENT, db_column='eca_status')
+    # Allow NULL so bulk uploads can explicitly leave ECA status blank (stored as NULL)
+    eca_status = models.CharField(max_length=20, choices=MailStatus.choices, null=True, blank=True, db_column='eca_status')
     replaces_verification = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, db_column='replaces_verification_id', related_name='superseded_by')
     remark = models.TextField(null=True, blank=True, db_column='vr_remark')
     vr_done_date = models.DateField(null=True, blank=True, db_column='vr_done_date')
@@ -82,9 +86,12 @@ class Verification(models.Model):
             raise ValidationError({'final_no': 'final_no is required when status is DONE.'})
         if self.status in (VerificationStatus.PENDING, VerificationStatus.CANCEL) and self.final_no:
             raise ValidationError({'final_no': 'final_no must be empty for PENDING or CANCEL.'})
+        # Consider ECA details present only if any meaningful ECA field is set.
+        # `eca_status` defaults to NOT_SENT; treat that as *not present* unless it's different.
+        eca_status_present = bool(self.eca_status and str(self.eca_status).strip() and str(self.eca_status) != MailStatus.NOT_SENT)
         if not self.eca_required and any([
             self.eca_name, self.eca_ref_no, self.eca_send_date,
-            self.eca_resubmit_date, self.eca_status
+            self.eca_resubmit_date, eca_status_present
         ]):
             raise ValidationError('ECA details present but eca_required=False.')
     def save(self,*a,**kw):

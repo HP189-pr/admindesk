@@ -329,7 +329,7 @@ class VerificationSerializer(serializers.ModelSerializer):
         model = Verification
         fields = [
             "id",
-            "date",
+            "doc_rec_date",
             "vr_done_date",
             "enrollment", "enrollment_no",
             "second_enrollment", "second_enrollment_no",

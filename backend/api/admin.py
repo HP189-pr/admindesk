@@ -336,6 +336,99 @@ def _clean_cell(val: Any):
         return None
     return s
 
+
+def resolve_docrec(raw_doc_rec_id: Any):
+    """Try to resolve a DocRec object from a raw imported doc_rec_id.
+
+    Strategies (in order):
+    - exact stripped match
+    - case-insensitive match (`iexact`)
+    - normalized alphanumeric lowercase match against recent DocRec rows
+
+    Returns DocRec instance or None.
+    """
+    if raw_doc_rec_id is None:
+        return None
+    try:
+        k = str(raw_doc_rec_id).strip()
+    except Exception:
+        k = str(raw_doc_rec_id)
+    if not k:
+        return None
+    try:
+        dr = DocRec.objects.filter(doc_rec_id=k).first()
+        if dr:
+            return dr
+    except Exception:
+        dr = None
+    try:
+        dr = DocRec.objects.filter(doc_rec_id__iexact=k).first()
+        if dr:
+            return dr
+    except Exception:
+        dr = None
+    # Fallback: normalized alphanumeric comparison (best-effort)
+    try:
+        import re
+        norm = re.sub(r'[^0-9a-zA-Z]', '', k).lower()
+        if norm:
+            for cand in DocRec.objects.all()[:20000]:
+                try:
+                    if re.sub(r'[^0-9a-zA-Z]', '', str(cand.doc_rec_id)).lower() == norm:
+                        return cand
+                except Exception:
+                    continue
+    except Exception:
+        pass
+    return None
+
+
+def _normalize_choice(raw: Any, choices_cls):
+    """Map a raw incoming status/choice string to a valid internal choice value.
+
+    Accepts either the stored value (e.g. 'DONE') or the human label (e.g. 'Done'),
+    case-insensitive, and with a best-effort alphanumeric-normalized match.
+    Returns the internal choice value (e.g. 'DONE') or None if no match.
+    """
+    if raw is None:
+        return None
+    try:
+        s = str(raw).strip()
+        if not s:
+            return None
+    except Exception:
+        s = str(raw)
+    try:
+        import re
+        cand_norm = re.sub(r'[^0-9a-zA-Z]', '', s).lower()
+        # Accept either a choices class with .choices or a raw sequence of tuples
+        choices_seq = None
+        if hasattr(choices_cls, 'choices'):
+            choices_seq = choices_cls.choices
+        else:
+            choices_seq = choices_cls
+        for val, label in choices_seq:
+            try:
+                if s.lower() == str(val).lower() or s.lower() == str(label).lower():
+                    return val
+                # normalized compare
+                lab_norm = re.sub(r'[^0-9a-zA-Z]', '', str(label)).lower()
+                if cand_norm and lab_norm and cand_norm == lab_norm:
+                    return val
+            except Exception:
+                continue
+        # final fallback: compare against value uppercased
+        su = s.upper()
+        for val, _ in choices_cls.choices:
+            try:
+                if su == str(val):
+                    return val
+            except Exception:
+                continue
+    except Exception:
+        return None
+    return None
+
 # ---------------------------------------------------------------------------
 # Import spec (whitelist + required keys)
 # ---------------------------------------------------------------------------
@@ -779,58 +872,45 @@ class ExcelUploadMixin:
                                     except Exception:
                                         pay_amount = None
                                 doc_date = parse_excel_date(r.get("doc_rec_date")) if "doc_rec_date" in eff else None
-                                obj, created = DocRec.objects.get_or_create(
-                                    doc_rec_id=doc_rec_id,
-                                    defaults={
-                                        **({"apply_for": apply_for} if "apply_for" in eff else {}),
-                                        **({"pay_by": pay_by} if "pay_by" in eff else {}),
-                                        **({"pay_rec_no_pre": pay_rec_no_pre} if "pay_rec_no_pre" in eff else {}),
-                                        **({"pay_rec_no": pay_rec_no} if "pay_rec_no" in eff else {}),
-                                        **({"pay_amount": pay_amount or 0} if "pay_amount" in eff else {}),
-                                        **({"doc_rec_date": doc_date} if doc_date and "doc_rec_date" in eff else {}),
-                                        "created_by": request.user,
-                                    }
-                                )
-                                if not created:
+                                # Resolve existing DocRec robustly to avoid duplicate doc_rec_id variants
+                                obj = resolve_docrec(doc_rec_id)
+                                created = False
+                                if not obj:
+                                    try:
+                                        obj = DocRec.objects.create(
+                                            doc_rec_id=doc_rec_id,
+                                            doc_rec_date=doc_date,
+                                            apply_for=apply_for,
+                                            created_by=request.user,
+                                        )
+                                        created = True
+                                        # If additional fields were in the selected columns, set them now
+                                        if "pay_rec_no_pre" in eff: obj.pay_rec_no_pre = pay_rec_no_pre
+                                        if "pay_rec_no" in eff: obj.pay_rec_no = pay_rec_no
+                                        if "pay_amount" in eff and (pay_amount is not None): obj.pay_amount = pay_amount or 0
+                                        if "doc_rec_date" in eff and doc_date: obj.doc_rec_date = doc_date
+                                        obj.save()
+                                    except Exception as e:
+                                        counts["skipped"] += 1; add_log(i, "skipped", f"Failed create docrec: {e}"); continue
+                                else:
+                                    # existing DocRec found: update fields if allowed
                                     if "apply_for" in eff: obj.apply_for = apply_for
                                     if "pay_by" in eff: obj.pay_by = pay_by
                                     if "pay_rec_no_pre" in eff: obj.pay_rec_no_pre = pay_rec_no_pre
                                     if "pay_rec_no" in eff: obj.pay_rec_no = pay_rec_no
-                                    if "pay_amount" in eff: obj.pay_amount = pay_amount or 0
+                                    if "pay_amount" in eff and (pay_amount is not None): obj.pay_amount = pay_amount or 0
                                     if "doc_rec_date" in eff and doc_date: obj.doc_rec_date = doc_date
-                                    obj.save()
+                                    try:
+                                        obj.save()
+                                    except Exception:
+                                        pass
                                 if created: counts["created"] += 1; add_log(i, "created", "Created", doc_rec_id)
                                 else: counts["updated"] += 1; add_log(i, "updated", "Updated", doc_rec_id)
                         elif issubclass(self.model, MigrationRecord) and sheet_norm == "migration":
                             auto_create = bool(str(request.POST.get('auto_create_docrec', '')).strip())
                             for i, (_, r) in enumerate(df.iterrows(), start=2):
                                 doc_rec_id_raw = _clean_cell(r.get("doc_rec_id"))
-                                dr = None
-                                if doc_rec_id_raw:
-                                    try:
-                                        k = str(doc_rec_id_raw).strip()
-                                    except Exception:
-                                        k = str(doc_rec_id_raw)
-                                    dr = DocRec.objects.filter(doc_rec_id=k).first()
-                                    if not dr:
-                                        try:
-                                            dr = DocRec.objects.filter(doc_rec_id__iexact=k).first()
-                                        except Exception:
-                                            dr = None
-                                    if not dr:
-                                        try:
-                                            import re
-                                            norm = re.sub(r'[^0-9a-zA-Z]', '', k).lower()
-                                            if norm:
-                                                for cand in DocRec.objects.all()[:20000]:
-                                                    try:
-                                                        if re.sub(r'[^0-9a-zA-Z]', '', str(cand.doc_rec_id)).lower() == norm:
-                                                            dr = cand
-                                                            break
-                                                    except Exception:
-                                                        continue
-                                        except Exception:
-                                            pass
+                                dr = resolve_docrec(doc_rec_id_raw)
                                 if not dr:
                                     if auto_create:
                                         doc_date = parse_excel_date(r.get("doc_rec_date")) if "doc_rec_date" in eff else None
@@ -847,7 +927,7 @@ class ExcelUploadMixin:
                                         counts["skipped"] += 1; add_log(i, "skipped", "doc_rec_id not found"); continue
                                 # Parse enrollment and supporting relationships using cleaned cells
                                 enr_key = _clean_cell(r.get("enrollment_no")) if "enrollment_no" in eff else None
-                                enr = Enrollment.objects.filter(enrollment_no=str(enr_key).strip()).first() if enr_key else None
+                                enr = Enrollment.objects.filter(enrollment_no__iexact=str(enr_key).strip()).first() if enr_key else None
                                 inst_key = _clean_cell(r.get("institute_id")) if "institute_id" in eff else None
                                 main_key = _clean_cell(r.get("maincourse_id")) if "maincourse_id" in eff else None
                                 sub_key = _clean_cell(r.get("subcourse_id")) if "subcourse_id" in eff else None
@@ -995,7 +1075,7 @@ class ExcelUploadMixin:
                         elif issubclass(self.model, ProvisionalRecord) and sheet_norm == "provisional":
                             auto_create = bool(str(request.POST.get('auto_create_docrec', '')).strip())
                             for i, (_, r) in enumerate(df.iterrows(), start=2):
-                                dr = DocRec.objects.filter(doc_rec_id=str(r.get("doc_rec_id")).strip()).first()
+                                dr = resolve_docrec(str(r.get("doc_rec_id")))
                                 if not dr:
                                     if auto_create:
                                         doc_date = parse_excel_date(r.get("doc_rec_date")) if "doc_rec_date" in eff else None
@@ -1010,7 +1090,7 @@ class ExcelUploadMixin:
                                             counts["skipped"] += 1; add_log(i, "skipped", f"Failed create docrec: {e}"); continue
                                     else:
                                         counts["skipped"] += 1; add_log(i, "skipped", "doc_rec_id not found"); continue
-                                enr = Enrollment.objects.filter(enrollment_no=str(r.get("enrollment_no")).strip()).first() if "enrollment_no" in eff and str(r.get("enrollment_no") or '').strip() else None
+                                enr = Enrollment.objects.filter(enrollment_no__iexact=str(r.get("enrollment_no")).strip()).first() if "enrollment_no" in eff and str(r.get("enrollment_no") or '').strip() else None
                                 inst_key = _clean_cell(r.get("institute_id")) if "institute_id" in eff else None
                                 main_key = _clean_cell(r.get("maincourse_id")) if "maincourse_id" in eff else None
                                 sub_key = _clean_cell(r.get("subcourse_id")) if "subcourse_id" in eff else None
@@ -1087,7 +1167,7 @@ class ExcelUploadMixin:
                         elif issubclass(self.model, Verification) and sheet_norm == "verification":
                             auto_create = bool(str(request.POST.get('auto_create_docrec', '')).strip())
                             for i, (_, r) in enumerate(df.iterrows(), start=2):
-                                dr = DocRec.objects.filter(doc_rec_id=str(r.get("doc_rec_id")).strip()).first()
+                                dr = resolve_docrec(str(r.get("doc_rec_id")))
                                 if not dr:
                                     if auto_create:
                                         doc_date = parse_excel_date(r.get("doc_rec_date")) if "doc_rec_date" in eff else None
@@ -1102,8 +1182,8 @@ class ExcelUploadMixin:
                                             counts["skipped"] += 1; add_log(i, "skipped", f"Failed create docrec: {e}"); continue
                                     else:
                                         counts["skipped"] += 1; add_log(i, "skipped", "doc_rec_id not found"); continue
-                                enr = Enrollment.objects.filter(enrollment_no=str(r.get("enrollment_no")).strip()).first() if "enrollment_no" in eff else None
-                                senr = Enrollment.objects.filter(enrollment_no=str(r.get("second_enrollment_no")).strip()).first() if "second_enrollment_no" in eff and str(r.get("second_enrollment_no") or '').strip() else None
+                                enr = Enrollment.objects.filter(enrollment_no__iexact=str(r.get("enrollment_no")).strip()).first() if "enrollment_no" in eff else None
+                                senr = Enrollment.objects.filter(enrollment_no__iexact=str(r.get("second_enrollment_no")).strip()).first() if "second_enrollment_no" in eff and str(r.get("second_enrollment_no") or '').strip() else None
                                 date_v = parse_excel_date(r.get("date")) if "date" in eff else None
                                 obj, created = Verification.objects.get_or_create(doc_rec=dr, defaults={})
                                 if "date" in eff and date_v: obj.date = date_v
@@ -1115,7 +1195,17 @@ class ExcelUploadMixin:
                                 if "no_of_degree" in eff: obj.dg_count = int(r.get("no_of_degree") or 0)
                                 if "no_of_moi" in eff: obj.moi_count = int(r.get("no_of_moi") or 0)
                                 if "no_of_backlog" in eff: obj.backlog_count = int(r.get("no_of_backlog") or 0)
-                                if "status" in eff: obj.status = r.get("status") or getattr(obj, 'status', None)
+                                if "status" in eff:
+                                    raw_status = _clean_cell(r.get("status")) or ''
+                                    mapped = _normalize_choice(raw_status, Verification._meta.get_field('status').choices)
+                                    if mapped:
+                                        obj.status = mapped
+                                    else:
+                                        # fallback: try uppercase of raw value (common mapping)
+                                        try:
+                                            obj.status = str(raw_status).upper() or getattr(obj, 'status', None)
+                                        except Exception:
+                                            obj.status = getattr(obj, 'status', None)
                                 if "final_no" in eff: obj.final_no = (str(r.get("final_no")).strip() or obj.final_no)
                                 if "pay_rec_no" in eff: obj.pay_rec_no = r.get("pay_rec_no") or (dr.pay_rec_no if dr else getattr(obj, 'pay_rec_no', ''))
                                 # vr_done_date
@@ -1134,23 +1224,42 @@ class ExcelUploadMixin:
                                         dr.save(update_fields=['doc_rec_remark'])
                                 # ECA handling: populate Verification's own eca_* fields (denormalized single-row mode)
                                 try:
+                                    # If the import explicitly marks ECA required, set the flag on the object
                                     if "eca_required" in eff and str(r.get("eca_required") or '').strip().lower() in ('1','true','yes','y'):
-                                        if 'eca_name' in eff:
-                                            obj.eca_name = r.get('eca_name') or None
-                                        if 'eca_ref_no' in eff:
-                                            obj.eca_ref_no = r.get('eca_ref_no') or None
-                                        if 'eca_submit_date' in eff:
-                                            eca_send = parse_excel_date(r.get('eca_submit_date'))
-                                            if eca_send:
-                                                obj.eca_submit_date = eca_send
-                                        if 'eca_remark' in eff:
-                                            # store as part of eca_history or remark field — we'll store the text in eca_history as a single entry
-                                            try:
-                                                hist = list(obj.eca_history or [])
-                                                hist.append({'imported_remark': _sanitize(r.get('eca_remark'))})
-                                                obj.eca_history = hist
-                                            except Exception:
-                                                obj.eca_history = [{'imported_remark': _sanitize(r.get('eca_remark'))}]
+                                        obj.eca_required = True
+                                    # Populate any provided denormalized ECA fields
+                                    if 'eca_name' in eff:
+                                        obj.eca_name = r.get('eca_name') or None
+                                    if 'eca_ref_no' in eff:
+                                        obj.eca_ref_no = r.get('eca_ref_no') or None
+                                    # support both column names 'eca_submit_date' and 'eca_send_date' / 'eca_submit_date'
+                                    if 'eca_submit_date' in eff or 'eca_send_date' in eff:
+                                        eca_send = parse_excel_date(r.get('eca_submit_date') or r.get('eca_send_date'))
+                                        if eca_send:
+                                            obj.eca_send_date = eca_send
+                                    if 'eca_resubmit_date' in eff:
+                                        eca_resub = parse_excel_date(r.get('eca_resubmit_date'))
+                                        if eca_resub:
+                                            obj.eca_resubmit_date = eca_resub
+                                    if 'eca_status' in eff:
+                                        raw = _clean_cell(r.get('eca_status'))
+                                        if raw:
+                                            mapped_eca = _normalize_choice(raw, Verification._meta.get_field('eca_status').choices)
+                                            if mapped_eca:
+                                                obj.eca_status = mapped_eca
+                                            else:
+                                                try:
+                                                    obj.eca_status = str(raw).upper()
+                                                except Exception:
+                                                    pass
+                                    if 'eca_remark' in eff:
+                                        # store as part of eca_history or remark field — we'll store the text in eca_history as a single entry
+                                        try:
+                                            hist = list(getattr(obj, 'eca_history', []) or [])
+                                            hist.append({'imported_remark': _sanitize(r.get('eca_remark'))})
+                                            obj.eca_history = hist
+                                        except Exception:
+                                            obj.eca_history = [{'imported_remark': _sanitize(r.get('eca_remark'))}]
                                 except Exception:
                                     # keep import tolerant; skip ECA details on error
                                     pass
@@ -1163,7 +1272,7 @@ class ExcelUploadMixin:
                                 en_no = str(r.get("enrollment_no", "")).strip()
                                 if not en_no:
                                     counts["skipped"] += 1; add_log(i, "skipped", "Missing enrollment_no"); continue
-                                enrollment = Enrollment.objects.filter(enrollment_no=en_no).first()
+                                enrollment = Enrollment.objects.filter(enrollment_no__iexact=en_no).first()
                                 if not enrollment:
                                     counts["skipped"] += 1; add_log(i, "skipped", f"Enrollment {en_no} not found"); continue
                                 birth_date = parse_excel_date(r.get("birth_date")) if "birth_date" in eff else None
@@ -1538,12 +1647,18 @@ class VerificationAdmin(CommonAdminMixin):
     # doc_rec_remark is not a direct field on Verification (it comes from related DocRec).
     # We'll surface it in the edit form via get_form and sync on save.
     search_fields = ("doc_rec__doc_rec_id", "enrollment__enrollment_no", "student_name", "final_no")
-    list_filter = ("status", "date")
+    # Use model-backed `doc_rec_date` (doc record date) instead of the old `date` field
+    list_filter = ("status", "doc_rec_date")
     autocomplete_fields = ("doc_rec", "enrollment", "second_enrollment")
     readonly_fields = ("createdat", "updatedat")
 
     def date_display(self, obj):
-        return obj.date.strftime('%d-%m-%Y') if obj.date else '-'
+        # Prefer the doc_rec_date field (stores the document receive date)
+        try:
+            d = getattr(obj, 'doc_rec_date', None)
+        except Exception:
+            d = None
+        return d.strftime('%d-%m-%Y') if d else '-'
     date_display.short_description = 'Date'
 
     def done_date_display(self, obj):

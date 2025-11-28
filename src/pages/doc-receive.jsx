@@ -42,6 +42,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
 
     // verification specific
     enrollment: "",
+    enrollment_id: null,
     second_enrollment: "",
     student_name: "",
     institute_id: "",
@@ -92,7 +93,54 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     }catch(e){ console.warn('fetchRelatedForDocRec error', e); }
   };
 
+  // Resolve an enrollment number to enrollment object (try retrieve by enrollment_no, fall back to search)
+  const resolveEnrollment = async (en_no) => {
+    if (!en_no) return null;
+    try {
+      const token = localStorage.getItem('access_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      // Try direct retrieve using lookup_field
+      let res = await fetch(`/api/enrollment/${encodeURIComponent(en_no)}/`, { headers });
+      if (res.ok) {
+        const obj = await res.json();
+        return obj;
+      }
+      // Fallback to search list
+      res = await fetch(`/api/enrollment/?search=${encodeURIComponent(en_no)}&limit=1`, { headers });
+      if (!res.ok) return null;
+      const data = await res.json();
+      const items = data && data.items ? data.items : (Array.isArray(data) ? data : []);
+      return items && items.length ? items[0] : null;
+    } catch (e) {
+      console.warn('resolveEnrollment error', e);
+      return null;
+    }
+  };
+
   const handleChange = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  // When user types or pastes an enrollment number, try to resolve and auto-fill name + enrollment_id
+  useEffect(() => {
+    let active = true;
+    const en = (form.enrollment || '').toString().trim();
+    if (!en) {
+      setForm((f) => ({ ...f, student_name: '', enrollment_id: null }));
+      return;
+    }
+    const run = async () => {
+      const enr = await resolveEnrollment(en);
+      if (!active) return;
+      if (enr) {
+        // Enrollment object may expose 'id' or 'pk' depending on serializer
+        const id = enr.id || enr.pk || null;
+        const name = enr.student_name || enr.student || '';
+        setForm((f) => ({ ...f, student_name: name || f.student_name, enrollment_id: id }));
+      }
+    };
+    // debounce slightly
+    const t = setTimeout(run, 300);
+    return () => { active = false; clearTimeout(t); };
+  }, [form.enrollment]);
 
   // clear payment fields if pay_by becomes NA/null
   useEffect(() => {
@@ -132,6 +180,11 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
         if (msg && msg.type === 'bulk_upload_complete'){
           // Refresh related records for current doc_rec_id
           fetchRelatedForDocRec(form.doc_rec_id);
+        }
+        // When other components create a DocRec, refresh recent records and related lists
+        if (msg && msg.type === 'docrec_created'){
+          try{ fetchRecentRecords('', 'all'); }catch(_){}
+          if (msg.doc_rec_id) fetchRelatedForDocRec(msg.doc_rec_id);
         }
       }catch(e){ }
     };
@@ -203,8 +256,16 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     // Some records have doc_rec or doc_rec_id or id
     const docRecId = r.doc_rec || r.doc_rec_id || r.id || r.doc_rec_id_string;
     const studentName = r.student_name || r.student || r.name || '';
-    const enrollmentNo = r.enrollment_no || r.enrollment_no_string || r.enrollment_no || r.enrollment || '';
-    setForm(prev=>({ ...prev, doc_rec_id: docRecId || prev.doc_rec_id, student_name: studentName || prev.student_name, enrollment_no: enrollmentNo || prev.enrollment_no }));
+    const enrollmentNo = r.enrollment_no || r.enrollment_no_string || r.enrollment || '';
+    const enrollmentId = r.enrollment_id || r.enrollment_pk || null;
+    setForm(prev=>({
+      ...prev,
+      doc_rec_id: docRecId || prev.doc_rec_id,
+      student_name: studentName || prev.student_name,
+      // Use `enrollment` key (the input bound to the auto-resolve effect)
+      enrollment: enrollmentNo || prev.enrollment,
+      enrollment_id: enrollmentId || prev.enrollment_id,
+    }));
     if (docRecId) fetchRelatedForDocRec(docRecId);
   };
 
@@ -248,6 +309,61 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
       doc_rec_id: row.doc_rec_id,
       pay_rec_no_pre: row.pay_rec_no_pre || "",
     }));
+    // Broadcast the new DocRec so other tabs/components can auto-sync
+    try{
+      if (typeof BroadcastChannel !== 'undefined'){
+        const bc = new BroadcastChannel('admindesk-updates');
+        bc.postMessage({ type: 'docrec_created', doc_rec_id: row.doc_rec_id || row.doc_rec || row.id });
+        bc.close();
+      } else {
+        // Fallback: write to localStorage to trigger storage event listeners
+        try{ localStorage.setItem('admindesk_last_docrec', JSON.stringify({ ts: Date.now(), doc_rec_id: row.doc_rec_id || row.doc_rec || row.id })); }catch(_){ }
+      }
+    }catch(e){ /* ignore broadcast errors */ }
+    // locally refresh recent records and related lists so the UI updates immediately
+    try{ fetchRecentRecords('', 'all'); }catch(_){ }
+    try{ fetchRelatedForDocRec(row.doc_rec_id || row.doc_rec || row.id); }catch(_){ }
+    // If this DocRec is for Verification and user provided enrollment or student_name,
+    // automatically create the linked Verification so the DocRec immediately shows a verification row.
+    try {
+      if (form.apply_for === 'VR' && (form.enrollment || form.student_name)) {
+        const enrObj = form.enrollment_id ? { id: form.enrollment_id, student_name: form.student_name } : await resolveEnrollment(form.enrollment);
+        const enrollmentPk = enrObj ? (enrObj.id || enrObj.pk || null) : null;
+        const studentName = (enrObj && (enrObj.student_name || enrObj.student)) || form.student_name || null;
+        const vrPayload = {
+          enrollment: enrollmentPk,
+          // also include the raw enrollment string as a fallback so the server
+          // can resolve it when a numeric PK isn't available
+          enrollment_no: form.enrollment || null,
+          second_enrollment: form.second_enrollment || null,
+          student_name: studentName,
+          tr_count: clamp3(form.tr),
+          ms_count: clamp3(form.ms),
+          dg_count: clamp3(form.dg),
+          moi_count: clamp3(form.moi),
+          backlog_count: clamp3(form.backlog),
+          pay_rec_no: row.pay_rec_no || null,
+          doc_rec_id: row.id,
+          doc_rec_remark: form.doc_rec_remark || null,
+          status: 'IN_PROGRESS',
+        };
+        const r2 = await fetch('/api/verification/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify(vrPayload),
+        });
+        if (r2.ok) {
+          // refresh related records for this doc_rec
+          fetchRelatedForDocRec(row.doc_rec_id || row.doc_rec || row.id);
+        } else {
+          const txt = await r2.text().catch(() => '');
+          console.warn('Auto-create verification failed', r2.status, txt);
+        }
+      }
+    } catch (e) {
+      console.warn('createDocRec: auto verification creation failed', e);
+    }
+
     return row;
   };
 
@@ -259,10 +375,17 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
 
     // 2) Depending on apply_for, create related minimal record
     if (form.apply_for === "VR") {
+      // Resolve enrollment to primary key if possible
+      const enrObj = form.enrollment_id ? { id: form.enrollment_id, student_name: form.student_name } : await resolveEnrollment(form.enrollment);
+      const enrollmentPk = enrObj ? (enrObj.id || enrObj.pk || null) : null;
+      const studentName = (enrObj && (enrObj.student_name || enrObj.student)) || form.student_name || null;
+
       const payload = {
-        enrollment: form.enrollment || null,
-        second_enrollment: form.second_enrollment || null,
-        student_name: form.student_name || null,
+        enrollment: enrollmentPk,
+        // fallback raw enrollment string so backend can resolve by enrollment_no
+        enrollment_no: form.enrollment || null,
+        second_enrollment: null,
+        student_name: studentName,
         tr_count: clamp3(form.tr),
         ms_count: clamp3(form.ms),
         dg_count: clamp3(form.dg),
@@ -271,12 +394,25 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
         pay_rec_no: rec.pay_rec_no || null,
         doc_rec_id: rec.id,
         doc_rec_remark: form.doc_rec_remark || null,
+        // default new verifications to IN_PROGRESS
+        status: 'IN_PROGRESS',
       };
-      await fetch("/api/verification/", {
+
+      const resVr = await fetch("/api/verification/", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify(payload),
       });
+      if (!resVr.ok) {
+        const txt = await resVr.text().catch(() => '');
+        console.warn('Verification create failed', resVr.status, txt);
+        alert(`Verification create failed: ${resVr.status} ${resVr.statusText} ${txt}`);
+      } else {
+        // refresh related lists for this doc_rec so UI shows the new verification row
+        fetchRelatedForDocRec(rec.doc_rec_id || rec.doc_rec || rec.id);
+        // broadcast update so other components can refresh if needed
+        try{ if (typeof BroadcastChannel !== 'undefined'){ const bc = new BroadcastChannel('admindesk-updates'); bc.postMessage({ type: 'docrec_created', doc_rec_id: rec.doc_rec_id || rec.doc_rec || rec.id }); bc.close(); } }catch(e){}
+      }
     } else if (form.apply_for === "IV") {
       const payload = {
         doc_rec_id: rec.id,

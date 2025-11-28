@@ -15,7 +15,7 @@ const MODULES = [
     key: 'verification',
     label: '📜 Verification',
     openMenuLabel: 'Verification',
-    endpoint: '/api/admin/verifications',
+    endpoint: '/api/verification/',
     statuses: ['pending', 'done', 'cancel'],
     fields: (row) => `${row.student_name || '-'} - ${row.verification_no || '—'} - ${row.status || row.verification_status || ''}`,
   },
@@ -23,7 +23,7 @@ const MODULES = [
     key: 'migration',
     label: '🚀 Migration',
     openMenuLabel: 'Migration',
-    endpoint: '/api/admin/migrations',
+    endpoint: '/api/migration/',
     statuses: ['pending', 'done', 'cancel', 'correction'],
     fields: (row) => `${row.student_name || '-'} - ${row.migration_no || '—'} - ${row.status || ''}`,
   },
@@ -31,7 +31,7 @@ const MODULES = [
     key: 'provisional',
     label: '📄 Provisional',
     openMenuLabel: 'Provisional',
-    endpoint: '/api/admin/provisionals',
+    endpoint: '/api/provisional/',
     statuses: ['pending', 'done', 'cancel', 'correction'],
     fields: (row) => `${row.student_name || '-'} - ${row.provisional_no || '—'} - ${row.status || ''}`,
   },
@@ -39,7 +39,7 @@ const MODULES = [
     key: 'institutional',
     label: '🏛️ Institutional Verification',
     openMenuLabel: 'Inst-Verification',
-    endpoint: '/api/admin/institutionals',
+    endpoint: '/api/inst-verification-main/',
     statuses: ['pending', 'done', 'cancel', 'correction', 'fake'],
     fields: (row) => `${row.student_name || '-'} - ${row.enrollment_no || '—'} - ${row.verification_status || row.status || ''}`,
   },
@@ -49,7 +49,15 @@ const MODULES = [
     openMenuLabel: 'Official Mail Status',
     endpoint: '/api/mail-requests/',
     statuses: ['pending', 'progress', 'done'],
-    fields: (row) => `${row.rec_institute_name || '-'} - ${row.enrollment_no || '—'} - ${(row.mail_status || '').toUpperCase()}`,
+    fields: (row) => `${row.mail_req_no || row.id || '-'} • ${row.mail_status || ''} • ${row.enrollment_no || '—'} • ${row.student_name || '-'}`,
+  },
+  {
+    key: 'transcript_pdf',
+    label: '📄 Transcript Requests',
+    openMenuLabel: 'Transcript Requests',
+    endpoint: '/api/transcript-requests/',
+    statuses: ['pending', 'progress', 'done'],
+    fields: (row) => `${row.tr_request_no || row.request_ref_no || '-'} • ${row.enrollment_no || '—'} • ${row.student_name || '-'} • ${row.pdf_generate || ''} • ${row.mail_status || ''}`,
   },
 ];
 
@@ -68,12 +76,18 @@ function ModuleCard({ mod, authFetch, onOpen }) {
       params.set('limit', '5');
       const url = `${mod.endpoint}?${params.toString()}`;
       const res = await authFetch(url);
-      if (!res.ok) throw new Error('Load failed');
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        const msg = `Load failed (${res.status}) ${text}`;
+        console.error('Module load error:', msg, { url, mod });
+        throw new Error(msg);
+      }
       const data = await res.json();
       const arr = data.items || data.rows || data || [];
       setItems(Array.isArray(arr) ? arr.slice(0, 5) : []);
     } catch (e) {
-      setError('Could not load');
+      console.error('Module load exception:', e, { mod });
+      setError(typeof e === 'string' ? e : (e.message || 'Could not load'));
       setItems([]);
     } finally {
       setLoading(false);
@@ -114,7 +128,7 @@ function ModuleSelector({ selected, setSelected }) {
     setSelected((prev) => {
       const exists = prev.includes(key);
       if (exists) return prev.filter((k) => k !== key);
-      if (prev.length >= 5) return prev; // cap selections to avoid overcrowding
+      if (prev.length >= 4) return prev; // cap selections to 4 to avoid overcrowding
       return [...prev, key];
     });
   };
@@ -134,7 +148,33 @@ function ModuleSelector({ selected, setSelected }) {
 
 export default function CustomDashboardClean({ selectedMenuItem, setSelectedMenuItem, isSidebarOpen, setSidebarOpen }) {
   const { user } = useAuth();
-  const [selectedModuleKeys, setSelectedModuleKeys] = useState(['verification', 'migration', 'provisional', 'institutional', 'mailrequests']);
+  const STORAGE_KEY = 'selected_dashboard_modules';
+  const DEFAULT_SELECTED = ['verification', 'migration', 'provisional', 'institutional', 'mailrequests', 'transcript_pdf'];
+
+  const [selectedModuleKeys, setSelectedModuleKeys] = useState(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const merged = Array.from(new Set([...parsed, ...DEFAULT_SELECTED]));
+          return merged.slice(0, 4);
+        }
+      }
+    } catch (e) {
+      // ignore and fall back to defaults
+    }
+    return DEFAULT_SELECTED.slice(0, 4);
+  });
+
+  // Persist selection whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(selectedModuleKeys));
+    } catch (e) {
+      // ignore storage errors
+    }
+  }, [selectedModuleKeys]);
 
   // simple authFetch using fetch + bearer token
   const authFetch = async (url, opts = {}) => {
@@ -144,6 +184,14 @@ export default function CustomDashboardClean({ selectedMenuItem, setSelectedMenu
   };
 
   const handleOpenModule = (openMenuLabel) => setSelectedMenuItem(openMenuLabel);
+
+  // compute grid classes based on number of selected modules
+  const selectedCount = selectedModuleKeys.length;
+  let gridClass = 'grid grid-cols-1';
+  if (selectedCount === 1) gridClass = 'grid grid-cols-1';
+  else if (selectedCount === 2) gridClass = 'grid grid-cols-1 sm:grid-cols-2';
+  else if (selectedCount === 3) gridClass = 'grid grid-cols-1 md:grid-cols-3';
+  else if (selectedCount >= 4) gridClass = 'grid grid-cols-1 sm:grid-cols-2';
 
   // Render only the dashboard content — parent `Dashboard` provides the Sidebar/Topbar/Chatbox layout.
   return (
@@ -171,12 +219,12 @@ export default function CustomDashboardClean({ selectedMenuItem, setSelectedMenu
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-lg font-semibold text-gray-800">Quick Status</h2>
-            <div className="text-sm text-gray-500">Select up to 5 modules</div>
+              <div className="text-sm text-gray-500">Select up to 4 modules</div>
           </div>
           <ModuleSelector selected={selectedModuleKeys} setSelected={setSelectedModuleKeys} />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 pb-2">
+        <div className={`${gridClass} gap-4 pb-2`}>
           {MODULES.filter((m) => selectedModuleKeys.includes(m.key)).map((mod) => (
             <ModuleCard key={mod.key} mod={mod} authFetch={authFetch} onOpen={() => handleOpenModule(mod.openMenuLabel)} />
           ))}

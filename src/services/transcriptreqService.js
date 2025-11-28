@@ -20,12 +20,13 @@ const extractMessage = (error) => {
   return error.message || 'Unexpected error';
 };
 
-export const fetchTranscriptRequests = async ({ status, search, institute, page, pageSize } = {}) => {
+export const fetchTranscriptRequests = async ({ status, search, institute, page, pageSize, tr_request_no } = {}) => {
   try {
     const params = {};
     if (status) params.mail_status = status;
     if (search) params.search = search;
     if (institute) params.institute_name = institute;
+    if (tr_request_no) params.tr_request_no = tr_request_no;
     if (page) params.page = page;
     if (pageSize) params.page_size = pageSize;
     const response = await API.get(BASE_PATH, { params });

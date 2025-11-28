@@ -22,14 +22,47 @@ __all__ = [
 class VerificationSerializer(serializers.ModelSerializer):
     enrollment_no = serializers.CharField(source="enrollment.enrollment_no", read_only=True)
     second_enrollment_no = serializers.CharField(source="second_enrollment.enrollment_no", read_only=True)
+    # Expose the verification's doc record date as `doc_rec_date`.
+    # The `Verification` model now stores this value directly on the model
+    # (field name `doc_rec_date`) so the default ModelSerializer handling
+    # will include it. We keep this comment here for clarity.
     doc_rec_id = serializers.PrimaryKeyRelatedField(queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False)
     doc_rec_key = serializers.CharField(source="doc_rec.doc_rec_id", read_only=True)
+    # Expose `sequence` key expected by the frontend but use the DocRec identifier
+    # so the UI shows the `doc_rec_id` in place of the old sequence value.
+    sequence = serializers.SerializerMethodField()
     eca = serializers.SerializerMethodField()
     class Meta:
         model = Verification
-        fields = ["id","date","vr_done_date","enrollment","enrollment_no","second_enrollment","second_enrollment_no","student_name","tr_count","ms_count","dg_count","moi_count","backlog_count","pay_rec_no","status","final_no","mail_status","eca_required","eca_name","eca_ref_no","eca_send_date","eca_status","eca_resubmit_date","replaces_verification","remark","last_resubmit_date","last_resubmit_status","createdat","updatedat","updatedby","doc_rec_id","doc_rec_key","eca"]
+        fields = [
+            "id","doc_rec_date","vr_done_date","enrollment","enrollment_no","second_enrollment","second_enrollment_no",
+            "student_name","tr_count","ms_count","dg_count","moi_count","backlog_count","pay_rec_no","status",
+            "final_no","mail_status","eca_required","eca_name","eca_ref_no","eca_send_date","eca_status",
+            "eca_resubmit_date","replaces_verification","remark","last_resubmit_date","last_resubmit_status",
+            "createdat","updatedat","updatedby","doc_rec_id","doc_rec_key","sequence","eca"
+        ]
         read_only_fields = ["id","createdat","updatedat","updatedby","eca_resend_count","eca_last_action_at","eca_last_to_email","enrollment_no","second_enrollment_no","last_resubmit_date","last_resubmit_status"]
     def validate(self, attrs):
+        # Allow clients to submit enrollment as enrollment_no (string) or numeric PK.
+        # If serializer didn't resolve enrollment FK, try to resolve from request data.
+        try:
+            req = self.context.get('request')
+            if req and not attrs.get('enrollment'):
+                incoming = None
+                if isinstance(req.data, dict):
+                    incoming = req.data.get('enrollment') or req.data.get('enrollment_no')
+                if incoming:
+                    try:
+                        # try numeric PK first
+                        pk = int(str(incoming).strip())
+                        enr = Enrollment.objects.filter(pk=pk).first()
+                    except Exception:
+                        enr = Enrollment.objects.filter(enrollment_no__iexact=str(incoming).strip()).first()
+                    if enr:
+                        attrs['enrollment'] = enr
+        except Exception:
+            pass
+
         status = attrs.get("status", getattr(self.instance, "status", None))
         final_no = attrs.get("final_no", getattr(self.instance, "final_no", None))
         eca_required = attrs.get("eca_required", getattr(self.instance, "eca_required", False))
@@ -107,6 +140,20 @@ class VerificationSerializer(serializers.ModelSerializer):
             }
         except Exception:
             return None
+
+    def get_sequence(self, obj):
+        """Return the DocRec identifier to be displayed in the frontend 'Sequence' column.
+
+        This keeps the UI unchanged while showing the `doc_rec_id` value instead
+        of any internal numeric sequence.
+        """
+        try:
+            if getattr(obj, 'doc_rec', None):
+                return getattr(obj.doc_rec, 'doc_rec_id', None) or ''
+            # fallback: some legacy rows may store doc_rec as a string on the object
+            return getattr(obj, 'doc_rec', '') or ''
+        except Exception:
+            return ''
 
 class EcaResendSerializer(serializers.Serializer):
     to_email = serializers.EmailField(required=True)

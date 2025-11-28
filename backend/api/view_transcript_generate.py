@@ -57,6 +57,16 @@ class TranscriptRequestViewSet(viewsets.ModelViewSet):
                     qs = qs
         params = getattr(self.request, "query_params", {})
 
+        # Allow direct filtering by TR number via `?tr_request_no=12345`
+        tr_param = (params.get("tr_request_no") or "").strip()
+        if tr_param:
+            try:
+                tr_val = int(tr_param)
+                return qs.filter(tr_request_no=tr_val)
+            except Exception:
+                # Fall through to other search logic if parsing fails
+                pass
+
         status_param_raw = (params.get("mail_status") or params.get("status") or "").strip()
         status_param = TranscriptRequest.normalize_status(status_param_raw)
         if status_param:

@@ -511,17 +511,17 @@ def import_transcript_requests_from_sheet(sheet_id: Optional[str] = None, worksh
                 # ignore parse errors; do not overwrite existing numeric tr_request_no
                 pass
 
-                if changed:
+            if changed:
                 try:
                     # save changed fields
                     instance.save()
                     _persist_row_number(instance, row_number)
-                        # record updated TR identifier when possible
-                        updated += 1
-                        try:
-                            updated_trs.append(instance.tr_request_no or instance.request_ref_no)
-                        except Exception:
-                            updated_trs.append(instance.request_ref_no)
+                    # record updated TR identifier when possible
+                    updated += 1
+                    try:
+                        updated_trs.append(instance.tr_request_no or instance.request_ref_no)
+                    except Exception:
+                        updated_trs.append(instance.request_ref_no)
                 except Exception:
                     logger.exception('Failed to update transcript request from sheet for row %s', row_number)
             else:

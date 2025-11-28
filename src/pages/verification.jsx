@@ -100,10 +100,16 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
   const loadRecords = async () => {
     setLoading(true);
     try {
-      // Example: GET /api/verification?limit=50&search=...
-      // Backend expects `search` param; also DRF may return paginated results { results: [...] }
-      const url = q ? `/api/verification?search=${encodeURIComponent(q)}&limit=50` : `/api/verification?limit=50`;
-      const res = await fetch(url, { headers: { ...authHeaders() }, credentials: 'include' });
+      // GET /api/verification/ (use trailing slash and limit param)
+      // If the query looks like a DocRec identifier (vr_xxx or iv_xxx etc.), use the dedicated doc_rec filter
+      let url;
+      const qtrim = (q || '').toString().trim();
+      if (qtrim && (/^(vr_|iv_|pr_|mg_|gt_)/i).test(qtrim)) {
+        url = `/api/verification/?doc_rec=${encodeURIComponent(qtrim)}&limit=50`;
+      } else {
+        url = q ? `/api/verification/?search=${encodeURIComponent(q)}&limit=50` : `/api/verification/?limit=50`;
+      }
+      const res = await fetch(url, { headers: { ...authHeaders() } });
       // If not OK, surface the status/text to help debug why no records appear (401/403 etc)
       if (!res.ok) {
         let txt = '';
@@ -115,13 +121,71 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
       }
       const data = await res.json();
       // Accept either raw array or DRF paginated response { results: [...] }
-      if (Array.isArray(data)) {
-        setRecords(data);
-      } else if (data && Array.isArray(data.results)) {
-        setRecords(data.results);
-      } else {
-        setRecords([]);
-      }
+      const rows = Array.isArray(data) ? data : (data && Array.isArray(data.results) ? data.results : []);
+
+      // Map backend verification table fields to UI-friendly keys expected by the component
+      const mapped = rows.map((r) => ({
+        id: r.id,
+        // Prefer verification's own `doc_rec_date`, then legacy `date`, then nested doc_rec date, then createdat
+        date: isoToDMY(
+          r.doc_rec_date || r.date || (r.doc_rec && r.doc_rec.doc_rec_date) || r.createdat || ''
+        ),
+        enrollment_no: r.enrollment_no || (r.enrollment && r.enrollment.enrollment_no) || '',
+        enrollment: r.enrollment || null,
+        second_enrollment_no: r.second_enrollment_no || (r.second_enrollment && r.second_enrollment.enrollment_no) || '',
+        student_name: r.student_name || '',
+        tr_count: r.no_of_transcript ?? r.no_of_transcripts ?? 0,
+        ms_count: r.no_of_marksheet ?? 0,
+        dg_count: r.no_of_degree ?? 0,
+        moi_count: r.no_of_moi ?? 0,
+        backlog_count: r.no_of_backlog ?? 0,
+        status: r.status || '',
+        // Prefer the verification done date; if absent, fall back to verification.date, doc_rec date, then createdat
+        vr_done_date: isoToDMY(
+          r.vr_done_date || r.last_resubmit_date || r.doc_rec_date || r.date || (r.doc_rec && r.doc_rec.doc_rec_date) || r.createdat || ''
+        ),
+        final_no: r.final_no || '',
+        mail_status: r.mail_send_status || r.mail_status || '',
+        pay_rec_no: r.pay_rec_no || '',
+        doc_rec_remark: r.doc_rec_remark || r.vr_remark || '',
+        // expose doc_rec identifier so UI can show DocRec ID instead of numeric sequence
+        doc_rec_key: r.doc_rec_key || (r.doc_rec && r.doc_rec.doc_rec_id) || r.sequence || r.doc_rec_id || '',
+        doc_rec_id: r.doc_rec_id || (r.doc_rec && (r.doc_rec.doc_rec_id || r.doc_rec.id)) || '',
+        eca_required: !!r.eca_required,
+        eca_name: r.eca_name || '',
+        eca_ref_no: r.eca_ref_no || '',
+        eca_send_date: r.eca_send_date || '',
+        eca_status: r.eca_status || '',
+        eca_resubmit_date: r.eca_resubmit_date || '',
+      }));
+
+      // Sort: blank/empty final_no first, then by final_no numeric value descending (higher numbers on top).
+      const extractDigits = (s) => {
+        if (!s) return NaN;
+        const d = String(s).replace(/\D+/g, "");
+        return d ? parseInt(d, 10) : NaN;
+      };
+
+      const cmpFinalNo = (a, b) => {
+        const fa = (a.final_no || '').toString().trim();
+        const fb = (b.final_no || '').toString().trim();
+        const aBlank = !fa;
+        const bBlank = !fb;
+        if (aBlank && !bBlank) return -1; // a blank => comes first
+        if (bBlank && !aBlank) return 1;  // b blank => a after
+        if (aBlank && bBlank) return 0;
+        const na = extractDigits(fa);
+        const nb = extractDigits(fb);
+        if (!Number.isNaN(na) && !Number.isNaN(nb)) return nb - na; // descending numeric
+        if (!Number.isNaN(na) && Number.isNaN(nb)) return -1; // numeric comes before non-numeric
+        if (Number.isNaN(na) && !Number.isNaN(nb)) return 1;
+        // fallback: lexicographic descending
+        return fb.localeCompare(fa);
+      };
+
+      mapped.sort(cmpFinalNo);
+
+      setRecords(mapped);
       setErrorMsg("");
     } catch (e) {
       console.error(e);
@@ -133,7 +197,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
   const createRecord = async () => {
     // POST /api/verification
     const body = {
-  date: dmyToISO(form.date) || null,
+  doc_rec_date: (function(s){ if(!s) return null; if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return s; const x = dmyToISO(s); return x || null; })(form.date),
       doc_rec_id: form.doc_rec_id || null,
       enrollment_id: form.enrollment_id,
       second_enrollment_id: form.second_enrollment_id || null,
@@ -170,8 +234,8 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
 
   const updateRecord = async (id) => {
     const body = {
-  date: dmyToISO(form.date) || null,
-  vr_done_date: dmyToISO(form.vr_done_date) || null,
+  doc_rec_date: (function(s){ if(!s) return null; if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return s; const x = dmyToISO(s); return x || null; })(form.date),
+  vr_done_date: (function(s){ if(!s) return null; if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return s; const x = dmyToISO(s); return x || null; })(form.vr_done_date),
     doc_rec_id: form.doc_rec_id || null,
       student_name: form.name || null,
       tr_count: +form.tr || 0,
@@ -206,9 +270,6 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
   useEffect(() => {
     loadRecords();
   }, []);
-
-  // ——— helpers ———
-
   // Keep numeric inputs within 0..999
   const clamp3 = (n) => {
     const x = Math.max(0, Math.min(999, Number.isNaN(+n) ? 0 : +n));
@@ -245,7 +306,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
     { key: "vr_done_date", label: "Done Date" },
     { key: "final_no", label: "Final No" },
     { key: "mail_status", label: "Mail" },
-  { key: "sequence", label: "Sequence" },
+  { key: "doc_rec_key", label: "Doc Rec ID" },
     { key: "doc_rec_remark", label: "Doc Rec Remark" },
     { key: "eca_required", label: "ECA Required" },
     { key: "eca_name", label: "ECA Name" },
@@ -547,8 +608,9 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                   <tr key={r.id || idx} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => {
                     setCurrentRow(r);
                     setForm({
-                      date: r.date || "",
-                      vr_done_date: r.vr_done_date || "",
+                      // ensure date inputs use ISO (yyyy-mm-dd) for <input type="date">
+                      date: (dmyToISO(r.date) || r.date) || "",
+                      vr_done_date: (dmyToISO(r.vr_done_date) || r.vr_done_date) || "",
                       enrollment_id: r.enrollment?.id || r.enrollment_id || r.enrollment_no || "",
                       second_enrollment_id: r.second_enrollment?.id || r.second_enrollment_id || r.second_enrollment_no || "",
                       name: r.student_name || "",
@@ -588,7 +650,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                     <td className="py-2 px-3">{r.vr_done_date || "-"}</td>
                     <td className="py-2 px-3">{r.final_no || "-"}</td>
                     <td className="py-2 px-3"><MailBadge text={r.mail_status} /></td>
-                    <td className="py-2 px-3">{records.length - idx}</td>
+                    <td className="py-2 px-3">{r.doc_rec_key || r.doc_rec_id || (r.doc_rec && r.doc_rec.doc_rec_id) || '-'}</td>
                     <td className="py-2 px-3">{r.doc_rec_remark || r.remark || r.doc_rec?.doc_rec_remark || "-"}</td>
                     <td className="py-2 px-3">{(r.eca_required === true || (r.eca && r.eca.eca_required === true)) ? 'Y' : ''}</td>
                     <td className="py-2 px-3">{r.eca?.eca_name || r.eca_name || "-"}</td>
