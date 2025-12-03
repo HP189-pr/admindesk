@@ -72,6 +72,8 @@ class DocRecViewSet(viewsets.ModelViewSet):
             req_data = self.request.data if hasattr(self.request, 'data') else {}
             # Only handle verification-type docrecs
             if getattr(docrec, 'apply_for', '').upper() == 'VR':
+                # If a Verification already exists for this DocRec, update it
+                existing = Verification.objects.filter(doc_rec=docrec).first()
                 enr_key = req_data.get('enrollment') or req_data.get('enrollment_no') or req_data.get('enrollment_no_text')
                 student_name = req_data.get('student_name') or req_data.get('student') or None
                 # Resolve Enrollment: try numeric PK first, then enrollment_no (case-insensitive)
@@ -85,9 +87,7 @@ class DocRecViewSet(viewsets.ModelViewSet):
                             enrollment_obj = Enrollment.objects.filter(enrollment_no__iexact=sk).first()
                     except Exception:
                         enrollment_obj = None
-                # Create a Verification record even if Enrollment couldn't be resolved.
-                # The model now allows `enrollment` to be NULL so we can create a placeholder
-                # verification and populate student_name/pay_rec_no if provided.
+
                 vr_kwargs = {
                     'enrollment': enrollment_obj,
                     'second_enrollment': None,
@@ -102,14 +102,32 @@ class DocRecViewSet(viewsets.ModelViewSet):
                     'doc_rec_remark': getattr(docrec, 'doc_rec_remark', None),
                     'status': VerificationStatus.IN_PROGRESS,
                 }
+
                 try:
-                    vr = Verification(**vr_kwargs)
-                    try:
-                        vr.full_clean()
-                    except Exception:
-                        # allow creation even if some fields missing; best-effort
-                        pass
-                    vr.save()
+                    if existing:
+                        # Update fields on existing verification where provided
+                        changed = False
+                        for fld, val in vr_kwargs.items():
+                            try:
+                                if getattr(existing, fld, None) != val:
+                                    setattr(existing, fld, val)
+                                    changed = True
+                            except Exception:
+                                pass
+                        if changed:
+                            try:
+                                existing.full_clean()
+                            except Exception:
+                                pass
+                            existing.save()
+                    else:
+                        vr = Verification(**vr_kwargs)
+                        try:
+                            vr.full_clean()
+                        except Exception:
+                            # allow creation even if some fields missing; best-effort
+                            pass
+                        vr.save()
                 except Exception:
                     # Best-effort: do not propagate verification creation errors
                     pass
@@ -153,29 +171,40 @@ class DocRecViewSet(viewsets.ModelViewSet):
                         except Exception:
                             pass
                 else:
-                    # no existing verification: attempt to create when enrollment can be resolved
-                    enrollment_obj = None
+                    # no existing verification: attempt to create with enrollment_no string
+                    enrollment_no_str = None
+                    student_name_str = req_data.get('student_name') or ''
+                    
+                    # Resolve enrollment_no and student_name if enrollment key provided
                     if enr_key:
                         try:
                             sk = str(enr_key).strip()
+                            enrollment_obj = None
                             if sk.isdigit():
                                 enrollment_obj = Enrollment.objects.filter(id=int(sk)).first()
                             if not enrollment_obj:
                                 enrollment_obj = Enrollment.objects.filter(enrollment_no__iexact=sk).first()
+                            
+                            if enrollment_obj:
+                                enrollment_no_str = enrollment_obj.enrollment_no
+                                if not student_name_str:
+                                    student_name_str = getattr(enrollment_obj, 'student_name', '')
                         except Exception:
-                            enrollment_obj = None
-                    # Attempt to create a placeholder Verification even without resolved enrollment
+                            pass
+                    
+                    # Attempt to create a placeholder Verification with enrollment_no as string
                     try:
                         vr = Verification(
-                            enrollment=enrollment_obj,
-                            student_name=req_data.get('student_name') or (getattr(enrollment_obj, 'student_name', '') if enrollment_obj else '') or '',
-                            tr_count=int(req_data.get('tr_count') or req_data.get('tr') or 0),
-                            ms_count=int(req_data.get('ms_count') or req_data.get('ms') or 0),
-                            dg_count=int(req_data.get('dg_count') or req_data.get('dg') or 0),
-                            moi_count=int(req_data.get('moi_count') or req_data.get('moi') or 0),
-                            backlog_count=int(req_data.get('backlog_count') or req_data.get('backlog') or 0),
+                            enrollment_no=enrollment_no_str,
+                            student_name=student_name_str or '',
+                            tr_count=int(req_data.get('tr_count') or req_data.get('tr') or 0) if req_data.get('tr_count') or req_data.get('tr') else None,
+                            ms_count=int(req_data.get('ms_count') or req_data.get('ms') or 0) if req_data.get('ms_count') or req_data.get('ms') else None,
+                            dg_count=int(req_data.get('dg_count') or req_data.get('dg') or 0) if req_data.get('dg_count') or req_data.get('dg') else None,
+                            moi_count=int(req_data.get('moi_count') or req_data.get('moi') or 0) if req_data.get('moi_count') or req_data.get('moi') else None,
+                            backlog_count=int(req_data.get('backlog_count') or req_data.get('backlog') or 0) if req_data.get('backlog_count') or req_data.get('backlog') else None,
                             pay_rec_no=getattr(docrec, 'pay_rec_no', None),
                             doc_rec=docrec,
+                            doc_rec_date=getattr(docrec, 'doc_rec_date', timezone.now().date()),
                             status='IN_PROGRESS',
                         )
                         try:
@@ -220,9 +249,222 @@ class DocRecViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({"detail": str(e)}, status=500)
 
+    @action(detail=False, methods=["post"], url_path="update-with-verification")
+    def update_with_verification(self, request):
+        """Atomic update of DocRec and related Verification.
+        Expects: { doc_rec_id, doc_rec_data, verification_data }
+        """
+        from django.db import transaction
+        doc_rec_id = request.data.get('doc_rec_id')
+        doc_rec_data = request.data.get('doc_rec_data', {})
+        verification_data = request.data.get('verification_data', {})
+        
+        if not doc_rec_id:
+            return Response({"detail": "doc_rec_id is required"}, status=400)
+        
+        try:
+            with transaction.atomic():
+                # Fetch DocRec
+                doc_rec = DocRec.objects.filter(doc_rec_id=doc_rec_id).first()
+                if not doc_rec:
+                    return Response({"detail": "DocRec not found"}, status=404)
+                
+                # Update DocRec fields
+                for key, value in doc_rec_data.items():
+                    if hasattr(doc_rec, key):
+                        setattr(doc_rec, key, value)
+                doc_rec.save()
+                
+                # Fetch related Verification
+                verification = Verification.objects.filter(doc_rec__doc_rec_id=doc_rec_id).first()
+                if verification:
+                    # Update Verification fields
+                    for key, value in verification_data.items():
+                        if hasattr(verification, key):
+                            setattr(verification, key, value)
+                    if request.user and request.user.is_authenticated:
+                        verification.updatedby = request.user
+                    verification.save()
+                
+                return Response({
+                    "detail": "Updated successfully",
+                    "doc_rec_id": doc_rec.doc_rec_id,
+                    "verification_id": verification.id if verification else None
+                })
+        except Exception as e:
+            return Response({"detail": str(e)}, status=500)
+
+    @action(detail=False, methods=["post"], url_path="delete-with-verification")
+    def delete_with_verification(self, request):
+        """Atomic delete of DocRec and related Verification.
+        Expects: { doc_rec_id }
+        """
+        from django.db import transaction
+        doc_rec_id = request.data.get('doc_rec_id')
+        
+        if not doc_rec_id:
+            return Response({"detail": "doc_rec_id is required"}, status=400)
+        
+        try:
+            with transaction.atomic():
+                # Delete Verification first (due to FK constraint)
+                verification_count = Verification.objects.filter(doc_rec__doc_rec_id=doc_rec_id).delete()[0]
+                
+                # Delete DocRec
+                doc_rec = DocRec.objects.filter(doc_rec_id=doc_rec_id).first()
+                if not doc_rec:
+                    return Response({"detail": "DocRec not found"}, status=404)
+                doc_rec.delete()
+                
+                return Response({
+                    "detail": "Deleted successfully",
+                    "doc_rec_id": doc_rec_id,
+                    "verification_deleted": verification_count > 0
+                }, status=200)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=500)
+
+    @action(detail=False, methods=["post"], url_path="unified-update")
+    def unified_update(self, request):
+        """Unified update for DocRec and any related service (VR/PR/MG/IV).
+        Expects: { 
+            doc_rec_id, 
+            doc_rec: {...}, 
+            service: {...}, 
+            service_type: "VR"|"PR"|"MG"|"IV" 
+        }
+        """
+        from django.db import transaction
+        doc_rec_id = request.data.get('doc_rec_id')
+        doc_rec_data = request.data.get('doc_rec', {})
+        service_data = request.data.get('service', {})
+        service_type = (request.data.get('service_type') or '').strip().upper()
+        
+        if not doc_rec_id:
+            return Response({"detail": "doc_rec_id is required"}, status=400)
+        if not service_type or service_type not in ['VR', 'PR', 'MG', 'IV']:
+            return Response({"detail": "service_type must be VR, PR, MG, or IV"}, status=400)
+        
+        try:
+            with transaction.atomic():
+                # Update DocRec
+                doc_rec = DocRec.objects.filter(doc_rec_id=doc_rec_id).first()
+                if not doc_rec:
+                    return Response({"detail": "DocRec not found"}, status=404)
+                
+                for key, value in doc_rec_data.items():
+                    if hasattr(doc_rec, key):
+                        setattr(doc_rec, key, value)
+                doc_rec.save()
+                
+                # Update corresponding service
+                service_obj = None
+                service_id = None
+                
+                if service_type == 'VR':
+                    service_obj = Verification.objects.filter(doc_rec__doc_rec_id=doc_rec_id).first()
+                    if service_obj:
+                        for key, value in service_data.items():
+                            if hasattr(service_obj, key):
+                                setattr(service_obj, key, value)
+                        if request.user and request.user.is_authenticated:
+                            service_obj.updatedby = request.user
+                        service_obj.save()
+                        service_id = service_obj.id
+                
+                elif service_type == 'MG':
+                    service_obj = MigrationRecord.objects.filter(doc_rec=doc_rec_id).first()
+                    if service_obj:
+                        for key, value in service_data.items():
+                            if hasattr(service_obj, key):
+                                setattr(service_obj, key, value)
+                        service_obj.save()
+                        service_id = service_obj.id
+                
+                elif service_type == 'PR':
+                    service_obj = ProvisionalRecord.objects.filter(doc_rec=doc_rec_id).first()
+                    if service_obj:
+                        for key, value in service_data.items():
+                            if hasattr(service_obj, key):
+                                setattr(service_obj, key, value)
+                        service_obj.save()
+                        service_id = service_obj.id
+                
+                elif service_type == 'IV':
+                    service_obj = InstVerificationMain.objects.filter(doc_rec=doc_rec_id).first()
+                    if service_obj:
+                        for key, value in service_data.items():
+                            if hasattr(service_obj, key):
+                                setattr(service_obj, key, value)
+                        service_obj.save()
+                        service_id = service_obj.id
+                
+                return Response({
+                    "detail": "Updated successfully",
+                    "doc_rec_id": doc_rec.doc_rec_id,
+                    "service_type": service_type,
+                    "service_id": service_id,
+                    "service_found": service_obj is not None
+                })
+        except Exception as e:
+            return Response({"detail": str(e)}, status=500)
+
+    @action(detail=False, methods=["post"], url_path="unified-delete")
+    def unified_delete(self, request):
+        """Unified delete for DocRec and any related service.
+        Expects: { 
+            doc_rec_id, 
+            service_type: "VR"|"PR"|"MG"|"IV" 
+        }
+        """
+        from django.db import transaction
+        doc_rec_id = request.data.get('doc_rec_id')
+        service_type = (request.data.get('service_type') or '').strip().upper()
+        
+        if not doc_rec_id:
+            return Response({"detail": "doc_rec_id is required"}, status=400)
+        if not service_type or service_type not in ['VR', 'PR', 'MG', 'IV']:
+            return Response({"detail": "service_type must be VR, PR, MG, or IV"}, status=400)
+        
+        try:
+            with transaction.atomic():
+                service_deleted = False
+                
+                # Delete service record first
+                if service_type == 'VR':
+                    count = Verification.objects.filter(doc_rec__doc_rec_id=doc_rec_id).delete()[0]
+                    service_deleted = count > 0
+                elif service_type == 'MG':
+                    count = MigrationRecord.objects.filter(doc_rec=doc_rec_id).delete()[0]
+                    service_deleted = count > 0
+                elif service_type == 'PR':
+                    count = ProvisionalRecord.objects.filter(doc_rec=doc_rec_id).delete()[0]
+                    service_deleted = count > 0
+                elif service_type == 'IV':
+                    # Delete students first, then main
+                    InstVerificationStudent.objects.filter(main_verification__doc_rec=doc_rec_id).delete()
+                    count = InstVerificationMain.objects.filter(doc_rec=doc_rec_id).delete()[0]
+                    service_deleted = count > 0
+                
+                # Delete DocRec
+                doc_rec = DocRec.objects.filter(doc_rec_id=doc_rec_id).first()
+                if not doc_rec:
+                    return Response({"detail": "DocRec not found"}, status=404)
+                doc_rec.delete()
+                
+                return Response({
+                    "detail": "Deleted successfully",
+                    "doc_rec_id": doc_rec_id,
+                    "service_type": service_type,
+                    "service_deleted": service_deleted
+                }, status=200)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=500)
+
 
 class VerificationViewSet(viewsets.ModelViewSet):
-    queryset = Verification.objects.select_related('enrollment', 'second_enrollment').order_by('-id')
+    # enrollment_no and second_enrollment_id are now CharField, not FK - remove select_related
+    queryset = Verification.objects.order_by('-id')
     serializer_class = VerificationSerializer
     permission_classes = [IsAuthenticated]
 
@@ -235,17 +477,56 @@ class VerificationViewSet(viewsets.ModelViewSet):
             doc_rec_param = None
         if doc_rec_param:
             qs = qs.filter(doc_rec__doc_rec_id=doc_rec_param)
+        
         search = self.request.query_params.get('search', '').strip()
         if search:
             norm_q = ''.join(search.split()).lower()
             qs = qs.annotate(
-                n_en=Replace(Lower(models.F('enrollment__enrollment_no')), Value(' '), Value('')),
+                n_en=Replace(Lower(models.F('enrollment_no')), Value(' '), Value('')),
                 n_name=Replace(Lower(models.F('student_name')), Value(' '), Value('')),
                 n_final=Replace(Lower(models.F('final_no')), Value(' '), Value('')),
             ).filter(
                 Q(n_en__contains=norm_q) | Q(n_name__contains=norm_q) | Q(n_final__contains=norm_q)
             )
+        
+        # Performance optimization: if no search, include PENDING + IN_PROGRESS with latest records
+        # This ensures important records are always visible on page load
+        include_pending = self.request.query_params.get('include_pending', '').lower() == 'true'
+        if not search and not doc_rec_param and include_pending:
+            # Get latest records + all PENDING/IN_PROGRESS
+            pending_qs = Verification.objects.filter(status__in=['PENDING', 'IN_PROGRESS']).order_by('-id')
+            # Combine with latest records (union removes duplicates)
+            qs = (qs | pending_qs).distinct().order_by('-id')
+        
         return qs
+
+    @action(detail=False, methods=["post"], url_path="update-service-only")
+    def update_service_only(self, request):
+        """
+        Update only the Verification record without modifying DocRec.
+        Use this from the verification page when editing service details only.
+        
+        Payload: { "id": 123, "enrollment_no": "...", "student_name": "...", ... }
+        """
+        verification_id = request.data.get("id")
+        if not verification_id:
+            return Response({"error": "Verification id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            verification = Verification.objects.get(id=verification_id)
+        except Verification.DoesNotExist:
+            return Response({"error": "Verification not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Update with provided data
+        serializer = VerificationSerializer(verification, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "message": "Verification updated successfully",
+                "id": verification.id,
+                "doc_rec_id": verification.doc_rec_id
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class MigrationRecordViewSet(viewsets.ModelViewSet):
@@ -266,6 +547,34 @@ class MigrationRecordViewSet(viewsets.ModelViewSet):
             ).filter(Q(n_en__contains=norm_q) | Q(n_name__contains=norm_q) | Q(n_mg__contains=norm_q))
         return qs
 
+    @action(detail=False, methods=["post"], url_path="update-service-only")
+    def update_service_only(self, request):
+        """
+        Update only the MigrationRecord without modifying DocRec.
+        Use this from the migration page when editing service details only.
+        
+        Payload: { "id": 123, "enrollment": ..., "student_name": "...", ... }
+        """
+        migration_id = request.data.get("id")
+        if not migration_id:
+            return Response({"error": "Migration record id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            migration = MigrationRecord.objects.get(id=migration_id)
+        except MigrationRecord.DoesNotExist:
+            return Response({"error": "Migration record not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Update with provided data
+        serializer = MigrationRecordSerializer(migration, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "message": "Migration record updated successfully",
+                "id": migration.id,
+                "doc_rec_id": migration.doc_rec
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class ProvisionalRecordViewSet(viewsets.ModelViewSet):
     # `doc_rec` is stored as a plain varchar in DB (not a FK), so avoid select_related on it.
@@ -284,6 +593,34 @@ class ProvisionalRecordViewSet(viewsets.ModelViewSet):
                 n_prv=Replace(Lower(models.F('prv_number')), Value(' '), Value('')),
             ).filter(Q(n_en__contains=norm_q) | Q(n_name__contains=norm_q) | Q(n_prv__contains=norm_q))
         return qs
+
+    @action(detail=False, methods=["post"], url_path="update-service-only")
+    def update_service_only(self, request):
+        """
+        Update only the ProvisionalRecord without modifying DocRec.
+        Use this from the provisional page when editing service details only.
+        
+        Payload: { "id": 123, "enrollment": ..., "student_name": "...", ... }
+        """
+        provisional_id = request.data.get("id")
+        if not provisional_id:
+            return Response({"error": "Provisional record id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            provisional = ProvisionalRecord.objects.get(id=provisional_id)
+        except ProvisionalRecord.DoesNotExist:
+            return Response({"error": "Provisional record not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Update with provided data
+        serializer = ProvisionalRecordSerializer(provisional, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "message": "Provisional record updated successfully",
+                "id": provisional.id,
+                "doc_rec_id": provisional.doc_rec
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class InstVerificationMainViewSet(viewsets.ModelViewSet):
@@ -340,6 +677,34 @@ class InstVerificationMainViewSet(viewsets.ModelViewSet):
             return Response([], status=200)
         qs = self.queryset.filter(rec_inst_name__icontains=q)[:20]
         return Response([{ 'id': x.id, 'name': x.rec_inst_name } for x in qs], status=200)
+
+    @action(detail=False, methods=["post"], url_path="update-service-only")
+    def update_service_only(self, request):
+        """
+        Update only the InstVerificationMain record without modifying DocRec.
+        Use this from the inst-verification page when editing service details only.
+        
+        Payload: { "id": 123, "inst_veri_number": "...", "rec_inst_name": "...", ... }
+        """
+        inst_verification_id = request.data.get("id")
+        if not inst_verification_id:
+            return Response({"error": "InstVerificationMain id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            inst_verification = InstVerificationMain.objects.get(id=inst_verification_id)
+        except InstVerificationMain.DoesNotExist:
+            return Response({"error": "InstVerificationMain not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Update with provided data
+        serializer = InstVerificationMainSerializer(inst_verification, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "message": "InstVerificationMain updated successfully",
+                "id": inst_verification.id,
+                "doc_rec_id": inst_verification.doc_rec.doc_rec_id if inst_verification.doc_rec else None
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def perform_create(self, serializer):
         serializer.save()
@@ -1609,14 +1974,13 @@ class BulkUploadView(APIView):
                             except Exception:
                                 doc_rec = DocRec.objects.filter(doc_rec_id=dr_key).first()
 
-                        if not (doc_rec and enr):
-                            # More specific message: indicate which related is missing
-                            missing = []
-                            if not doc_rec:
-                                missing.append('doc_rec')
-                            if not enr:
-                                missing.append('enrollment')
-                            _log(idx, row.get("final_no") or dr_key or enr_key, f"Missing related ({'/'.join(missing)})", False)
+                        # Validation: require doc_rec and enrollment_no string (enrollment FK lookup is optional)
+                        if not doc_rec:
+                            _log(idx, row.get("final_no") or dr_key or enr_key, "Missing doc_rec", False)
+                            _cache_progress(idx+1)
+                            continue
+                        if not enr_key:
+                            _log(idx, row.get("final_no") or dr_key, "Missing enrollment_no", False)
                             _cache_progress(idx+1)
                             continue
 
@@ -1666,11 +2030,12 @@ class BulkUploadView(APIView):
                         norm_eca_ref = _normalize_cell(row.get('eca_ref_no'))
 
                         # Use `doc_rec_date` as the model field for the doc record date
+                        # enrollment_no and second_enrollment_id are now CharField (not FK)
                         defaults = {
                             "doc_rec": doc_rec,
                             "doc_rec_date": date_v,
-                            "enrollment": enr,
-                            "second_enrollment": senr,
+                            "enrollment_no": enr_key if enr_key else None,
+                            "second_enrollment_id": str(sec_key).strip() if sec_key else None,
                             "student_name": _normalize_cell(row.get("student_name")) or (enr.student_name if enr else ""),
                             "tr_count": _safe_int(row.get("no_of_transcript") or 0),
                             "ms_count": _safe_int(row.get("no_of_marksheet") or 0),
@@ -2487,8 +2852,9 @@ class DataAnalysisView(APIView):
             for d in dups:
                 add('DUPLICATE_FINAL_NO', d['final_no'], f"Appears {d['c']} times")
             for v in Verification.objects.select_related('doc_rec')[:5000]:
-                if not v.enrollment:
-                    add('MISSING_ENROLLMENT', v.id, 'No enrollment linked')
+                # enrollment_no is now a CharField (not FK)
+                if not v.enrollment_no:
+                    add('MISSING_ENROLLMENT', v.id, 'No enrollment_no provided')
                 if v.status in [VerificationStatus.PENDING, VerificationStatus.CANCEL] and v.final_no:
                     add('STATUS_RULE', v.id, 'final_no must be empty for PENDING/CANCEL')
 

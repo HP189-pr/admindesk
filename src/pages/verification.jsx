@@ -106,8 +106,13 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
       const qtrim = (q || '').toString().trim();
       if (qtrim && (/^(vr_|iv_|pr_|mg_|gt_)/i).test(qtrim)) {
         url = `/api/verification/?doc_rec=${encodeURIComponent(qtrim)}&limit=50`;
+      } else if (q) {
+        // User searched something - use search with limit 50
+        url = `/api/verification/?search=${encodeURIComponent(q)}&limit=50`;
       } else {
-        url = q ? `/api/verification/?search=${encodeURIComponent(q)}&limit=50` : `/api/verification/?limit=50`;
+        // Initial load: get last 200 records (by ID desc) + all PENDING + all IN_PROGRESS
+        // This loads faster and shows the most important records
+        url = `/api/verification/?limit=200&include_pending=true`;
       }
       const res = await fetch(url, { headers: { ...authHeaders() } });
       // If not OK, surface the status/text to help debug why no records appear (401/403 etc)
@@ -134,11 +139,11 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
         enrollment: r.enrollment || null,
         second_enrollment_no: r.second_enrollment_no || (r.second_enrollment && r.second_enrollment.enrollment_no) || '',
         student_name: r.student_name || '',
-        tr_count: r.no_of_transcript ?? r.no_of_transcripts ?? 0,
-        ms_count: r.no_of_marksheet ?? 0,
-        dg_count: r.no_of_degree ?? 0,
-        moi_count: r.no_of_moi ?? 0,
-        backlog_count: r.no_of_backlog ?? 0,
+        tr_count: r.tr_count ?? 0,
+        ms_count: r.ms_count ?? 0,
+        dg_count: r.dg_count ?? 0,
+        moi_count: r.moi_count ?? 0,
+        backlog_count: r.backlog_count ?? 0,
         status: r.status || '',
         // Prefer the verification done date; if absent, fall back to verification.date, doc_rec date, then createdat
         vr_done_date: isoToDMY(
@@ -159,7 +164,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
         eca_resubmit_date: r.eca_resubmit_date || '',
       }));
 
-      // Sort: blank/empty final_no first, then by final_no numeric value descending (higher numbers on top).
+      // Sort: IN_PROGRESS and PENDING first, then by final_no descending
       const extractDigits = (s) => {
         if (!s) return NaN;
         const d = String(s).replace(/\D+/g, "");
@@ -167,18 +172,29 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
       };
 
       const cmpFinalNo = (a, b) => {
+        // Priority 1: IN_PROGRESS and PENDING always on top
+        const aIsPriority = a.status === 'IN_PROGRESS' || a.status === 'PENDING';
+        const bIsPriority = b.status === 'IN_PROGRESS' || b.status === 'PENDING';
+        
+        if (aIsPriority && !bIsPriority) return -1; // a comes first
+        if (bIsPriority && !aIsPriority) return 1;  // b comes first
+        
+        // If both are priority status (or both are not), sort by final_no
         const fa = (a.final_no || '').toString().trim();
         const fb = (b.final_no || '').toString().trim();
         const aBlank = !fa;
         const bBlank = !fb;
-        if (aBlank && !bBlank) return -1; // a blank => comes first
-        if (bBlank && !aBlank) return 1;  // b blank => a after
+        
+        if (aBlank && !bBlank) return -1; // blank comes first
+        if (bBlank && !aBlank) return 1;  // blank comes first
         if (aBlank && bBlank) return 0;
+        
         const na = extractDigits(fa);
         const nb = extractDigits(fb);
         if (!Number.isNaN(na) && !Number.isNaN(nb)) return nb - na; // descending numeric
-        if (!Number.isNaN(na) && Number.isNaN(nb)) return -1; // numeric comes before non-numeric
+        if (!Number.isNaN(na) && Number.isNaN(nb)) return -1; // numeric before non-numeric
         if (Number.isNaN(na) && !Number.isNaN(nb)) return 1;
+        
         // fallback: lexicographic descending
         return fb.localeCompare(fa);
       };
@@ -196,10 +212,36 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
 
   const createRecord = async () => {
     // POST /api/verification
+    // Ensure we send the numeric DocRec PK when possible. If `form.doc_rec_id` is not numeric
+    // but `form.doc_rec_key` is present, try resolving the DocRec PK from the server.
+    const resolveDocRecPk = async (key) => {
+      if (!key) return null;
+      try {
+        const res = await fetch(`/api/docrec/?doc_rec_id=${encodeURIComponent(key)}`, { headers: { ...authHeaders() } });
+        if (!res.ok) return null;
+        const data = await res.json();
+        const rows = Array.isArray(data) ? data : (data && Array.isArray(data.results) ? data.results : []);
+        if (rows.length > 0) return rows[0].id || null;
+      } catch (e) {
+        console.warn('DocRec lookup failed', e);
+      }
+      return null;
+    };
+
+    let docRecPk = null;
+    if (form.doc_rec_id && String(form.doc_rec_id).trim() !== "") {
+      // if numeric, use numeric; if string contains digits only, parse
+      if (!Number.isNaN(Number(form.doc_rec_id)) && String(form.doc_rec_id).trim() !== '') docRecPk = Number(form.doc_rec_id);
+    }
+    if (!docRecPk && form.doc_rec_key && String(form.doc_rec_key).trim() !== "") {
+      docRecPk = await resolveDocRecPk(form.doc_rec_key);
+    }
+
     const body = {
   doc_rec_date: (function(s){ if(!s) return null; if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return s; const x = dmyToISO(s); return x || null; })(form.date),
-      doc_rec_id: form.doc_rec_id || null,
-      enrollment_id: form.enrollment_id,
+      // Send the numeric DocRec PK where the API expects a PK value. If unresolved, send null
+      doc_rec_id: docRecPk || null,
+      enrollment_no: form.enrollment_id || null,
       second_enrollment_id: form.second_enrollment_id || null,
       student_name: form.name, // server can overwrite from Enrollment
       tr_count: +form.tr || 0,
@@ -210,12 +252,13 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
       status: form.status,
       final_no: form.final_no || null,
       mail_status: form.mail_status,
-      eca_name: form.eca_name || null,
-      eca_ref_no: form.eca_ref_no || null,
-      eca_send_date: form.eca_send_date || null,
-      eca_status: form.eca_status || null,
-      eca_resubmit_date: form.eca_resubmit_date || null,
-      eca_remark: form.eca_remark || null,
+      eca_required: !!form.eca_required,
+      eca_name: form.eca_required ? (form.eca_name || null) : null,
+      eca_ref_no: form.eca_required ? (form.eca_ref_no || null) : null,
+      eca_send_date: form.eca_required ? (function(s){ if(!s) return null; if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return s; const x = dmyToISO(s); return x || null; })(form.eca_send_date) : null,
+      eca_status: form.eca_required ? (form.eca_status || null) : null,
+      eca_resubmit_date: form.eca_required ? (form.eca_resubmit_date || null) : null,
+      eca_remark: form.eca_required ? (form.eca_remark || null) : null,
       doc_rec_remark: form.doc_rec_remark || null,
       remark: form.remark || null,
       pay_rec_no: form.pay_rec_no || null,
@@ -225,6 +268,8 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify(body),
     });
+    // Debug: log what we sent
+    console.debug('createRecord payload', { docRecPk, body });
     if (!res.ok) {
       const t = await res.text();
       throw new Error(t || "Create failed");
@@ -233,26 +278,32 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
   };
 
   const updateRecord = async (id) => {
+    // When updating, DON'T change the doc_rec relationship - it should stay the same
+    // Only include doc_rec_id if explicitly creating a new verification
     const body = {
-  doc_rec_date: (function(s){ if(!s) return null; if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return s; const x = dmyToISO(s); return x || null; })(form.date),
-  vr_done_date: (function(s){ if(!s) return null; if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return s; const x = dmyToISO(s); return x || null; })(form.vr_done_date),
-    doc_rec_id: form.doc_rec_id || null,
+      doc_rec_date: (function(s){ if(!s) return null; if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return s; const x = dmyToISO(s); return x || null; })(form.date),
+      vr_done_date: (function(s){ if(!s) return null; if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return s; const x = dmyToISO(s); return x || null; })(form.vr_done_date),
+      // DO NOT send doc_rec_id on update - it would change the linked DocRec!
+      // doc_rec_id should remain unchanged when editing
+      enrollment_no: form.enrollment_id || null,
+      second_enrollment_id: form.second_enrollment_id || null,
       student_name: form.name || null,
-      tr_count: +form.tr || 0,
-      ms_count: +form.ms || 0,
-      dg_count: +form.dg || 0,
-      moi_count: +form.moi || 0,
-      backlog_count: +form.backlog || 0,
+      tr_count: +form.tr || null,
+      ms_count: +form.ms || null,
+      dg_count: +form.dg || null,
+      moi_count: +form.moi || null,
+      backlog_count: +form.backlog || null,
       status: form.status,
       final_no: form.final_no || null,
       mail_status: form.mail_status,
       remark: form.remark || null,
-      eca_name: form.eca_name || null,
-      eca_ref_no: form.eca_ref_no || null,
-      eca_send_date: form.eca_send_date || null,
-      eca_status: form.eca_status || null,
-      eca_resubmit_date: form.eca_resubmit_date || null,
-      eca_remark: form.eca_remark || null,
+      eca_required: !!form.eca_required,
+      eca_name: form.eca_required ? (form.eca_name || null) : null,
+      eca_ref_no: form.eca_required ? (form.eca_ref_no || null) : null,
+      eca_send_date: form.eca_required ? (function(s){ if(!s) return null; if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return s; const x = dmyToISO(s); return x || null; })(form.eca_send_date) : null,
+      eca_status: form.eca_required ? (form.eca_status || null) : null,
+      eca_resubmit_date: form.eca_required ? (form.eca_resubmit_date || null) : null,
+      eca_remark: form.eca_required ? (form.eca_remark || null) : null,
       doc_rec_remark: form.doc_rec_remark || null,
       pay_rec_no: form.pay_rec_no || null,
     };
@@ -261,6 +312,8 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify(body),
     });
+    // Debug: log what we sent
+    console.debug('updateRecord payload', { id, body });
     if (!res.ok) throw new Error(await res.text());
   };
 
@@ -279,6 +332,25 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
   const handleChange = (field, val) => {
     if (["tr","ms","dg","moi","backlog"].includes(field)) {
       setForm((f) => ({ ...f, [field]: clamp3(val) }));
+    } else if (field === "status" && val === "DONE") {
+      // Auto-generate final_no from doc_rec_key when status changes to DONE
+      setForm((f) => {
+        let generatedNo = f.final_no || '';
+        
+        // Only auto-generate if final_no is empty and doc_rec_key exists
+        if (!generatedNo && f.doc_rec_key) {
+          const docRecKey = String(f.doc_rec_key).trim();
+          // Match pattern like vr_25_0945 or vr_26_0105
+          const match = docRecKey.match(/vr_(\d+)_(\d+)/i);
+          if (match) {
+            const yearPart = match[1]; // e.g., "25"
+            const seqPart = match[2];  // e.g., "0945"
+            generatedNo = yearPart + seqPart; // e.g., "250945"
+          }
+        }
+        
+        return { ...f, [field]: val, final_no: generatedNo };
+      });
     } else {
       setForm((f) => ({ ...f, [field]: val }));
     }
@@ -515,19 +587,30 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                     onChange={(e) => handleChange("pay_rec_no", e.target.value)} />
                 </div>
 
-                {getSelected() === "✏️ Edit" && (
-                  <>
-                    <div>
-                      <label className="text-sm">Doc Rec</label>
-                      <input className="w-full border rounded-lg p-2" disabled value={form.doc_rec_key || "-"} />
-                    </div>
-                  </>
-                )}
+                {/* Doc Rec fields: show/editable Doc Rec ID and display Doc Rec Key */}
+                <div>
+                  <label className="text-sm">Doc Rec ID</label>
+                  <input className="w-full border rounded-lg p-2"
+                    placeholder="e.g. vr_25_0932 or numeric id"
+                    value={form.doc_rec_id}
+                    onChange={(e) => handleChange("doc_rec_id", e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-sm">Doc Rec Key</label>
+                  <input className="w-full border rounded-lg p-2" disabled value={form.doc_rec_key || "-"} />
+                </div>
 
                 <div className="md:col-span-4 flex justify-end">
                   <button
                     onClick={async () => {
                       try {
+                        // Basic client-side validation: backend requires a Doc Rec identifier.
+                        // Accept either `doc_rec_id` or the human `doc_rec_key` as a valid value.
+                        const hasDocRec = (form.doc_rec_id && String(form.doc_rec_id).trim() !== "") || (form.doc_rec_key && String(form.doc_rec_key).trim() !== "");
+                        if (!hasDocRec) {
+                          alert("Please provide Doc Rec ID before saving (field 'Doc Rec ID' or Doc Rec Key cannot be empty).");
+                          return;
+                        }
                         if (getSelected() === "✏️ Edit" && currentRow?.id) {
                           await updateRecord(currentRow.id);
                           alert("Updated!");
@@ -631,7 +714,8 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                       eca_remark: r.eca?.eca_remark || r.eca_remark || "",
                       remark: r.remark || "",
                       pay_rec_no: r.pay_rec_no || "",
-                      doc_rec_id: r.doc_rec_id || r.doc_rec?.id || "",
+                      // Prefer explicit doc_rec_id, then numeric id, then the human DocRec key
+                      doc_rec_id: r.doc_rec_id || r.doc_rec?.id || r.doc_rec_key || (r.doc_rec && (r.doc_rec.doc_rec_id || r.doc_rec.id)) || "",
                       doc_rec_key: r.doc_rec_key || r.doc_rec?.doc_rec_id || "",
                     });
                     setSelected("✏️ Edit");

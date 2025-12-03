@@ -32,7 +32,7 @@ SECRET_KEY = 'django-insecure-0x0bwjij$1%19z)@kld_2l3(wx3j*slrp)d6=0dfw=jd&3&sir
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '160.160.109.147', '*']
 
 # Application definition
 
@@ -206,6 +206,9 @@ REST_FRAMEWORK = {
     'DATE_INPUT_FORMATS': ['%d-%m-%Y', '%d/%m/%Y', '%Y-%m-%d'],  # accept a few common inputs
     'DATETIME_FORMAT': '%d-%m-%Y %H:%M:%S',  # if any DateTime fields are serialized
     'DATETIME_INPUT_FORMATS': ['%d-%m-%Y %H:%M:%S', '%Y-%m-%d %H:%M:%S', '%d-%m-%Y'],
+    # Pagination for better performance
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 200,  # Default page size
 }
 
 # Django-level (non-DRF) date display/input preferences (admin, forms)

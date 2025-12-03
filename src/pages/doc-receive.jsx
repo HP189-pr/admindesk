@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { dmyToISO, pad2 } from "../utils/date";
+import { dmyToISO, isoToDMY, pad2 } from "../utils/date";
 import PageTopbar from "../components/PageTopbar";
 
 const ACTIONS = ["➕", "🔍", "📄 Report"];
@@ -73,14 +73,28 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     try{
       const token = localStorage.getItem('access_token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      // Ensure we pass the DocRec identifier string to endpoints that expect doc_rec
+      let docRecKey = docRecId;
+      // If caller passed a numeric id (DB PK), resolve it to the doc_rec identifier
+      if (/^\d+$/.test(String(docRecId))) {
+        try {
+          const drRes = await fetch(`/api/docrec/${String(docRecId)}/`, { headers });
+          if (drRes.ok) {
+            const drJson = await drRes.json();
+            docRecKey = drJson.doc_rec_id || drJson.doc_rec || docRecKey;
+          }
+        } catch (e) {
+          // ignore and fallback to provided id
+        }
+      }
       // Migration & Provisional store doc_rec as string; verification may be FK -> filter by doc_rec__doc_rec_id
       const fetchOpts = { headers, credentials: 'include' };
       const [mgRes, prRes, vrRes, imRes, isRes] = await Promise.all([
-        fetch(`/api/migration/?doc_rec=${encodeURIComponent(docRecId)}`, fetchOpts),
-        fetch(`/api/provisional/?doc_rec=${encodeURIComponent(docRecId)}`, fetchOpts),
-        fetch(`/api/verification/?doc_rec=${encodeURIComponent(docRecId)}`, fetchOpts),
-        fetch(`/api/inst-verification-main/?doc_rec=${encodeURIComponent(docRecId)}`, fetchOpts),
-        fetch(`/api/inst-verification-student/?doc_rec=${encodeURIComponent(docRecId)}`, fetchOpts),
+        fetch(`/api/migration/?doc_rec=${encodeURIComponent(docRecKey)}`, fetchOpts),
+        fetch(`/api/provisional/?doc_rec=${encodeURIComponent(docRecKey)}`, fetchOpts),
+        fetch(`/api/verification/?doc_rec=${encodeURIComponent(docRecKey)}`, fetchOpts),
+        fetch(`/api/inst-verification-main/?doc_rec=${encodeURIComponent(docRecKey)}`, fetchOpts),
+        fetch(`/api/inst-verification-student/?doc_rec=${encodeURIComponent(docRecKey)}`, fetchOpts),
       ]);
       const mg = mgRes.ok ? await mgRes.json() : (await mgRes.text());
       const pr = prRes.ok ? await prRes.json() : (await prRes.text());
@@ -99,17 +113,12 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     try {
       const token = localStorage.getItem('access_token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      // Try direct retrieve using lookup_field
-      let res = await fetch(`/api/enrollment/${encodeURIComponent(en_no)}/`, { headers });
-      if (res.ok) {
-        const obj = await res.json();
-        return obj;
-      }
-      // Fallback to search list
-      res = await fetch(`/api/enrollment/?search=${encodeURIComponent(en_no)}&limit=1`, { headers });
+      // Prefer the list search on the registered `enrollments` endpoint.
+      // Many list endpoints are paginated returning { results: [...] }.
+      let res = await fetch(`/api/enrollments/?search=${encodeURIComponent(en_no)}&limit=1`, { headers });
       if (!res.ok) return null;
       const data = await res.json();
-      const items = data && data.items ? data.items : (Array.isArray(data) ? data : []);
+      const items = data && data.results ? data.results : (Array.isArray(data) ? data : (data && data.items ? data.items : []));
       return items && items.length ? items[0] : null;
     } catch (e) {
       console.warn('resolveEnrollment error', e);
@@ -144,8 +153,20 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
 
   // clear payment fields if pay_by becomes NA/null
   useEffect(() => {
+    const yy = new Date().getFullYear() % 100;
+    const year_str = pad2(yy);
+    const mapping = {
+      CASH: `C01/${year_str}/R`,
+      BANK: `1471/${year_str}/R`,
+      UPI: `8785/${year_str}/R`,
+      NA: '',
+    };
     if (!form.pay_by || form.pay_by === 'NA') {
-      setForm((f) => ({ ...f, pay_rec_no: '', pay_amount: 0 }));
+      setForm((f) => ({ ...f, pay_rec_no: '', pay_amount: 0, pay_rec_no_pre: '' }));
+    } else {
+      // set prefix according to mapping; override previous prefix when pay_by changes
+      const pre = mapping[form.pay_by] ?? `NA/${year_str}/R`;
+      setForm((f) => ({ ...f, pay_rec_no_pre: pre }));
     }
   }, [form.pay_by]);
 
@@ -207,6 +228,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
   // Recent Receipts: search/filter and display
   const [recentRecords, setRecentRecords] = useState([]);
   const [recentLoading, setRecentLoading] = useState(false);
+  const [selectedRec, setSelectedRec] = useState(null); // store the selected recent record (raw + type)
   const [searchTerm, setSearchTerm] = useState('');
   const [serviceFilter, setServiceFilter] = useState('all'); // all | docrec | migration | provisional | verification
 
@@ -244,6 +266,15 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
         return { type: 'docrec', raw: item };
       });
       setRecentRecords(normalized);
+      // if results include doc_rec identifiers, sort by doc_rec_id descending so latest appear first
+      try{
+        const sorted = [...normalized].sort((a,b)=>{
+          const ra = (a.raw && (a.raw.doc_rec || a.raw.doc_rec_id)) || a.raw.id || '';
+          const rb = (b.raw && (b.raw.doc_rec || b.raw.doc_rec_id)) || b.raw.id || '';
+          return String(rb).localeCompare(String(ra), undefined, {numeric:true});
+        });
+        setRecentRecords(sorted);
+      }catch(e){}
     }catch(e){ console.warn('fetchRecentRecords error', e); setRecentRecords([]); }
     finally{ setRecentLoading(false); }
   };
@@ -253,20 +284,53 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
 
   const onRecordClick = (rec) => {
     const r = rec.raw || rec;
+    const type = rec.type || 'docrec';
     // Some records have doc_rec or doc_rec_id or id
-    const docRecId = r.doc_rec || r.doc_rec_id || r.id || r.doc_rec_id_string;
+    const docRecId = r.doc_rec || r.doc_rec_id || r.id || r.doc_rec_id_string || '';
     const studentName = r.student_name || r.student || r.name || '';
     const enrollmentNo = r.enrollment_no || r.enrollment_no_string || r.enrollment || '';
     const enrollmentId = r.enrollment_id || r.enrollment_pk || null;
-    setForm(prev=>({
-      ...prev,
-      doc_rec_id: docRecId || prev.doc_rec_id,
-      student_name: studentName || prev.student_name,
-      // Use `enrollment` key (the input bound to the auto-resolve effect)
-      enrollment: enrollmentNo || prev.enrollment,
-      enrollment_id: enrollmentId || prev.enrollment_id,
-    }));
+    // Overwrite the form with selected record values (clear fields when absent)
+    setForm({
+      apply_for: r.apply_for || form.apply_for || 'VR',
+      pay_by: r.pay_by || form.pay_by || 'NA',
+      pay_amount: (typeof r.pay_amount !== 'undefined' && r.pay_amount !== null) ? r.pay_amount : (form.pay_amount || 0),
+      doc_rec_date: r.doc_rec_date ? (typeof r.doc_rec_date === 'string' ? isoToDMY(r.doc_rec_date) : form.doc_rec_date) : (form.doc_rec_date || todayDMY()),
+      doc_rec_id: docRecId,
+      pay_rec_no_pre: r.pay_rec_no_pre || r.pay_rec_pre || form.pay_rec_no_pre || '',
+      pay_rec_no: r.pay_rec_no || r.pay_receipt_no || form.pay_rec_no || '',
+      doc_rec_remark: r.doc_rec_remark || r.remark || form.doc_rec_remark || '',
+      // verification specific
+      enrollment: enrollmentNo,
+      enrollment_id: enrollmentId,
+      second_enrollment: r.second_enrollment || '',
+      student_name: studentName,
+      institute_id: r.institute || r.institute_id || '',
+      sub_course: r.sub_course || r.subcourse || '',
+      main_course: r.main_course || r.maincourse || '',
+      tr: r.tr_count || r.tr || 0,
+      ms: r.ms_count || r.ms || 0,
+      dg: r.dg_count || r.dg || 0,
+      moi: r.moi_count || r.moi || 0,
+      backlog: r.backlog_count || r.backlog || 0,
+      eca_required: !!r.eca_required,
+      // inst-verify
+      rec_by: r.rec_by || '',
+      rec_inst_name: r.rec_inst_name || '',
+      rec_inst_suggestions: [],
+      rec_inst_loading: false,
+      // provisional/migration fields
+      prv_number: r.prv_number || '',
+      prv_date: r.prv_date ? (typeof r.prv_date === 'string' ? isoToDMY(r.prv_date) : '') : '',
+      mg_number: r.mg_number || '',
+      mg_date: r.mg_date ? (typeof r.mg_date === 'string' ? isoToDMY(r.mg_date) : '') : '',
+      passing_year: r.passing_year || '',
+      exam_year: r.exam_year || '',
+      admission_year: r.admission_year || '',
+    });
     if (docRecId) fetchRelatedForDocRec(docRecId);
+    // remember selected record so UI can show Update/Delete actions
+    setSelectedRec({ raw: r, type });
   };
 
   const authHeaders = () => {
@@ -325,44 +389,42 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     try{ fetchRelatedForDocRec(row.doc_rec_id || row.doc_rec || row.id); }catch(_){ }
     // If this DocRec is for Verification and user provided enrollment or student_name,
     // automatically create the linked Verification so the DocRec immediately shows a verification row.
-    try {
-      if (form.apply_for === 'VR' && (form.enrollment || form.student_name)) {
-        const enrObj = form.enrollment_id ? { id: form.enrollment_id, student_name: form.student_name } : await resolveEnrollment(form.enrollment);
-        const enrollmentPk = enrObj ? (enrObj.id || enrObj.pk || null) : null;
-        const studentName = (enrObj && (enrObj.student_name || enrObj.student)) || form.student_name || null;
-        const vrPayload = {
-          enrollment: enrollmentPk,
-          // also include the raw enrollment string as a fallback so the server
-          // can resolve it when a numeric PK isn't available
-          enrollment_no: form.enrollment || null,
-          second_enrollment: form.second_enrollment || null,
-          student_name: studentName,
-          tr_count: clamp3(form.tr),
-          ms_count: clamp3(form.ms),
-          dg_count: clamp3(form.dg),
-          moi_count: clamp3(form.moi),
-          backlog_count: clamp3(form.backlog),
-          pay_rec_no: row.pay_rec_no || null,
-          doc_rec_id: row.id,
-          doc_rec_remark: form.doc_rec_remark || null,
-          status: 'IN_PROGRESS',
-        };
-        const r2 = await fetch('/api/verification/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...authHeaders() },
-          body: JSON.stringify(vrPayload),
-        });
-        if (r2.ok) {
-          // refresh related records for this doc_rec
-          fetchRelatedForDocRec(row.doc_rec_id || row.doc_rec || row.id);
-        } else {
-          const txt = await r2.text().catch(() => '');
-          console.warn('Auto-create verification failed', r2.status, txt);
+      // The backend `DocRecViewSet.perform_create` already attempts to create a
+      // linked Verification for apply_for='VR'. Instead of issuing a duplicate
+      // client-side POST, poll the verification list for the new item so the UI
+      // refreshes and shows the server-created row.
+      try {
+        if (form.apply_for === 'VR') {
+          const docId = row.doc_rec_id || row.doc_rec || row.id;
+          // Try a few times to fetch related verification rows produced by the server.
+          const tryFetch = async () => {
+            try {
+              const token = localStorage.getItem('access_token');
+              const headers = token ? { Authorization: `Bearer ${token}` } : {};
+              const res = await fetch(`/api/verification/?doc_rec=${encodeURIComponent(docId)}`, { headers });
+              if (!res.ok) return null;
+              const data = await res.json();
+              const items = data && data.results ? data.results : (Array.isArray(data) ? data : (data && data.objects ? data.objects : []));
+              return items;
+            } catch (e) { return null; }
+          };
+          let found = null;
+          for (let i = 0; i < 4; i++) {
+            // small delay between attempts to allow server-side create to complete
+            // eslint-disable-next-line no-await-in-loop
+            await new Promise((r) => setTimeout(r, 250));
+            // eslint-disable-next-line no-await-in-loop
+            const items = await tryFetch();
+            if (items && items.length) { found = items; break; }
+          }
+          // Refresh related lists so the UI shows the verification row if present
+          try { fetchRelatedForDocRec(docId); } catch (_) {}
+          try { fetchRecentRecords('', 'verification'); } catch (_) {}
+          if (!found) console.debug('No verification row found after creating DocRec (server may create it asynchronously)');
         }
+      } catch (e) {
+        console.warn('createDocRec: verification refresh failed', e);
       }
-    } catch (e) {
-      console.warn('createDocRec: auto verification creation failed', e);
-    }
 
     return row;
   };
@@ -373,58 +435,48 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     // 1) Create doc_rec
     const rec = await createDocRec();
 
-    // 2) Depending on apply_for, create related minimal record
+    // 2) Backend signal auto-creates Verification/InstVerificationMain, but we need to update with user's data
+    
     if (form.apply_for === "VR") {
-      // Resolve enrollment to primary key if possible
-      const enrObj = form.enrollment_id ? { id: form.enrollment_id, student_name: form.student_name } : await resolveEnrollment(form.enrollment);
-      const enrollmentPk = enrObj ? (enrObj.id || enrObj.pk || null) : null;
-      const studentName = (enrObj && (enrObj.student_name || enrObj.student)) || form.student_name || null;
-
-      const payload = {
-        enrollment: enrollmentPk,
-        // fallback raw enrollment string so backend can resolve by enrollment_no
-        enrollment_no: form.enrollment || null,
-        second_enrollment: null,
-        student_name: studentName,
-        tr_count: clamp3(form.tr),
-        ms_count: clamp3(form.ms),
-        dg_count: clamp3(form.dg),
-        moi_count: clamp3(form.moi),
-        backlog_count: clamp3(form.backlog),
-        pay_rec_no: rec.pay_rec_no || null,
-        doc_rec_id: rec.id,
-        doc_rec_remark: form.doc_rec_remark || null,
-        // default new verifications to IN_PROGRESS
-        status: 'IN_PROGRESS',
-      };
-
-      const resVr = await fetch("/api/verification/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify(payload),
-      });
-      if (!resVr.ok) {
-        const txt = await resVr.text().catch(() => '');
-        console.warn('Verification create failed', resVr.status, txt);
-        alert(`Verification create failed: ${resVr.status} ${resVr.statusText} ${txt}`);
-      } else {
-        // refresh related lists for this doc_rec so UI shows the new verification row
-        fetchRelatedForDocRec(rec.doc_rec_id || rec.doc_rec || rec.id);
-        // broadcast update so other components can refresh if needed
-        try{ if (typeof BroadcastChannel !== 'undefined'){ const bc = new BroadcastChannel('admindesk-updates'); bc.postMessage({ type: 'docrec_created', doc_rec_id: rec.doc_rec_id || rec.doc_rec || rec.id }); bc.close(); } }catch(e){}
+      // Backend signal creates a placeholder Verification - now update it with actual data
+      // Wait a moment for signal to create the record
+      await new Promise(r => setTimeout(r, 300));
+      
+      try {
+        // Find the verification record created by the signal
+        const vrRes = await fetch(`/api/verification/?doc_rec=${encodeURIComponent(rec.doc_rec_id || rec.id)}&limit=1`, { headers: authHeaders() });
+        if (vrRes.ok) {
+          const vrData = await vrRes.json();
+          const vrList = vrData.results || vrData || [];
+          if (vrList.length > 0) {
+            const vr = vrList[0];
+            // Update the signal-created verification with user's form data
+            const updatePayload = {
+              enrollment_no: form.enrollment || null,
+              student_name: form.student_name || null,
+              tr_count: clamp3(form.tr),
+              ms_count: clamp3(form.ms),
+              dg_count: clamp3(form.dg),
+              moi_count: clamp3(form.moi),
+              backlog_count: clamp3(form.backlog),
+              doc_rec_remark: form.doc_rec_remark || null,
+              status: 'IN_PROGRESS',
+            };
+            
+            await fetch(`/api/verification/${vr.id}/`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json", ...authHeaders() },
+              body: JSON.stringify(updatePayload),
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to update verification with form data', e);
       }
-    } else if (form.apply_for === "IV") {
-      const payload = {
-        doc_rec_id: rec.id,
-        rec_by: form.rec_by || null,
-        rec_inst_name: form.rec_inst_name || null,
-        doc_rec_remark: form.doc_rec_remark || null,
-      };
-      await fetch("/api/inst-verification-main/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify(payload),
-      });
+      
+      // Refresh UI
+      fetchRelatedForDocRec(rec.doc_rec_id || rec.id);
+      try{ if (typeof BroadcastChannel !== 'undefined'){ const bc = new BroadcastChannel('admindesk-updates'); bc.postMessage({ type: 'docrec_created', doc_rec_id: rec.doc_rec_id || rec.id }); bc.close(); } }catch(e){}
     } else if (form.apply_for === "PR") {
       const payload = {
         doc_rec: rec.id,
@@ -472,6 +524,81 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     alert("Saved");
   };
 
+  // Update an existing DocRec and related Verification atomically
+  const updateDocRec = async () => {
+    if (!selectedRec || !selectedRec.raw) throw new Error('No record selected');
+    const r = selectedRec.raw;
+    const docRecId = r.doc_rec || r.doc_rec_id || form.doc_rec_id;
+    if (!docRecId) throw new Error('Cannot determine doc_rec_id');
+
+    const doc_rec_data = {
+      apply_for: form.apply_for,
+      pay_by: form.pay_by,
+      pay_amount: +form.pay_amount || 0,
+      pay_rec_no: form.pay_by === 'NA' ? null : (form.pay_rec_no || null),
+      doc_rec_date: form.doc_rec_date ? dmyToISO(form.doc_rec_date) : null,
+      doc_rec_remark: form.doc_rec_remark || null,
+    };
+
+    const verification_data = {
+      enrollment_no: form.enrollment || null,
+      second_enrollment_id: form.second_enrollment || null,
+      student_name: form.student_name || null,
+      tr_count: clamp3(form.tr),
+      ms_count: clamp3(form.ms),
+      dg_count: clamp3(form.dg),
+      moi_count: clamp3(form.moi),
+      backlog_count: clamp3(form.backlog),
+      pay_rec_no: form.pay_rec_no || null,
+      doc_rec_remark: form.doc_rec_remark || null,
+    };
+
+    const payload = {
+      doc_rec_id: docRecId,
+      doc_rec_data,
+      verification_data,
+    };
+
+    const res = await fetch('/api/docrec/update-with-verification/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`Update failed: ${res.status} ${txt}`);
+    }
+
+    // refresh lists
+    try { fetchRecentRecords('', 'all'); } catch (_) {}
+    try { fetchRelatedForDocRec(form.doc_rec_id); } catch (_) {}
+    return await res.json();
+  };
+
+  const deleteDocRec = async () => {
+    if (!selectedRec || !selectedRec.raw) throw new Error('No record selected');
+    const r = selectedRec.raw;
+    const docRecId = r.doc_rec || r.doc_rec_id || form.doc_rec_id;
+    if (!docRecId) throw new Error('Cannot determine doc_rec_id');
+
+    const payload = { doc_rec_id: docRecId };
+    const res = await fetch('/api/docrec/delete-with-verification/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`Delete failed: ${res.status} ${txt}`);
+    }
+
+    try { fetchRecentRecords('', 'all'); } catch (_) {}
+    try { fetchRelatedForDocRec(form.doc_rec_id); } catch (_) {}
+    return true;
+  };
+
   const leftSlot = (
     <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-sky-600 text-white text-xl">📥</div>       
   );
@@ -507,7 +634,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
             {/* doc_rec_date */}
             <div>
               <label className="text-sm">Doc Rec Date</label>
-              <input type="text" className="w-full border rounded-lg p-2" value={form.doc_rec_date} onChange={(e)=>handleChange("doc_rec_date", e.target.value)} placeholder="dd-mm-yyyy" />
+              <input type="date" className="w-full border rounded-lg p-2" value={form.doc_rec_date ? dmyToISO(form.doc_rec_date) : ''} onChange={(e)=>handleChange("doc_rec_date", e.target.value ? isoToDMY(e.target.value) : todayDMY())} />
             </div>
 
             {/* apply_for */}
@@ -563,15 +690,18 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
             {/* If VR show verification options (simplified UI as placeholder) */}
             {form.apply_for === 'VR' && (
               <>
-                <div className="md:col-span-2">
+                <div className="md:col-span-1">
                   <label className="text-sm">Enrollment No</label>
-                  <input className="w-full border rounded-lg p-2" value={form.enrollment} onChange={(e)=>handleChange("enrollment", e.target.value)} />                                                                                                         </div>
+                  <input className="w-full border rounded-lg p-2" placeholder="e.g. 20MSCCHEM22184" value={form.enrollment} onChange={(e)=>handleChange("enrollment", e.target.value)} />
+                </div>
                 <div>
                   <label className="text-sm">2nd Enrollment</label>
-                  <input className="w-full border rounded-lg p-2" value={form.second_enrollment} onChange={(e)=>handleChange("second_enrollment", e.target.value)} />                                                                                           </div>
-                <div>
+                  <input className="w-full border rounded-lg p-2" value={form.second_enrollment} onChange={(e)=>handleChange("second_enrollment", e.target.value)} />
+                </div>
+                <div className="md:col-span-2">
                   <label className="text-sm">Student Name</label>
-                  <input className="w-full border rounded-lg p-2" value={form.student_name} onChange={(e)=>handleChange("student_name", e.target.value)} />                                                                                                     </div>
+                  <input className="w-full border rounded-lg p-2" value={form.student_name} onChange={(e)=>handleChange("student_name", e.target.value)} />
+                </div>
 
                 <div>
                   <label className="text-sm">TR</label>
@@ -672,10 +802,60 @@ v.trim())}`, { headers: { ...authHeaders() } });                                
               </>
             )}
 
-            <div className="md:col-span-4 flex justify-end">
-              <button className="px-4 py-2 rounded-lg bg-emerald-600 text-white" onClick={async()=>{
-                try { await submit(); alert('Saved!'); } catch(e){ alert(e.message || 'Failed'); }
-              }}>Save</button>
+            <div className="md:col-span-4 flex justify-end space-x-2">
+              {!selectedRec && (
+                <button className="px-4 py-2 rounded-lg bg-emerald-600 text-white" onClick={async()=>{
+                  try { 
+                    await submit(); 
+                    alert('Saved!'); 
+                    // Reset form for new entry
+                    setForm({
+                      apply_for: "VR",
+                      pay_by: "NA",
+                      pay_amount: 0,
+                      doc_rec_date: todayDMY(),
+                      doc_rec_id: "",
+                      pay_rec_no_pre: "",
+                      pay_rec_no: "",
+                      doc_rec_remark: "",
+                      enrollment: "",
+                      enrollment_id: null,
+                      second_enrollment: "",
+                      student_name: "",
+                      institute_id: "",
+                      sub_course: "",
+                      main_course: "",
+                      class_obtain: "",
+                      tr: 0, ms: 0, dg: 0, moi: 0, backlog: 0,
+                      eca_required: false,
+                      rec_by: "",
+                      rec_inst_name: "",
+                      rec_inst_suggestions: [],
+                      rec_inst_loading: false,
+                      prv_number: "",
+                      prv_date: "",
+                      passing_year: "",
+                      mg_number: "",
+                      mg_date: "",
+                      exam_year: "",
+                      admission_year: "",
+                    });
+                    // Refresh recent records
+                    fetchRecentRecords('', 'all');
+                  } catch(e){ alert(e.message || 'Failed'); }
+                }}>Save</button>
+              )}
+              {selectedRec && (
+                <>
+                  <button className="px-4 py-2 rounded-lg bg-yellow-600 text-white" onClick={async()=>{
+                    try { await updateDocRec(); alert('Updated'); setSelectedRec(null); } catch(e){ alert(e.message || 'Update failed'); }
+                  }}>Update</button>
+                  <button className="px-4 py-2 rounded-lg bg-red-600 text-white" onClick={async()=>{
+                    if (!confirm('Delete this DocRec? This will also remove related rows where cascade applies.')) return;
+                    try { await deleteDocRec(); alert('Deleted'); setSelectedRec(null); setForm((f)=>({ ...f, doc_rec_id: '', enrollment: '', enrollment_id: null, student_name: '' })); } catch(e){ alert(e.message || 'Delete failed'); }
+                  }}>Delete</button>
+                </>
+              )}
             </div>
           </div>
         )}

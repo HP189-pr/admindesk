@@ -59,6 +59,15 @@ const MODULES = [
     statuses: ['pending', 'progress', 'done'],
     fields: (row) => `${row.tr_request_no || row.request_ref_no || '-'} • ${row.enrollment_no || '—'} • ${row.student_name || '-'} • ${row.pdf_generate || ''} • ${row.mail_status || ''}`,
   },
+  {
+    key: 'student_search',
+    label: '🔍 Student Search',
+    openMenuLabel: 'Student Search',
+    endpoint: null, // No endpoint, direct navigation
+    statuses: [],
+    fields: null,
+    isSearch: true, // Special flag for search module
+  },
 ];
 
 function ModuleCard({ mod, authFetch, onOpen }) {
@@ -66,6 +75,23 @@ function ModuleCard({ mod, authFetch, onOpen }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Special handling for Student Search module
+  if (mod.isSearch) {
+    return (
+      <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl shadow-sm border border-indigo-200 p-6 flex flex-col items-center justify-center">
+        <div className="text-5xl mb-4">🔍</div>
+        <h3 className="text-xl font-bold text-indigo-900 mb-2">Student Search</h3>
+        <p className="text-gray-600 text-center mb-4 text-sm">Search comprehensive student information by enrollment number</p>
+        <button 
+          onClick={onOpen} 
+          className="px-6 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-lg transition-all"
+        >
+          Open Search
+        </button>
+      </div>
+    );
+  }
 
   const load = async () => {
     setLoading(true);
@@ -148,6 +174,12 @@ function ModuleSelector({ selected, setSelected }) {
 
 export default function CustomDashboardClean({ selectedMenuItem, setSelectedMenuItem, isSidebarOpen, setSidebarOpen }) {
   const { user } = useAuth();
+  
+  // Debug: Check if setSelectedMenuItem is provided
+  if (!setSelectedMenuItem) {
+    console.error('CustomDashboardClean: setSelectedMenuItem prop is missing!');
+  }
+  
   const STORAGE_KEY = 'selected_dashboard_modules';
   const DEFAULT_SELECTED = ['verification', 'migration', 'provisional', 'institutional', 'mailrequests', 'transcript_pdf'];
 
@@ -183,7 +215,10 @@ export default function CustomDashboardClean({ selectedMenuItem, setSelectedMenu
     return fetch(url, Object.assign({}, opts, { headers }));
   };
 
-  const handleOpenModule = (openMenuLabel) => setSelectedMenuItem(openMenuLabel);
+  const handleOpenModule = (openMenuLabel) => {
+    console.log('Opening module:', openMenuLabel);
+    setSelectedMenuItem(openMenuLabel);
+  };
 
   // compute grid classes based on number of selected modules
   const selectedCount = selectedModuleKeys.length;

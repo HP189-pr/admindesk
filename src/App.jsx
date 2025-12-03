@@ -29,10 +29,13 @@ const Layout = () => {
             <div className="flex-1 h-screen relative transition-all duration-300 overflow-hidden">
                 <WorkArea
                   selectedSubmenu={selectedMenuItem}
+                  selectedMenuItem={selectedMenuItem}
+                  setSelectedMenuItem={setSelectedMenuItem}
                   onToggleSidebar={() => setSidebarOpen((v) => !v)}
                   onToggleChatbox={() => setChatboxOpen((v) => !v)}
                   isSidebarOpen={isSidebarOpen}
                   isChatboxOpen={isChatboxOpen}
+                  setSidebarOpen={setSidebarOpen}
                 />
             </div>
 

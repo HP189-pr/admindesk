@@ -28,75 +28,89 @@ class VerificationStatus(models.TextChoices):
     DONE_WITH_REMARKS = 'DONE_WITH_REMARKS', 'Done With Remarks'
 
 class Verification(models.Model):
+    # Primary key - bigint NOT NULL
     id = models.BigAutoField(primary_key=True, db_column='id')
-    doc_rec_date = models.DateField(default=timezone.now, db_column='doc_rec_date', verbose_name='Doc Record Date')
-    # Allow enrollment to be nullable so we can create placeholder Verification rows
-    # when a DocRec is created without an enrollment (frontend may supply later).
-    enrollment = models.ForeignKey(Enrollment, on_delete=models.RESTRICT, db_column='enrollment_id', related_name='verifications', null=True, blank=True)
-    second_enrollment = models.ForeignKey(Enrollment, on_delete=models.RESTRICT, null=True, blank=True, db_column='second_enrollment_id', related_name='secondary_verifications')
-    # Allow blank student_name so CANCEL rows can be stored without a name.
-    # DB keeps this as NOT NULL (empty string) but Django validation will permit '' when blank=True.
-    student_name = models.CharField(max_length=255, db_column='student_name', blank=True)
-    tr_count = models.PositiveSmallIntegerField(default=0, db_column='no_of_transcript')
-    ms_count = models.PositiveSmallIntegerField(default=0, db_column='no_of_marksheet')
-    dg_count = models.PositiveSmallIntegerField(default=0, db_column='no_of_degree')
-    moi_count = models.PositiveSmallIntegerField(default=0, db_column='no_of_moi')
-    backlog_count = models.PositiveSmallIntegerField(default=0, db_column='no_of_backlog')
-    pay_rec_no = models.CharField(max_length=100, null=True, blank=True, db_column='pay_rec_no')
-    # Allow NULL so bulk uploads can leave status blank (preserve NULL).
-    # Normal doc-rec creation flow should set IN_PROGRESS explicitly in the creation path.
-    status = models.CharField(max_length=20, choices=VerificationStatus.choices, null=True, blank=True, db_column='status')
-    final_no = models.CharField(max_length=50, unique=True, null=True, blank=True, db_column='final_no')
-    mail_status = models.CharField(max_length=20, choices=MailStatus.choices, default=MailStatus.NOT_SENT, db_column='mail_send_status')
-    eca_required = models.BooleanField(default=False, db_column='eca_required')
-    # Additional free-text remark stored specifically on the DocRec/verification row
-    doc_rec_remark = models.TextField(null=True, blank=True, db_column='doc_rec_remark')
-    # Denormalized ECA summary fields (only these are kept per your requested final table)
+    
+    # Student identification - varchar NULL
+    student_name = models.CharField(max_length=255, null=True, blank=True, db_column='student_name')
+    enrollment_no = models.CharField(max_length=255, null=True, blank=True, db_column='enrollment_no')
+    second_enrollment_id = models.CharField(max_length=255, null=True, blank=True, db_column='second_enrollment_id')
+    
+    # Document counts - smallint NULL
+    tr_count = models.SmallIntegerField(null=True, blank=True, db_column='no_of_transcript')
+    ms_count = models.SmallIntegerField(null=True, blank=True, db_column='no_of_marksheet')
+    dg_count = models.SmallIntegerField(null=True, blank=True, db_column='no_of_degree')
+    moi_count = models.SmallIntegerField(null=True, blank=True, db_column='no_of_moi')
+    backlog_count = models.SmallIntegerField(null=True, blank=True, db_column='no_of_backlog')
+    
+    # Payment and status - varchar NULL
+    pay_rec_no = models.CharField(max_length=255, null=True, blank=True, db_column='pay_rec_no')
+    status = models.CharField(max_length=255, choices=VerificationStatus.choices, null=True, blank=True, db_column='status')
+    final_no = models.CharField(max_length=255, null=True, blank=True, db_column='final_no')
+    mail_status = models.CharField(max_length=255, choices=MailStatus.choices, null=True, blank=True, db_column='mail_send_status')
+    
+    # ECA fields - boolean/varchar/date NULL
+    eca_required = models.BooleanField(null=True, blank=True, db_column='eca_required')
     eca_name = models.CharField(max_length=255, null=True, blank=True, db_column='eca_name')
-    eca_ref_no = models.CharField(max_length=100, null=True, blank=True, db_column='eca_ref_no')
+    eca_ref_no = models.CharField(max_length=255, null=True, blank=True, db_column='eca_ref_no')
     eca_send_date = models.DateField(null=True, blank=True, db_column='eca_send_date')
     eca_resubmit_date = models.DateField(null=True, blank=True, db_column='eca_resubmit_date')
-    # Allow NULL so bulk uploads can explicitly leave ECA status blank (stored as NULL)
-    eca_status = models.CharField(max_length=20, choices=MailStatus.choices, null=True, blank=True, db_column='eca_status')
-    replaces_verification = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, db_column='replaces_verification_id', related_name='superseded_by')
+    eca_status = models.CharField(max_length=255, choices=MailStatus.choices, null=True, blank=True, default='NOT_SENT', db_column='eca_status')
+    
+    # Remarks and dates - text/date NULL
+    doc_rec_remark = models.TextField(null=True, blank=True, db_column='doc_rec_remark')
     remark = models.TextField(null=True, blank=True, db_column='vr_remark')
     vr_done_date = models.DateField(null=True, blank=True, db_column='vr_done_date')
-    doc_rec = models.ForeignKey(DocRec, on_delete=models.SET_NULL, null=True, blank=True, to_field='doc_rec_id', db_column='doc_rec_id', related_name='verifications')
     last_resubmit_date = models.DateField(null=True, blank=True, db_column='last_resubmit_date')
-    last_resubmit_status = models.CharField(max_length=20, null=True, blank=True, db_column='last_resubmit_status')
+    last_resubmit_status = models.CharField(max_length=255, null=True, blank=True, db_column='last_resubmit_status')
+    
+    # Timestamps - timestamp NOT NULL (auto-managed)
     createdat = models.DateTimeField(auto_now_add=True, db_column='createdat')
     updatedat = models.DateTimeField(auto_now=True, db_column='updatedat')
+    
+    # Foreign keys - bigint/varchar/int NULL
+    doc_rec = models.ForeignKey(DocRec, on_delete=models.SET_NULL, null=True, blank=True, to_field='doc_rec_id', db_column='doc_rec_id', related_name='verifications')
+    replaces_verification = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, db_column='replaces_verification_id', related_name='superseded_by')
     updatedby = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='updatedby')
+    
+    # Doc record date - date NOT NULL
+    doc_rec_date = models.DateField(db_column='doc_rec_date', verbose_name='Doc Record Date')
     class Meta:
         db_table = 'verification'
         indexes = [
-            models.Index(fields=['enrollment'], name='idx_verification_enrollment'),
-            models.Index(fields=['second_enrollment'], name='idx_verif_sec_enroll'),
+            models.Index(fields=['enrollment_no'], name='idx_verification_enrollment'),
+            models.Index(fields=['second_enrollment_id'], name='idx_verif_sec_enroll'),
             models.Index(fields=['status'], name='idx_verification_status'),
             models.Index(fields=['final_no'], name='idx_verification_final_no'),
             models.Index(fields=['pay_rec_no'], name='idx_verification_pay_rec_no'),
             models.Index(fields=['doc_rec'], name='idx_verification_doc_rec'),
         ]
+        constraints = [
+            # Prevent duplicate verifications for the same doc_rec
+            models.UniqueConstraint(fields=['doc_rec'], name='unique_verification_doc_rec', condition=models.Q(doc_rec__isnull=False))
+        ]
     def clean(self):
+        # Validate document counts if present (now nullable)
         for f in ('tr_count','ms_count','dg_count','moi_count','backlog_count'):
-            v = getattr(self, f) or 0
-            if v < 0 or v > 999:
-                raise ValidationError({f: 'Must be between 0 and 999.'})
+            v = getattr(self, f)
+            if v is not None and (v < 0 or v > 32767):  # smallint range
+                raise ValidationError({f: 'Must be between 0 and 32767.'})
+        
+        # Validate status-specific requirements
         if self.status == VerificationStatus.DONE and not self.final_no:
             raise ValidationError({'final_no': 'final_no is required when status is DONE.'})
         if self.status in (VerificationStatus.PENDING, VerificationStatus.CANCEL) and self.final_no:
             raise ValidationError({'final_no': 'final_no must be empty for PENDING or CANCEL.'})
-        # Consider ECA details present only if any meaningful ECA field is set.
-        # `eca_status` defaults to NOT_SENT; treat that as *not present* unless it's different.
-        eca_status_present = bool(self.eca_status and str(self.eca_status).strip() and str(self.eca_status) != MailStatus.NOT_SENT)
-        if not self.eca_required and any([
+        
+        # Validate ECA fields consistency
+        eca_status_present = bool(self.eca_status and str(self.eca_status).strip() and str(self.eca_status) != 'NOT_SENT')
+        if self.eca_required is False and any([
             self.eca_name, self.eca_ref_no, self.eca_send_date,
             self.eca_resubmit_date, eca_status_present
         ]):
             raise ValidationError('ECA details present but eca_required=False.')
     def save(self,*a,**kw):
-        if self.enrollment and not self.student_name:
-            self.student_name = self.enrollment.student_name or ''
+        # enrollment_no is now a CharField, no FK relationship to resolve student_name
         super().save(*a,**kw)
         # Sync doc_rec_remark to the parent DocRec if provided
         try:

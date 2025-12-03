@@ -313,9 +313,7 @@ class InstituteCourseOfferingSerializer(serializers.ModelSerializer):
             data["updated_by"] = {"id": instance.updated_by.id, "username": instance.updated_by.username}
         return data
 class VerificationSerializer(serializers.ModelSerializer):
-    # Read-only convenience fields coming from related Enrollment rows
-    enrollment_no = serializers.CharField(source="enrollment.enrollment_no", read_only=True)
-    second_enrollment_no = serializers.CharField(source="second_enrollment.enrollment_no", read_only=True)
+    # enrollment_no and second_enrollment_id are now CharField (not FK)
     # Write-only: allow linking to DocRec by its primary key id
     doc_rec_id = serializers.PrimaryKeyRelatedField(
         queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False
@@ -331,8 +329,8 @@ class VerificationSerializer(serializers.ModelSerializer):
             "id",
             "doc_rec_date",
             "vr_done_date",
-            "enrollment", "enrollment_no",
-            "second_enrollment", "second_enrollment_no",
+            "enrollment_no",
+            "second_enrollment_id",
             "student_name",
             "tr_count", "ms_count", "dg_count", "moi_count", "backlog_count",
             "pay_rec_no",
@@ -351,7 +349,6 @@ class VerificationSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id", "createdat", "updatedat", "updatedby",
             "eca_resend_count", "eca_last_action_at", "eca_last_to_email",
-            "enrollment_no", "second_enrollment_no",
             "last_resubmit_date", "last_resubmit_status",
         ]
 
@@ -383,10 +380,7 @@ class VerificationSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated):
-        # Auto-fill student_name from Enrollment if omitted
-        if not validated.get("student_name") and validated.get("enrollment"):
-            enr = validated["enrollment"]
-            validated["student_name"] = enr.student_name or ""
+        # enrollment_no is now a CharField, no FK to auto-fill student_name from
         # Stamp audit
         request = self.context.get("request")
         if request and request.user and request.user.is_authenticated:
@@ -398,17 +392,8 @@ class VerificationSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if request and request.user and request.user.is_authenticated:
             validated["updatedby"] = request.user
-        # If student_name edited, also update Enrollment copy
-        new_name = validated.get("student_name")
-        resp = super().update(instance, validated)
-        try:
-            if new_name and instance.enrollment and instance.enrollment.student_name != new_name:
-                enr = instance.enrollment
-                enr.student_name = new_name
-                enr.save(update_fields=["student_name", "updated_at"])
-        except Exception:
-            pass
-        return resp
+        # enrollment_no is now a CharField, no FK relationship to sync
+        return super().update(instance, validated)
 
     def get_eca(self, obj):
         try:

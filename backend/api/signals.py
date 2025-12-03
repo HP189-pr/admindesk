@@ -1,53 +1,9 @@
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-from django.utils import timezone
-
-from .models import DocRec, Verification, VerificationStatus
-
-
-@receiver(post_save, sender=DocRec)
-def create_service_for_docrec(sender, instance: DocRec, created, **kwargs):
-    """Ensure a service row exists for new/updated DocRec entries.
-
-    Auto-create a Verification when a DocRec with apply_for='VR' is saved
-    and no Verification is already linked. This mirrors the behaviour of
-    the `sync_docrec_services` management command but runs eagerly on save
-    so admin/ORM-created DocRec rows become visible in the UI automatically.
-    """
-    try:
-        apply_for = (getattr(instance, 'apply_for', '') or '').upper()
-        if apply_for != 'VR':
-            return
-
-        # If a Verification already links to this DocRec, nothing to do
-        exists = Verification.objects.filter(doc_rec__doc_rec_id=instance.doc_rec_id).exists()
-        if exists:
-            return
-
-        # Create a minimal Verification row (best-effort)
-        vr = Verification(
-            enrollment=None,
-            student_name='')
-        vr.doc_rec = instance
-        vr.status = VerificationStatus.IN_PROGRESS
-        try:
-            vr.full_clean()
-        except Exception:
-            # allow creation even if some validation rules are not met
-            pass
-        vr.save()
-    except Exception:
-        # never raise from a signal handler; keep it best-effort
-        pass
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.utils import timezone
 from django.conf import settings
 from .models import DocRec, Verification, MigrationRecord, ProvisionalRecord, InstVerificationMain
-from .models import PayBy
-
-
-from django.db.models.signals import post_save
+from .models import PayBy, VerificationStatus
 
 
 @receiver(post_save, sender=DocRec)
@@ -68,8 +24,9 @@ def docrec_post_save(sender, instance: DocRec, created, **kwargs):
                 exists = Verification.objects.filter(doc_rec__doc_rec_id=doc_rec_id).exists()
                 if not exists:
                     vr = Verification(
-                        enrollment=None,
-                        student_name='')
+                        enrollment_no=None,
+                        student_name='',
+                        doc_rec_date=getattr(instance, 'doc_rec_date', None) or timezone.now().date())
                     vr.doc_rec = instance
                     vr.status = 'IN_PROGRESS'
                     try:
@@ -211,5 +168,116 @@ def inst_veri_main_post_save(sender, instance: InstVerificationMain, created, **
             doc_rec_id = getattr(instance.doc_rec, 'doc_rec_id', None)
         if doc_rec_id:
             _ensure_docrec_exists_and_sync(doc_rec_id, src_obj=instance)
+    except Exception:
+        pass
+
+
+# ============================================================================
+# DELETE SIGNALS - Automatic bidirectional sync on deletion
+# ============================================================================
+
+@receiver(post_delete, sender=DocRec)
+def docrec_post_delete(sender, instance: DocRec, **kwargs):
+    """When DocRec is deleted, automatically delete linked service records."""
+    try:
+        doc_rec_id = getattr(instance, 'doc_rec_id', None)
+        if not doc_rec_id:
+            return
+        
+        # Delete all linked service records
+        Verification.objects.filter(doc_rec__doc_rec_id=doc_rec_id).delete()
+        MigrationRecord.objects.filter(doc_rec=doc_rec_id).delete()
+        ProvisionalRecord.objects.filter(doc_rec=doc_rec_id).delete()
+        InstVerificationMain.objects.filter(doc_rec__doc_rec_id=doc_rec_id).delete()
+    except Exception:
+        # Never raise from signal handler
+        pass
+
+
+@receiver(post_delete, sender=Verification)
+def verification_post_delete(sender, instance: Verification, **kwargs):
+    """When Verification is deleted, automatically delete linked DocRec if no other services reference it."""
+    try:
+        if not instance.doc_rec:
+            return
+        
+        doc_rec_id = getattr(instance.doc_rec, 'doc_rec_id', None)
+        if not doc_rec_id:
+            return
+        
+        # Check if any other service records reference this DocRec
+        has_other_services = (
+            MigrationRecord.objects.filter(doc_rec=doc_rec_id).exists() or
+            ProvisionalRecord.objects.filter(doc_rec=doc_rec_id).exists() or
+            InstVerificationMain.objects.filter(doc_rec__doc_rec_id=doc_rec_id).exists()
+        )
+        
+        # Only delete DocRec if no other services reference it
+        if not has_other_services:
+            DocRec.objects.filter(doc_rec_id=doc_rec_id).delete()
+    except Exception:
+        pass
+
+
+@receiver(post_delete, sender=MigrationRecord)
+def migration_post_delete(sender, instance: MigrationRecord, **kwargs):
+    """When Migration is deleted, automatically delete linked DocRec if no other services reference it."""
+    try:
+        doc_rec_id = getattr(instance, 'doc_rec', None)
+        if not doc_rec_id:
+            return
+        
+        # Check if any other service records reference this DocRec
+        has_other_services = (
+            Verification.objects.filter(doc_rec__doc_rec_id=doc_rec_id).exists() or
+            ProvisionalRecord.objects.filter(doc_rec=doc_rec_id).exists() or
+            InstVerificationMain.objects.filter(doc_rec__doc_rec_id=doc_rec_id).exists()
+        )
+        
+        if not has_other_services:
+            DocRec.objects.filter(doc_rec_id=doc_rec_id).delete()
+    except Exception:
+        pass
+
+
+@receiver(post_delete, sender=ProvisionalRecord)
+def provisional_post_delete(sender, instance: ProvisionalRecord, **kwargs):
+    """When Provisional is deleted, automatically delete linked DocRec if no other services reference it."""
+    try:
+        doc_rec_id = getattr(instance, 'doc_rec', None)
+        if not doc_rec_id:
+            return
+        
+        has_other_services = (
+            Verification.objects.filter(doc_rec__doc_rec_id=doc_rec_id).exists() or
+            MigrationRecord.objects.filter(doc_rec=doc_rec_id).exists() or
+            InstVerificationMain.objects.filter(doc_rec__doc_rec_id=doc_rec_id).exists()
+        )
+        
+        if not has_other_services:
+            DocRec.objects.filter(doc_rec_id=doc_rec_id).delete()
+    except Exception:
+        pass
+
+
+@receiver(post_delete, sender=InstVerificationMain)
+def inst_verification_post_delete(sender, instance: InstVerificationMain, **kwargs):
+    """When InstVerification is deleted, automatically delete linked DocRec if no other services reference it."""
+    try:
+        if not instance.doc_rec:
+            return
+        
+        doc_rec_id = getattr(instance.doc_rec, 'doc_rec_id', None)
+        if not doc_rec_id:
+            return
+        
+        has_other_services = (
+            Verification.objects.filter(doc_rec__doc_rec_id=doc_rec_id).exists() or
+            MigrationRecord.objects.filter(doc_rec=doc_rec_id).exists() or
+            ProvisionalRecord.objects.filter(doc_rec=doc_rec_id).exists()
+        )
+        
+        if not has_other_services:
+            DocRec.objects.filter(doc_rec_id=doc_rec_id).delete()
     except Exception:
         pass

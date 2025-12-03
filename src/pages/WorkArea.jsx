@@ -12,6 +12,7 @@ import ProfileUpdate from "../components/ProfileUpdate";
 import EmpLeavePage from "./emp-leave.jsx";
 import MailRequestPage from "./mail_request";
 import TranscriptRequestPage from "./transcript_request";
+import StudentSearch from "./student-search";
 
 
 
@@ -46,8 +47,10 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
 
   // Normalize selectedSubmenu to a page key to handle label variations
   const renderPage = () => {
-    const s = (selectedSubmenu || "").toString();
+    // Check both selectedSubmenu and selectedMenuItem for routing
+    const s = (selectedSubmenu || selectedMenuItem || "").toString();
     const l = s.toLowerCase();
+    console.log('WorkArea render:', { selectedSubmenu, selectedMenuItem, s, l });
     let key = "";
   if (l.includes("dash")) key = "dashboard";
   if (l.includes("enroll")) key = "enrollment";
@@ -60,6 +63,7 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
   else if ((l.includes("document") || l.includes("doc")) && l.includes("receive")) key = "doc_receive";
   else if ((l.includes("mail") && l.includes("status")) || l.includes("mail request")) key = "mail_request";
   else if (l.includes("transcript")) key = "transcript_request";
+  else if (l.includes("student") && l.includes("search")) key = "student_search";
   else if (l.includes("leave management")) key = "emp_leave";
   else if (l.includes("leave report")) key = "emp_leave_report";
   else if (l.includes("balance certificate")) key = "emp_balance_certificate";
@@ -131,6 +135,8 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
             onToggleChatbox={onToggleChatbox}
           />
         );
+      case "student_search":
+        return <StudentSearch />;
       case "emp_leave":
         return <EmpLeavePage />;
       case "emp_leave_report":

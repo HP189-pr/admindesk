@@ -34,8 +34,9 @@ class Command(BaseCommand):
                     exists = Verification.objects.filter(doc_rec__doc_rec_id=docid).exists()
                     if not exists:
                         vr = Verification(
-                            enrollment=None,
-                            student_name='')
+                            enrollment_no=None,
+                            student_name='',
+                            doc_rec_date=getattr(dr, 'doc_rec_date', None) or timezone.now().date())
                         vr.doc_rec = dr
                         vr.status = 'IN_PROGRESS'
                         try:

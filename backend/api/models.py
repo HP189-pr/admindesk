@@ -21,6 +21,7 @@ from .domain_documents import *  # noqa: F401,F403
 from .domain_verification import *  # noqa: F401,F403
 from .domain_mail_request import *  # noqa: F401,F403
 from .domain_transcript_generate import *  # noqa: F401,F403
+from .domain_degree import *  # noqa: F401,F403
 from django.contrib.auth.models import User as DjangoAuthUser  # Export default auth user for serializers expecting it.
 
 # Optional: define __all__ explicitly to aggregate from submodules
@@ -31,6 +32,7 @@ from .domain_documents import __all__ as _docs_all  # type: ignore
 from .domain_verification import __all__ as _ver_all  # type: ignore
 from .domain_mail_request import __all__ as _mail_req_all  # type: ignore
 from .domain_transcript_generate import __all__ as _transcript_all  # type: ignore
+from .domain_degree import __all__ as _degree_all  # type: ignore
 
 # Import leave management models directly
 from .domain_emp import EmpProfile, LeaveType, LeaveEntry
@@ -42,6 +44,7 @@ __all__ = [
   *_ver_all,
   *_mail_req_all,
   *_transcript_all,
+  *_degree_all,
   'EmpProfile',
   'LeaveType',
   'LeaveEntry',

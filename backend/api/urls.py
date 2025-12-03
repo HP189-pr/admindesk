@@ -39,10 +39,17 @@ try:
     # PDF generation view for inst verification
     from .view_inst_verification import GenerateInstVerificationPDF
     from .view_inst_verification import SuggestDocRec
+    # Student search view
+    from .views_student_search import StudentSearchViewSet
+    # Degree management views
+    from .views_degree import StudentDegreeViewSet, ConvocationMasterViewSet
 
     # Register router and API endpoints (normal path when DRF is installed)
     router = DefaultRouter()
     router.register(r'holidays', HolidayViewSet, basename='holidays')
+    router.register(r'student-search', StudentSearchViewSet, basename='student-search')
+    router.register(r'degrees', StudentDegreeViewSet, basename='degrees')
+    router.register(r'convocations', ConvocationMasterViewSet, basename='convocations')
     router.register(r'modules', ModuleViewSet, basename='modules')  # ✅ Modules API
     router.register(r'menus', MenuViewSet, basename='menus')  # ✅ Menus API
     router.register(r'userpermissions', UserPermissionViewSet, basename='userpermissions')  # ✅ User Permissions API

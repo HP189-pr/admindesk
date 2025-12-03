@@ -3,6 +3,9 @@ from django.db import models as djmodels
 from .domain_emp import EmpProfile, LeaveType, LeaveEntry, LeavePeriod, LeaveAllocation
 from .domain_emp import LeaveBalanceSnapshot
 from .domain_logs import UserActivityLog, ErrorLog
+from .domain_degree import StudentDegree, ConvocationMaster
+import csv
+import io
 
 @admin.register(EmpProfile)
 class EmpProfileAdmin(admin.ModelAdmin):
@@ -1623,8 +1626,8 @@ class VerificationAdmin(CommonAdminMixin):
     # Date, Enrollment, Sec Enrollment, Name, TR, MS, DG, MOI, Backlog, Status, Done Date, Final No, Mail, Sequence, Doc_Rec_Remark, ECA_Required, ECA_Name, ECA_Ref_No, ECA_Send_Date, ECA_Status, ECA_Resubmit_Date
     list_display = (
         "date_display",
-        "enrollment",
-        "second_enrollment",
+        "enrollment_no",
+        "second_enrollment_id",
         "student_name",
         "tr_count",
         "ms_count",
@@ -1646,10 +1649,10 @@ class VerificationAdmin(CommonAdminMixin):
     )
     # doc_rec_remark is not a direct field on Verification (it comes from related DocRec).
     # We'll surface it in the edit form via get_form and sync on save.
-    search_fields = ("doc_rec__doc_rec_id", "enrollment__enrollment_no", "student_name", "final_no")
+    search_fields = ("doc_rec__doc_rec_id", "enrollment_no", "student_name", "final_no")
     # Use model-backed `doc_rec_date` (doc record date) instead of the old `date` field
     list_filter = ("status", "doc_rec_date")
-    autocomplete_fields = ("doc_rec", "enrollment", "second_enrollment")
+    autocomplete_fields = ("doc_rec",)
     readonly_fields = ("createdat", "updatedat")
 
     def date_display(self, obj):
@@ -1761,3 +1764,201 @@ class VerificationAdmin(CommonAdminMixin):
                 pass
         super().save_model(request, obj, form, change)
 
+
+# ============================================
+# Degree Management Admin
+# ============================================
+
+@admin.register(ConvocationMaster)
+class ConvocationMasterAdmin(admin.ModelAdmin):
+    """Admin for Convocation Master"""
+    list_display = ('convocation_no', 'convocation_title', 'convocation_date', 'month_year')
+    list_display_links = ('convocation_no', 'convocation_title')
+    search_fields = ('convocation_no', 'convocation_title', 'month_year')
+    list_filter = ('convocation_date',)
+    ordering = ('-convocation_date',)
+    
+    fieldsets = (
+        ('Convocation Details', {
+            'fields': ('convocation_no', 'convocation_title', 'convocation_date', 'month_year')
+        }),
+    )
+
+
+@admin.register(StudentDegree)
+class StudentDegreeAdmin(admin.ModelAdmin):
+    """Admin for Student Degree with bulk upload"""
+    list_display = (
+        'dg_sr_no', 'enrollment_no', 'student_name_dg', 'degree_name',
+        'specialisation', 'convocation_no', 'last_exam_year', 'class_obtain'
+    )
+    list_display_links = ('dg_sr_no', 'enrollment_no')
+    search_fields = (
+        'dg_sr_no', 'enrollment_no', 'student_name_dg', 'degree_name',
+        'institute_name_dg', 'seat_last_exam'
+    )
+    list_filter = ('convocation_no', 'last_exam_year', 'degree_name', 'class_obtain', 'dg_gender')
+    ordering = ('-id',)
+    list_per_page = 50
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('dg_sr_no', 'enrollment_no', 'student_name_dg', 'dg_gender', 'dg_address')
+        }),
+        ('Degree Details', {
+            'fields': (
+                'degree_name', 'specialisation', 'institute_name_dg',
+                'seat_last_exam', 'last_exam_month', 'last_exam_year', 'class_obtain'
+            )
+        }),
+        ('Additional Information', {
+            'fields': ('course_language', 'dg_rec_no', 'convocation_no')
+        }),
+    )
+    
+    actions = ['export_to_csv']
+    
+    def export_to_csv(self, request, queryset):
+        """Export selected degrees to CSV"""
+        from django.http import HttpResponse
+        
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="student_degrees.csv"'
+        
+        writer = csv.writer(response)
+        # Write header
+        writer.writerow([
+            'dg_sr_no', 'enrollment_no', 'student_name_dg', 'dg_address',
+            'institute_name_dg', 'degree_name', 'specialisation', 'seat_last_exam',
+            'last_exam_month', 'last_exam_year', 'class_obtain', 'course_language',
+            'dg_rec_no', 'dg_gender', 'convocation_no'
+        ])
+        
+        # Write data
+        for degree in queryset:
+            writer.writerow([
+                degree.dg_sr_no or '',
+                degree.enrollment_no or '',
+                degree.student_name_dg or '',
+                degree.dg_address or '',
+                degree.institute_name_dg or '',
+                degree.degree_name or '',
+                degree.specialisation or '',
+                degree.seat_last_exam or '',
+                degree.last_exam_month or '',
+                degree.last_exam_year or '',
+                degree.class_obtain or '',
+                degree.course_language or '',
+                degree.dg_rec_no or '',
+                degree.dg_gender or '',
+                degree.convocation_no or '',
+            ])
+        
+        return response
+    
+    export_to_csv.short_description = "Export selected to CSV"
+    
+    def get_urls(self):
+        """Add custom URLs for bulk upload"""
+        from django.urls import path
+        urls = super().get_urls()
+        custom_urls = [
+            path('bulk-upload/', self.admin_site.admin_view(self.bulk_upload_view), name='degree_bulk_upload'),
+        ]
+        return custom_urls + urls
+    
+    def bulk_upload_view(self, request):
+        """Handle bulk upload of degrees"""
+        from django.shortcuts import render, redirect
+        from django.contrib import messages
+        
+        if request.method == 'POST' and request.FILES.get('csv_file'):
+            csv_file = request.FILES['csv_file']
+            
+            try:
+                # Read CSV
+                decoded_file = csv_file.read().decode('utf-8')
+                io_string = io.StringIO(decoded_file)
+                reader = csv.DictReader(io_string)
+                
+                created_count = 0
+                updated_count = 0
+                errors = []
+                
+                for row_num, row in enumerate(reader, start=2):
+                    try:
+                        enrollment_no = row.get('enrollment_no', '').strip()
+                        if not enrollment_no:
+                            errors.append(f"Row {row_num}: Enrollment number is required")
+                            continue
+                        
+                        # Prepare data
+                        degree_data = {
+                            'dg_sr_no': row.get('dg_sr_no', '').strip() or None,
+                            'enrollment_no': enrollment_no,
+                            'student_name_dg': row.get('student_name_dg', '').strip() or None,
+                            'dg_address': row.get('dg_address', '').strip() or None,
+                            'institute_name_dg': row.get('institute_name_dg', '').strip() or None,
+                            'degree_name': row.get('degree_name', '').strip() or None,
+                            'specialisation': row.get('specialisation', '').strip() or None,
+                            'seat_last_exam': row.get('seat_last_exam', '').strip() or None,
+                            'last_exam_month': row.get('last_exam_month', '').strip() or None,
+                            'last_exam_year': int(row.get('last_exam_year', 0)) if row.get('last_exam_year', '').strip() else None,
+                            'class_obtain': row.get('class_obtain', '').strip() or None,
+                            'course_language': row.get('course_language', '').strip() or None,
+                            'dg_rec_no': row.get('dg_rec_no', '').strip() or None,
+                            'dg_gender': row.get('dg_gender', '').strip() or None,
+                            'convocation_no': int(row.get('convocation_no', 0)) if row.get('convocation_no', '').strip() else None,
+                        }
+                        
+                        # Check if record exists
+                        dg_sr_no = degree_data.get('dg_sr_no')
+                        if dg_sr_no:
+                            existing = StudentDegree.objects.filter(dg_sr_no=dg_sr_no).first()
+                            if existing:
+                                # Update
+                                for key, value in degree_data.items():
+                                    setattr(existing, key, value)
+                                existing.save()
+                                updated_count += 1
+                            else:
+                                # Create
+                                StudentDegree.objects.create(**degree_data)
+                                created_count += 1
+                        else:
+                            # Create without dg_sr_no
+                            StudentDegree.objects.create(**degree_data)
+                            created_count += 1
+                    
+                    except Exception as e:
+                        errors.append(f"Row {row_num}: {str(e)}")
+                
+                # Show results
+                if created_count > 0:
+                    messages.success(request, f'Successfully created {created_count} degree records.')
+                if updated_count > 0:
+                    messages.success(request, f'Successfully updated {updated_count} degree records.')
+                if errors:
+                    for error in errors[:10]:  # Show first 10 errors
+                        messages.warning(request, error)
+                    if len(errors) > 10:
+                        messages.warning(request, f'... and {len(errors) - 10} more errors.')
+                
+                return redirect('..')
+            
+            except Exception as e:
+                messages.error(request, f'Error processing file: {str(e)}')
+        
+        # Render upload form
+        context = {
+            'title': 'Bulk Upload Student Degrees',
+            'opts': self.model._meta,
+            'has_view_permission': self.has_view_permission(request),
+        }
+        return render(request, 'admin/degree_bulk_upload.html', context)
+    
+    def changelist_view(self, request, extra_context=None):
+        """Add bulk upload link to changelist"""
+        extra_context = extra_context or {}
+        extra_context['show_bulk_upload'] = True
+        return super().changelist_view(request, extra_context)

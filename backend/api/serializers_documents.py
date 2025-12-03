@@ -20,12 +20,7 @@ __all__ = [
 ]
 
 class VerificationSerializer(serializers.ModelSerializer):
-    enrollment_no = serializers.CharField(source="enrollment.enrollment_no", read_only=True)
-    second_enrollment_no = serializers.CharField(source="second_enrollment.enrollment_no", read_only=True)
-    # Expose the verification's doc record date as `doc_rec_date`.
-    # The `Verification` model now stores this value directly on the model
-    # (field name `doc_rec_date`) so the default ModelSerializer handling
-    # will include it. We keep this comment here for clarity.
+    # enrollment_no and second_enrollment_id are now string fields on the model
     doc_rec_id = serializers.PrimaryKeyRelatedField(queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False)
     doc_rec_key = serializers.CharField(source="doc_rec.doc_rec_id", read_only=True)
     # Expose `sequence` key expected by the frontend but use the DocRec identifier
@@ -35,54 +30,40 @@ class VerificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Verification
         fields = [
-            "id","doc_rec_date","vr_done_date","enrollment","enrollment_no","second_enrollment","second_enrollment_no",
+            "id","doc_rec_date","vr_done_date","enrollment_no","second_enrollment_id",
             "student_name","tr_count","ms_count","dg_count","moi_count","backlog_count","pay_rec_no","status",
             "final_no","mail_status","eca_required","eca_name","eca_ref_no","eca_send_date","eca_status",
-            "eca_resubmit_date","replaces_verification","remark","last_resubmit_date","last_resubmit_status",
+            "eca_resubmit_date","replaces_verification","remark","doc_rec_remark","last_resubmit_date","last_resubmit_status",
             "createdat","updatedat","updatedby","doc_rec_id","doc_rec_key","sequence","eca"
         ]
-        read_only_fields = ["id","createdat","updatedat","updatedby","eca_resend_count","eca_last_action_at","eca_last_to_email","enrollment_no","second_enrollment_no","last_resubmit_date","last_resubmit_status"]
+        read_only_fields = ["id","createdat","updatedat","updatedby","last_resubmit_date","last_resubmit_status"]
     def validate(self, attrs):
-        # Allow clients to submit enrollment as enrollment_no (string) or numeric PK.
-        # If serializer didn't resolve enrollment FK, try to resolve from request data.
-        try:
-            req = self.context.get('request')
-            if req and not attrs.get('enrollment'):
-                incoming = None
-                if isinstance(req.data, dict):
-                    incoming = req.data.get('enrollment') or req.data.get('enrollment_no')
-                if incoming:
-                    try:
-                        # try numeric PK first
-                        pk = int(str(incoming).strip())
-                        enr = Enrollment.objects.filter(pk=pk).first()
-                    except Exception:
-                        enr = Enrollment.objects.filter(enrollment_no__iexact=str(incoming).strip()).first()
-                    if enr:
-                        attrs['enrollment'] = enr
-        except Exception:
-            pass
-
+        # enrollment_no and second_enrollment_id are now simple string fields, no FK resolution needed
         status = attrs.get("status", getattr(self.instance, "status", None))
         final_no = attrs.get("final_no", getattr(self.instance, "final_no", None))
-        eca_required = attrs.get("eca_required", getattr(self.instance, "eca_required", False))
+        eca_required = attrs.get("eca_required", getattr(self.instance, "eca_required", None))
+        
+        # Validate document counts (now nullable smallint)
         for f in ("tr_count","ms_count","dg_count","moi_count","backlog_count"):
-            val = attrs.get(f, getattr(self.instance, f, 0) if self.instance else 0)
-            if val is not None and (val < 0 or val > 999):
-                raise serializers.ValidationError({f: "Must be between 0 and 999."})
+            val = attrs.get(f, getattr(self.instance, f, None) if self.instance else None)
+            if val is not None and (val < 0 or val > 32767):
+                raise serializers.ValidationError({f: "Must be between 0 and 32767."})
+        
+        # Validate status-final_no relationship
         if status == VerificationStatus.DONE and not final_no:
             raise serializers.ValidationError({"final_no": "Required when status is DONE."})
         if status in (VerificationStatus.PENDING, VerificationStatus.CANCEL) and final_no:
             raise serializers.ValidationError({"final_no": "Must be empty for PENDING or CANCEL."})
+        
+        # Validate ECA fields consistency
         eca_fields = ("eca_name","eca_ref_no","eca_send_date","eca_resubmit_date")
-        if not eca_required:
+        if eca_required is False:
             for ef in eca_fields:
                 if attrs.get(ef) is not None:
                     raise serializers.ValidationError("ECA details present but eca_required=False.")
         return attrs
     def create(self, validated):
-        if not validated.get("student_name") and validated.get("enrollment"):
-            validated["student_name"] = validated["enrollment"].student_name or ""
+        # No enrollment FK to populate student_name from anymore
         req = self.context.get("request")
         if req and req.user and req.user.is_authenticated:
             validated["updatedby"] = req.user
@@ -118,13 +99,7 @@ class VerificationSerializer(serializers.ModelSerializer):
                 dr.save(update_fields=['doc_rec_remark'])
         except Exception:
             pass
-        try:
-            if new_name and instance.enrollment and instance.enrollment.student_name != new_name:
-                enr = instance.enrollment
-                enr.student_name = new_name
-                enr.save(update_fields=["student_name","updated_at"])
-        except Exception:
-            pass
+        # enrollment_no is now a CharField, not FK - no need to sync student_name
         return resp
     def get_eca(self, obj):
         try:

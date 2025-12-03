@@ -132,7 +132,9 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset().order_by("-created_at")
         search = self.request.query_params.get("search", "").strip()
         if search:
-            norm_q = ''.join(search.split()).lower().replace('-', '').replace('_', '')
+            # Normalize search query: remove spaces, dashes, underscores, slashes, convert to lowercase
+            norm_q = ''.join(search.split()).lower().replace('-', '').replace('_', '').replace('/', '')
+            # Normalize database fields in the same way
             n_en = Replace(
                 Replace(
                     Replace(
@@ -160,8 +162,10 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
                 ),
                 Value('_'), Value('')
             )
+            # Use EXACT match (iexact) instead of contains to prevent partial matches
+            # This ensures 21BECE30228 doesn't match 1721BECE30228
             qs = qs.annotate(n_en=n_en, n_temp=n_temp, n_name=n_name).filter(
-                Q(n_en__contains=norm_q) | Q(n_temp__contains=norm_q) | Q(n_name__contains=norm_q)
+                Q(n_en__iexact=norm_q) | Q(n_temp__iexact=norm_q) | Q(n_name__contains=norm_q)
             )
         return qs
 
