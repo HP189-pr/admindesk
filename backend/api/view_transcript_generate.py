@@ -132,6 +132,8 @@ class TranscriptRequestViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         original_status = instance.mail_status
         original_remark = instance.transcript_remark
+        original_pdf_generate = instance.pdf_generate
+        original_tr_request_no = instance.tr_request_no
 
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
@@ -139,10 +141,14 @@ class TranscriptRequestViewSet(viewsets.ModelViewSet):
 
         instance.refresh_from_db()
         changed = {}
+        if instance.tr_request_no != original_tr_request_no:
+            changed["tr_request_no"] = instance.tr_request_no
         if instance.mail_status != original_status:
             changed["mail_status"] = instance.mail_status
         if (instance.transcript_remark or "") != (original_remark or ""):
             changed["transcript_remark"] = instance.transcript_remark
+        if (instance.pdf_generate or "") != (original_pdf_generate or ""):
+            changed["pdf_generate"] = instance.pdf_generate
 
         if changed:
             try:

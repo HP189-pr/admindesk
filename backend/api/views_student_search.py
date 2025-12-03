@@ -10,7 +10,7 @@ from django.db.models import Q, Prefetch
 from django.shortcuts import get_object_or_404
 
 from .domain_enrollment import Enrollment, StudentProfile
-from .domain_verification import Verification, InstVerificationStudent, MigrationRecord, ProvisionalRecord
+from .domain_verification import Verification, InstVerificationStudent, InstVerificationMain, MigrationRecord, ProvisionalRecord
 from .domain_courses import Institute, MainBranch, SubBranch
 from .domain_documents import DocRec
 

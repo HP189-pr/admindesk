@@ -51,6 +51,13 @@ TRANSCRIPT_FIELD_ALIASES: Dict[str, tuple[str, ...]] = {
         "trn_req_no",
         "tr-request-no",
     ),
+    # allow writing back pdf_generate to the sheet
+    "pdf_generate": (
+        "pdf_generate",
+        "pdf_generated",
+        "pdf generate",
+        "pdf",
+    ),
 }
 
 
@@ -238,8 +245,44 @@ def _apply_updates(
         return
 
     try:
-        for range_name, value in pending.items():
-            worksheet.update(range_name, [[value]])
+        import time
+        max_retries = 3
+        retry_delay = 2  # Start with 2 seconds
+        
+        for attempt in range(max_retries):
+            try:
+                # BATCH UPDATE: Use batch_update instead of individual updates
+                # This reduces API calls from N to 1, dramatically reducing quota usage
+                batch_data = [
+                    {
+                        'range': range_name,
+                        'values': [[value]]
+                    }
+                    for range_name, value in pending.items()
+                ]
+                
+                if len(batch_data) == 1:
+                    # Single cell - use simple update
+                    worksheet.update(batch_data[0]['range'], batch_data[0]['values'])
+                else:
+                    # Multiple cells - use batch update (1 API call instead of N)
+                    worksheet.batch_update(batch_data)
+                
+                break  # Success, exit retry loop
+            except Exception as exc:
+                # Check if it's a rate limit error (429)
+                if "429" in str(exc) or "Quota exceeded" in str(exc):
+                    if attempt < max_retries - 1:
+                        logger.info(f"Rate limit hit, waiting {retry_delay}s before retry {attempt + 2}/{max_retries}")
+                        time.sleep(retry_delay)
+                        retry_delay *= 2  # Exponential backoff: 2s, 4s, 8s
+                        continue
+                    else:
+                        # Max retries reached, log and fail gracefully
+                        logger.warning(f"Rate limit exceeded after {max_retries} retries, dropping update")
+                        return  # Don't raise, just skip this update
+                # Re-raise if not rate limit error
+                raise
     except Exception as exc:  # pragma: no cover
         logger.warning("Failed to push updates %s to sheet %s: %s", pending, sheet_id, exc)
 
@@ -302,6 +345,8 @@ def sync_transcript_request_to_sheet(instance, changed_fields: Mapping[str, obje
         updates["mail_status"] = _render_transcript_status(instance.mail_status)
     if "transcript_remark" in changed_fields:
         updates["transcript_remark"] = getattr(instance, "transcript_remark", "")
+    if "pdf_generate" in changed_fields:
+        updates["pdf_generate"] = getattr(instance, "pdf_generate", "")
     if updates:
         _apply_updates(sheet_id, gid, row_number, updates, TRANSCRIPT_FIELD_ALIASES)
 
@@ -414,20 +459,51 @@ def import_transcript_requests_from_sheet(sheet_id: Optional[str] = None, worksh
 
         # try to find existing instance
         instance = None
-        # Prefer matching by explicit numeric TR No when present in the sheet
-        if tr_request_no_raw:
+        # Primary matching strategy: Try to match by composite key (tr_request_no + requested_at)
+        # This ensures we correctly identify records even when TR numbers are reused
+        if tr_request_no_raw and requested_at:
             try:
                 tr_lookup = int(str(tr_request_no_raw).strip())
-                instance = TranscriptRequest.objects.filter(tr_request_no=tr_lookup).first()
+                if tr_lookup > 0:  # Only match on valid TR numbers (not 0)
+                    # Try to find by TR number AND requested date
+                    instance = TranscriptRequest.objects.filter(
+                        tr_request_no=tr_lookup,
+                        requested_at=requested_at
+                    ).first()
             except Exception:
                 instance = None
-        # fallback to matching by request_ref_no, enrollment_no, or submit_mail
+        
+        # Fallback 1: Match by tr_request_no only if no date match found
+        if not instance and tr_request_no_raw:
+            try:
+                tr_lookup = int(str(tr_request_no_raw).strip())
+                if tr_lookup > 0:
+                    instance = TranscriptRequest.objects.filter(tr_request_no=tr_lookup).first()
+            except Exception:
+                instance = None
+        
+        # Fallback 2: Match by request_ref_no (unique reference)
         if not instance and request_ref_no:
-            instance = TranscriptRequest.objects.filter(request_ref_no__iexact=str(request_ref_no)).first()
+            ref_str = str(request_ref_no).strip()
+            if ref_str:
+                instance = TranscriptRequest.objects.filter(request_ref_no__iexact=ref_str).first()
+        
+        # Fallback 3: Match by composite of enrollment + date (more specific than enrollment alone)
+        if not instance and enrollment_no and requested_at:
+            enroll_str = str(enrollment_no).strip()
+            if enroll_str:
+                instance = TranscriptRequest.objects.filter(
+                    enrollment_no__iexact=enroll_str,
+                    requested_at=requested_at
+                ).first()
+        
+        # Fallback 4: Match by enrollment only (last resort, may be ambiguous)
         if not instance and enrollment_no:
-            instance = TranscriptRequest.objects.filter(enrollment_no__iexact=str(enrollment_no)).first()
-        if not instance and submit_mail:
-            instance = TranscriptRequest.objects.filter(submit_mail__iexact=str(submit_mail)).first()
+            enroll_str = str(enrollment_no).strip()
+            if enroll_str:
+                # Only use this if we don't have tr_request_no (to avoid wrong matches)
+                if not tr_request_no_raw or int(str(tr_request_no_raw).strip() or 0) == 0:
+                    instance = TranscriptRequest.objects.filter(enrollment_no__iexact=enroll_str).first()
 
         if instance:
             changed = {}
@@ -435,53 +511,62 @@ def import_transcript_requests_from_sheet(sheet_id: Optional[str] = None, worksh
             if (getattr(instance, 'request_ref_no', '') or '') != (str(request_ref_no) if request_ref_no else ''):
                 instance.request_ref_no = str(request_ref_no or '')
                 changed['request_ref_no'] = instance.request_ref_no
-            if (instance.enrollment_no or '') != (str(enrollment_no) if enrollment_no else ''):
-                instance.enrollment_no = str(enrollment_no or '')
+            
+            # Ensure NOT NULL fields are never empty
+            new_enrollment = str(enrollment_no or '').strip()
+            if new_enrollment and (instance.enrollment_no or '') != new_enrollment:
+                instance.enrollment_no = new_enrollment
                 changed['enrollment_no'] = instance.enrollment_no
-            if (instance.student_name or '') != (str(student_name) if student_name else ''):
-                instance.student_name = str(student_name or '')
+            
+            new_student_name = str(student_name or '').strip()
+            if new_student_name and (instance.student_name or '') != new_student_name:
+                instance.student_name = new_student_name
                 changed['student_name'] = instance.student_name
-            if (instance.institute_name or '') != (str(institute_name) if institute_name else ''):
-                instance.institute_name = str(institute_name or '')
+            
+            new_institute = str(institute_name or '').strip()
+            if new_institute and (instance.institute_name or '') != new_institute:
+                instance.institute_name = new_institute
                 changed['institute_name'] = instance.institute_name
+            
             # treat receipt and remark as nullable: store None when sheet cell blank
-            new_receipt = ''
+            new_receipt = None
             if transcript_receipt is not None and str(transcript_receipt).strip() != '':
                 new_receipt = str(transcript_receipt).strip()
-            if (instance.transcript_receipt or '') != new_receipt:
+            if (instance.transcript_receipt or '') != (new_receipt or ''):
                 instance.transcript_receipt = new_receipt
                 changed['transcript_receipt'] = instance.transcript_receipt
 
-            new_remark = ''
+            new_remark = None
             if transcript_remark is not None and str(transcript_remark).strip() != '':
                 new_remark = str(transcript_remark).strip()
-            if (instance.transcript_remark or '') != new_remark:
+            if (instance.transcript_remark or '') != (new_remark or ''):
                 instance.transcript_remark = new_remark
                 changed['transcript_remark'] = instance.transcript_remark
-            if (instance.submit_mail or '') != (str(submit_mail) if submit_mail else ''):
-                instance.submit_mail = str(submit_mail or '')
+            
+            new_submit_mail = str(submit_mail or '').strip()
+            if new_submit_mail and (instance.submit_mail or '') != new_submit_mail:
+                instance.submit_mail = new_submit_mail
                 changed['submit_mail'] = instance.submit_mail
-            # Normalize pdf_generate: only store 'yes' (lowercase) when sheet
-            # contains a yes-like value; otherwise store empty string.
-            # pdf_generate is nullable: store 'Yes' or None
-            pdf_val = ''
+            
+            # Normalize pdf_generate: nullable field, store 'Yes' or None
+            pdf_val = None
             if pdf_generate is not None and str(pdf_generate).strip().lower() == 'yes':
                 pdf_val = 'Yes'
-            if (instance.pdf_generate or '') != pdf_val:
+            if (instance.pdf_generate or '') != (pdf_val or ''):
                 instance.pdf_generate = pdf_val
                 changed['pdf_generate'] = instance.pdf_generate
 
             # For sync, treat the Google Sheet as source of truth. Store the
             # raw sheet value (trimmed) in the DB. If the sheet cell is blank,
-            # store an empty string. When not forcing, only update when the
+            # store 'pending' as default. When not forcing, only update when the
             # sheet provides a non-empty value; when forcing, always overwrite
-            # to exactly match the sheet (including blank -> empty string).
+            # to exactly match the sheet (including blank -> pending).
             mail_raw = None
             if mail_status_raw is not None:
                 mail_raw = str(mail_status_raw).strip()
 
             if force_overwrite_status:
-                final_status = mail_raw or ""
+                final_status = mail_raw or TranscriptRequest.STATUS_PENDING
                 if instance.mail_status != final_status:
                     instance.mail_status = final_status
                     changed['mail_status'] = instance.mail_status
@@ -490,6 +575,10 @@ def import_transcript_requests_from_sheet(sheet_id: Optional[str] = None, worksh
                     if instance.mail_status != mail_raw:
                         instance.mail_status = mail_raw
                         changed['mail_status'] = instance.mail_status
+                elif not instance.mail_status:
+                    # Ensure mail_status is never empty (NOT NULL constraint)
+                    instance.mail_status = TranscriptRequest.STATUS_PENDING
+                    changed['mail_status'] = instance.mail_status
 
             # persist raw_row row number
             raw_copy = dict(raw) if isinstance(raw, Mapping) else {}
@@ -499,17 +588,23 @@ def import_transcript_requests_from_sheet(sheet_id: Optional[str] = None, worksh
                 changed['raw_row'] = instance.raw_row
 
             # handle transcript request number updates (tr_request_no)
+            # Always update tr_request_no from the sheet (sheet is source of truth)
             try:
-                tr_val = None
+                tr_val = 0
                 if tr_request_no_raw:
                     tr_val = int(str(tr_request_no_raw).strip())
-                # if instance missing tr_request_no and sheet has none, we'll assign later
-                if tr_val is not None and instance.tr_request_no != tr_val:
+                # Always update tr_request_no if different, even if it was previously set
+                # This handles cases where TR number changes in the sheet
+                if instance.tr_request_no != tr_val:
                     instance.tr_request_no = tr_val
                     changed['tr_request_no'] = instance.tr_request_no
-            except Exception:
-                # ignore parse errors; do not overwrite existing numeric tr_request_no
-                pass
+                    logger.info(f"Updated tr_request_no for record {instance.id} from {instance.tr_request_no} to {tr_val}")
+            except Exception as e:
+                # Log parse errors but keep existing tr_request_no or default to 0
+                logger.warning(f"Failed to parse tr_request_no '{tr_request_no_raw}' for row {row_number}: {e}")
+                if not instance.tr_request_no:
+                    instance.tr_request_no = 0
+                    changed['tr_request_no'] = instance.tr_request_no
 
             if changed:
                 try:
@@ -529,35 +624,56 @@ def import_transcript_requests_from_sheet(sheet_id: Optional[str] = None, worksh
                 _persist_row_number(instance, row_number)
         else:
             try:
-                # determine tr_request_no for new object (may be assigned or left None)
-                tr_val = None
+                # determine tr_request_no for new object (default to 0 if not provided)
+                tr_val = 0
                 if tr_request_no_raw:
                     try:
                         tr_val = int(str(tr_request_no_raw).strip())
                     except Exception:
-                        tr_val = None
+                        tr_val = 0
 
                 # Normalize pdf_generate for storage: store 'Yes' when sheet
-                # contains a yes-like value (case-insensitive); otherwise store None
+                # contains a yes-like value (case-insensitive); otherwise store empty string or None
                 pdf_val = ''
                 if pdf_generate is not None and str(pdf_generate).strip().lower() == 'yes':
                     pdf_val = 'Yes'
 
-                # Determine mail_status: store raw sheet value (or empty string)
+                # Determine mail_status: store raw sheet value (default to 'pending' if empty)
                 ms = str(mail_status_raw).strip() if mail_status_raw is not None else ""
+                if not ms:
+                    ms = TranscriptRequest.STATUS_PENDING
 
+                # Ensure required NOT NULL fields have valid values
+                enrollment_no_val = str(enrollment_no or '').strip()
+                if not enrollment_no_val:
+                    logger.warning(f"Skipping row {row_number}: enrollment_no is required but empty")
+                    continue
+                
+                student_name_val = str(student_name or '').strip()
+                if not student_name_val:
+                    logger.warning(f"Skipping row {row_number}: student_name is required but empty")
+                    continue
+                
+                institute_name_val = str(institute_name or '').strip()
+                if not institute_name_val:
+                    logger.warning(f"Skipping row {row_number}: institute_name is required but empty")
+                    continue
+
+                # tr_request_no is required (NOT NULL)
+                # request_ref_no, submit_mail, transcript_receipt, transcript_remark, pdf_generate, mail_status can be NULL
+                
                 obj = TranscriptRequest(
                     requested_at=requested_at,
-                    request_ref_no=str(request_ref_no or ''),
+                    request_ref_no=(str(request_ref_no).strip() if request_ref_no not in (None, '') and str(request_ref_no).strip() != '' else None),
                     tr_request_no=tr_val,
-                    enrollment_no=str(enrollment_no or ''),
-                    student_name=str(student_name or ''),
-                    institute_name=str(institute_name or ''),
-                    transcript_receipt=(str(transcript_receipt).strip() if transcript_receipt not in (None, '') and str(transcript_receipt).strip() != '' else ''),
-                    transcript_remark=(str(transcript_remark).strip() if transcript_remark not in (None, '') and str(transcript_remark).strip() != '' else ''),
-                    submit_mail=str(submit_mail or ''),
-                    pdf_generate=pdf_val,
-                    mail_status=ms,
+                    enrollment_no=enrollment_no_val,
+                    student_name=student_name_val,
+                    institute_name=institute_name_val,
+                    transcript_receipt=(str(transcript_receipt).strip() if transcript_receipt not in (None, '') and str(transcript_receipt).strip() != '' else None),
+                    transcript_remark=(str(transcript_remark).strip() if transcript_remark not in (None, '') and str(transcript_remark).strip() != '' else None),
+                    submit_mail=(str(submit_mail).strip() if submit_mail not in (None, '') and str(submit_mail).strip() != '' else None),
+                    pdf_generate=(pdf_val if pdf_val else None),
+                    mail_status=(ms if ms else None),
                     raw_row=(dict(raw) if isinstance(raw, Mapping) else {}),
                 )
                 obj.raw_row = obj.raw_row or {}

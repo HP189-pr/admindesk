@@ -8,6 +8,7 @@ class ApiConfig(AppConfig):
         # Import signal handlers to wire post_save synchronization
         try:
             from . import signals  # noqa: F401
+            from . import signals_transcript  # noqa: F401
         except Exception:
             # Avoid raising during migrations or other import-time ops
             pass

@@ -220,6 +220,32 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
     const row = rows.find((r) => r.id === rowId);
     if (!row) return;
     const form = overrideForm || editForm;
+    
+    // Validate required NOT NULL fields before building payload
+    const enrollment = form.enrollment_no ?? row.enrollment_no ?? '';
+    if (!enrollment.trim()) {
+      setFlashMessage('error', 'Enrollment number is required and cannot be empty.');
+      return;
+    }
+    
+    const studentName = form.student_name ?? row.student_name ?? '';
+    if (!studentName.trim()) {
+      setFlashMessage('error', 'Student name is required and cannot be empty.');
+      return;
+    }
+    
+    const instituteName = form.institute_name ?? row.institute_name ?? '';
+    if (!instituteName.trim()) {
+      setFlashMessage('error', 'Institute name is required and cannot be empty.');
+      return;
+    }
+    
+    const submitMail = form.submit_mail ?? row.submit_mail ?? '';
+    if (!submitMail.trim()) {
+      setFlashMessage('error', 'Submit mail is required and cannot be empty.');
+      return;
+    }
+    
     const payload = {};
     const normalizeMailStatus = (value) => {
       if (!value || String(value).trim() === '') return 'progress';

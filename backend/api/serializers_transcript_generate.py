@@ -13,7 +13,7 @@ __all__ = [
 
 class TranscriptRequestSerializer(serializers.ModelSerializer):
     created = serializers.DateTimeField(read_only=True)
-    tr_request_no = serializers.SerializerMethodField()
+    tr_request_no = serializers.IntegerField(required=True, allow_null=False)
 
     class Meta:
         model = TranscriptRequest
@@ -39,12 +39,25 @@ class TranscriptRequestSerializer(serializers.ModelSerializer):
             "raw_row",
             "created",
         ]
+        # Match database NULL constraints
+        extra_kwargs = {
+            # NOT NULL fields - required
+            'tr_request_no': {'required': True, 'allow_null': False},
+            'enrollment_no': {'required': True, 'allow_blank': False},
+            'student_name': {'required': True, 'allow_blank': False},
+            'institute_name': {'required': True, 'allow_blank': False},
+            # NULL allowed fields
+            'request_ref_no': {'allow_blank': True, 'allow_null': True},
+            'transcript_receipt': {'allow_blank': True, 'allow_null': True},
+            'transcript_remark': {'allow_blank': True, 'allow_null': True},
+            'submit_mail': {'allow_blank': True, 'allow_null': True},
+            'pdf_generate': {'allow_blank': True, 'allow_null': True},
+            'mail_status': {'allow_blank': True, 'allow_null': True},
+        }
 
     def validate_mail_status(self, value: str) -> str:
         if not value:
-            # Treat empty incoming mail_status as Pending by default so the
-            # API and sheet-import behavior are consistent with a default
-            # 'Pending' state when no explicit status is provided.
+            # Treat empty incoming mail_status as Pending by default
             return TranscriptRequest.STATUS_PENDING
         normalized = TranscriptRequest.normalize_status(value)
         if normalized is None:
@@ -57,7 +70,27 @@ class TranscriptRequestSerializer(serializers.ModelSerializer):
                 f"Invalid mail status '{value}'. Use one of: {choices_text}."
             )
         return normalized
-
-    def get_tr_request_no(self, obj):
-        # expose tr_request_no if the model has it (DB migration may have added it)
-        return getattr(obj, 'tr_request_no', None)
+    
+    def validate_tr_request_no(self, value):
+        # tr_request_no is required (NOT NULL in database)
+        if value is None:
+            raise serializers.ValidationError("TR Request number is required and cannot be null.")
+        return value
+    
+    def validate_enrollment_no(self, value):
+        # enrollment_no is required (NOT NULL in database)
+        if not value or not str(value).strip():
+            raise serializers.ValidationError("Enrollment number is required and cannot be empty.")
+        return str(value).strip()
+    
+    def validate_student_name(self, value):
+        # student_name is required (NOT NULL in database)
+        if not value or not str(value).strip():
+            raise serializers.ValidationError("Student name is required and cannot be empty.")
+        return str(value).strip()
+    
+    def validate_institute_name(self, value):
+        # institute_name is required (NOT NULL in database)
+        if not value or not str(value).strip():
+            raise serializers.ValidationError("Institute name is required and cannot be empty.")
+        return str(value).strip()

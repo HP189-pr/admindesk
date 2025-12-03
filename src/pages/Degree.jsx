@@ -170,23 +170,11 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const actions = [
-        { id: '+', label: '➕' },
-        { id: 'search', label: '🔍' },
-        { id: 'report', label: '📄 Report' },
-    ];
+    const actions = ["➕", "🔍", "📄 Report"];
 
-    const handleTopbarSelect = (actionId) => {
-        if (actionId === '+') {
-            setSelectedMenu('➕');
-            setPanelOpen(true);
-        } else if (actionId === 'search') {
-            setSelectedMenu('🔍');
-            setPanelOpen(true);
-        } else if (actionId === 'report') {
-            setSelectedMenu('📄 Report');
-            setPanelOpen(true);
-        }
+    const handleTopbarSelect = (action) => {
+        setSelectedMenu(action);
+        setPanelOpen(true);
     };
 
     return (
@@ -201,6 +189,7 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
                 leftSlot={
                     <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-indigo-600 text-white text-xl">
                         🎓
+                    
                     </div>
                 }
                 rightSlot={
@@ -312,7 +301,6 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
                                     <th className="border p-2 text-left">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
                             <tbody>
                             {loading ? (
                                 <tr>

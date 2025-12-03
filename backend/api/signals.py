@@ -4,6 +4,7 @@ from django.utils import timezone
 from django.conf import settings
 from .models import DocRec, Verification, MigrationRecord, ProvisionalRecord, InstVerificationMain
 from .models import PayBy, VerificationStatus
+from .domain_transcript_generate import TranscriptRequest
 
 
 @receiver(post_save, sender=DocRec)
@@ -281,3 +282,13 @@ def inst_verification_post_delete(sender, instance: InstVerificationMain, **kwar
             DocRec.objects.filter(doc_rec_id=doc_rec_id).delete()
     except Exception:
         pass
+
+
+# ============================================================================
+# TRANSCRIPT REQUEST SYNC
+# ============================================================================
+# Note: Transcript request sync is handled directly in TranscriptRequestViewSet.update()
+# method, matching the pattern used by GoogleFormSubmissionViewSet (official mail requests).
+# This ensures sync only happens on explicit user updates via the API, not on bulk
+# operations or sheet imports.
+

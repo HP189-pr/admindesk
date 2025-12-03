@@ -38,24 +38,24 @@ class TranscriptRequest(models.Model):
     }
 
     requested_at = models.DateTimeField(db_column="trn_reqest_date")
-    request_ref_no = models.CharField(max_length=128, db_column="trn_reqest_ref_no", blank=True)
-    # Optional numeric transcript request number (added from Google Sheet as TR No).
-    # Use BigIntegerField to accommodate large numbers; allow null/blank for
-    # backward compatibility with existing rows.
-    tr_request_no = models.BigIntegerField(null=True, blank=True, db_column="tr_request_no")
-    enrollment_no = models.CharField(max_length=64, db_column="enrollment_no", blank=True)
-    student_name = models.CharField(max_length=255, db_column="student_name", blank=True)
-    institute_name = models.CharField(max_length=255, db_column="institute_name", blank=True)
-    transcript_receipt = models.CharField(max_length=255, db_column="trnscript_receipt", blank=True)
-    transcript_remark = models.TextField(db_column="transcript_remark", blank=True)
-    submit_mail = models.CharField(max_length=255, db_column="submit_mail", blank=True)
-    pdf_generate = models.CharField(max_length=64, db_column="pdf_generate", blank=True)
+    request_ref_no = models.CharField(max_length=128, db_column="trn_reqest_ref_no", blank=True, null=True)
+    # Transcript request number from Google Sheet (TR No).
+    # NOT NULL in database with no default - must be set explicitly.
+    tr_request_no = models.BigIntegerField(db_column="tr_request_no")
+    enrollment_no = models.CharField(max_length=64, db_column="enrollment_no")
+    student_name = models.CharField(max_length=255, db_column="student_name")
+    institute_name = models.CharField(max_length=255, db_column="institute_name")
+    transcript_receipt = models.CharField(max_length=255, db_column="trnscript_receipt", blank=True, null=True)
+    transcript_remark = models.TextField(db_column="transcript_remark", blank=True, null=True)
+    submit_mail = models.CharField(max_length=255, db_column="submit_mail", blank=True, null=True)
+    pdf_generate = models.CharField(max_length=64, db_column="pdf_generate", blank=True, null=True)
     mail_status = models.CharField(
         max_length=32,
         choices=STATUS_CHOICES,
         default=STATUS_PENDING,
         db_column="mail_status",
         blank=True,
+        null=True,
     )
     raw_row = models.JSONField(null=True, blank=True, db_column="raw_row")
     created = models.DateTimeField(auto_now_add=True, db_column="created")
