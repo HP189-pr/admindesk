@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }) => {
         const token = localStorage.getItem("access_token");
     
         if (!token) {
-            logout();
+            setLoading(false);
             return;
         }
     
@@ -31,7 +31,10 @@ export const AuthProvider = ({ children }) => {
             );
         } catch (error) {
             console.error("❌ Token Verification Failed:", error.response?.data || error.message);
-            await refreshToken();
+            const refreshed = await refreshToken();
+            if (!refreshed) {
+                setLoading(false);
+            }
             return;
         }
     
@@ -85,13 +88,16 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         const token = localStorage.getItem("access_token");
-        if (token) {
-            fetchUserProfile();
-        } else {
-            setUser(null);
-            setProfilePicture("/profilepic/default-profile.png");
-            setLoading(false);
-        }
+        const initAuth = async () => {
+            if (token) {
+                await fetchUserProfile();
+            } else {
+                setUser(null);
+                setProfilePicture("/profilepic/default-profile.png");
+                setLoading(false);
+            }
+        };
+        initAuth();
     }, []);
 
     // 🔹 Login function
@@ -175,7 +181,8 @@ export const AuthProvider = ({ children }) => {
         try {
             const { data } = await axios.post(`${API_BASE_URL}/api/token/refresh/`, { refresh: refresh_token });
             localStorage.setItem("access_token", data.access);
-            await fetchUserProfile();
+            // Don't call fetchUserProfile here to avoid loop
+            setLoading(false);
             return true;
         } catch (error) {
             console.error("❌ Token Refresh Error:", error.response?.data || error.message);

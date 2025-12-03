@@ -4,7 +4,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import Degree from './Degree';
+import Degree from '../pages/Degree';
 
 const AuthDegree = () => {
     const [hasAccess, setHasAccess] = useState(false);
@@ -17,7 +17,7 @@ const AuthDegree = () => {
 
     const checkDegreeAccess = async () => {
         try {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('access_token');
             if (!token) {
                 setError('No authentication token found. Please login.');
                 setLoading(false);
@@ -33,15 +33,29 @@ const AuthDegree = () => {
             });
 
             // Check if user has access to 'degree' module or is admin
-            const permissions = response.data;
-            const hasDegreeAccess = permissions.some(
+            const data = response.data;
+            console.log('Permissions API response:', data);
+            
+            // Check if user is admin first (admin has access to everything)
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const isAdmin = user.is_admin || false;
+            
+            if (isAdmin) {
+                console.log('User is admin, granting access');
+                setHasAccess(true);
+                setLoading(false);
+                return;
+            }
+            
+            // Check module permissions
+            const permissions = Array.isArray(data) ? data : (Array.isArray(data?.results) ? data.results : []);
+            console.log('Permissions array:', permissions);
+            
+            const hasDegreeAccess = permissions.length > 0 && permissions.some(
                 perm => perm.module?.module_name?.toLowerCase() === 'degree' && perm.has_access
             );
-            const isAdmin = permissions.some(
-                perm => perm.module?.module_name?.toLowerCase() === 'admin' && perm.has_access
-            );
 
-            if (hasDegreeAccess || isAdmin) {
+            if (hasDegreeAccess) {
                 setHasAccess(true);
             } else {
                 setError('You do not have permission to access the Degree module.');

@@ -451,6 +451,7 @@ def get_import_spec(model) -> Dict[str, Any]:
     MigrationRecord: {"allowed_columns": ["doc_rec_id", "enrollment_no", "student_name", "institute_id", "maincourse_id", "subcourse_id", "mg_number", "mg_date", "exam_year", "admission_year", "exam_details", "mg_status", "pay_rec_no"], "required_keys": ["doc_rec_id"], "create_requires": ["doc_rec_id"]},
     ProvisionalRecord: {"allowed_columns": ["doc_rec_id", "enrollment_no", "student_name", "institute_id", "maincourse_id", "subcourse_id", "prv_number", "prv_date", "class_obtain", "prv_degree_name", "passing_year", "prv_status", "pay_rec_no"], "required_keys": ["doc_rec_id"], "create_requires": ["doc_rec_id"]},
     Verification: {"allowed_columns": ["doc_rec_id", "date", "enrollment_no", "second_enrollment_no", "student_name", "no_of_transcript", "no_of_marksheet", "no_of_degree", "no_of_moi", "no_of_backlog", "status", "final_no", "pay_rec_no", "vr_done_date", "mail_status", "eca_required", "eca_name", "eca_ref_no", "eca_submit_date", "eca_remark", "doc_rec_remark"], "required_keys": ["doc_rec_id"], "create_requires": ["doc_rec_id"]},
+    StudentDegree: {"allowed_columns": ["dg_sr_no", "enrollment_no", "student_name_dg", "dg_address", "institute_name_dg", "degree_name", "specialisation", "seat_last_exam", "last_exam_month", "last_exam_year", "class_obtain", "course_language", "dg_rec_no", "dg_gender", "convocation_no"], "required_keys": ["enrollment_no"], "create_requires": ["enrollment_no"]},
     }
     for klass, spec in specs.items():
         if issubclass(model, klass):
@@ -1316,6 +1317,82 @@ class ExcelUploadMixin:
                                 )
                                 if created: counts["created"] += 1; add_log(i, "created", "Created", en_no)
                                 else: counts["updated"] += 1; add_log(i, "updated", "Updated", en_no)
+                        elif issubclass(self.model, StudentDegree) and sheet_norm in ("studentdegree", "degree"):
+                            for i, (_, r) in enumerate(df.iterrows(), start=2):
+                                en_no = str(r.get("enrollment_no", "")).strip()
+                                if not en_no:
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Missing enrollment_no"); continue
+                                
+                                # Extract year from last_exam_year
+                                last_exam_year = None
+                                if "last_exam_year" in eff:
+                                    try:
+                                        year_val = r.get("last_exam_year")
+                                        if year_val not in (None, ""):
+                                            last_exam_year = int(year_val)
+                                    except Exception:
+                                        last_exam_year = None
+                                
+                                # Extract convocation_no
+                                convocation_no = None
+                                if "convocation_no" in eff:
+                                    try:
+                                        conv_val = r.get("convocation_no")
+                                        if conv_val not in (None, ""):
+                                            convocation_no = int(conv_val)
+                                    except Exception:
+                                        convocation_no = None
+                                
+                                # Check if dg_sr_no exists for update/create logic
+                                dg_sr_no = str(r.get("dg_sr_no", "")).strip() or None
+                                
+                                if dg_sr_no:
+                                    # Update or create based on dg_sr_no
+                                    obj, created = StudentDegree.objects.update_or_create(
+                                        dg_sr_no=dg_sr_no,
+                                        defaults={
+                                            "enrollment_no": en_no,
+                                            **({"student_name_dg": r.get("student_name_dg") or None} if "student_name_dg" in eff else {}),
+                                            **({"dg_address": r.get("dg_address") or None} if "dg_address" in eff else {}),
+                                            **({"institute_name_dg": r.get("institute_name_dg") or None} if "institute_name_dg" in eff else {}),
+                                            **({"degree_name": r.get("degree_name") or None} if "degree_name" in eff else {}),
+                                            **({"specialisation": r.get("specialisation") or None} if "specialisation" in eff else {}),
+                                            **({"seat_last_exam": r.get("seat_last_exam") or None} if "seat_last_exam" in eff else {}),
+                                            **({"last_exam_month": r.get("last_exam_month") or None} if "last_exam_month" in eff else {}),
+                                            **({"last_exam_year": last_exam_year} if "last_exam_year" in eff else {}),
+                                            **({"class_obtain": r.get("class_obtain") or None} if "class_obtain" in eff else {}),
+                                            **({"course_language": r.get("course_language") or None} if "course_language" in eff else {}),
+                                            **({"dg_rec_no": r.get("dg_rec_no") or None} if "dg_rec_no" in eff else {}),
+                                            **({"dg_gender": r.get("dg_gender") or None} if "dg_gender" in eff else {}),
+                                            **({"convocation_no": convocation_no} if "convocation_no" in eff else {}),
+                                        }
+                                    )
+                                else:
+                                    # Create new record without dg_sr_no
+                                    try:
+                                        obj = StudentDegree.objects.create(
+                                            enrollment_no=en_no,
+                                            **({"dg_sr_no": None}),
+                                            **({"student_name_dg": r.get("student_name_dg") or None} if "student_name_dg" in eff else {}),
+                                            **({"dg_address": r.get("dg_address") or None} if "dg_address" in eff else {}),
+                                            **({"institute_name_dg": r.get("institute_name_dg") or None} if "institute_name_dg" in eff else {}),
+                                            **({"degree_name": r.get("degree_name") or None} if "degree_name" in eff else {}),
+                                            **({"specialisation": r.get("specialisation") or None} if "specialisation" in eff else {}),
+                                            **({"seat_last_exam": r.get("seat_last_exam") or None} if "seat_last_exam" in eff else {}),
+                                            **({"last_exam_month": r.get("last_exam_month") or None} if "last_exam_month" in eff else {}),
+                                            **({"last_exam_year": last_exam_year} if "last_exam_year" in eff else {}),
+                                            **({"class_obtain": r.get("class_obtain") or None} if "class_obtain" in eff else {}),
+                                            **({"course_language": r.get("course_language") or None} if "course_language" in eff else {}),
+                                            **({"dg_rec_no": r.get("dg_rec_no") or None} if "dg_rec_no" in eff else {}),
+                                            **({"dg_gender": r.get("dg_gender") or None} if "dg_gender" in eff else {}),
+                                            **({"convocation_no": convocation_no} if "convocation_no" in eff else {}),
+                                        )
+                                        created = True
+                                    except Exception as e:
+                                        counts["skipped"] += 1; add_log(i, "skipped", f"Failed to create: {e}"); continue
+                                
+                                if created: counts["created"] += 1; add_log(i, "created", "Created", dg_sr_no or en_no)
+                                else: counts["updated"] += 1; add_log(i, "updated", "Updated", dg_sr_no or en_no)
                         else:
                             return JsonResponse({"error": "Sheet name does not match expected for this model."}, status=400)
                     except Exception as e:
@@ -1786,8 +1863,8 @@ class ConvocationMasterAdmin(admin.ModelAdmin):
 
 
 @admin.register(StudentDegree)
-class StudentDegreeAdmin(admin.ModelAdmin):
-    """Admin for Student Degree with bulk upload"""
+class StudentDegreeAdmin(CommonAdminMixin):
+    """Admin for Student Degree with Excel bulk upload"""
     list_display = (
         'dg_sr_no', 'enrollment_no', 'student_name_dg', 'degree_name',
         'specialisation', 'convocation_no', 'last_exam_year', 'class_obtain'
@@ -1857,108 +1934,3 @@ class StudentDegreeAdmin(admin.ModelAdmin):
         return response
     
     export_to_csv.short_description = "Export selected to CSV"
-    
-    def get_urls(self):
-        """Add custom URLs for bulk upload"""
-        from django.urls import path
-        urls = super().get_urls()
-        custom_urls = [
-            path('bulk-upload/', self.admin_site.admin_view(self.bulk_upload_view), name='degree_bulk_upload'),
-        ]
-        return custom_urls + urls
-    
-    def bulk_upload_view(self, request):
-        """Handle bulk upload of degrees"""
-        from django.shortcuts import render, redirect
-        from django.contrib import messages
-        
-        if request.method == 'POST' and request.FILES.get('csv_file'):
-            csv_file = request.FILES['csv_file']
-            
-            try:
-                # Read CSV
-                decoded_file = csv_file.read().decode('utf-8')
-                io_string = io.StringIO(decoded_file)
-                reader = csv.DictReader(io_string)
-                
-                created_count = 0
-                updated_count = 0
-                errors = []
-                
-                for row_num, row in enumerate(reader, start=2):
-                    try:
-                        enrollment_no = row.get('enrollment_no', '').strip()
-                        if not enrollment_no:
-                            errors.append(f"Row {row_num}: Enrollment number is required")
-                            continue
-                        
-                        # Prepare data
-                        degree_data = {
-                            'dg_sr_no': row.get('dg_sr_no', '').strip() or None,
-                            'enrollment_no': enrollment_no,
-                            'student_name_dg': row.get('student_name_dg', '').strip() or None,
-                            'dg_address': row.get('dg_address', '').strip() or None,
-                            'institute_name_dg': row.get('institute_name_dg', '').strip() or None,
-                            'degree_name': row.get('degree_name', '').strip() or None,
-                            'specialisation': row.get('specialisation', '').strip() or None,
-                            'seat_last_exam': row.get('seat_last_exam', '').strip() or None,
-                            'last_exam_month': row.get('last_exam_month', '').strip() or None,
-                            'last_exam_year': int(row.get('last_exam_year', 0)) if row.get('last_exam_year', '').strip() else None,
-                            'class_obtain': row.get('class_obtain', '').strip() or None,
-                            'course_language': row.get('course_language', '').strip() or None,
-                            'dg_rec_no': row.get('dg_rec_no', '').strip() or None,
-                            'dg_gender': row.get('dg_gender', '').strip() or None,
-                            'convocation_no': int(row.get('convocation_no', 0)) if row.get('convocation_no', '').strip() else None,
-                        }
-                        
-                        # Check if record exists
-                        dg_sr_no = degree_data.get('dg_sr_no')
-                        if dg_sr_no:
-                            existing = StudentDegree.objects.filter(dg_sr_no=dg_sr_no).first()
-                            if existing:
-                                # Update
-                                for key, value in degree_data.items():
-                                    setattr(existing, key, value)
-                                existing.save()
-                                updated_count += 1
-                            else:
-                                # Create
-                                StudentDegree.objects.create(**degree_data)
-                                created_count += 1
-                        else:
-                            # Create without dg_sr_no
-                            StudentDegree.objects.create(**degree_data)
-                            created_count += 1
-                    
-                    except Exception as e:
-                        errors.append(f"Row {row_num}: {str(e)}")
-                
-                # Show results
-                if created_count > 0:
-                    messages.success(request, f'Successfully created {created_count} degree records.')
-                if updated_count > 0:
-                    messages.success(request, f'Successfully updated {updated_count} degree records.')
-                if errors:
-                    for error in errors[:10]:  # Show first 10 errors
-                        messages.warning(request, error)
-                    if len(errors) > 10:
-                        messages.warning(request, f'... and {len(errors) - 10} more errors.')
-                
-                return redirect('..')
-            
-            except Exception as e:
-                messages.error(request, f'Error processing file: {str(e)}')
-        
-        # Render upload form
-        context = {
-            'title': 'Bulk Upload Student Degrees',
-            'opts': self.model._meta,
-            'has_view_permission': self.has_view_permission(request),
-        }
-        return render(request, 'admin/degree_bulk_upload.html', context)
-    
-    def changelist_view(self, request, extra_context=None):
-        """Add bulk upload link to changelist"""
-        extra_context = extra_context or {}
-        extra_context['show_bulk_upload'] = True
-        return super().changelist_view(request, extra_context)
