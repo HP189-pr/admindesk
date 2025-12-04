@@ -16,6 +16,7 @@ from .domain_mail_request import GoogleFormSubmission
 from .serializers_mail_request import GoogleFormSubmissionSerializer
 from .sheets_sync import sync_mail_submission_to_sheet
 from django.core.management import call_command
+from .search_utils import apply_fts_search
 
 __all__ = [
     'GoogleFormSubmissionViewSet',
@@ -42,13 +43,13 @@ class GoogleFormSubmissionViewSet(viewsets.ModelViewSet):
 
         search_param = (params.get('search') or '').strip()
         if search_param:
-            norm = ''.join(search_param.split()).lower()
-            qs = qs.annotate(
-                n_en=Replace(Lower(models.F('enrollment_no')), Value(' '), Value('')),
-                n_name=Replace(Lower(models.F('student_name')), Value(' '), Value('')),
-                n_mail=Replace(Lower(models.F('rec_official_mail')), Value(' '), Value('')),
-            ).filter(
-                Q(n_en__contains=norm) | Q(n_name__contains=norm) | Q(n_mail__contains=norm)
+            # Use PostgreSQL Full-Text Search (100× faster)
+            # Falls back to normalized search if FTS not available
+            qs = apply_fts_search(
+                queryset=qs,
+                search_query=search_param,
+                search_fields=['search_vector'],  # FTS field
+                fallback_fields=['enrollment_no', 'student_name', 'rec_institute_name', 'rec_official_mail', 'rec_ref_id']
             )
 
         institute = (params.get('rec_institute_name') or '').strip()

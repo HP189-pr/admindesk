@@ -1,6 +1,7 @@
 """Domain Document Receipt & Related (DocRec, Eca, PayPrefixRule)
 """
 from django.db import models
+from django.contrib.postgres.search import SearchVectorField
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -54,6 +55,10 @@ class DocRec(models.Model):
     doc_rec_date = models.DateField(null=True, blank=True, db_column='doc_rec_date')
     # short remark stored on DocRec (varchar in DB)
     doc_rec_remark = models.CharField(max_length=255, null=True, blank=True, db_column='doc_rec_remark')
+    
+    # Full-Text Search vector - tsvector NULL
+    search_vector = SearchVectorField(null=True, blank=True)  # PostgreSQL FTS
+    
     class Meta:
         db_table = 'doc_rec'
         indexes = [

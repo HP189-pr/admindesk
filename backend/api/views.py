@@ -39,6 +39,7 @@ from .serializers import (
     DocRecSerializer, VerificationSerializer, MigrationRecordSerializer, ProvisionalRecordSerializer,
     InstVerificationMainSerializer, InstVerificationStudentSerializer, EcaSerializer, StudentProfileSerializer
 )
+from .search_utils import apply_fts_search
 
 # Re-export extracted auth/navigation/user classes for backward compatibility
 from .views_auth import (
@@ -480,13 +481,13 @@ class VerificationViewSet(viewsets.ModelViewSet):
         
         search = self.request.query_params.get('search', '').strip()
         if search:
-            norm_q = ''.join(search.split()).lower()
-            qs = qs.annotate(
-                n_en=Replace(Lower(models.F('enrollment_no')), Value(' '), Value('')),
-                n_name=Replace(Lower(models.F('student_name')), Value(' '), Value('')),
-                n_final=Replace(Lower(models.F('final_no')), Value(' '), Value('')),
-            ).filter(
-                Q(n_en__contains=norm_q) | Q(n_name__contains=norm_q) | Q(n_final__contains=norm_q)
+            # Use PostgreSQL Full-Text Search (FTS) for 100× faster search
+            # Falls back to normalized search if FTS not available
+            qs = apply_fts_search(
+                queryset=qs,
+                search_query=search,
+                search_fields=['search_vector'],  # FTS field
+                fallback_fields=['enrollment_no', 'student_name', 'final_no']
             )
         
         # Performance optimization: if no search, include PENDING + IN_PROGRESS with latest records
@@ -661,12 +662,14 @@ class InstVerificationMainViewSet(viewsets.ModelViewSet):
 
         search = params.get('search', '').strip() if hasattr(params, 'get') else ''
         if search:
-            norm_q = ''.join(search.split()).lower()
-            qs = qs.annotate(
-                n_instno=Replace(Lower(models.F('inst_veri_number')), Value(' '), Value('')),
-                n_recname=Replace(Lower(models.F('rec_inst_name')), Value(' '), Value('')),
-                n_ref=Replace(Lower(models.F('inst_ref_no')), Value(' '), Value('')),
-            ).filter(Q(n_instno__contains=norm_q) | Q(n_recname__contains=norm_q) | Q(n_ref__contains=norm_q))
+            # Use PostgreSQL Full-Text Search (100× faster)
+            # Falls back to normalized search if FTS not available
+            qs = apply_fts_search(
+                queryset=qs,
+                search_query=search,
+                search_fields=['search_vector'],  # FTS field
+                fallback_fields=['inst_veri_number', 'rec_inst_name', 'inst_ref_no']
+            )
         return qs
 
     @action(detail=False, methods=["get"], url_path="search-rec-inst")

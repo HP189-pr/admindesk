@@ -1,6 +1,7 @@
 """Domain Verification & Related (Verification, InstVerification*, Migration, Provisional, Status enums)
 """
 from django.db import models
+from django.contrib.postgres.search import SearchVectorField
 from django.utils import timezone
 import re
 from django.core.exceptions import ValidationError
@@ -63,6 +64,9 @@ class Verification(models.Model):
     vr_done_date = models.DateField(null=True, blank=True, db_column='vr_done_date')
     last_resubmit_date = models.DateField(null=True, blank=True, db_column='last_resubmit_date')
     last_resubmit_status = models.CharField(max_length=255, null=True, blank=True, db_column='last_resubmit_status')
+    
+    # Full-Text Search vector - tsvector NULL
+    search_vector = SearchVectorField(null=True, blank=True)  # PostgreSQL FTS
     
     # Timestamps - timestamp NOT NULL (auto-managed)
     createdat = models.DateTimeField(auto_now_add=True, db_column='createdat')
@@ -179,6 +183,10 @@ class InstVerificationMain(models.Model):
     doc_rec_date = models.DateField(null=True, blank=True, db_column='doc_rec_date')
     inst_ref_no = models.CharField(max_length=100, null=True, blank=True, db_column='inst_ref_no')
     ref_date = models.DateField(null=True, blank=True, db_column='ref_date')
+    
+    # Full-Text Search vector - tsvector NULL
+    search_vector = SearchVectorField(null=True, blank=True)  # PostgreSQL FTS
+    
     class Meta:
         db_table = 'inst_verification_main'
         indexes = [

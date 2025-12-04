@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from django.db import models
+from django.contrib.postgres.search import SearchVectorField
 
 from .domain_enrollment import Enrollment
 
@@ -46,6 +47,9 @@ class GoogleFormSubmission(models.Model):
     student_verification = models.CharField(max_length=255, blank=True, db_column='student_verification')
     raw_row = models.JSONField(null=True, blank=True, db_column='raw_row')
     created = models.DateTimeField(auto_now_add=True, db_column='created')
+    
+    # Full-Text Search vector - tsvector NULL
+    search_vector = SearchVectorField(null=True, blank=True)  # PostgreSQL FTS
 
     class Meta:
         db_table = 'google_form_submission'

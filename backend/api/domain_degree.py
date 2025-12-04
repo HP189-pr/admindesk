@@ -2,6 +2,7 @@
 StudentDegree, ConvocationMaster
 """
 from django.db import models
+from django.contrib.postgres.search import SearchVectorField
 from django.contrib.auth.models import User
 from .domain_enrollment import Enrollment
 
@@ -50,6 +51,9 @@ class StudentDegree(models.Model):
     dg_rec_no = models.CharField(max_length=100, null=True, blank=True, db_column='dg_rec_no')
     dg_gender = models.CharField(max_length=20, null=True, blank=True, db_column='dg_gender')
     convocation_no = models.IntegerField(null=True, blank=True, db_column='convocation_no', db_index=True)
+    
+    # Full-Text Search vector - tsvector NULL
+    search_vector = SearchVectorField(null=True, blank=True)  # PostgreSQL FTS
     
     class Meta:
         db_table = 'student_degree'

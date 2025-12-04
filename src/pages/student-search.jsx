@@ -49,12 +49,17 @@ export default function StudentSearch() {
     );
   };
 
-  const InfoRow = ({ label, value }) => (
-    <div className="flex justify-between py-2 border-b border-gray-100">
-      <span className="font-medium text-gray-600">{label}:</span>
-      <span className="text-gray-900">{value || "-"}</span>
-    </div>
-  );
+  const InfoRow = ({ label, value }) => {
+    // Don't render if value is null, undefined, empty string, or just "-"
+    if (!value || value === "-" || value === "" || value === "null") return null;
+    
+    return (
+      <div className="flex justify-between py-2 border-b border-gray-100">
+        <span className="font-medium text-gray-600">{label}:</span>
+        <span className="text-gray-900">{value}</span>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
@@ -172,12 +177,12 @@ export default function StudentSearch() {
                 <h2 className="text-2xl font-bold text-gray-800">Services</h2>
               </div>
 
-              {/* Verification */}
-              <div className="mb-8">
-                <h3 className="text-xl font-semibold text-gray-700 mb-4 pb-2 border-b-2 border-indigo-200">
-                  Verification ({studentData.services.verification.length})
-                </h3>
-                {studentData.services.verification.length > 0 ? (
+              {/* Verification - Only show if data exists */}
+              {studentData.services.verification.length > 0 && (
+                <div className="mb-8">
+                  <h3 className="text-xl font-semibold text-gray-700 mb-4 pb-2 border-b-2 border-indigo-200">
+                    Verification ({studentData.services.verification.length})
+                  </h3>
                   <div className="overflow-x-auto">
                     <table className="min-w-full bg-white border border-gray-200">
                       <thead className="bg-indigo-50">
@@ -210,17 +215,15 @@ export default function StudentSearch() {
                       </tbody>
                     </table>
                   </div>
-                ) : (
-                  <p className="text-gray-500 italic">No verification records found</p>
-                )}
-              </div>
+                </div>
+              )}
 
-              {/* Provisional */}
-              <div className="mb-8">
-                <h3 className="text-xl font-semibold text-gray-700 mb-4 pb-2 border-b-2 border-indigo-200">
-                  Provisional ({studentData.services.provisional.length})
-                </h3>
-                {studentData.services.provisional.length > 0 ? (
+              {/* Provisional - Only show if data exists */}
+              {studentData.services.provisional.length > 0 && (
+                <div className="mb-8">
+                  <h3 className="text-xl font-semibold text-gray-700 mb-4 pb-2 border-b-2 border-indigo-200">
+                    Provisional ({studentData.services.provisional.length})
+                  </h3>
                   <div className="overflow-x-auto">
                     <table className="min-w-full bg-white border border-gray-200">
                       <thead className="bg-indigo-50">
@@ -245,17 +248,15 @@ export default function StudentSearch() {
                       </tbody>
                     </table>
                   </div>
-                ) : (
-                  <p className="text-gray-500 italic">No provisional records found</p>
-                )}
-              </div>
+                </div>
+              )}
 
-              {/* Migration */}
-              <div className="mb-8">
-                <h3 className="text-xl font-semibold text-gray-700 mb-4 pb-2 border-b-2 border-indigo-200">
-                  Migration ({studentData.services.migration.length})
-                </h3>
-                {studentData.services.migration.length > 0 ? (
+              {/* Migration - Only show if data exists */}
+              {studentData.services.migration.length > 0 && (
+                <div className="mb-8">
+                  <h3 className="text-xl font-semibold text-gray-700 mb-4 pb-2 border-b-2 border-indigo-200">
+                    Migration ({studentData.services.migration.length})
+                  </h3>
                   <div className="overflow-x-auto">
                     <table className="min-w-full bg-white border border-gray-200">
                       <thead className="bg-indigo-50">
@@ -280,17 +281,15 @@ export default function StudentSearch() {
                       </tbody>
                     </table>
                   </div>
-                ) : (
-                  <p className="text-gray-500 italic">No migration records found</p>
-                )}
-              </div>
+                </div>
+              )}
 
-              {/* Institutional Verification */}
-              <div className="mb-8">
-                <h3 className="text-xl font-semibold text-gray-700 mb-4 pb-2 border-b-2 border-indigo-200">
-                  Institutional Verification ({studentData.services.institutional_verification.length})
-                </h3>
-                {studentData.services.institutional_verification.length > 0 ? (
+              {/* Institutional Verification - Only show if data exists */}
+              {studentData.services.institutional_verification.length > 0 && (
+                <div className="mb-8">
+                  <h3 className="text-xl font-semibold text-gray-700 mb-4 pb-2 border-b-2 border-indigo-200">
+                    Institutional Verification ({studentData.services.institutional_verification.length})
+                  </h3>
                   <div className="overflow-x-auto">
                     <table className="min-w-full bg-white border border-gray-200">
                       <thead className="bg-indigo-50">
@@ -313,17 +312,15 @@ export default function StudentSearch() {
                       </tbody>
                     </table>
                   </div>
-                ) : (
-                  <p className="text-gray-500 italic">No institutional verification records found</p>
-                )}
-              </div>
+                </div>
+              )}
 
-              {/* Degree */}
-              <div>
-                <h3 className="text-xl font-semibold text-gray-700 mb-4 pb-2 border-b-2 border-indigo-200">
-                  Degree ({studentData.services.degree.length})
-                </h3>
-                {studentData.services.degree.length > 0 ? (
+              {/* Degree - Only show if data exists */}
+              {studentData.services.degree.length > 0 && (
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-700 mb-4 pb-2 border-b-2 border-indigo-200">
+                    Degree ({studentData.services.degree.length})
+                  </h3>
                   <div className="overflow-x-auto">
                     <table className="min-w-full bg-white border border-gray-200">
                       <thead className="bg-indigo-50">
@@ -350,10 +347,8 @@ export default function StudentSearch() {
                       </tbody>
                     </table>
                   </div>
-                ) : (
-                  <p className="text-gray-500 italic">No degree records found</p>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
             {/* Section 3: Fees */}

@@ -3,6 +3,7 @@ Enrollment, StudentProfile
 """
 from django.contrib.auth.models import User
 from django.db import models
+from django.contrib.postgres.search import SearchVectorField
 from .domain_courses import Institute, SubBranch, MainBranch
 
 __all__ = [
@@ -20,6 +21,7 @@ class Enrollment(models.Model):
     maincourse = models.ForeignKey(MainBranch, to_field='maincourse_id', on_delete=models.CASCADE, db_column='maincourse_id', related_name='enrollments')
     enrollment_no = models.CharField(max_length=50, unique=True, null=True, blank=True, db_column='enrollment_no')
     temp_enroll_no = models.CharField(max_length=50, null=True, blank=True, db_column='temp_enroll_no')
+    search_vector = SearchVectorField(null=True, blank=True)  # PostgreSQL FTS
     created_at = models.DateTimeField(db_column='created_at', auto_now_add=True)
     updated_at = models.DateTimeField(db_column='updated_at', auto_now=True)
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='updated_by', related_name='updated_enrollments')

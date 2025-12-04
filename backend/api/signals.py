@@ -1,10 +1,14 @@
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import post_save, post_delete, pre_save
 from django.dispatch import receiver
 from django.utils import timezone
 from django.conf import settings
+from django.contrib.postgres.search import SearchVector
 from .models import DocRec, Verification, MigrationRecord, ProvisionalRecord, InstVerificationMain
 from .models import PayBy, VerificationStatus
 from .domain_transcript_generate import TranscriptRequest
+from .domain_enrollment import Enrollment
+from .domain_degree import StudentDegree
+from .domain_mail_request import GoogleFormSubmission
 
 
 @receiver(post_save, sender=DocRec)
@@ -292,3 +296,100 @@ def inst_verification_post_delete(sender, instance: InstVerificationMain, **kwar
 # This ensures sync only happens on explicit user updates via the API, not on bulk
 # operations or sheet imports.
 
+
+# ============================================================================
+# FULL-TEXT SEARCH (FTS) - AUTO-UPDATE SEARCH VECTORS
+# ============================================================================
+# Automatically update search_vector fields AFTER records are saved
+# This ensures GIN indexes stay up-to-date for fast search
+# Using post_save instead of pre_save to avoid F() expression errors on INSERT
+
+@receiver(post_save, sender=Enrollment)
+def update_enrollment_search_vector(sender, instance, **kwargs):
+    """Auto-update search vector for Enrollment"""
+    try:
+        # Use update() to avoid recursion and allow F() expressions
+        Enrollment.objects.filter(pk=instance.pk).update(
+            search_vector=SearchVector('enrollment_no', 'temp_enroll_no', 'student_name')
+        )
+    except Exception:
+        pass  # Fail silently if search_vector field doesn't exist yet
+
+
+@receiver(post_save, sender=Verification)
+def update_verification_search_vector_post(sender, instance, **kwargs):
+    """Auto-update search vector for Verification"""
+    try:
+        Verification.objects.filter(pk=instance.pk).update(
+            search_vector=SearchVector(
+                'enrollment_no', 'second_enrollment_id', 'student_name', 
+                'final_no', 'pay_rec_no'
+            )
+        )
+    except Exception:
+        pass
+
+
+@receiver(post_save, sender=DocRec)
+def update_docrec_search_vector_post(sender, instance, **kwargs):
+    """Auto-update search vector for DocRec"""
+    try:
+        DocRec.objects.filter(pk=instance.pk).update(
+            search_vector=SearchVector('doc_rec_id', 'pay_rec_no', 'pay_rec_no_pre')
+        )
+    except Exception:
+        pass
+
+
+@receiver(post_save, sender=StudentDegree)
+def update_studentdegree_search_vector_post(sender, instance, **kwargs):
+    """Auto-update search vector for StudentDegree"""
+    try:
+        StudentDegree.objects.filter(pk=instance.pk).update(
+            search_vector=SearchVector(
+                'enrollment_no', 'student_name_dg', 'dg_sr_no', 
+                'degree_name', 'institute_name_dg'
+            )
+        )
+    except Exception:
+        pass
+
+
+@receiver(post_save, sender=TranscriptRequest)
+def update_transcriptrequest_search_vector_post(sender, instance, **kwargs):
+    """Auto-update search vector for TranscriptRequest"""
+    try:
+        TranscriptRequest.objects.filter(pk=instance.pk).update(
+            search_vector=SearchVector(
+                'enrollment_no', 'student_name', 'trn_reqest_ref_no'
+            )
+        )
+    except Exception:
+        pass
+
+
+@receiver(post_save, sender=GoogleFormSubmission)
+def update_googleform_search_vector_post(sender, instance, **kwargs):
+    """Auto-update search vector for GoogleFormSubmission"""
+    try:
+        GoogleFormSubmission.objects.filter(pk=instance.pk).update(
+            search_vector=SearchVector(
+                'enrollment_no', 'student_name', 'rec_institute_name', 
+                'rec_official_mail', 'rec_ref_id'
+            )
+        )
+    except Exception:
+        pass
+
+
+@receiver(post_save, sender=InstVerificationMain)
+def update_instverif_search_vector_post(sender, instance, **kwargs):
+    """Auto-update search vector for InstVerificationMain"""
+    try:
+        InstVerificationMain.objects.filter(pk=instance.pk).update(
+            search_vector=SearchVector(
+                'inst_veri_number', 'rec_inst_name', 'inst_ref_no'
+            )
+        )
+    except Exception:
+        pass

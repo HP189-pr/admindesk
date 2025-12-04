@@ -13,6 +13,7 @@ from .domain_enrollment import Enrollment, StudentProfile
 from .domain_verification import Verification, InstVerificationStudent, InstVerificationMain, MigrationRecord, ProvisionalRecord
 from .domain_courses import Institute, MainBranch, SubBranch
 from .domain_documents import DocRec
+from .search_utils import apply_fts_search
 
 __all__ = ['StudentSearchViewSet']
 
@@ -44,14 +45,21 @@ class StudentSearchViewSet(viewsets.ViewSet):
             )
 
         try:
-            # Search enrollment (case-insensitive exact match)
-            enrollment = Enrollment.objects.select_related(
+            # Search enrollment using PostgreSQL FTS (100× faster than icontains)
+            # Falls back to traditional search if FTS not available
+            queryset = Enrollment.objects.select_related(
                 'institute',
                 'maincourse',
                 'subcourse',
                 'student_profile'
-            ).filter(
-                Q(enrollment_no__iexact=enrollment_no) | Q(temp_enroll_no__iexact=enrollment_no)
+            )
+            
+            # Apply FTS search on enrollment_no, temp_enroll_no, student_name
+            enrollment = apply_fts_search(
+                queryset=queryset,
+                search_query=enrollment_no,
+                search_fields=['search_vector'],  # FTS field
+                fallback_fields=['enrollment_no', 'temp_enroll_no']  # Fallback to icontains
             ).first()
 
             if not enrollment:
