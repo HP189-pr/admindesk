@@ -40,11 +40,11 @@ export default function AuthLeave() {
   const loadTypes = async () => {
     try {
       const r = await axios.get('/api/leavetype/');
-      setTypes(r.data || []);
+      setTypes((r.data && r.data.results) ? r.data.results : (r.data || []));
     } catch (e) {
       try {
         const r2 = await axios.get('/api/leavetype-compat/');
-        setTypes(r2.data || []);
+        setTypes((r2.data && r2.data.results) ? r2.data.results : (r2.data || []));
       } catch (e2) {
         setTypes([]);
       }
@@ -61,16 +61,16 @@ export default function AuthLeave() {
   const loadPeriods = async () => {
     try {
       const r = await axios.get('/api/leaveperiods/');
-      const data = r.data || [];
+      const data = (r.data && r.data.results) ? r.data.results : (r.data || []);
       setPeriods(data);
-      const active = data.find(p => p.is_active) || data[0];
+      const active = Array.isArray(data) ? (data.find(p => p.is_active) || data[0]) : (data || undefined);
       if (active) setPeriodForm(p => ({...p, period_name: active.period_name, start_date: active.start_date, end_date: active.end_date, is_active: !!active.is_active}));
     } catch (e) {
       try {
         const r2 = await axios.get('/api/leaveperiods-compat/');
-        const data = r2.data || [];
+        const data = (r2.data && r2.data.results) ? r2.data.results : (r2.data || []);
         setPeriods(data);
-        const active = data.find(p => p.is_active) || data[0];
+        const active = Array.isArray(data) ? (data.find(p => p.is_active) || data[0]) : (data || undefined);
         if (active) setPeriodForm(p => ({...p, period_name: active.period_name, start_date: active.start_date, end_date: active.end_date, is_active: !!active.is_active}));
       } catch (e2) {
         setPeriods([]);

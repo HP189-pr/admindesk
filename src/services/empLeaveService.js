@@ -10,7 +10,8 @@ export async function getLeaveAllocations(params = '') {
   // params can be a query string like '?period=1' or ''
   const url = `/api/leave-allocations${params}`;
   const res = await API.get(url);
-  return res.data;
+  // Support both paginated (DRF) responses and direct arrays
+  return res.data && res.data.results ? res.data.results : res.data;
 }
 
 export async function getLeaveAllocation(id) {

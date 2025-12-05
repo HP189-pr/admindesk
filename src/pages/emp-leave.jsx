@@ -37,6 +37,14 @@ const EmpLeavePage = () => {
     return s ? `?${s}` : '';
   };
 
+  // Normalize API response to an array when backend may return paginated { results: [...] }
+  const normalizeArray = (data) => {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    if (data.results && Array.isArray(data.results)) return data.results;
+    return [];
+  };
+
   const toISODateString = (s) => {
     const d = parseDMY(s);
     if (!d) return null;
@@ -64,10 +72,10 @@ const EmpLeavePage = () => {
       if (selectedPanel === 'Leave Report') {
         const params = q({ period: selectedPeriod });
         const r = await axios.get(`/api/leave-allocations${params}`);
-        setAllocations(r.data || []);
+        setAllocations(normalizeArray(r.data));
       } else {
         const r = await axios.get('/api/leave-allocations');
-        setAllocations(r.data || []);
+        setAllocations(normalizeArray(r.data));
       }
       setAllocEdits(prev => { const next = { ...prev }; delete next[allocId]; return next; });
     } catch (e) {
@@ -79,7 +87,7 @@ const EmpLeavePage = () => {
   useEffect(() => {
     // Load leave types (prefer normal API, fall back to compat SQL-backed endpoint)
     axios.get('/api/leavetype/').then(r => {
-      const data = r.data || [];
+      const data = normalizeArray(r.data);
       setLeaveTypes(data.map(lt => ({
         leave_code: lt.leave_code ?? lt.id ?? lt.code,
         leave_name: lt.leave_name ?? lt.name,
@@ -90,7 +98,7 @@ const EmpLeavePage = () => {
     }).catch(async () => {
       try {
         const r2 = await axios.get('/api/leavetype-compat/');
-        const data = r2.data || [];
+        const data = normalizeArray(r2.data);
         setLeaveTypes(data.map(lt => ({
           leave_code: lt.leave_code ?? lt.id ?? lt.code,
           leave_name: lt.leave_name ?? lt.name,
@@ -104,14 +112,14 @@ const EmpLeavePage = () => {
 
     // Load leave periods with fallback
     axios.get('/api/leaveperiods/').then(r => {
-      const pd = r.data || [];
+      const pd = normalizeArray(r.data);
       setPeriods(pd);
       const active = pd.find(p => p.is_active);
       if (active) setSelectedPeriod(String(active.id));
     }).catch(async () => {
       try {
         const r2 = await axios.get('/api/leaveperiods-compat/');
-        const pd = r2.data || [];
+        const pd = normalizeArray(r2.data);
         setPeriods(pd);
         const active = pd.find(p => p.is_active);
         if (active) setSelectedPeriod(String(active.id));
@@ -120,39 +128,52 @@ const EmpLeavePage = () => {
 
     // Load employee profiles
     axios.get('/api/empprofile/').then(r => {
-      const data = r.data || [];
+      const data = normalizeArray(r.data);
       setProfiles(data);
       const me = data.find(p => (p.username === user?.username) || (p.usercode === user?.username) || String(p.emp_id) === String(user?.username));
       setProfile(me || null);
     }).catch(() => setProfiles([]));
 
     // Load leave entries with a fallback to legacy table endpoint
-    axios.get('/api/leaveentry/').then(r => { console.debug('leaveentry:', r.data); setLeaveEntries(r.data || []); }).catch(async () => {
+    axios.get('/api/leaveentry/').then(r => { console.debug('leaveentry:', r.data); setLeaveEntries(normalizeArray(r.data)); }).catch(async () => {
       try {
-        const r2 = await axios.get('/api/leave_entry/'); console.debug('leave_entry (legacy):', r2.data); setLeaveEntries(r2.data || []);
+        const r2 = await axios.get('/api/leave_entry/'); console.debug('leave_entry (legacy):', r2.data); setLeaveEntries(normalizeArray(r2.data));
       } catch (e) {
         console.debug('leaveentry fetch failed', e);
         setLeaveEntries([]);
       }
     });
 
-    if (user) {
-      axios.get('/api/my-leave-balance/').then(r => setMyBalances(r.data || [])).catch(() => setMyBalances([]));
-    } else {
-      // no authenticated user available yet
-      setMyBalances([]);
-    }
+    // Defer fetching my-leave-balance until we have a resolved `profile` to avoid
+    // expected 404 responses when the authenticated user has no linked EmpProfile
+    // or when there's no active period. The actual fetch occurs in a separate
+    // effect that depends on `profile`.
+    setMyBalances([]);
   }, [user]);
+
+  // Fetch my-leave-balance only when `profile` is available
+  useEffect(() => {
+    if (!profile) return;
+    (async () => {
+      try {
+        const r = await axios.get('/api/my-leave-balance/');
+        setMyBalances(normalizeArray(r.data));
+      } catch (e) {
+        // expected when profile not in computed payload or no active period
+        setMyBalances([]);
+      }
+    })();
+  }, [profile]);
 
   // load allocations when report panel is active OR period changes
   useEffect(() => {
     // When viewing the Leave Report, fetch allocations for the selected period (or all if empty).
     if (selectedPanel === 'Leave Report') {
       const params = q({ period: selectedPeriod });
-      axios.get(`/api/leave-allocations${params}`).then(r => setAllocations(r.data || [])).catch(async () => {
+      axios.get(`/api/leave-allocations${params}`).then(r => setAllocations(normalizeArray(r.data))).catch(async () => {
         try {
           const r2 = await axios.get(`/api/leavea_llocation_general${params}`);
-          setAllocations(r2.data || []);
+          setAllocations(normalizeArray(r2.data));
         } catch (e) {
           setAllocations([]);
         }
@@ -183,11 +204,11 @@ const EmpLeavePage = () => {
     (async () => {
       try {
         const r = await axios.get('/api/leave-allocations');
-        setAllocations(r.data || []);
+        setAllocations(normalizeArray(r.data));
       } catch (err) {
         try {
           const r2 = await axios.get('/api/leavea_llocation_general');
-          setAllocations(r2.data || []);
+          setAllocations(normalizeArray(r2.data));
         } catch (e) {
           setAllocations([]);
         }
@@ -286,7 +307,7 @@ const EmpLeavePage = () => {
 
       // refresh list
       const r = await axios.get('/api/leaveentry/');
-      setLeaveEntries(r.data || []);
+      setLeaveEntries(normalizeArray(r.data));
       // clear form
       setForm({ report_no: '', emp_id: '', emp_name: '', leave_type: '', leave_type_code: '', start_date: '', end_date: '', remark: '', total_days: '', status: '' });
       setEditingId(null);
@@ -579,7 +600,7 @@ const EmpLeavePage = () => {
                     return (<tr><td colSpan={20} className="py-6 text-center text-gray-500">No employees</td></tr>);
                   }
 
-                  return source.filter(emp => !filterEmp || String(emp.id || emp.emp_short || emp.emp_id) === String(filterEmp)).map(emp => {
+                  return source.filter(emp => !filterEmp || String(emp.id || emp.emp_short || emp.emp_id) === String(filterEmp)).map((emp, idx) => {
                   // helpers to get allocation and used values for this employee and a leave code
                   const normaliseAllocValue = (allocObj) => {
                     if (!allocObj) return 0;
@@ -820,8 +841,9 @@ const EmpLeavePage = () => {
                   const end_el = +( (start_el + alloc_el) - used_el ).toFixed(2);
                   const end_vac = +( ((getComputedStart(emp, 'VAC') !== null && getComputedStart(emp, 'VAC') !== undefined) ? getComputedStart(emp, 'VAC') : Number(emp.vacation_balance || 0)) + alloc_vac - used_vac ).toFixed(2);
 
-                  return (
-                    <tr key={emp.id} className="border-b hover:bg-gray-50">
+                    const _rowKey = emp.id ?? emp.emp_id ?? emp.emp_short ?? `emp_${idx}`;
+                    return (
+                    <tr key={_rowKey} className="border-b hover:bg-gray-50">
                       <td className="p-2">{emp.emp_short ?? emp.emp_id ?? emp.id}</td>
                       <td className="p-2">{emp.emp_name}</td>
                       <td className="p-2">{emp.emp_designation}</td>

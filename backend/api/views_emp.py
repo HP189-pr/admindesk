@@ -613,9 +613,23 @@ class SeedLeaveAllocationsView(APIView):
 			skipped = 0
 			for p in profiles:
 				for lt in types:
+					# compute prorated allocation based on period length (days / 365)
+					try:
+						annual = float(lt.annual_allocation or 0)
+					except Exception:
+						annual = 0.0
+					period_days = (period.end_date - period.start_date).days + 1
+					prorated = round(annual * (period_days / 365.0), 2)
 					if not LeaveAllocation.objects.filter(profile=p, leave_type=lt, period=period).exists():
 						try:
-							LeaveAllocation.objects.create(profile=p, leave_type=lt, period=period, allocated=(lt.annual_allocation or 0))
+							LeaveAllocation.objects.create(
+								profile=p,
+								leave_type=lt,
+								period=period,
+								allocated=prorated,
+								allocated_start_date=period.start_date,
+								allocated_end_date=period.end_date,
+							)
 							created += 1
 						except Exception:
 							skipped += 1

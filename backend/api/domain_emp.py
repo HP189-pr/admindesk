@@ -207,9 +207,26 @@ class LeaveAllocation(models.Model):
 	allocated_vac = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, db_column='allocated_vac')
 	allocated_start_date = models.DateField(null=True, blank=True, db_column='allocated_start_date')
 	allocated_end_date = models.DateField(null=True, blank=True, db_column='allocated_end_date')
-	# Sandwich rule: if True then count ALL calendar days between start/end (including weekends/holidays).
-	# If False (default) only working days are counted (weekdays excluding Sunday and holidays table).
-	sandwich = models.BooleanField(default=False, db_column='sandwich')
+	# Sandwich rule: prefer to map to DB column 'sandwich' when it exists.
+	# Some deployments may not have this column yet (migration not applied) which
+	# causes Django to include the column in SELECT lists and triggers SQL errors.
+	# To be tolerant, detect the presence of the column at import-time and only
+	# declare a real BooleanField when the column exists. Otherwise expose a
+	# read-only property that returns False so code can safely read `instance.sandwich`.
+	try:
+		from django.db import connection
+		with connection.cursor() as _cur:
+			_cur.execute("SELECT 1 FROM information_schema.columns WHERE table_name=%s AND column_name=%s", ['api_leaveallocation', 'sandwich'])
+			_has_sandwich = bool(_cur.fetchone())
+	except Exception:
+		_has_sandwich = False
+
+	if _has_sandwich:
+		sandwich = models.BooleanField(default=False, db_column='sandwich')
+	else:
+		def _sandwich_prop(self):
+			return False
+		sandwich = property(_sandwich_prop)
 	# Note: do NOT declare a separate `leave_code` model field because the
 	# foreign key `leave_type` already maps to the DB column `leave_code` via
 	# `db_column='leave_code'`. Access the raw stored value using
@@ -284,11 +301,18 @@ def seed_allocations_for_period(sender, instance: LeavePeriod, created, **kwargs
 	from .domain_emp import LeaveAllocation, LeaveType, EmpProfile
 	types = LeaveType.objects.filter(is_active=True)
 	profiles = EmpProfile.objects.all()
+	period_days = (instance.end_date - instance.start_date).days + 1
 	for p in profiles:
 		for lt in types:
+			# prorate allocation according to period length
+			try:
+				annual = float(lt.annual_allocation or 0)
+			except Exception:
+				annual = 0.0
+			prorated = round(annual * (period_days / 365.0), 2)
 			if not LeaveAllocation.objects.filter(profile=p, leave_type=lt, period=instance).exists():
 				try:
-					LeaveAllocation.objects.create(profile=p, leave_type=lt, period=instance, allocated=(lt.annual_allocation or 0))
+					LeaveAllocation.objects.create(profile=p, leave_type=lt, period=instance, allocated=prorated, allocated_start_date=instance.start_date, allocated_end_date=instance.end_date)
 				except Exception:
 					# ignore creation errors to avoid breaking admin save
 					continue

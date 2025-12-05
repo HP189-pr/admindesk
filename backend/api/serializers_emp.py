@@ -114,6 +114,7 @@ class LeaveAllocationSerializer(serializers.ModelSerializer):
 	allocated_end_date = serializers.SerializerMethodField()
 	leave_code = serializers.SerializerMethodField()
 	profile_name = serializers.SerializerMethodField()
+	sandwich = serializers.SerializerMethodField()
 
 	class Meta:
 		model = LeaveAllocation
@@ -241,6 +242,13 @@ class LeaveAllocationSerializer(serializers.ModelSerializer):
 			return getattr(obj, 'leave_type_id', None)
 		except Exception:
 			return None
+
+	def get_sandwich(self, obj):
+		try:
+			# return boolean if available, otherwise default False
+			return bool(getattr(obj, 'sandwich', False))
+		except Exception:
+			return False
 
 
 class LeaveBalanceSnapshotSerializer(serializers.ModelSerializer):

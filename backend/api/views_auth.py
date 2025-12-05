@@ -73,6 +73,18 @@ class HolidayViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
+        # Allow requesting all holidays or by year via query params
+        q = self.request.query_params
+        if q.get('all') in ('1', 'true', 'True'):
+            return self.queryset.order_by('holiday_date')
+        year = q.get('year')
+        if year:
+            try:
+                y = int(year)
+                return self.queryset.filter(holiday_date__year=y).order_by('holiday_date')
+            except Exception:
+                pass
+        # Default behaviour: holidays within the next 6 months
         today = datetime.date.today()
         six_months_later = today + datetime.timedelta(days=180)
         return (
