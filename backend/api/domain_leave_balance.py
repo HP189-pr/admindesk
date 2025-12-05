@@ -31,6 +31,7 @@ from django.db.models import QuerySet
 
 from .domain_emp import EmpProfile, LeaveAllocation, LeaveEntry, LeavePeriod
 from .domain_emp import LeaveType
+from .domain_core import Holiday
 
 
 DECIMAL_ZERO = Decimal("0")
@@ -282,9 +283,56 @@ def _compute_balances(
             if derived:
                 bucket[code] = bucket[code] + derived
 
+    # Build allocation flags map to determine sandwich behavior per (profile, period, leave_code)
+    # Key resolution order for lookup will be:
+    # 1) (emp_id, period_id, leave_code)
+    # 2) (emp_id, period_id, '*')  -- allocation row for profile but any leave_type
+    # 3) (None, period_id, leave_code) -- global allocation for period and leave_type
+    # 4) (None, period_id, '*') -- global allocation for period any leave_type
+    alloc_flags: Dict[Tuple[Optional[str], int, str], bool] = {}
+    for alloc in allocations:
+        pid = getattr(alloc, 'period_id', None) or (alloc.period.id if getattr(alloc, 'period', None) else None)
+        prof = getattr(alloc, 'profile_id', None) or (getattr(alloc, 'profile', None).emp_id if getattr(alloc, 'profile', None) else None)
+        lt = getattr(alloc, 'leave_type_id', None) or (getattr(alloc, 'leave_type', None).leave_code if getattr(alloc, 'leave_type', None) else None)
+        key_codes = []
+        if lt:
+            key_codes.append(str(lt).upper())
+        # add wildcard key for allocations without leave_type
+        key_codes.append('*')
+        for kc in key_codes:
+            alloc_flags[(str(prof) if prof is not None else None, pid, kc)] = bool(getattr(alloc, 'sandwich', False))
+
+    # Load holidays once for the full date span
+    try:
+        min_start = min((p.start for p in periods))
+        max_end = max((p.end for p in periods))
+        holiday_qs = Holiday.objects.filter(holiday_date__gte=min_start, holiday_date__lte=max_end).values_list('holiday_date', flat=True)
+        holidays_set = set(holiday_qs)
+    except Exception:
+        holidays_set = set()
+
+    def _is_sandwich_for(emp_id: Optional[str], period_id: int, leave_code: str) -> bool:
+        # lookup following resolution order
+        keys = [ (str(emp_id), period_id, leave_code.upper()), (str(emp_id), period_id, '*'), (None, period_id, leave_code.upper()), (None, period_id, '*') ]
+        for k in keys:
+            if k in alloc_flags:
+                return bool(alloc_flags[k])
+        return False
+
+    def _count_working_days(start_dt: date, end_dt: date, holidays: set) -> int:
+        # inclusive count excluding Sundays and holiday dates
+        days = 0
+        cur = start_dt
+        while cur <= end_dt:
+            # Python weekday(): Monday=0 ... Sunday=6
+            if cur.weekday() != 6 and cur not in holidays:
+                days += 1
+            cur = cur.fromordinal(cur.toordinal() + 1)
+        return days
+
     used_days: Dict[Tuple[str, int, str], Decimal] = defaultdict(lambda: DECIMAL_ZERO)
     for entry in entries:
-        period_splits = _split_entry_across_periods(entry, periods)
+        period_splits = _split_entry_across_periods(entry, periods, alloc_flags=alloc_flags, holidays_set=holidays_set, sandwiched_resolver=_is_sandwich_for)
         for period_id, used_map in period_splits.items():
             for code, value in used_map.items():
                 used_days[(entry.emp_id, period_id, code)] += value
@@ -494,7 +542,14 @@ def _extract_allocation_for_code(allocation: LeaveAllocation, leave_code: str) -
     return DECIMAL_ZERO
 
 
-def _split_entry_across_periods(entry: LeaveEntry, periods: Sequence[_PeriodWindow]) -> Dict[int, Dict[str, Decimal]]:
+def _split_entry_across_periods(
+    entry: LeaveEntry,
+    periods: Sequence[_PeriodWindow],
+    *,
+    alloc_flags: Optional[Dict[Tuple[Optional[str], int, str], bool]] = None,
+    holidays_set: Optional[set] = None,
+    sandwiched_resolver: Optional[callable] = None,
+) -> Dict[int, Dict[str, Decimal]]:
     """Split a leave entry across overlapping periods.
 
     Returns a mapping ``{period_id: {leave_code: Decimal(amount)}}``. Entries
@@ -522,7 +577,34 @@ def _split_entry_across_periods(entry: LeaveEntry, periods: Sequence[_PeriodWind
         overlap_end = min(entry.end_date, period.end)
         if overlap_start > overlap_end:
             continue
-        days = Decimal((overlap_end - overlap_start).days + 1)
+        # Determine if sandwich rule applies for this employee, period and leave code
+        emp_id = getattr(entry, 'emp_id', None) or (getattr(entry, 'emp', None).emp_id if getattr(entry, 'emp', None) else None)
+        leave_code_val = (entry.leave_type_id or str(getattr(entry.leave_type, 'leave_code', '') or '')).upper()
+
+        days_total = (overlap_end - overlap_start).days + 1
+
+        sandwich_applies = False
+        try:
+            if sandwiched_resolver and alloc_flags is not None:
+                sandwich_applies = bool(sandwiched_resolver(emp_id, period.id, leave_code_val))
+        except Exception:
+            sandwich_applies = False
+
+        if sandwich_applies:
+            days = Decimal(days_total)
+        else:
+            # count working days excluding Sundays and holidays
+            if holidays_set is None:
+                holidays_set = set()
+            # inclusive loop
+            cur = overlap_start
+            working = 0
+            while cur <= overlap_end:
+                if cur.weekday() != 6 and cur not in holidays_set:
+                    working += 1
+                cur = cur.fromordinal(cur.toordinal() + 1)
+            days = Decimal(working)
+
         amount = days * day_value
         bucket = result.setdefault(period.id, {})
         bucket[leave_code] = bucket.get(leave_code, DECIMAL_ZERO) + amount
@@ -572,6 +654,27 @@ def computeLeaveBalances(*, leaveCalculationDate: Optional[date] = None, selecte
     # pre-aggregate leave entries (approved only)
     entries_qs = LeaveEntry.objects.select_related('leave_type').filter(status__iexact='APPROVED')
     entries = list(entries_qs)
+    # Build allocation flags and holiday set to pass to splitter
+    period_ids = [p.id for p in periods]
+    alloc_qs = LeaveAllocation.objects.filter(period_id__in=period_ids)
+    alloc_flags_local: Dict[Tuple[Optional[str], int, str], bool] = {}
+    for alloc in alloc_qs:
+        pid = getattr(alloc, 'period_id', None) or (alloc.period.id if getattr(alloc, 'period', None) else None)
+        prof = getattr(alloc, 'profile_id', None) or (getattr(alloc, 'profile', None).emp_id if getattr(alloc, 'profile', None) else None)
+        lt = getattr(alloc, 'leave_type_id', None) or (getattr(alloc, 'leave_type', None).leave_code if getattr(alloc, 'leave_type', None) else None)
+        key_codes = []
+        if lt:
+            key_codes.append(str(lt).upper())
+        key_codes.append('*')
+        for kc in key_codes:
+            alloc_flags_local[(str(prof) if prof is not None else None, pid, kc)] = bool(getattr(alloc, 'sandwich', False))
+    try:
+        min_start = min((p.start for p in periods))
+        max_end = max((p.end for p in periods))
+        holiday_qs = Holiday.objects.filter(holiday_date__gte=min_start, holiday_date__lte=max_end).values_list('holiday_date', flat=True)
+        holidays_set_local = set(holiday_qs)
+    except Exception:
+        holidays_set_local = set()
 
     # build used map: (emp_id, period_id, code) -> Decimal
     used_days: Dict[Tuple[str, int, str], Decimal] = defaultdict(lambda: DECIMAL_ZERO)
@@ -591,7 +694,13 @@ def computeLeaveBalances(*, leaveCalculationDate: Optional[date] = None, selecte
         e.end_date = entry.end_date
         e.leave_type_id = code_raw
         e.leave_type = entry.leave_type
-        splits = _split_entry_across_periods(e, periods)
+        splits = _split_entry_across_periods(e, periods, alloc_flags=alloc_flags_local, holidays_set=holidays_set_local, sandwiched_resolver=lambda emp, pid, lc: (
+            alloc_flags_local.get((str(emp) if emp is not None else None, pid, lc))
+            or alloc_flags_local.get((str(emp) if emp is not None else None, pid, '*'))
+            or alloc_flags_local.get((None, pid, lc))
+            or alloc_flags_local.get((None, pid, '*'))
+            or False
+        ))
         for period_id, m in splits.items():
             for lc, val in m.items():
                 # val already includes day_value multiplication in splitter
@@ -835,6 +944,26 @@ def loadLeaveEntriesSplitByPeriod(employee_ids, periods):
     if employee_ids:
         entries_qs = entries_qs.filter(emp_id__in=list(employee_ids))
     used_days = defaultdict(lambda: DECIMAL_ZERO)
+    # Build allocation flags and holidays for span
+    period_ids = [p.id for p in periods]
+    alloc_qs = LeaveAllocation.objects.filter(period_id__in=period_ids)
+    alloc_flags_local: Dict[Tuple[Optional[str], int, str], bool] = {}
+    for alloc in alloc_qs:
+        pid = getattr(alloc, 'period_id', None) or (alloc.period.id if getattr(alloc, 'period', None) else None)
+        prof = getattr(alloc, 'profile_id', None) or (getattr(alloc, 'profile', None).emp_id if getattr(alloc, 'profile', None) else None)
+        lt = getattr(alloc, 'leave_type_id', None) or (getattr(alloc, 'leave_type', None).leave_code if getattr(alloc, 'leave_type', None) else None)
+        key_codes = []
+        if lt:
+            key_codes.append(str(lt).upper())
+        key_codes.append('*')
+        for kc in key_codes:
+            alloc_flags_local[(str(prof) if prof is not None else None, pid, kc)] = bool(getattr(alloc, 'sandwich', False))
+    try:
+        holiday_qs = Holiday.objects.filter(holiday_date__gte=span_start, holiday_date__lte=span_end).values_list('holiday_date', flat=True)
+        holidays_set_local = set(holiday_qs)
+    except Exception:
+        holidays_set_local = set()
+
     for entry in entries_qs:
         # clamp by left_date if profile has left
         left = None
@@ -859,7 +988,13 @@ def loadLeaveEntriesSplitByPeriod(employee_ids, periods):
         eobj.end_date = e
         eobj.leave_type_id = code
         eobj.leave_type = entry.leave_type
-        splits = _split_entry_across_periods(eobj, periods)
+        splits = _split_entry_across_periods(eobj, periods, alloc_flags=alloc_flags_local, holidays_set=holidays_set_local, sandwiched_resolver=lambda emp, pid, lc: (
+            alloc_flags_local.get((str(emp) if emp is not None else None, pid, lc))
+            or alloc_flags_local.get((str(emp) if emp is not None else None, pid, '*'))
+            or alloc_flags_local.get((None, pid, lc))
+            or alloc_flags_local.get((None, pid, '*'))
+            or False
+        ))
         for period_id, m in splits.items():
             for lc, val in m.items():
                 used_days[(entry.emp_id, period_id, lc)] += _to_decimal(val)

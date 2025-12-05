@@ -11,6 +11,7 @@ import AdminBulkUpload from "./AdminBulkUpload.jsx";
 import DataAnalysis from "../hooks/DataAnalysis.jsx";
 import AuthEmp from "../hooks/AuthEmp.jsx";
 import AuthLeave from "../hooks/AuthLeave.jsx";
+import HolidayManager from "../hooks/HolidayManager.jsx";
 
 const AdminDashboard = ({ selectedTopbarMenu, onToggleSidebar, onToggleChatbox, onSelectTopbar }) => {
   const [users, setUsers] = useState([]);
@@ -153,6 +154,8 @@ const AdminDashboard = ({ selectedTopbarMenu, onToggleSidebar, onToggleChatbox, 
         return <AuthEmp />;
       case "Leave Allocations":
         return <AuthLeave />;
+      case "Holidays":
+        return <HolidayManager />;
 
       default:
         return <h2 className="text-xl font-semibold">Please select an option.</h2>;
@@ -163,7 +166,7 @@ const AdminDashboard = ({ selectedTopbarMenu, onToggleSidebar, onToggleChatbox, 
     <div className="flex flex-col h-full">
       <PageTopbar
         title="Admin Panel"
-        actions={["User Management", "User Rights", "Add Module", "Add Course", "Upload", "Data Analysis", "Employee Profiles", "Leave Allocations"]}
+        actions={["User Management", "User Rights", "Add Module", "Add Course", "Upload", "Data Analysis", "Employee Profiles", "Leave Allocations", "Holidays"]}
         selected={selectedTopbarMenu}
         onSelect={onSelectTopbar}
         onToggleSidebar={onToggleSidebar}

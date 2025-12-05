@@ -212,20 +212,30 @@ class LeaveAllocationDetailView(APIView):
 
 	def patch(self, request, pk, *args, **kwargs):
 		from django.db import connection
-		val = request.data.get('allocated')
-		if val is None:
-			return Response({'detail': 'allocated is required'}, status=status.HTTP_400_BAD_REQUEST)
+		# allow updating allocated and/or sandwich flag
+		data = request.data or {}
+		updated_fields = {}
+		if 'allocated' in data:
+			try:
+				updated_fields['allocated'] = float(data.get('allocated'))
+			except Exception:
+				return Response({'detail': 'allocated must be a number'}, status=status.HTTP_400_BAD_REQUEST)
+		if 'sandwich' in data:
+			# accept truthy/falsy values
+			sw = data.get('sandwich')
+			if isinstance(sw, str):
+				_sw = sw.lower() in ('1', 'true', 'yes', 'y')
+			else:
+				_sw = bool(sw)
+			updated_fields['sandwich'] = _sw
+		if not updated_fields:
+			return Response({'detail': 'allocated or sandwich is required'}, status=status.HTTP_400_BAD_REQUEST)
 		try:
-			# use numeric cast safety
-			allocated = float(val)
-		except Exception:
-			return Response({'detail': 'allocated must be a number'}, status=status.HTTP_400_BAD_REQUEST)
-		try:
-			# update via ORM update to avoid managed=False save issues
-			updated = LeaveAllocation.objects.filter(pk=pk).update(allocated=allocated, updated_at=timezone.now())
+			updated_fields['updated_at'] = timezone.now()
+			updated = LeaveAllocation.objects.filter(pk=pk).update(**updated_fields)
 			if not updated:
 				return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
-			return Response({'id': pk, 'allocated': allocated})
+			return Response({'id': pk, **{k: updated_fields[k] for k in updated_fields if k != 'updated_at'}})
 		except Exception as e:
 			return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 

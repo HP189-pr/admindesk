@@ -119,7 +119,7 @@ class LeaveAllocationSerializer(serializers.ModelSerializer):
 		model = LeaveAllocation
 		fields = ('id', 'emp_id', 'profile', 'profile_name', 'leave_type', 'leave_type_name', 'leave_code', 'period', 'period_id', 'allocated',
 				  'allocated_el', 'allocated_cl', 'allocated_sl', 'allocated_vac', 'allocated_start_date', 'allocated_end_date',
-				  'used', 'balance')
+			  'used', 'balance', 'sandwich')
 		read_only_fields = fields
 
 	def _format_date(self, value):

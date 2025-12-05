@@ -207,6 +207,9 @@ class LeaveAllocation(models.Model):
 	allocated_vac = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, db_column='allocated_vac')
 	allocated_start_date = models.DateField(null=True, blank=True, db_column='allocated_start_date')
 	allocated_end_date = models.DateField(null=True, blank=True, db_column='allocated_end_date')
+	# Sandwich rule: if True then count ALL calendar days between start/end (including weekends/holidays).
+	# If False (default) only working days are counted (weekdays excluding Sunday and holidays table).
+	sandwich = models.BooleanField(default=False, db_column='sandwich')
 	# Note: do NOT declare a separate `leave_code` model field because the
 	# foreign key `leave_type` already maps to the DB column `leave_code` via
 	# `db_column='leave_code'`. Access the raw stored value using
