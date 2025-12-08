@@ -152,6 +152,7 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
                         'enrollment_no': enrollment_no,
                         'student_name_dg': row.get('student_name_dg', '').strip() or None,
                         'dg_address': row.get('dg_address', '').strip() or None,
+                        'dg_contact': row.get('dg_contact', '').strip() or None,
                         'institute_name_dg': row.get('institute_name_dg', '').strip() or None,
                         'degree_name': row.get('degree_name', '').strip() or None,
                         'specialisation': row.get('specialisation', '').strip() or None,

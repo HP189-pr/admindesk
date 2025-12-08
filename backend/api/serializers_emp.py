@@ -100,16 +100,8 @@ class LeaveAllocationSerializer(serializers.ModelSerializer):
 	leave_type_name = serializers.SerializerMethodField()
 	used = serializers.SerializerMethodField()
 	balance = serializers.SerializerMethodField()
-	allocated = serializers.SerializerMethodField()
 	emp_id = serializers.SerializerMethodField()
 	period_id = serializers.SerializerMethodField()
-	# Expose legacy per-column allocated values and allocation date range so frontend
-	# can render legacy rows that use allocated_el/allocated_cl/etc instead of the
-	# canonical `allocated` column.
-	allocated_el = serializers.SerializerMethodField()
-	allocated_cl = serializers.SerializerMethodField()
-	allocated_sl = serializers.SerializerMethodField()
-	allocated_vac = serializers.SerializerMethodField()
 	allocated_start_date = serializers.SerializerMethodField()
 	allocated_end_date = serializers.SerializerMethodField()
 	leave_code = serializers.SerializerMethodField()
@@ -119,7 +111,7 @@ class LeaveAllocationSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = LeaveAllocation
 		fields = ('id', 'emp_id', 'profile', 'profile_name', 'leave_type', 'leave_type_name', 'leave_code', 'period', 'period_id', 'allocated',
-				  'allocated_el', 'allocated_cl', 'allocated_sl', 'allocated_vac', 'allocated_start_date', 'allocated_end_date',
+				  'allocated_start_date', 'allocated_end_date',
 			  'used', 'balance', 'sandwich')
 		read_only_fields = fields
 
@@ -162,34 +154,13 @@ class LeaveAllocationSerializer(serializers.ModelSerializer):
 		except Exception:
 			return 0
 
-	def get_allocated(self, obj):
-		# Prefer the canonical 'allocated' column; fall back to legacy specific columns.
-		for attr in ('allocated', 'allocated_el', 'allocated_cl', 'allocated_sl', 'allocated_vac'):
-			val = getattr(obj, attr, None)
-			if val is not None:
-				return _format_decimal_for_json(val)
-		return None
-
-	def get_allocated_el(self, obj):
-		return _format_decimal_for_json(getattr(obj, 'allocated_el', None))
-
-	def get_allocated_cl(self, obj):
-		return _format_decimal_for_json(getattr(obj, 'allocated_cl', None))
-
-	def get_allocated_sl(self, obj):
-		return _format_decimal_for_json(getattr(obj, 'allocated_sl', None))
-
-	def get_allocated_vac(self, obj):
-		return _format_decimal_for_json(getattr(obj, 'allocated_vac', None))
-
 	def get_emp_id(self, obj):
-		try:
-			emp_id = getattr(obj, 'profile_id', None)
-			if emp_id in (None, ''):
-				emp_id = getattr(obj, 'emp_id', None)
-			return emp_id if emp_id not in ('', None) else None
-		except Exception:
+		# Normalize emp identifier: prefer raw stored profile_id (which maps to EmpProfile.emp_id),
+		# fall back to any direct emp_id attribute. Return None when empty.
+		emp_id = getattr(obj, 'profile_id', None) or getattr(obj, 'emp_id', None)
+		if emp_id in (None, ''):
 			return None
+		return emp_id
 
 	def get_period_id(self, obj):
 		try:
@@ -238,8 +209,8 @@ class LeaveAllocationSerializer(serializers.ModelSerializer):
 		try:
 			if getattr(obj, 'leave_type', None):
 				return getattr(obj.leave_type, 'leave_code', None)
-			# fallback to raw stored value
-			return getattr(obj, 'leave_type_id', None)
+			# fallback to raw stored value or explicit leave_code column
+			return getattr(obj, 'leave_type_id', None) or getattr(obj, 'leave_code', None)
 		except Exception:
 			return None
 

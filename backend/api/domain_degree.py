@@ -50,6 +50,7 @@ class StudentDegree(models.Model):
     course_language = models.CharField(max_length=50, null=True, blank=True, db_column='course_language')
     dg_rec_no = models.CharField(max_length=100, null=True, blank=True, db_column='dg_rec_no')
     dg_gender = models.CharField(max_length=20, null=True, blank=True, db_column='dg_gender')
+    dg_contact = models.CharField(max_length=15, null=True, blank=True, db_column='dg_contact')
     convocation_no = models.IntegerField(null=True, blank=True, db_column='convocation_no', db_index=True)
     
     # Full-Text Search vector - tsvector NULL

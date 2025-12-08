@@ -5,7 +5,6 @@ import {
   createLeaveAllocation,
   updateLeaveAllocation,
   deleteLeaveAllocation,
-  seedLeaveAllocations,
 } from '../services/empLeaveService';
 
 export default function AuthLeave() {
@@ -16,9 +15,9 @@ export default function AuthLeave() {
   const [editingTypeId, setEditingTypeId] = useState(null);
   const [typeForm, setTypeForm] = useState({ leave_code: '', leave_name: '', annual_allocation: '' });
   const [editingPeriodId, setEditingPeriodId] = useState(null);
-  const [periodForm, setPeriodForm] = useState({ period_name: '', start_date: '', end_date: '', is_active: false });
+  const [periodForm, setPeriodForm] = useState({ period_name: '', start_date: '', end_date: '' });
   const [showAllocForm, setShowAllocForm] = useState(false);
-  const [allocForm, setAllocForm] = useState({ emp_id: '', leave_code: '', period_id: '', allocated: '', applies_to_all: true, allocated_cl: '', allocated_sl: '', allocated_el: '', allocated_vac: '', allocated_start_date: '', allocated_end_date: '' });
+  const [allocForm, setAllocForm] = useState({ emp_id: '', leave_code: '', period_id: '', allocated: '', allocated_start_date: '', allocated_end_date: '' });
   const [editingAllocId, setEditingAllocId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -63,15 +62,15 @@ export default function AuthLeave() {
       const r = await axios.get('/api/leaveperiods/');
       const data = (r.data && r.data.results) ? r.data.results : (r.data || []);
       setPeriods(data);
-      const active = Array.isArray(data) ? (data.find(p => p.is_active) || data[0]) : (data || undefined);
-      if (active) setPeriodForm(p => ({...p, period_name: active.period_name, start_date: active.start_date, end_date: active.end_date, is_active: !!active.is_active}));
+      const latest = Array.isArray(data) ? (data.sort((a, b) => new Date(b.start_date) - new Date(a.start_date))[0]) : (data || undefined);
+      if (latest) setPeriodForm(p => ({...p, period_name: latest.period_name, start_date: latest.start_date, end_date: latest.end_date}));
     } catch (e) {
       try {
         const r2 = await axios.get('/api/leaveperiods-compat/');
         const data = (r2.data && r2.data.results) ? r2.data.results : (r2.data || []);
         setPeriods(data);
-        const active = Array.isArray(data) ? (data.find(p => p.is_active) || data[0]) : (data || undefined);
-        if (active) setPeriodForm(p => ({...p, period_name: active.period_name, start_date: active.start_date, end_date: active.end_date, is_active: !!active.is_active}));
+        const latest = Array.isArray(data) ? (data.sort((a, b) => new Date(b.start_date) - new Date(a.start_date))[0]) : (data || undefined);
+        if (latest) setPeriodForm(p => ({...p, period_name: latest.period_name, start_date: latest.start_date, end_date: latest.end_date}));
       } catch (e2) {
         setPeriods([]);
       }
@@ -107,14 +106,13 @@ export default function AuthLeave() {
         period_name: periodForm.period_name,
         start_date: periodForm.start_date,
         end_date: periodForm.end_date,
-        is_active: !!periodForm.is_active,
       };
       if (editingPeriodId) {
         await axios.put(`/api/leaveperiods/${editingPeriodId}/`, payload);
       } else {
         await axios.post('/api/leaveperiods/', payload);
       }
-      setPeriodForm({ period_name: '', start_date: '', end_date: '', is_active: false });
+      setPeriodForm({ period_name: '', start_date: '', end_date: '' });
       setEditingPeriodId(null);
       loadPeriods();
     } catch (err) {
@@ -126,27 +124,19 @@ export default function AuthLeave() {
     e.preventDefault();
     const form = new FormData(e.target);
     try {
-      const applies = allocForm.applies_to_all;
       const payload = {
-        emp_id: applies ? null : (form.get('emp_id') || allocForm.emp_id || null),
-        leave_type_code: applies ? null : (form.get('leave_code') || allocForm.leave_code || null),
+        emp_id: form.get('emp_id') || allocForm.emp_id || null,
+        leave_type_code: form.get('leave_code') || allocForm.leave_code || null,
         period_id: form.get('period_id') || allocForm.period_id || null,
+        allocated: Number(form.get('allocated') || allocForm.allocated || 0),
       };
-      if (applies) {
-        payload.allocated_cl = Number(form.get('allocated_cl') || allocForm.allocated_cl || 0);
-        payload.allocated_sl = Number(form.get('allocated_sl') || allocForm.allocated_sl || 0);
-        payload.allocated_el = Number(form.get('allocated_el') || allocForm.allocated_el || 0);
-        payload.allocated_vac = Number(form.get('allocated_vac') || allocForm.allocated_vac || 0);
-      } else {
-        payload.allocated = Number(form.get('allocated') || allocForm.allocated || 0);
-      }
       const start = form.get('allocated_start_date') || allocForm.allocated_start_date;
       const end = form.get('allocated_end_date') || allocForm.allocated_end_date;
       if (start) payload.allocated_start_date = start;
       if (end) payload.allocated_end_date = end;
       await createLeaveAllocation(payload);
       e.target.reset();
-      setAllocForm({ emp_id: '', leave_code: '', period_id: '', allocated: '', applies_to_all: true, allocated_cl: '', allocated_sl: '', allocated_el: '', allocated_vac: '', allocated_start_date: '', allocated_end_date: '' });
+      setAllocForm({ emp_id: '', leave_code: '', period_id: '', allocated: '', allocated_start_date: '', allocated_end_date: '' });
       loadAllocations();
     } catch (err) {
       alert('Failed to create allocation: ' + (err.response?.data?.detail || err.message));
@@ -155,17 +145,11 @@ export default function AuthLeave() {
 
   const openEditAllocation = (a) => {
     setEditingAllocId(a.id || null);
-    const appliesToAll = !a.emp_id;
     setAllocForm({
-      emp_id: appliesToAll ? '' : (a.emp_id || ''),
-      leave_code: appliesToAll ? '' : (a.leave_code || ''),
+      emp_id: a.emp_id || '',
+      leave_code: a.leave_code || '',
       period_id: a.period_id || a.period || '',
-      allocated: appliesToAll ? '' : (a.allocated ?? ''),
-      applies_to_all: appliesToAll,
-      allocated_cl: a.allocated_cl ?? '',
-      allocated_sl: a.allocated_sl ?? '',
-      allocated_el: a.allocated_el ?? '',
-      allocated_vac: a.allocated_vac ?? '',
+      allocated: a.allocated ?? '',
       allocated_start_date: a.allocated_start_date || a.allocation_start_date || '',
       allocated_end_date: a.allocated_end_date || a.allocation_end_date || '',
     });
@@ -175,7 +159,7 @@ export default function AuthLeave() {
 
   const cancelEditAllocation = () => {
     setEditingAllocId(null);
-    setAllocForm({ emp_id: '', leave_code: '', period_id: '', allocated: '', applies_to_all: true, allocated_cl: '', allocated_sl: '', allocated_el: '', allocated_vac: '', allocated_start_date: '', allocated_end_date: '' });
+    setAllocForm({ emp_id: '', leave_code: '', period_id: '', allocated: '', allocated_start_date: '', allocated_end_date: '' });
     setShowAllocForm(false);
   };
 
@@ -183,18 +167,11 @@ export default function AuthLeave() {
     e && e.preventDefault();
     try {
       const payload = {
-        emp_id: allocForm.applies_to_all ? null : (allocForm.emp_id || null),
-        leave_type_code: allocForm.applies_to_all ? null : (allocForm.leave_code || null),
+        emp_id: allocForm.emp_id || null,
+        leave_type_code: allocForm.leave_code || null,
         period_id: allocForm.period_id || null,
+        allocated: Number(allocForm.allocated || 0),
       };
-      if (allocForm.applies_to_all) {
-        payload.allocated_cl = Number(allocForm.allocated_cl || 0);
-        payload.allocated_sl = Number(allocForm.allocated_sl || 0);
-        payload.allocated_el = Number(allocForm.allocated_el || 0);
-        payload.allocated_vac = Number(allocForm.allocated_vac || 0);
-      } else {
-        payload.allocated = Number(allocForm.allocated || 0);
-      }
       if (allocForm.allocated_start_date) payload.allocated_start_date = allocForm.allocated_start_date;
       if (allocForm.allocated_end_date) payload.allocated_end_date = allocForm.allocated_end_date;
       if (editingAllocId) {
@@ -245,31 +222,23 @@ export default function AuthLeave() {
                   <th className="text-left py-2 px-3">Emp ID</th>
                   <th className="text-left py-2 px-3">Leave Code</th>
                   <th className="text-left py-2 px-3">Period ID</th>
-                  <th className="text-left py-2 px-3">CL</th>
-                  <th className="text-left py-2 px-3">SL</th>
-                  <th className="text-left py-2 px-3">EL</th>
-                  <th className="text-left py-2 px-3">VAC</th>
+                  <th className="text-left py-2 px-3">Allocated</th>
                   <th className="text-left py-2 px-3">Start Date</th>
                   <th className="text-left py-2 px-3">End Date</th>
-                  <th className="text-left py-2 px-3">Allocated</th>
                   <th className="text-left py-2 px-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {allocs.length === 0 ? (
-                  <tr><td colSpan={11} className="py-6 text-center text-gray-500">No allocations or insufficient privileges</td></tr>
+                  <tr><td colSpan={7} className="py-6 text-center text-gray-500">No allocations or insufficient privileges</td></tr>
                 ) : allocs.map(a => (
                   <tr key={a.id || `${a.emp_id || 'all'}-${a.period_id || 'period'}-${a.leave_code || 'leave'}`} className="border-b hover:bg-gray-50">
                     <td className="py-2 px-3">{a.emp_id || 'All'}</td>
-                    <td className="py-2 px-3">{a.emp_id ? (a.leave_code || '') : ''}</td>
+                    <td className="py-2 px-3">{a.leave_code || ''}</td>
                     <td className="py-2 px-3">{a.period_id ? `${a.period_id}${a.period_name ? ` (${a.period_name})` : ''}` : (a.period_name || '')}</td>
-                    <td className="py-2 px-3">{a.allocated_cl ?? ''}</td>
-                    <td className="py-2 px-3">{a.allocated_sl ?? ''}</td>
-                    <td className="py-2 px-3">{a.allocated_el ?? ''}</td>
-                    <td className="py-2 px-3">{a.allocated_vac ?? ''}</td>
+                    <td className="py-2 px-3">{a.allocated ?? ''}</td>
                     <td className="py-2 px-3">{a.allocated_start_date || a.allocation_start_date || ''}</td>
                     <td className="py-2 px-3">{a.allocated_end_date || a.allocation_end_date || ''}</td>
-                    <td className="py-2 px-3">{a.emp_id ? (a.allocated ?? '') : ''}</td>
                     <td className="py-2 px-3">
                       <div className="flex items-center space-x-2">
                         <button onClick={() => openEditAllocation(a)} className="px-2 py-1 bg-gray-200 rounded text-xs">Edit</button>
@@ -295,25 +264,16 @@ export default function AuthLeave() {
                 <div className="flex items-center gap-3 flex-wrap">
                   <input
                     name="emp_id"
-                    placeholder="Emp ID (leave blank for all)"
+                    placeholder="Emp ID"
                     className="p-2 border rounded w-40"
                     value={allocForm.emp_id}
-                    onChange={e => {
-                      const value = e.target.value;
-                      setAllocForm(f => ({
-                        ...f,
-                        emp_id: value,
-                        applies_to_all: value.trim() === '',
-                        ...(value.trim() === '' ? { leave_code: '', allocated: '' } : {}),
-                      }));
-                    }}
+                    onChange={e => setAllocForm(f => ({ ...f, emp_id: e.target.value }))}
                   />
                   <select
                     name="leave_code"
                     value={allocForm.leave_code}
                     onChange={e => setAllocForm(f => ({ ...f, leave_code: e.target.value }))}
                     className="p-2 border rounded w-44"
-                    disabled={allocForm.applies_to_all}
                   >
                     <option value="">Select leave type</option>
                     {types.map(t => <option key={t.id || t.leave_code} value={t.leave_code || t.id}>{t.leave_name || t.leave_code}</option>)}
@@ -327,25 +287,15 @@ export default function AuthLeave() {
                     <option value="">Select period</option>
                     {periods.map(p => <option key={p.id} value={p.id}>{p.period_name} ({p.start_date} - {p.end_date})</option>)}
                   </select>
-                  {allocForm.applies_to_all ? (
-                    <>
-                      <input name="allocated_cl" placeholder="CL" className="p-2 border rounded w-20" type="number" step="0.5" value={allocForm.allocated_cl} onChange={e => setAllocForm(f => ({ ...f, allocated_cl: e.target.value }))} />
-                      <input name="allocated_sl" placeholder="SL" className="p-2 border rounded w-20" type="number" step="0.5" value={allocForm.allocated_sl} onChange={e => setAllocForm(f => ({ ...f, allocated_sl: e.target.value }))} />
-                      <input name="allocated_el" placeholder="EL" className="p-2 border rounded w-20" type="number" step="0.5" value={allocForm.allocated_el} onChange={e => setAllocForm(f => ({ ...f, allocated_el: e.target.value }))} />
-                      <input name="allocated_vac" placeholder="VAC" className="p-2 border rounded w-20" type="number" step="0.5" value={allocForm.allocated_vac} onChange={e => setAllocForm(f => ({ ...f, allocated_vac: e.target.value }))} />
-                    </>
-                  ) : (
-                    <input
-                      name="allocated"
-                      placeholder="Allocated"
-                      className="p-2 border rounded w-24"
-                      type="number"
-                      step="0.5"
-                      value={allocForm.allocated}
-                      onChange={e => setAllocForm(f => ({ ...f, allocated: e.target.value }))}
-                      disabled={allocForm.applies_to_all}
-                    />
-                  )}
+                  <input
+                    name="allocated"
+                    placeholder="Allocated"
+                    className="p-2 border rounded w-24"
+                    type="number"
+                    step="0.5"
+                    value={allocForm.allocated}
+                    onChange={e => setAllocForm(f => ({ ...f, allocated: e.target.value }))}
+                  />
                   <input
                     name="allocated_start_date"
                     type="date"
@@ -369,27 +319,7 @@ export default function AuthLeave() {
             )}
           </div>
 
-          <div className="mt-6">
-            <h4 className="font-semibold mb-2">Allocations (period-level)</h4>
-            <p className="text-sm text-gray-600">Allocations are seeded automatically from active leave period using Leave Type annual allocation. Use the button below to (re-)seed allocations for the active period or a specific period.</p>
-            <div className="mt-3 flex items-center space-x-3">
-              <select id="seed-period" className="p-2 border rounded">
-                <option value="">Active period</option>
-                {periods.map(p => <option key={p.id} value={p.id}>{p.period_name} ({p.start_date} - {p.end_date})</option>)}
-              </select>
-              <button onClick={async () => {
-                const sel = document.getElementById('seed-period');
-                const period_id = sel ? sel.value : null;
-                try {
-                  const resp = await seedLeaveAllocations(period_id);
-                  alert(`Seed result: created=${resp.created} skipped=${resp.skipped}`);
-                  loadAllocations();
-                } catch (err) {
-                  alert('Failed to seed allocations: ' + (err.response?.data?.detail || err.message));
-                }
-              }} className="bg-yellow-600 text-white px-3 py-1 rounded">Seed Allocations</button>
-            </div>
-          </div>
+
         </div>
       )}
 
@@ -433,19 +363,18 @@ export default function AuthLeave() {
               <input name="period_name" placeholder="Name" className="p-2 border rounded" required value={periodForm.period_name} onChange={e => setPeriodForm(f => ({...f, period_name: e.target.value}))} />
               <input name="start_date" placeholder="Start" type="date" className="p-2 border rounded" required value={periodForm.start_date} onChange={e => setPeriodForm(f => ({...f, start_date: e.target.value}))} />
               <input name="end_date" placeholder="End" type="date" className="p-2 border rounded" required value={periodForm.end_date} onChange={e => setPeriodForm(f => ({...f, end_date: e.target.value}))} />
-              <label className="col-span-2"><input type="checkbox" name="is_active" checked={!!periodForm.is_active} onChange={e => setPeriodForm(f => ({...f, is_active: e.target.checked}))} /> Active</label>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 col-span-3">
                 <button className="bg-green-600 text-white px-3 py-1 rounded">{editingPeriodId ? 'Save' : 'Create Period'}</button>
-                {editingPeriodId && <button type="button" className="px-3 py-1 rounded border" onClick={() => { setEditingPeriodId(null); setPeriodForm({ period_name: '', start_date: '', end_date: '', is_active: false }); }}>Cancel</button>}
+                {editingPeriodId && <button type="button" className="px-3 py-1 rounded border" onClick={() => { setEditingPeriodId(null); setPeriodForm({ period_name: '', start_date: '', end_date: '' }); }}>Cancel</button>}
               </div>
             </form>
           </div>
           <div className="overflow-auto">
             <table className="min-w-full text-sm">
-              <thead className="bg-gray-50"><tr><th className="p-2">Name</th><th className="p-2">Start</th><th className="p-2">End</th><th className="p-2">Active</th></tr></thead>
+              <thead className="bg-gray-50"><tr><th className="p-2">Name</th><th className="p-2">Start</th><th className="p-2">End</th></tr></thead>
               <tbody>{periods.map(p => (
-                <tr key={p.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => { setEditingPeriodId(p.id); setPeriodForm({ period_name: p.period_name, start_date: p.start_date, end_date: p.end_date, is_active: !!p.is_active }); setTab('periods'); }}>
-                  <td className="p-2">{p.period_name}</td><td className="p-2">{p.start_date}</td><td className="p-2">{p.end_date}</td><td className="p-2">{p.is_active ? 'Yes' : 'No'}</td>
+                <tr key={p.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => { setEditingPeriodId(p.id); setPeriodForm({ period_name: p.period_name, start_date: p.start_date, end_date: p.end_date }); setTab('periods'); }}>
+                  <td className="p-2">{p.period_name}</td><td className="p-2">{p.start_date}</td><td className="p-2">{p.end_date}</td>
                 </tr>
               ))}</tbody>
             </table>

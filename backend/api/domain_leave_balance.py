@@ -526,7 +526,13 @@ def _compute_balances(
 
 
 def _extract_allocation_for_code(allocation: LeaveAllocation, leave_code: str) -> Decimal:
-    # Priority: dedicated per-type column > polymorphic ``allocated`` for matching leave type.
+    # Priority: if allocation has leave_type matching the code, use the allocated field
+    # Fallback: check if per-type column exists (legacy schema support)
+    alloc_code = getattr(allocation, "leave_type_id", None)
+    if alloc_code and alloc_code.upper() == leave_code.upper():
+        return _to_decimal(allocation.allocated)
+    
+    # Legacy fallback: check per-type columns
     column_map = {
         "EL": getattr(allocation, "allocated_el", None),
         "CL": getattr(allocation, "allocated_cl", None),
@@ -536,9 +542,7 @@ def _extract_allocation_for_code(allocation: LeaveAllocation, leave_code: str) -
     column_value = column_map.get(leave_code)
     if column_value not in (None, ""):
         return _to_decimal(column_value)
-    alloc_code = getattr(allocation, "leave_type_id", None)
-    if alloc_code and alloc_code.upper() == leave_code.upper():
-        return _to_decimal(allocation.allocated)
+    
     return DECIMAL_ZERO
 
 
@@ -583,12 +587,21 @@ def _split_entry_across_periods(
 
         days_total = (overlap_end - overlap_start).days + 1
 
+        # Per-entry override: prefer an explicit `sandwich_leave` boolean on the
+        # leave entry when present. If it's None/absent, fall back to the
+        # allocation-level resolver which looks up allocation flags.
         sandwich_applies = False
-        try:
-            if sandwiched_resolver and alloc_flags is not None:
-                sandwich_applies = bool(sandwiched_resolver(emp_id, period.id, leave_code_val))
-        except Exception:
+        entry_sandwich = getattr(entry, 'sandwich_leave', None)
+        if entry_sandwich is True:
+            sandwich_applies = True
+        elif entry_sandwich is False:
             sandwich_applies = False
+        else:
+            try:
+                if sandwiched_resolver and alloc_flags is not None:
+                    sandwich_applies = bool(sandwiched_resolver(emp_id, period.id, leave_code_val))
+            except Exception:
+                sandwich_applies = False
 
         if sandwich_applies:
             days = Decimal(days_total)
@@ -694,6 +707,8 @@ def computeLeaveBalances(*, leaveCalculationDate: Optional[date] = None, selecte
         e.end_date = entry.end_date
         e.leave_type_id = code_raw
         e.leave_type = entry.leave_type
+        # propagate per-entry sandwich flag if present so splitter can honor it
+        e.sandwich_leave = getattr(entry, 'sandwich_leave', None)
         splits = _split_entry_across_periods(e, periods, alloc_flags=alloc_flags_local, holidays_set=holidays_set_local, sandwiched_resolver=lambda emp, pid, lc: (
             alloc_flags_local.get((str(emp) if emp is not None else None, pid, lc))
             or alloc_flags_local.get((str(emp) if emp is not None else None, pid, '*'))
@@ -1004,22 +1019,23 @@ def loadLeaveEntriesSplitByPeriod(employee_ids, periods):
 def _resolve_allocation_for_emp_period(emp_id, period_id, allocations):
     # allocations is list of LeaveAllocation objects
     # prefer employee-specific (profile emp_id) else global (profile NULL)
+    # Returns list of all matching allocations (one per leave type in new schema)
     emp_key = str(emp_id)
-    # Collect explicit allocations for this emp+period (ordered by updated_at desc by loader)
+    # Collect explicit allocations for this emp+period
     specific = [a for a in allocations if getattr(a, 'profile_id', None) and str(getattr(a, 'profile_id')) == emp_key and a.period_id == period_id]
     if specific:
-        # allocations are pre-ordered with newest first; return the newest
-        return specific[0]
-    # fallback to global allocation for the period; prefer newest updated
+        return specific
+    # fallback to global allocation for the period
     global_allocs = [a for a in allocations if (getattr(a, 'profile_id', None) in (None, '')) and a.period_id == period_id]
-    if global_allocs:
-        return global_allocs[0]
-    return None
+    return global_allocs if global_allocs else []
 
 
-def computeEmployeePeriodBalance(emp, period, alloc_obj, used_map):
+def computeEmployeePeriodBalance(emp, period, alloc_objs, used_map):
     """Compute starting, allocation, used, ending for codes EL, CL, SL, VAC and others.
 
+    Args:
+        alloc_objs: List of LeaveAllocation objects for this emp+period
+    
     Returns dict with keys: starting, allocation, used, ending, carry_forward, allocation_meta, allocation_start_date, allocation_end_date, effective_joining_date
     """
     tracked = ('EL','CL','SL','VAC')
@@ -1030,15 +1046,14 @@ def computeEmployeePeriodBalance(emp, period, alloc_obj, used_map):
     effective_join = getattr(emp, 'effective_joining_date', None)
     left_date = getattr(emp, 'left_date', None)
 
-    # resolve original allocations
+    # resolve original allocations from list of allocation objects
+    # each allocation may have leave_type_id matching one of the tracked codes
     original = {code: DECIMAL_ZERO for code in tracked}
-    if alloc_obj:
-        original['EL'] = _to_decimal(getattr(alloc_obj, 'allocated_el', None) or 0)
-        original['CL'] = _to_decimal(getattr(alloc_obj, 'allocated_cl', None) or 0)
-        original['SL'] = _to_decimal(getattr(alloc_obj, 'allocated_sl', None) or 0)
-        original['VAC'] = _to_decimal(getattr(alloc_obj, 'allocated_vac', None) or 0)
-    # fallback: if leave_type matches, use allocated field
-    # but we expect per-type columns present; keep generic fallback
+    if alloc_objs:
+        for alloc_obj in alloc_objs:
+            for code in tracked:
+                original[code] += _extract_allocation_for_code(alloc_obj, code)
+    
     alloc_effective = {code: DECIMAL_ZERO for code in tracked}
     allocation_meta = {}
     period_days = Decimal((period.end - period.start).days + 1)
@@ -1156,7 +1171,7 @@ def upsertSnapshot(emp, period, period_data, alloc_obj=None, emp_pk: Optional[in
             'emp_id': emp_pk,
             'period_id': period.id,
             'balance_date': period.start,
-            'allocation_id': getattr(alloc_obj, 'id', None) if alloc_obj is not None else None,
+            'allocation_id': getattr(alloc_obj[0], 'id', None) if (alloc_obj and isinstance(alloc_obj, list) and len(alloc_obj) > 0) else (getattr(alloc_obj, 'id', None) if alloc_obj is not None else None),
             'allocation_start_date': alloc_start,
             'allocation_end_date': alloc_end,
             'effective_joining_date': eff_join,

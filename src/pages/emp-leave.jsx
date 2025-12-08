@@ -22,7 +22,7 @@ const EmpLeavePage = () => {
   const [myBalances, setMyBalances] = useState([]);
   const [allocations, setAllocations] = useState([]);
   const [computedReport, setComputedReport] = useState(null);
-  const [allocEdits, setAllocEdits] = useState({}); // local edits keyed by allocation id: { [id]: { allocated, allocated_cl, allocated_sl, allocated_el, allocated_vac, allocated_start_date, allocated_end_date } }
+  const [allocEdits, setAllocEdits] = useState({}); // local edits keyed by allocation id: { [id]: { allocated, allocated_start_date, allocated_end_date } }
   const [selectedEmp, setSelectedEmp] = useState(null);
 
   const PANELS = ['Entry Leave', 'Leave Report', 'Balance Certificate'];
@@ -58,12 +58,10 @@ const EmpLeavePage = () => {
       return;
     }
     const payload = {};
-    ['allocated','allocated_cl','allocated_sl','allocated_el','allocated_vac'].forEach(k => {
-      if (typeof edits[k] !== 'undefined') {
-        const v = edits[k];
-        payload[k] = v === '' ? null : (isNaN(Number(v)) ? v : Number(v));
-      }
-    });
+    if (typeof edits.allocated !== 'undefined') {
+      const v = edits.allocated;
+      payload.allocated = v === '' ? null : (isNaN(Number(v)) ? v : Number(v));
+    }
     if (typeof edits.allocated_start_date !== 'undefined') payload.allocated_start_date = toISODateString(edits.allocated_start_date);
     if (typeof edits.allocated_end_date !== 'undefined') payload.allocated_end_date = toISODateString(edits.allocated_end_date);
     try {
@@ -623,9 +621,25 @@ const EmpLeavePage = () => {
                   const findAlloc = (codes) => {
                     const codeList = Array.isArray(codes) ? codes : [codes];
                     const matchesCode = (allocObj) => {
-                      const ltRaw = (allocObj.leave_type || allocObj.leave_code || '').toString().toLowerCase();
-                      if (!ltRaw) return false;
-                      return codeList.some((codePrefix) => ltRaw.startsWith(String(codePrefix).toLowerCase()));
+                    const ltRaw = (allocObj.leave_type || allocObj.leave_code || '');
+                    // If leave_type/leave_code present, match by prefix
+                    if (ltRaw) {
+                      const s = String(ltRaw).toLowerCase();
+                      return codeList.some((codePrefix) => s.startsWith(String(codePrefix).toLowerCase()));
+                    }
+                    // If leave_type is missing (NULL), allow matching by per-type allocated_* columns
+                    // e.g. a default allocation row may have allocated_cl/allocated_el populated but leave_type NULL
+                    try {
+                      return codeList.some((codePrefix) => {
+                        const k = `allocated_${String(codePrefix).toLowerCase()}`;
+                        const v = allocObj && (allocObj[k] ?? allocObj[k.toUpperCase()]);
+                        if (v === null || typeof v === 'undefined' || v === '') return false;
+                        const n = Number(v);
+                        return !Number.isNaN(n) && n !== 0;
+                      });
+                    } catch (e) {
+                      return false;
+                    }
                     };
                     const matchesProfile = (allocObj) => {
                       const profileToken = String(allocObj.emp_id ?? allocObj.profile ?? '').trim();
@@ -633,13 +647,34 @@ const EmpLeavePage = () => {
                       return profileToken === String(emp.id) || profileToken === String(emp.emp_short) || profileToken === String(emp.emp_id);
                     };
 
-                    const specific = allocations.find((allocObj) => matchesProfile(allocObj) && matchesCode(allocObj));
+                    const specific = allocations.find((allocObj) => {
+                      // ensure allocation applies to the selected period
+                      try {
+                        const pid = allocObj.period_id ?? (allocObj.period && allocObj.period.id) ?? allocObj.period;
+                        if (selectedPeriod && pid && String(pid) !== String(selectedPeriod)) return false;
+                      } catch (e) {
+                        // ignore and continue
+                      }
+                      return matchesProfile(allocObj) && matchesCode(allocObj);
+                    });
                     if (specific) return normaliseAllocValue(specific);
 
                     const fallback = allocations.find((allocObj) => {
-                      if (!matchesCode(allocObj)) return false;
-                      const profileToken = String(allocObj.emp_id ?? allocObj.profile ?? '').trim().toLowerCase();
-                      return profileToken === '' || profileToken === 'none' || profileToken === 'null';
+                      // allow global/default rows even when leave_type is null (per-type cols)
+                      // Do not require matchesCode to be true here; instead use matchesCode
+                      // or presence of per-type allocated columns as indicator.
+                      // ensure allocation applies to the selected period
+                      try {
+                        const pid = allocObj.period_id ?? (allocObj.period && allocObj.period.id) ?? allocObj.period;
+                        if (selectedPeriod && pid && String(pid) !== String(selectedPeriod)) return false;
+                      } catch (e) {}
+
+                      const profileTokenRaw = (allocObj.emp_id ?? allocObj.profile ?? '');
+                      const profileToken = (profileTokenRaw === null || typeof profileTokenRaw === 'undefined') ? '' : String(profileTokenRaw).trim().toLowerCase();
+                      const isDefaultProfile = !profileToken || profileToken === 'none' || profileToken === 'null';
+                      if (!isDefaultProfile) return false;
+                      // now ensure this fallback row is relevant to the requested code
+                      return matchesCode(allocObj);
                     });
                     if (fallback) return normaliseAllocValue(fallback);
 
@@ -1080,11 +1115,17 @@ const EmpLeavePage = () => {
                 return ak.localeCompare(bk, undefined, {numeric: true});
               }).filter(emp => !filterEmp || String(emp.id || emp.emp_short || emp.emp_id) === String(filterEmp)).map(emp => {
               const rowCells = leaveTypes.map(lt => {
-                const alloc = allocations.find(a => (
-                  String(a.emp_id ?? a.profile ?? '') === String(emp.id) || String(a.emp_id ?? a.profile ?? '') === String(emp.emp_short) || String(a.emp_id ?? a.profile ?? '') === String(emp.emp_id)
-                ) && (
-                  String(a.leave_type) === String(lt.leave_code) || String(a.leave_code) === String(lt.leave_code)
-                ));
+                const alloc = allocations.find(a => {
+                  try {
+                    const pid = a.period_id ?? (a.period && a.period.id) ?? a.period;
+                    if (selectedPeriod && pid && String(pid) !== String(selectedPeriod)) return false;
+                  } catch (e) {}
+                  return (
+                    String(a.emp_id ?? a.profile ?? '') === String(emp.id) || String(a.emp_id ?? a.profile ?? '') === String(emp.emp_short) || String(a.emp_id ?? a.profile ?? '') === String(emp.emp_id)
+                  ) && (
+                    String(a.leave_type) === String(lt.leave_code) || String(a.leave_code) === String(lt.leave_code)
+                  );
+                });
 
                 let start = 0;
                 const code = String(lt.leave_code || '').toLowerCase();
@@ -1095,7 +1136,7 @@ const EmpLeavePage = () => {
 
                 let allocated = 0;
                 if (alloc) {
-                  allocated = Number(alloc.allocated ?? alloc.allocated_amount ?? alloc.allocated_el ?? alloc.allocated_cl ?? alloc.allocated_sl ?? alloc.allocated_vac ?? 0);
+                  allocated = Number(alloc.allocated ?? 0);
                 }
 
                 let used = 0;
@@ -1146,13 +1187,9 @@ const EmpLeavePage = () => {
                   <th className="py-2 px-3 text-left">Emp ID</th>
                   <th className="py-2 px-3 text-left">Leave Code</th>
                   <th className="py-2 px-3 text-left">Period ID</th>
-                  <th className="py-2 px-3 text-left">CL</th>
-                  <th className="py-2 px-3 text-left">SL</th>
-                  <th className="py-2 px-3 text-left">EL</th>
-                  <th className="py-2 px-3 text-left">VAC</th>
+                  <th className="py-2 px-3 text-left">Allocated</th>
                   <th className="py-2 px-3 text-left">Start Date</th>
                   <th className="py-2 px-3 text-left">End Date</th>
-                  <th className="py-2 px-3 text-left">Allocated</th>
                   <th className="py-2 px-3 text-left">Action</th>
                 </tr>
               </thead>
@@ -1160,47 +1197,27 @@ const EmpLeavePage = () => {
                 {allocations.map((a) => {
                   const edit = allocEdits[a.id] || {};
                   const cur = {
-                    allocated: typeof edit.allocated !== 'undefined' ? edit.allocated : (a.allocated ?? a.allocated_amount ?? ''),
-                    allocated_cl: typeof edit.allocated_cl !== 'undefined' ? edit.allocated_cl : (a.allocated_cl ?? ''),
-                    allocated_sl: typeof edit.allocated_sl !== 'undefined' ? edit.allocated_sl : (a.allocated_sl ?? ''),
-                    allocated_el: typeof edit.allocated_el !== 'undefined' ? edit.allocated_el : (a.allocated_el ?? ''),
-                    allocated_vac: typeof edit.allocated_vac !== 'undefined' ? edit.allocated_vac : (a.allocated_vac ?? ''),
+                    allocated: typeof edit.allocated !== 'undefined' ? edit.allocated : (a.allocated ?? ''),
                     allocated_start_date: typeof edit.allocated_start_date !== 'undefined' ? edit.allocated_start_date : (a.allocated_start_date ?? ''),
                     allocated_end_date: typeof edit.allocated_end_date !== 'undefined' ? edit.allocated_end_date : (a.allocated_end_date ?? ''),
                   };
                   const empIdRaw = a.emp_id || (typeof a.profile === 'string' ? a.profile : a.profile?.emp_id) || null;
-                  const isForAll = !empIdRaw;
-                  const empIdDisplay = isForAll ? 'All' : empIdRaw;
+                  const empIdDisplay = empIdRaw || 'All';
+                  const leaveCodeDisplay = a.leave_code || a.leave_type?.leave_code || a.leave_type || '';
 
-                  // For employee-specific allocations: show emp_id, leave_code, allocated, start/end dates
-                  // For default allocations (emp_id=null/All): show only CL/SL/EL/VAC and start/end dates
                   return (
                     <tr key={a.id} className="border-b hover:bg-gray-50">
                       <td className="py-2 px-3">{empIdDisplay}</td>
-                      <td className="py-2 px-3">{isForAll ? '' : (a.leave_type?.leave_code || a.leave_code || a.leave_type_name || a.leave_type || '')}</td>
+                      <td className="py-2 px-3">{leaveCodeDisplay}</td>
                       <td className="py-2 px-3">{a.period_id || a.period?.id || a.period}</td>
                       <td className="py-2 px-3">
-                        <input placeholder="CL" type="number" step="0.5" value={cur.allocated_cl ?? ''} onChange={e => setAllocEdits(prev => ({ ...prev, [a.id]: { ...(prev[a.id]||{}), allocated_cl: e.target.value } }))} className="border rounded p-1 w-20 text-sm" />
+                        <input type="number" step="0.5" value={cur.allocated ?? ''} onChange={e => setAllocEdits(prev => ({ ...prev, [a.id]: { ...(prev[a.id]||{}), allocated: e.target.value } }))} className="border rounded p-1 w-28 text-sm" />
                       </td>
                       <td className="py-2 px-3">
-                        <input placeholder="SL" type="number" step="0.5" value={cur.allocated_sl ?? ''} onChange={e => setAllocEdits(prev => ({ ...prev, [a.id]: { ...(prev[a.id]||{}), allocated_sl: e.target.value } }))} className="border rounded p-1 w-20 text-sm" />
+                        <input placeholder="dd-mm-yyyy" type="text" value={cur.allocated_start_date ?? ''} onChange={e => setAllocEdits(prev => ({ ...prev, [a.id]: { ...(prev[a.id]||{}), allocated_start_date: e.target.value } }))} className="border rounded p-1 w-32 text-sm" />
                       </td>
                       <td className="py-2 px-3">
-                        <input placeholder="EL" type="number" step="0.5" value={cur.allocated_el ?? ''} onChange={e => setAllocEdits(prev => ({ ...prev, [a.id]: { ...(prev[a.id]||{}), allocated_el: e.target.value } }))} className="border rounded p-1 w-20 text-sm" />
-                      </td>
-                      <td className="py-2 px-3">
-                        <input placeholder="VAC" type="number" step="0.5" value={cur.allocated_vac ?? ''} onChange={e => setAllocEdits(prev => ({ ...prev, [a.id]: { ...(prev[a.id]||{}), allocated_vac: e.target.value } }))} className="border rounded p-1 w-20 text-sm" />
-                      </td>
-                      <td className="py-2 px-3">
-                        <input placeholder="Start dd-mm-yyyy" type="text" value={cur.allocated_start_date ?? ''} onChange={e => setAllocEdits(prev => ({ ...prev, [a.id]: { ...(prev[a.id]||{}), allocated_start_date: e.target.value } }))} className="border rounded p-1 w-32 text-sm" />
-                      </td>
-                      <td className="py-2 px-3">
-                        <input placeholder="End dd-mm-yyyy" type="text" value={cur.allocated_end_date ?? ''} onChange={e => setAllocEdits(prev => ({ ...prev, [a.id]: { ...(prev[a.id]||{}), allocated_end_date: e.target.value } }))} className="border rounded p-1 w-32 text-sm" />
-                      </td>
-                      <td className="py-2 px-3">
-                        {isForAll ? '' : (
-                          <input type="number" step="0.5" value={cur.allocated ?? ''} onChange={e => setAllocEdits(prev => ({ ...prev, [a.id]: { ...(prev[a.id]||{}), allocated: e.target.value } }))} className="border rounded p-1 w-28 text-sm" />
-                        )}
+                        <input placeholder="dd-mm-yyyy" type="text" value={cur.allocated_end_date ?? ''} onChange={e => setAllocEdits(prev => ({ ...prev, [a.id]: { ...(prev[a.id]||{}), allocated_end_date: e.target.value } }))} className="border rounded p-1 w-32 text-sm" />
                       </td>
                       <td className="py-2 px-3">
                         {(user && (user.is_staff || user.is_superuser)) ? (

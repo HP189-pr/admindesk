@@ -37,7 +37,7 @@ class StudentDegreeSerializer(serializers.ModelSerializer):
         model = StudentDegree
         fields = [
             'id', 'dg_sr_no', 'enrollment_no', 'student_name_dg',
-            'dg_address', 'institute_name_dg', 'degree_name',
+            'dg_address', 'dg_contact', 'institute_name_dg', 'degree_name',
             'specialisation', 'seat_last_exam', 'last_exam_month',
             'last_exam_year', 'class_obtain', 'course_language',
             'dg_rec_no', 'dg_gender', 'convocation_no',

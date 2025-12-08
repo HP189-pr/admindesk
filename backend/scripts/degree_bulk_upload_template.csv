@@ -1,0 +1,4 @@
+dg_sr_no,enrollment_no,student_name_dg,dg_address,dg_contact,institute_name_dg,degree_name,specialisation,seat_last_exam,last_exam_month,last_exam_year,class_obtain,course_language,dg_rec_no,dg_gender,convocation_no
+DG001,2023001,John Doe,123 Main St Mumbai,+91 9876543210,ABC Institute,Bachelor of Science,Computer Science,101,May,2023,First Class,English,REC001,Male,1
+DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of Arts,English Literature,102,June,2023,First Class with Distinction,English,REC002,Female,1
+DG003,2023003,Raj Kumar,789 Lake Rd Pune,+91 9876543212,PQR University,Bachelor of Commerce,Accounting,103,May,2023,Second Class,English,REC003,Male,1

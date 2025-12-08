@@ -49,30 +49,27 @@ class LeaveEntryAdmin(admin.ModelAdmin):
 
 @admin.register(LeavePeriod)
 class LeavePeriodAdmin(admin.ModelAdmin):
-    list_display = ('period_name', 'start_date', 'end_date', 'is_active')
+    list_display = ('period_name', 'start_date', 'end_date', 'created_at')
     search_fields = ('period_name',)
-    list_filter = ('is_active',)
+    list_filter = ('start_date',)
 
 
 @admin.register(LeaveAllocation)
 class LeaveAllocationAdmin(admin.ModelAdmin):
-    # Show columns in requested sequence: emp_id, leave_code, period_id, allocated_cl/sl/el/vac, start/end dates
     list_display = (
         'id', 'emp_id_field', 'leave_code_field', 'period_id_field',
-        'allocated_cl', 'allocated_sl', 'allocated_el', 'allocated_vac',
-        'allocated_start_date', 'allocated_end_date', 'allocated_field',
+        'allocated', 'allocated_start_date', 'allocated_end_date',
         'created_at', 'updated_at'
     )
     list_display_links = ('id',)
     # Allow quick edits for allocation numeric/date columns directly in the changelist
-    list_editable = ('allocated_cl', 'allocated_sl', 'allocated_el', 'allocated_vac', 'allocated_start_date', 'allocated_end_date')
+    list_editable = ('allocated', 'allocated_start_date', 'allocated_end_date')
     search_fields = ('profile__emp_name', 'leave_type__leave_name', 'profile__emp_id')
     list_filter = ('period', 'leave_type', 'profile')
     readonly_fields = ('created_at', 'updated_at')
     fields = (
         'profile', 'leave_type', 'period',
-        'allocated_cl', 'allocated_sl', 'allocated_el', 'allocated_vac',
-        'allocated_start_date', 'allocated_end_date', 'allocated',
+        'allocated', 'allocated_start_date', 'allocated_end_date',
         'created_at', 'updated_at'
     )
     raw_id_fields = ('profile', 'leave_type', 'period')
@@ -125,30 +122,6 @@ class LeaveAllocationAdmin(admin.ModelAdmin):
             return None
     period_id_field.short_description = 'period_id'
 
-    def allocated_cl(self, obj):
-        return getattr(obj, 'allocated_cl', None)
-    allocated_cl.short_description = 'allocated_cl'
-
-    def allocated_sl(self, obj):
-        return getattr(obj, 'allocated_sl', None)
-    allocated_sl.short_description = 'allocated_sl'
-
-    def allocated_el(self, obj):
-        return getattr(obj, 'allocated_el', None)
-    allocated_el.short_description = 'allocated_el'
-
-    def allocated_vac(self, obj):
-        return getattr(obj, 'allocated_vac', None)
-    allocated_vac.short_description = 'allocated_vac'
-
-    def allocated_start_date(self, obj):
-        return getattr(obj, 'allocated_start_date', None)
-    allocated_start_date.short_description = 'allocated_start_date'
-
-    def allocated_end_date(self, obj):
-        return getattr(obj, 'allocated_end_date', None)
-    allocated_end_date.short_description = 'allocated_end_date'
-
 
 @admin.register(LeaveBalanceSnapshot)
 class LeaveBalanceSnapshotAdmin(admin.ModelAdmin):
@@ -166,7 +139,6 @@ class LeaveAllocationInline(admin.TabularInline):
     extra = 0
     fields = (
         'leave_type', 'period', 'allocated',
-        'allocated_cl', 'allocated_sl', 'allocated_el', 'allocated_vac',
         'allocated_start_date', 'allocated_end_date'
     )
     readonly_fields = ()

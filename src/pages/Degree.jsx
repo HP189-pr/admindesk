@@ -10,7 +10,8 @@ import {
     createDegree,
     updateDegree,
     deleteDegree,
-    getAllConvocations
+    getAllConvocations,
+    bulkUploadDegrees
 } from '../services/degreeService';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -35,12 +36,17 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
     
     // Modal state
     const [showModal, setShowModal] = useState(false);
+    const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
+    const [uploadFile, setUploadFile] = useState(null);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploadResult, setUploadResult] = useState(null);
     const [editingDegree, setEditingDegree] = useState(null);
     const [formData, setFormData] = useState({
         dg_sr_no: '',
         enrollment_no: '',
         student_name_dg: '',
         dg_address: '',
+        dg_contact: '',
         institute_name_dg: '',
         degree_name: '',
         specialisation: '',
@@ -117,6 +123,7 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
             enrollment_no: degree.enrollment_no || '',
             student_name_dg: degree.student_name_dg || '',
             dg_address: degree.dg_address || '',
+            dg_contact: degree.dg_contact || '',
             institute_name_dg: degree.institute_name_dg || '',
             degree_name: degree.degree_name || '',
             specialisation: degree.specialisation || '',
@@ -150,6 +157,7 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
             enrollment_no: '',
             student_name_dg: '',
             dg_address: '',
+            dg_contact: '',
             institute_name_dg: '',
             degree_name: '',
             specialisation: '',
@@ -168,6 +176,59 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleBulkUpload = async () => {
+        if (!uploadFile) {
+            toast.error('Please select a CSV file');
+            return;
+        }
+
+        try {
+            setUploadProgress(10);
+            const result = await bulkUploadDegrees(uploadFile);
+            setUploadProgress(100);
+            setUploadResult(result);
+            
+            toast.success(`Bulk upload completed! Created: ${result.created}, Updated: ${result.updated}`);
+            
+            if (result.errors && result.errors.length > 0) {
+                toast.warning(`${result.errors.length} rows had errors. Check details below.`);
+            }
+            
+            fetchDegrees();
+        } catch (err) {
+            toast.error('Bulk upload failed: ' + (err.response?.data?.error || err.message));
+            setUploadProgress(0);
+        }
+    };
+
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file && !file.name.endsWith('.csv')) {
+            toast.error('Please select a CSV file');
+            return;
+        }
+        setUploadFile(file);
+        setUploadResult(null);
+        setUploadProgress(0);
+    };
+
+    const downloadTemplate = () => {
+        const csvContent = `dg_sr_no,enrollment_no,student_name_dg,dg_address,dg_contact,institute_name_dg,degree_name,specialisation,seat_last_exam,last_exam_month,last_exam_year,class_obtain,course_language,dg_rec_no,dg_gender,convocation_no
+DG001,2023001,John Doe,123 Main St Mumbai,+91 9876543210,ABC Institute,Bachelor of Science,Computer Science,101,May,2023,First Class,English,REC001,Male,1
+DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of Arts,English Literature,102,June,2023,First Class with Distinction,English,REC002,Female,1`;
+        
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'degree_bulk_upload_template.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        toast.success('Template downloaded!');
     };
 
     const actions = ["➕", "🔍", "📄 Report"];
@@ -215,7 +276,7 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
                 {panelOpen && (
                     <div className="p-4">
                         {selectedMenu === '➕' && (
-                            <div>
+                            <div className="flex gap-3">
                                 <button
                                     onClick={() => {
                                         resetForm();
@@ -224,6 +285,12 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
                                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                                 >
                                     ➕ Add New Degree
+                                </button>
+                                <button
+                                    onClick={() => setShowBulkUploadModal(true)}
+                                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                                >
+                                    📤 Bulk Upload CSV
                                 </button>
                             </div>
                         )}
@@ -293,6 +360,7 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
                                     <th className="border p-2 text-left">DG SR No</th>
                                     <th className="border p-2 text-left">Enrollment</th>
                                     <th className="border p-2 text-left">Student Name</th>
+                                    <th className="border p-2 text-left">Contact</th>
                                     <th className="border p-2 text-left">Degree</th>
                                     <th className="border p-2 text-left">Specialisation</th>
                                     <th className="border p-2 text-left">Year</th>
@@ -304,11 +372,11 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
                             <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan="9" className="border p-2 text-center">Loading...</td>
+                                    <td colSpan="10" className="border p-2 text-center">Loading...</td>
                                 </tr>
                             ) : degrees.length === 0 ? (
                                 <tr>
-                                    <td colSpan="9" className="border p-2 text-center">No degree records found.</td>
+                                    <td colSpan="10" className="border p-2 text-center">No degree records found.</td>
                                 </tr>
                             ) : (
                                 degrees.map((degree) => (
@@ -316,6 +384,7 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
                                         <td className="border p-2">{degree.dg_sr_no || '-'}</td>
                                         <td className="border p-2">{degree.enrollment_no}</td>
                                         <td className="border p-2">{degree.student_name_dg || '-'}</td>
+                                        <td className="border p-2">{degree.dg_contact || '-'}</td>
                                         <td className="border p-2">{degree.degree_name || '-'}</td>
                                         <td className="border p-2">{degree.specialisation || '-'}</td>
                                         <td className="border p-2">{degree.last_exam_year || '-'}</td>
@@ -375,6 +444,10 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
                                         <option value="Other">Other</option>
                                     </select>
                                 </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
+                                    <input type="tel" name="dg_contact" value={formData.dg_contact} onChange={handleInputChange} placeholder="e.g., +91 9876543210" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                                </div>
                                 <div className="col-span-2">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
                                     <textarea name="dg_address" value={formData.dg_address} onChange={handleInputChange} rows="2" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
@@ -433,6 +506,108 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
                                 <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">{editingDegree ? 'Update' : 'Create'}</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Bulk Upload Modal */}
+            {showBulkUploadModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full">
+                        <div className="px-6 py-4 border-b border-gray-200">
+                            <h2 className="text-2xl font-bold text-gray-800">Bulk Upload Degrees</h2>
+                        </div>
+                        
+                        <div className="px-6 py-4">
+                            <div className="mb-4">
+                                <button
+                                    onClick={downloadTemplate}
+                                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 border border-gray-300"
+                                >
+                                    📥 Download CSV Template
+                                </button>
+                                <p className="text-sm text-gray-600 mt-2">
+                                    Download the template to see the required format with all fields including the new Contact field.
+                                </p>
+                            </div>
+
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Select CSV File
+                                </label>
+                                <input
+                                    type="file"
+                                    accept=".csv"
+                                    onChange={handleFileChange}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                />
+                                {uploadFile && (
+                                    <p className="text-sm text-green-600 mt-1">
+                                        Selected: {uploadFile.name}
+                                    </p>
+                                )}
+                            </div>
+
+                            {uploadProgress > 0 && uploadProgress < 100 && (
+                                <div className="mb-4">
+                                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                                        <div
+                                            className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                                            style={{ width: `${uploadProgress}%` }}
+                                        ></div>
+                                    </div>
+                                    <p className="text-sm text-gray-600 mt-1">Uploading... {uploadProgress}%</p>
+                                </div>
+                            )}
+
+                            {uploadResult && (
+                                <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                    <h3 className="font-semibold text-blue-900 mb-2">Upload Results</h3>
+                                    <div className="text-sm text-blue-800 space-y-1">
+                                        <p>✅ Created: {uploadResult.created}</p>
+                                        <p>🔄 Updated: {uploadResult.updated}</p>
+                                        {uploadResult.errors && uploadResult.errors.length > 0 && (
+                                            <div className="mt-2">
+                                                <p className="text-red-700 font-medium">❌ Errors: {uploadResult.errors.length}</p>
+                                                <div className="max-h-40 overflow-y-auto mt-1">
+                                                    {uploadResult.errors.map((error, idx) => (
+                                                        <p key={idx} className="text-xs text-red-600">{error}</p>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                                <p className="text-sm text-yellow-800">
+                                    <strong>Note:</strong> CSV must include headers. Required field: enrollment_no. 
+                                    The Contact field (dg_contact) is now included in the template.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowBulkUploadModal(false);
+                                    setUploadFile(null);
+                                    setUploadResult(null);
+                                    setUploadProgress(0);
+                                }}
+                                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                            >
+                                Close
+                            </button>
+                            <button
+                                onClick={handleBulkUpload}
+                                disabled={!uploadFile || uploadProgress > 0}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            >
+                                📤 Upload
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

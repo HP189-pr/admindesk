@@ -98,8 +98,8 @@ class LeavePeriodListView(generics.ListCreateAPIView):
 class LeaveAllocationListView(generics.ListCreateAPIView):
 	"""List and create LeaveAllocation records.
 
-	POST payload expects fields (profile_id nullable), period_id, leave_type_code (or leave_type), allocated.
-	If profile_id is blank/null the implementation will insert a NULL profile allocation (legacy default row) using SQL.
+	POST payload expects fields (emp_id nullable), period_id, leave_type_code (or leave_type), allocated.
+	If emp_id is blank/null the implementation will insert a NULL emp_id allocation (legacy default row) using SQL.
 	"""
 	serializer_class = LeaveAllocationSerializer
 	permission_classes = [IsLeaveManager]
@@ -138,20 +138,18 @@ class LeaveAllocationListView(generics.ListCreateAPIView):
 		institute = self.request.query_params.get('institute')
 		if period:
 			qs = qs.filter(period_id=period)
-		else:
-			active = LeavePeriod.objects.filter(is_active=True).first()
-			if active:
-				qs = qs.filter(period=active)
 		if institute:
 			qs = qs.filter(profile__institute_id__iexact=institute)
 		return qs
 
 	def post(self, request, *args, **kwargs):
 		data = request.data or {}
-		profile_id = data.get('profile_id')
+		emp_id = data.get('emp_id') or data.get('profile_id')  # Accept both for compatibility
 		period_id = data.get('period_id') or data.get('period')
 		leave_code = data.get('leave_type_code') or data.get('leave_type')
 		allocated = data.get('allocated')
+		allocated_start_date = data.get('allocated_start_date')
+		allocated_end_date = data.get('allocated_end_date')
 
 		# validation
 		if not period_id:
@@ -176,30 +174,51 @@ class LeaveAllocationListView(generics.ListCreateAPIView):
 			except Exception:
 				return Response({'detail': 'allocated must be a number'}, status=status.HTTP_400_BAD_REQUEST)
 
-			# if profile_id provided and not blank, create via ORM
-			if profile_id not in (None, '', 'null'):
-				# accept numeric id
+			# if emp_id provided and not blank, create via ORM
+			if emp_id not in (None, '', 'null'):
+				# accept numeric id or emp_id string
 				try:
-					prof = EmpProfile.objects.filter(id=int(profile_id)).first()
+					prof = EmpProfile.objects.filter(id=int(emp_id)).first()
 				except Exception:
-					prof = EmpProfile.objects.filter(emp_id=str(profile_id)).first()
+					prof = EmpProfile.objects.filter(emp_id=str(emp_id)).first()
 				if not prof:
 					return Response({'detail': 'EmpProfile not found'}, status=status.HTTP_404_NOT_FOUND)
 
 				# create or update existing allocation
-				obj, created = LeaveAllocation.objects.get_or_create(profile=prof, leave_type=lt, period=period, defaults={'allocated': allocated_val})
+				defaults = {'allocated': allocated_val}
+				if allocated_start_date:
+					defaults['allocated_start_date'] = allocated_start_date
+				if allocated_end_date:
+					defaults['allocated_end_date'] = allocated_end_date
+				obj, created = LeaveAllocation.objects.get_or_create(profile=prof, leave_type=lt, period=period, defaults=defaults)
 				if not created:
 					obj.allocated = allocated_val
+					if allocated_start_date:
+						obj.allocated_start_date = allocated_start_date
+					if allocated_end_date:
+						obj.allocated_end_date = allocated_end_date
 					obj.save()
 				return Response({'id': obj.id, 'profile': obj.profile.id if obj.profile else None, 'leave_type': getattr(obj.leave_type, 'leave_code', obj.leave_type), 'allocated': float(obj.allocated), 'period': obj.period.id})
 
-			# profile_id is null/blank -> insert a default allocation row with NULL profile_id using SQL (legacy table structure)
+			# emp_id is null/blank -> insert a default allocation row with NULL emp_id using SQL (legacy table structure)
 			from django.db import connection
 			with connection.cursor() as cur:
 				# Attempt to insert into the underlying table. Columns may vary across deployments; use common columns.
 				# use empty-string for leave_code when none provided to avoid NOT NULL constraint errors on some schemas
 				lc_param = leave_code if leave_code is not None else ''
-				cur.execute("INSERT INTO api_leaveallocation (profile_id, leave_code, allocated, period_id, created_at, updated_at) VALUES (NULL, %s, %s, %s, now(), now()) RETURNING id", [lc_param, allocated_val, period.id])
+				params = [lc_param, allocated_val, period.id]
+				cols = ['leave_code', 'allocated', 'period_id', 'created_at', 'updated_at']
+				vals = ['%s', '%s', '%s', 'now()', 'now()']
+				if allocated_start_date:
+					cols.append('allocated_start_date')
+					vals.append('%s')
+					params.append(allocated_start_date)
+				if allocated_end_date:
+					cols.append('allocated_end_date')
+					vals.append('%s')
+					params.append(allocated_end_date)
+				sql = f"INSERT INTO api_leaveallocation (emp_id, {', '.join(cols)}) VALUES (NULL, {', '.join(vals)}) RETURNING id"
+				cur.execute(sql, params)
 				new_id = cur.fetchone()[0]
 			return Response({'id': new_id, 'profile': None, 'leave_type': leave_code, 'allocated': allocated_val, 'period': period.id}, status=status.HTTP_201_CREATED)
 		except Exception as e:
@@ -212,7 +231,8 @@ class LeaveAllocationDetailView(APIView):
 
 	def patch(self, request, pk, *args, **kwargs):
 		from django.db import connection
-		# allow updating allocated and/or sandwich flag
+		from datetime import datetime
+		# allow updating allocated, sandwich flag, and date fields
 		data = request.data or {}
 		updated_fields = {}
 		if 'allocated' in data:
@@ -228,8 +248,26 @@ class LeaveAllocationDetailView(APIView):
 			else:
 				_sw = bool(sw)
 			updated_fields['sandwich'] = _sw
+		if 'allocated_start_date' in data:
+			val = data.get('allocated_start_date')
+			if val:
+				try:
+					updated_fields['allocated_start_date'] = datetime.strptime(val, '%Y-%m-%d').date() if isinstance(val, str) else val
+				except Exception:
+					return Response({'detail': 'allocated_start_date must be YYYY-MM-DD format'}, status=status.HTTP_400_BAD_REQUEST)
+			else:
+				updated_fields['allocated_start_date'] = None
+		if 'allocated_end_date' in data:
+			val = data.get('allocated_end_date')
+			if val:
+				try:
+					updated_fields['allocated_end_date'] = datetime.strptime(val, '%Y-%m-%d').date() if isinstance(val, str) else val
+				except Exception:
+					return Response({'detail': 'allocated_end_date must be YYYY-MM-DD format'}, status=status.HTTP_400_BAD_REQUEST)
+			else:
+				updated_fields['allocated_end_date'] = None
 		if not updated_fields:
-			return Response({'detail': 'allocated or sandwich is required'}, status=status.HTTP_400_BAD_REQUEST)
+			return Response({'detail': 'At least one field (allocated, sandwich, allocated_start_date, allocated_end_date) is required'}, status=status.HTTP_400_BAD_REQUEST)
 		try:
 			updated_fields['updated_at'] = timezone.now()
 			updated = LeaveAllocation.objects.filter(pk=pk).update(**updated_fields)
@@ -280,9 +318,9 @@ class MyLeaveBalanceView(generics.GenericAPIView):
 		if not profile:
 			return Response({'detail': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
 
-		period = LeavePeriod.objects.filter(is_active=True).first()
+		period = LeavePeriod.objects.order_by('-start_date').first()
 		if not period:
-			return Response({'detail': 'No active leave period.'}, status=status.HTTP_404_NOT_FOUND)
+			return Response({'detail': 'No leave periods found.'}, status=status.HTTP_404_NOT_FOUND)
 
 		# Use the centralized computation so business rules (prorating, waiting periods,
 		# split-across-periods) are consistent with reports and persisted snapshots.
@@ -603,7 +641,7 @@ class SeedLeaveAllocationsView(APIView):
 			if period_id:
 				period = LeavePeriod.objects.filter(id=int(period_id)).first()
 			else:
-				period = LeavePeriod.objects.filter(is_active=True).first()
+				period = LeavePeriod.objects.order_by('-start_date').first()
 			if not period:
 				return Response({'detail': 'LeavePeriod not found'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -688,7 +726,6 @@ class LeavePeriodCompatView(APIView):
 					'start_date': str(p.start_date),
 					'end_date': str(p.end_date),
 					'description': p.description,
-					'is_active': p.is_active,
 				})
 			return Response(data)
 		except Exception as e:

@@ -82,6 +82,10 @@ class LeaveEntry(models.Model):
 	# New fields requested: report_date and leave_remark
 	report_date = models.DateField(blank=True, null=True)
 	leave_remark = models.CharField(max_length=100, blank=True, null=True)
+	# per-entry sandwich leave override: if present in DB, this boolean
+	# indicates whether sandwich rule applies for this entry (True) or not (False).
+	# Some legacy schemas may not have this column; declare it nullable to be safe.
+	sandwich_leave = models.BooleanField(null=True, blank=True, db_column='sandwich_leave')
 	created_by = models.CharField(max_length=50, blank=True, null=True)
 	created_at = models.DateTimeField(default=timezone.now)
 	approved_by = models.CharField(max_length=50, blank=True, null=True)
@@ -164,7 +168,6 @@ class LeavePeriod(models.Model):
 	start_date = models.DateField()
 	end_date = models.DateField()
 	description = models.TextField(blank=True, null=True)
-	is_active = models.BooleanField(default=True)
 	created_at = models.DateTimeField(default=timezone.now)
 	updated_at = models.DateTimeField(auto_now=True)
 
@@ -199,12 +202,6 @@ class LeaveAllocation(models.Model):
 	period = models.ForeignKey(LeavePeriod, on_delete=models.CASCADE, related_name='allocations')
 	allocated = models.DecimalField(max_digits=6, decimal_places=2, default=0)
 
-	# Legacy per-type allocation columns present in some installations.
-	# Map them here (managed=False on the model ensures no migrations).
-	allocated_el = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, db_column='allocated_el')
-	allocated_cl = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, db_column='allocated_cl')
-	allocated_sl = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, db_column='allocated_sl')
-	allocated_vac = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, db_column='allocated_vac')
 	allocated_start_date = models.DateField(null=True, blank=True, db_column='allocated_start_date')
 	allocated_end_date = models.DateField(null=True, blank=True, db_column='allocated_end_date')
 	# Sandwich rule: prefer to map to DB column 'sandwich' when it exists.
@@ -295,27 +292,9 @@ from django.dispatch import receiver
 
 @receiver(post_save, sender=LeavePeriod)
 def seed_allocations_for_period(sender, instance: LeavePeriod, created, **kwargs):
-	# only seed when a period is active
-	if not instance.is_active:
-		return
-	from .domain_emp import LeaveAllocation, LeaveType, EmpProfile
-	types = LeaveType.objects.filter(is_active=True)
-	profiles = EmpProfile.objects.all()
-	period_days = (instance.end_date - instance.start_date).days + 1
-	for p in profiles:
-		for lt in types:
-			# prorate allocation according to period length
-			try:
-				annual = float(lt.annual_allocation or 0)
-			except Exception:
-				annual = 0.0
-			prorated = round(annual * (period_days / 365.0), 2)
-			if not LeaveAllocation.objects.filter(profile=p, leave_type=lt, period=instance).exists():
-				try:
-					LeaveAllocation.objects.create(profile=p, leave_type=lt, period=instance, allocated=prorated, allocated_start_date=instance.start_date, allocated_end_date=instance.end_date)
-				except Exception:
-					# ignore creation errors to avoid breaking admin save
-					continue
+	# Auto-seed allocations when period is created
+	# Disabled auto-seeding to prevent errors - use manual seed endpoint instead
+	pass
 #employee table, leave table, leavetype table 
 
 
