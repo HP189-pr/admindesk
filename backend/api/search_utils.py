@@ -34,10 +34,18 @@ def apply_fts_search(queryset, search_query, search_fields, fallback_fields=None
     if has_fts:
         # Use PostgreSQL Full-Text Search with prefix matching for IDs/numbers
         try:
-            # For enrollment numbers and IDs: use prefix matching (:* suffix)
-            # This allows "21MSC" to match "21MSCBT22012" but NOT "1214MSCES27021"
-            search_with_prefix = f"{search_query}:*"
-            query = SearchQuery(search_with_prefix, search_type='raw')
+            # Normalize search query: lowercase and handle special characters
+            # Split into tokens and add prefix matching for each token
+            tokens = search_query.lower().strip().split()
+            
+            # Build FTS query: each token with prefix matching, joined by OR
+            # This makes it case-insensitive and matches any token
+            fts_parts = ' | '.join([f"{token}:*" for token in tokens if token])
+            
+            if not fts_parts:
+                return queryset
+            
+            query = SearchQuery(fts_parts, search_type='raw', config='simple')
             
             queryset = queryset.annotate(
                 rank=SearchRank(F('search_vector'), query)

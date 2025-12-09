@@ -306,11 +306,13 @@ def inst_verification_post_delete(sender, instance: InstVerificationMain, **kwar
 
 @receiver(post_save, sender=Enrollment)
 def update_enrollment_search_vector(sender, instance, **kwargs):
-    """Auto-update search vector for Enrollment"""
+    """Auto-update search vector for Enrollment (case-insensitive)"""
     try:
         # Use update() to avoid recursion and allow F() expressions
+        # Use 'simple' config for case-insensitive search and better prefix matching
+        from django.contrib.postgres.search import SearchVector
         Enrollment.objects.filter(pk=instance.pk).update(
-            search_vector=SearchVector('enrollment_no', 'temp_enroll_no', 'student_name')
+            search_vector=SearchVector('enrollment_no', 'temp_enroll_no', 'student_name', config='simple')
         )
     except Exception:
         pass  # Fail silently if search_vector field doesn't exist yet
