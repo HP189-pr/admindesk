@@ -190,6 +190,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",  # React Alternative URL
     "http://localhost:5173",  # Vite default
     "http://127.0.0.1:5173",  # Vite alt
+    "http://localhost:8000",  # Django backend self
+    "http://127.0.0.1:8000",  # Django backend alt
 ]
 
 CORS_ALLOW_CREDENTIALS = True  # Allow credentials (cookies, sessions)
@@ -200,14 +202,16 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
 ]
 
 # REST framework settings (leave settings dict in place; it's safe even if package absent)
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
         "rest_framework.authentication.BasicAuthentication",
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',

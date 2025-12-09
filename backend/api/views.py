@@ -473,6 +473,11 @@ class DataAnalysisView(APIView):
         if not apply_for:
             return Response({"detail": "apply_for is required"}, status=400)
         try:
+            from .domain_documents import ApplyFor
+            # Validate apply_for is a valid choice
+            if apply_for not in [choice[0] for choice in ApplyFor.choices]:
+                return Response({"detail": f"Invalid apply_for value: {apply_for}"}, status=400)
+            
             tmp = DocRec(apply_for=apply_for, pay_by=PayBy.NA)
             # simulate generation logic using private helpers
             now = timezone.now()
@@ -494,6 +499,8 @@ class DataAnalysisView(APIView):
                     next_num = 1
             return Response({"next_id": f"{base}{next_num:04d}"})
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return Response({"detail": str(e)}, status=500)
 
     @action(detail=False, methods=["post"], url_path="update-with-verification")

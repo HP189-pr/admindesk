@@ -7,6 +7,7 @@ from django.db.models import Max
 from rest_framework import serializers, viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import action
 from django.urls import path
 from datetime import datetime
 
@@ -249,6 +250,39 @@ class InwardRegisterViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(inward_from__icontains=search)
         
         return queryset
+    
+    @action(detail=False, methods=['get'], url_path='next-number')
+    def next_number(self, request):
+        """Get last and next inward number for given type"""
+        inward_type = request.query_params.get('type', 'Gen')
+        
+        # Get current year prefix
+        current_year = datetime.now().year % 100
+        prefix = f"{current_year:02d}/{inward_type}/"
+        
+        # Find last number for this year and type
+        last_record = InwardRegister.objects.filter(
+            inward_type=inward_type,
+            inward_no__startswith=prefix
+        ).order_by('-inward_no').first()
+        
+        if last_record:
+            last_no = last_record.inward_no
+            try:
+                last_seq = int(last_no.split('/')[-1])
+                next_seq = last_seq + 1
+            except (ValueError, IndexError):
+                next_seq = 1
+        else:
+            last_no = None
+            next_seq = 1
+        
+        next_no = f"{prefix}{next_seq:04d}"
+        
+        return Response({
+            'last_no': last_no,
+            'next_no': next_no
+        })
 
 
 class OutwardRegisterViewSet(viewsets.ModelViewSet):
@@ -290,6 +324,39 @@ class OutwardRegisterViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(outward_to__icontains=search)
         
         return queryset
+    
+    @action(detail=False, methods=['get'], url_path='next-number')
+    def next_number(self, request):
+        """Get last and next outward number for given type"""
+        outward_type = request.query_params.get('type', 'Gen')
+        
+        # Get current year prefix
+        current_year = datetime.now().year % 100
+        prefix = f"{current_year:02d}/{outward_type}/"
+        
+        # Find last number for this year and type
+        last_record = OutwardRegister.objects.filter(
+            outward_type=outward_type,
+            outward_no__startswith=prefix
+        ).order_by('-outward_no').first()
+        
+        if last_record:
+            last_no = last_record.outward_no
+            try:
+                last_seq = int(last_no.split('/')[-1])
+                next_seq = last_seq + 1
+            except (ValueError, IndexError):
+                next_seq = 1
+        else:
+            last_no = None
+            next_seq = 1
+        
+        next_no = f"{prefix}{next_seq:04d}"
+        
+        return Response({
+            'last_no': last_no,
+            'next_no': next_no
+        })
 
 
 # ==================== URL PATTERNS ====================
@@ -299,6 +366,10 @@ IN_OUT_REGISTER_URLS = [
         'get': 'list',
         'post': 'create'
     }), name='inward-register-list'),
+    
+    path("inward-register/next-number/", InwardRegisterViewSet.as_view({
+        'get': 'next_number'
+    }), name='inward-register-next-number'),
     
     path("inward-register/<int:pk>/", InwardRegisterViewSet.as_view({
         'get': 'retrieve',
@@ -311,6 +382,10 @@ IN_OUT_REGISTER_URLS = [
         'get': 'list',
         'post': 'create'
     }), name='outward-register-list'),
+    
+    path("outward-register/next-number/", OutwardRegisterViewSet.as_view({
+        'get': 'next_number'
+    }), name='outward-register-next-number'),
     
     path("outward-register/<int:pk>/", OutwardRegisterViewSet.as_view({
         'get': 'retrieve',

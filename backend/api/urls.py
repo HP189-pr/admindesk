@@ -87,6 +87,9 @@ try:
     router.register(r'leave_entry', LeaveEntryViewSet, basename='leave_entry')
 
     urlpatterns = [
+        # DocRec next-id endpoint (must be before router.urls to take precedence)
+        path('docrec/next-id/', DocRecViewSet.as_view({'get': 'next_id'}), name='docrec-next-id'),
+        
         # Include all registered routes automatically
         path('', include(router.urls)),
 
