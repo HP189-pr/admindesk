@@ -5,6 +5,16 @@ import os
 import importlib
 import warnings
 
+# During development, Django may warn about DB access during app initialization
+# (e.g., when `django.contrib.postgres` registers type handlers). This is
+# expected in dev and pollutes logs; suppress that specific RuntimeWarning here
+# (keep other warnings visible). Do NOT remove in production.
+warnings.filterwarnings(
+    "ignore",
+    r"Accessing the database during app initialization is discouraged.*",
+    RuntimeWarning,
+)
+
 # try to import load_dotenv but don't fail if python-dotenv is not installed
 try:
     from dotenv import load_dotenv
