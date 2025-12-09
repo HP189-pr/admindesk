@@ -12,6 +12,8 @@ import {
   addOutwardRegister,
   updateOutwardRegister,
   deleteOutwardRegister,
+  getNextInwardNumber,
+  getNextOutwardNumber,
 } from '../services/inoutService';
 
 const InOutRegister = () => {
@@ -59,16 +61,46 @@ const InOutRegister = () => {
   const [inwardFilters, setInwardFilters] = useState({ search: '', type: '', date_from: '', date_to: '' });
   const [outwardFilters, setOutwardFilters] = useState({ search: '', type: '', date_from: '', date_to: '' });
 
+  // Next number preview
+  const [inwardNextNumber, setInwardNextNumber] = useState({ last_no: null, next_no: null });
+  const [outwardNextNumber, setOutwardNextNumber] = useState({ last_no: null, next_no: null });
+
   // Show alert helper
   const showAlert = (type, message) => {
     setAlert({ show: true, type, message });
     setTimeout(() => setAlert({ show: false, type: '', message: '' }), 4000);
   };
 
+  // Fetch next inward number
+  const fetchInwardNextNumber = async (type = 'Gen') => {
+    try {
+      const data = await getNextInwardNumber(type);
+      setInwardNextNumber(data);
+    } catch (error) {
+      console.error('Error fetching next inward number:', error);
+    }
+  };
+
+  // Fetch next outward number
+  const fetchOutwardNextNumber = async (type = 'Gen') => {
+    try {
+      const data = await getNextOutwardNumber(type);
+      setOutwardNextNumber(data);
+    } catch (error) {
+      console.error('Error fetching next outward number:', error);
+    }
+  };
+
   // Load data based on active tab
   useEffect(() => {
     loadTabData();
   }, [activeTab]);
+
+  // Load next numbers on mount
+  useEffect(() => {
+    fetchInwardNextNumber('Gen');
+    fetchOutwardNextNumber('Gen');
+  }, []);
 
   const loadTabData = async () => {
     setLoading(true);
@@ -138,6 +170,7 @@ const InOutRegister = () => {
         details: '',
         remark: '',
       });
+      fetchInwardNextNumber('Gen');
       loadTabData();
     } catch (error) {
       showAlert('error', error.response?.data?.detail || error.response?.data?.inward_type?.[0] || 'Operation failed');
@@ -210,6 +243,7 @@ const InOutRegister = () => {
         details: '',
         remark: '',
       });
+      fetchOutwardNextNumber('Gen');
       loadTabData();
     } catch (error) {
       showAlert('error', error.response?.data?.detail || error.response?.data?.outward_type?.[0] || 'Operation failed');
@@ -327,7 +361,17 @@ const InOutRegister = () => {
 
       {/* Add/Edit Form */}
       <div className="bg-white rounded shadow p-4">
-        <h2 className="text-xl font-bold mb-4">{editingInward ? 'Edit' : 'Add'} Inward Register</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold">{editingInward ? 'Edit' : 'Add'} Inward Register</h2>
+          {!editingInward && inwardNextNumber.next_no && (
+            <div className="text-sm">
+              {inwardNextNumber.last_no && (
+                <span className="text-orange-500 font-medium">Last inward no: {inwardNextNumber.last_no}</span>
+              )}
+              <span className="ml-3 text-blue-600 font-medium">Next Inward: {inwardNextNumber.next_no}</span>
+            </div>
+          )}
+        </div>
         <form onSubmit={handleInwardSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1">Date <span className="text-red-500">*</span></label>
@@ -343,7 +387,10 @@ const InOutRegister = () => {
             <label className="block text-sm font-medium mb-1">Type <span className="text-red-500">*</span></label>
             <select
               value={inwardForm.inward_type}
-              onChange={(e) => setInwardForm({ ...inwardForm, inward_type: e.target.value })}
+              onChange={(e) => {
+                setInwardForm({ ...inwardForm, inward_type: e.target.value });
+                if (!editingInward) fetchInwardNextNumber(e.target.value);
+              }}
               className="w-full border px-3 py-2 rounded"
               required
             >
@@ -517,7 +564,17 @@ const InOutRegister = () => {
 
       {/* Add/Edit Form */}
       <div className="bg-white rounded shadow p-4">
-        <h2 className="text-xl font-bold mb-4">{editingOutward ? 'Edit' : 'Add'} Outward Register</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold">{editingOutward ? 'Edit' : 'Add'} Outward Register</h2>
+          {!editingOutward && outwardNextNumber.next_no && (
+            <div className="text-sm">
+              {outwardNextNumber.last_no && (
+                <span className="text-orange-500 font-medium">Last outward no: {outwardNextNumber.last_no}</span>
+              )}
+              <span className="ml-3 text-blue-600 font-medium">Next Outward: {outwardNextNumber.next_no}</span>
+            </div>
+          )}
+        </div>
         <form onSubmit={handleOutwardSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1">Date <span className="text-red-500">*</span></label>
@@ -533,7 +590,10 @@ const InOutRegister = () => {
             <label className="block text-sm font-medium mb-1">Type <span className="text-red-500">*</span></label>
             <select
               value={outwardForm.outward_type}
-              onChange={(e) => setOutwardForm({ ...outwardForm, outward_type: e.target.value })}
+              onChange={(e) => {
+                setOutwardForm({ ...outwardForm, outward_type: e.target.value });
+                if (!editingOutward) fetchOutwardNextNumber(e.target.value);
+              }}
               className="w-full border px-3 py-2 rounded"
               required
             >

@@ -58,6 +58,16 @@ export const deleteInwardRegister = async (id) => {
   }
 };
 
+export const getNextInwardNumber = async (type = 'Gen') => {
+  try {
+    const response = await axiosInstance.get(`${BASE_URL}/inward-register/next-number/`, { params: { type } });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching next inward number:', error);
+    throw error;
+  }
+};
+
 // ==================== OUTWARD REGISTER ====================
 
 export const getOutwardRegister = async (filters = {}) => {
@@ -106,6 +116,16 @@ export const deleteOutwardRegister = async (id) => {
     return response.data;
   } catch (error) {
     console.error('Error deleting outward register:', error);
+    throw error;
+  }
+};
+
+export const getNextOutwardNumber = async (type = 'Gen') => {
+  try {
+    const response = await axiosInstance.get(`${BASE_URL}/outward-register/next-number/`, { params: { type } });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching next outward number:', error);
     throw error;
   }
 };

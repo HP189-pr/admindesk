@@ -172,24 +172,37 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
 
   // Fetch next doc_rec_id preview when apply_for changes
   useEffect(() => {
+    // Temporarily disabled due to 500 error - form works fine without preview
+    // The doc_rec_id is auto-generated on the backend when creating the record
+    /*
     const ctrl = new AbortController();
     const run = async () => {
       try {
         const token = localStorage.getItem("access_token");
-        const res = await fetch(`/api/docrec/next-id/?apply_for=${encodeURIComponent(form.apply_for)}`, {
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+        const res = await fetch(`${API_BASE_URL}/api/docrec/next-id/?apply_for=${encodeURIComponent(form.apply_for)}`, {
           headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           signal: ctrl.signal,
         });
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({ detail: 'Unknown error' }));
+          console.error('next-id fetch failed:', res.status, errorData);
+        }
         if (res.ok) {
           const data = await res.json();
           if (data?.next_id) {
             setForm((f) => ({ ...f, doc_rec_id: data.next_id, doc_rec_date: f.doc_rec_date || todayDMY() }));
           }
         }
-      } catch {}
+      } catch (e) {
+        if (e.name !== 'AbortError') {
+          console.error('next-id fetch error:', e);
+        }
+      }
     };
     if (form.apply_for) run();
     return () => ctrl.abort();
+    */
   }, [form.apply_for]);
 
   // Listen for bulk upload completion events from other tabs/components

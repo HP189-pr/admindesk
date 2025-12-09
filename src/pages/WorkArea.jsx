@@ -13,8 +13,8 @@ import EmpLeavePage from "./emp-leave.jsx";
 import MailRequestPage from "./mail_request";
 import TranscriptRequestPage from "./transcript_request";
 import StudentSearch from "./student-search";
-import Inventory from "./Inventory";
-import InOutRegister from "./inout_register";
+import AuthInventory from "../hooks/AuthInventory";
+import AuthDocRegister from "../hooks/AuthDocRegister";
 
 
 
@@ -52,7 +52,6 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
     // Check both selectedSubmenu and selectedMenuItem for routing
     const s = (selectedSubmenu || selectedMenuItem || "").toString();
     const l = s.toLowerCase();
-    console.log('WorkArea render:', { selectedSubmenu, selectedMenuItem, s, l });
     let key = "";
   if (l.includes("dash")) key = "dashboard";
   if (l.includes("enroll")) key = "enrollment";
@@ -143,14 +142,14 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
         return <StudentSearch />;
       case "doc_register":
         return (
-          <InOutRegister
+          <AuthDocRegister
             onToggleSidebar={onToggleSidebar}
             onToggleChatbox={onToggleChatbox}
           />
         );
       case "inventory":
         return (
-          <Inventory
+          <AuthInventory
             onToggleSidebar={onToggleSidebar}
             onToggleChatbox={onToggleChatbox}
           />
