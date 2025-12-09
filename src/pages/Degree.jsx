@@ -11,7 +11,9 @@ import {
     updateDegree,
     deleteDegree,
     getAllConvocations,
-    bulkUploadDegrees
+    bulkUploadDegrees,
+    getBulkUploadProgress,
+    downloadBulkUploadLog
 } from '../services/degreeService';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -40,6 +42,7 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
     const [uploadFile, setUploadFile] = useState(null);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadResult, setUploadResult] = useState(null);
+    const [uploadId, setUploadId] = useState(null);
     const [editingDegree, setEditingDegree] = useState(null);
     const [formData, setFormData] = useState({
         dg_sr_no: '',
@@ -185,21 +188,92 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
         }
 
         try {
-            setUploadProgress(10);
-            const result = await bulkUploadDegrees(uploadFile);
-            setUploadProgress(100);
-            setUploadResult(result);
-            
-            toast.success(`Bulk upload completed! Created: ${result.created}, Updated: ${result.updated}`);
-            
-            if (result.errors && result.errors.length > 0) {
-                toast.warning(`${result.errors.length} rows had errors. Check details below.`);
+            setUploadProgress(0);
+            setUploadResult(null);
+            const startResp = await bulkUploadDegrees(uploadFile);
+            // expect { upload_id, total, message } with 202
+            const id = startResp.upload_id;
+            if (!id) {
+                toast.error('Unexpected response from server');
+                return;
             }
-            
-            fetchDegrees();
+            setUploadId(id);
+
+            // Poll progress every 1 second
+            let stopped = false;
+            const pollInterval = 1000;
+            const poller = setInterval(async () => {
+                try {
+                    const p = await getBulkUploadProgress(id);
+                    setUploadProgress(p.percent || 0);
+
+                    if (p.status === 'finished' || p.status === 'error') {
+                        clearInterval(poller);
+                        stopped = true;
+                        setUploadResult({
+                            created: p.created,
+                            updated: p.updated,
+                            errors: p.errors || [],
+                            log_file: p.log_file || null
+                        });
+
+                        toast.success(`Bulk upload finished. Created: ${p.created}, Updated: ${p.updated}`);
+                        if (p.errors && p.errors.length > 0) {
+                            toast.warning(`${p.errors.length} rows had errors. Check details below.`);
+                        }
+                        fetchDegrees();
+                        setUploadId(null);
+                    }
+                } catch (err) {
+                    console.error('Error polling upload progress', err);
+                    clearInterval(poller);
+                    if (!stopped) {
+                        toast.error('Error monitoring upload progress.');
+                        setUploadProgress(0);
+                    }
+                }
+            }, pollInterval);
+
+            // Also set an initial indicator so the UI shows immediate progress
+            setUploadProgress(5);
         } catch (err) {
             toast.error('Bulk upload failed: ' + (err.response?.data?.error || err.message));
             setUploadProgress(0);
+        }
+    };
+
+    const handleDownloadLog = async () => {
+        if (!uploadId && !(uploadResult && uploadResult.log_file)) {
+            toast.error('No upload log available');
+            return;
+        }
+        // Prefer active uploadId if present, otherwise try to extract id from result.log_file path
+        const id = uploadId || (uploadResult && uploadResult.log_file && (() => {
+            // try to parse UUID from server path like ...bulk_upload_degrees_<uuid>.log
+            const m = String(uploadResult.log_file).match(/bulk_upload_degrees_([0-9a-fA-F-]{36})/);
+            return m ? m[1] : null;
+        })());
+
+        if (!id) {
+            toast.error('Unable to determine upload id for log');
+            return;
+        }
+
+        try {
+            const resp = await downloadBulkUploadLog(id);
+            const content = resp.log || '';
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `bulk_upload_degrees_${id}.log`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            toast.success('Log downloaded');
+        } catch (err) {
+            toast.error('Failed to download log: ' + (err.response?.data?.error || err.message));
         }
     };
 
@@ -574,6 +648,11 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
                                                         <p key={idx} className="text-xs text-red-600">{error}</p>
                                                     ))}
                                                 </div>
+                                            </div>
+                                        )}
+                                        {(uploadResult.log_file || uploadId) && (
+                                            <div className="mt-3">
+                                                <button onClick={handleDownloadLog} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200">📄 Download Log</button>
                                             </div>
                                         )}
                                     </div>

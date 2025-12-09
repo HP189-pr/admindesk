@@ -13,6 +13,8 @@ import EmpLeavePage from "./emp-leave.jsx";
 import MailRequestPage from "./mail_request";
 import TranscriptRequestPage from "./transcript_request";
 import StudentSearch from "./student-search";
+import Inventory from "./Inventory";
+import InOutRegister from "./inout_register";
 
 
 
@@ -64,6 +66,8 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
   else if ((l.includes("mail") && l.includes("status")) || l.includes("mail request")) key = "mail_request";
   else if (l.includes("transcript")) key = "transcript_request";
   else if (l.includes("student") && l.includes("search")) key = "student_search";
+  else if (l.includes("doc") && l.includes("register")) key = "doc_register";
+  else if (l.includes("inventory")) key = "inventory";
   else if (l.includes("leave management")) key = "emp_leave";
   else if (l.includes("leave report")) key = "emp_leave_report";
   else if (l.includes("balance certificate")) key = "emp_balance_certificate";
@@ -137,6 +141,20 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
         );
       case "student_search":
         return <StudentSearch />;
+      case "doc_register":
+        return (
+          <InOutRegister
+            onToggleSidebar={onToggleSidebar}
+            onToggleChatbox={onToggleChatbox}
+          />
+        );
+      case "inventory":
+        return (
+          <Inventory
+            onToggleSidebar={onToggleSidebar}
+            onToggleChatbox={onToggleChatbox}
+          />
+        );
       case "emp_leave":
         return <EmpLeavePage />;
       case "emp_leave_report":

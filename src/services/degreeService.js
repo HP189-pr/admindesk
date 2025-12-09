@@ -133,6 +133,32 @@ export const bulkUploadDegrees = async (file) => {
 };
 
 /**
+ * Poll bulk upload progress by upload_id
+ */
+export const getBulkUploadProgress = async (uploadId) => {
+    try {
+        const response = await axios.get(`${API_URL}bulk_upload_progress/`, { params: { upload_id: uploadId } });
+        return response.data;
+    } catch (error) {
+        console.error('Error getting bulk upload progress:', error);
+        throw error;
+    }
+};
+
+/**
+ * Download bulk upload log content for an upload_id
+ */
+export const downloadBulkUploadLog = async (uploadId) => {
+    try {
+        const response = await axios.get(`${API_URL}bulk_upload_log/`, { params: { upload_id: uploadId } });
+        return response.data;
+    } catch (error) {
+        console.error('Error downloading bulk upload log:', error);
+        throw error;
+    }
+};
+
+/**
  * Get degree statistics
  */
 export const getDegreeStatistics = async () => {

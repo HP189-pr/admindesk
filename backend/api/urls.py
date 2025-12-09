@@ -43,6 +43,10 @@ try:
     from .views_student_search import StudentSearchViewSet
     # Degree management views
     from .views_degree import StudentDegreeViewSet, ConvocationMasterViewSet
+    # Inventory management
+    from .inventory import InventoryItemViewSet, InventoryInwardViewSet, InventoryOutwardViewSet, StockSummaryView
+    # Inward/Outward Register
+    from .in_out_register import IN_OUT_REGISTER_URLS
 
     # Register router and API endpoints (normal path when DRF is installed)
     router = DefaultRouter()
@@ -50,6 +54,9 @@ try:
     router.register(r'student-search', StudentSearchViewSet, basename='student-search')
     router.register(r'degrees', StudentDegreeViewSet, basename='degrees')
     router.register(r'convocations', ConvocationMasterViewSet, basename='convocations')
+    router.register(r'inventory-items', InventoryItemViewSet, basename='inventory-items')
+    router.register(r'inventory-inward', InventoryInwardViewSet, basename='inventory-inward')
+    router.register(r'inventory-outward', InventoryOutwardViewSet, basename='inventory-outward')
     router.register(r'modules', ModuleViewSet, basename='modules')  # ✅ Modules API
     router.register(r'menus', MenuViewSet, basename='menus')  # ✅ Menus API
     router.register(r'userpermissions', UserPermissionViewSet, basename='userpermissions')  # ✅ User Permissions API
@@ -130,8 +137,9 @@ try:
         # Bulk upload and data analysis endpoints
         path('bulk-upload/', BulkUploadView.as_view(), name='bulk-upload'),
         path('data-analysis/', DataAnalysisView.as_view(), name='data-analysis'),
-    path('admin/upload-docrec/', UploadDocRecView.as_view(), name='admin-upload-docrec'),
-    ]
+        path('inventory-stock-summary/', StockSummaryView.as_view(), name='inventory-stock-summary'),
+        path('admin/upload-docrec/', UploadDocRecView.as_view(), name='admin-upload-docrec'),
+    ] + IN_OUT_REGISTER_URLS
 
 except Exception as e:
     # DEBUG: print the exception early to help diagnose why we fell back

@@ -40,6 +40,7 @@ from .serializers import (
     InstVerificationMainSerializer, InstVerificationStudentSerializer, EcaSerializer, StudentProfileSerializer
 )
 from .search_utils import apply_fts_search
+from .domain_degree import StudentDegree, ConvocationMaster
 
 # Re-export extracted auth/navigation/user classes for backward compatibility
 from .views_auth import (
@@ -217,6 +218,251 @@ class DocRecViewSet(viewsets.ModelViewSet):
                         pass
         except Exception:
             pass
+
+
+class DataAnalysisView(APIView):
+    """Provides data analysis across services. Supports service=Degree for degree analysis."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        service = (request.query_params.get('service') or '').strip()
+        if not service:
+            return Response({'error': 'service parameter is required'}, status=400)
+
+        if service.lower() == 'degree':
+            return self._degree_analysis(request)
+
+        return Response({'error': f'service {service} not supported'}, status=400)
+
+    def _degree_analysis(self, request):
+        """Degree-specific analysis: duplicates and summaries."""
+        qs = StudentDegree.objects.all()
+
+        # If caller requests records for a specific duplicate group, return them
+        group_key = request.query_params.get('group_key')
+        group_type = request.query_params.get('group_type')
+        if group_key:
+            # parse and return matching degree records for the given group_type/key
+            try:
+                # normalize group_type for robustness
+                gt = (group_type or '').strip()
+                if gt == 'DUPLICATE_ENROLL_NAME_MONTH_YEAR':
+                    # key format: enrollment|name|month|year
+                    parts = group_key.split('|')
+                    enrollment = parts[0] if len(parts) > 0 else ''
+                    name = parts[1] if len(parts) > 1 else ''
+                    month = parts[2] if len(parts) > 2 else ''
+                    year = parts[3] if len(parts) > 3 else ''
+                    q = StudentDegree.objects.filter(enrollment_no__iexact=enrollment)
+                    if name: q = q.filter(student_name_dg__iexact=name)
+                    if month: q = q.filter(last_exam_month__iexact=month)
+                    if year:
+                        try:
+                            q = q.filter(last_exam_year=int(year))
+                        except Exception:
+                            pass
+                elif gt == 'ENROLLMENT_SAME_NAME_DIFFER':
+                    enrollment = group_key
+                    q = StudentDegree.objects.filter(enrollment_no__iexact=enrollment)
+                elif gt == 'ENROLLMENT_NAME_DIFF_YEARS':
+                    # key format: enrollment|name
+                    parts = group_key.split('|')
+                    enrollment = parts[0] if len(parts) > 0 else ''
+                    name = parts[1] if len(parts) > 1 else ''
+                    q = StudentDegree.objects.filter(enrollment_no__iexact=enrollment)
+                    if name: q = q.filter(student_name_dg__iexact=name)
+                elif gt == 'ENROLLMENT_NAME_DIFF_MONTHS':
+                    # key format: enrollment|name
+                    parts = group_key.split('|')
+                    enrollment = parts[0] if len(parts) > 0 else ''
+                    name = parts[1] if len(parts) > 1 else ''
+                    q = StudentDegree.objects.filter(enrollment_no__iexact=enrollment)
+                    if name: q = q.filter(student_name_dg__iexact=name)
+                elif gt == 'NAME_SAME_DIFFERENT_ENROLLMENT':
+                    name = group_key
+                    q = StudentDegree.objects.filter(student_name_dg__iexact=name)
+                else:
+                    # fallback: try to search enrollment value
+                    q = StudentDegree.objects.filter(enrollment_no__iexact=group_key)
+
+                # return basic fields
+                rows = list(q.values('id', 'dg_sr_no', 'enrollment_no', 'student_name_dg', 'last_exam_month', 'last_exam_year', 'convocation_no', 'degree_name', 'institute_name_dg'))
+                return Response({'group_type': group_type, 'group_key': group_key, 'records': rows})
+            except Exception as e:
+                return Response({'error': str(e)}, status=500)
+
+        # optional filters
+        exam_month = request.query_params.get('exam_month')
+        exam_year = request.query_params.get('exam_year')
+        convocation_no = request.query_params.get('convocation_no')
+        institute = request.query_params.get('institute')
+
+        if exam_month:
+            qs = qs.filter(last_exam_month__iexact=exam_month)
+        if exam_year:
+            try:
+                qs = qs.filter(last_exam_year=int(exam_year))
+            except Exception:
+                pass
+        if convocation_no:
+            try:
+                qs = qs.filter(convocation_no=int(convocation_no))
+            except Exception:
+                pass
+        if institute:
+            qs = qs.filter(institute_name_dg__icontains=institute)
+
+        # Total records
+        total = qs.count()
+
+        issues = []
+
+        # 1) Exact duplicates: enrollment + name + month + year
+        dup_exact = (
+            qs.values('enrollment_no', 'student_name_dg', 'last_exam_month', 'last_exam_year')
+            .annotate(cnt=models.Count('id'))
+            .filter(cnt__gt=1)
+        )
+        for g in dup_exact:
+            key = f"{g['enrollment_no']}|{g.get('student_name_dg') or ''}|{g.get('last_exam_month') or ''}|{g.get('last_exam_year') or ''}"
+            issues.append({
+                'type': 'DUPLICATE_ENROLL_NAME_MONTH_YEAR',
+                'key': key,
+                'count': g['cnt'],
+                'message': f"{g['cnt']} records with same enrollment+name+exam month+exam year"
+            })
+
+        # 2) Enrollment same but different names
+        dup_enr_names = (
+            qs.values('enrollment_no')
+            .annotate(total=models.Count('id'), distinct_names=models.Count('student_name_dg', distinct=True))
+            .filter(distinct_names__gt=1)
+        )
+        for g in dup_enr_names:
+            issues.append({
+                'type': 'ENROLLMENT_SAME_NAME_DIFFER',
+                'key': g['enrollment_no'],
+                'count': g['total'],
+                'message': f"Enrollment {g['enrollment_no']} has {g['distinct_names']} different student names across {g['total']} records"
+            })
+
+        # 3) Enrollment+name same but different exam years
+        dup_enr_name_year = (
+            qs.values('enrollment_no', 'student_name_dg')
+            .annotate(distinct_years=models.Count('last_exam_year', distinct=True), total=models.Count('id'))
+            .filter(distinct_years__gt=1)
+        )
+        for g in dup_enr_name_year:
+            key = f"{g['enrollment_no']}|{g.get('student_name_dg') or ''}"
+            issues.append({
+                'type': 'ENROLLMENT_NAME_DIFF_YEARS',
+                'key': key,
+                'count': g['total'],
+                'message': f"Enrollment+Name {key} appears in multiple exam years ({g['distinct_years']})"
+            })
+
+        # 4) Enrollment+Name same but different exam months
+        dup_enr_name_months = (
+            qs.values('enrollment_no', 'student_name_dg')
+            .annotate(distinct_months=models.Count('last_exam_month', distinct=True), total=models.Count('id'))
+            .filter(distinct_months__gt=1)
+        )
+        for g in dup_enr_name_months:
+            key = f"{g['enrollment_no']}|{g.get('student_name_dg') or ''}"
+            issues.append({
+                'type': 'ENROLLMENT_NAME_DIFF_MONTHS',
+                'key': key,
+                'count': g['total'],
+                'message': f"Enrollment+Name {key} appears in multiple exam months ({g['distinct_months']})"
+            })
+
+        # 5) Same student name but different enrollment numbers (possible name-duplication)
+        dup_name_diff_enr = (
+            qs.values('student_name_dg')
+            .annotate(distinct_enrollments=models.Count('enrollment_no', distinct=True), total=models.Count('id'))
+            .filter(distinct_enrollments__gt=1)
+        )
+        for g in dup_name_diff_enr:
+            key = g.get('student_name_dg') or ''
+            issues.append({
+                'type': 'NAME_SAME_DIFFERENT_ENROLLMENT',
+                'key': key,
+                'count': g['total'],
+                'message': f"Student name '{key}' appears across {g['distinct_enrollments']} different enrollment numbers"
+            })
+
+        # Summaries
+        by_convocation = list(qs.values('convocation_no').annotate(count=models.Count('id')).order_by('-convocation_no'))
+        by_degree = list(qs.values('degree_name').annotate(count=models.Count('id')).order_by('-count'))
+        by_institute = list(qs.values('institute_name_dg').annotate(count=models.Count('id')).order_by('-count'))
+        by_year = list(qs.values('last_exam_year').annotate(count=models.Count('id')).order_by('-last_exam_year'))
+        by_month = list(qs.values('last_exam_month').annotate(count=models.Count('id')).order_by('-count'))
+
+        # Missing / special cases
+        missing_convocation_count = qs.filter(models.Q(convocation_no__isnull=True) | models.Q(convocation_no='')).count()
+        missing_exam_count = qs.filter(models.Q(last_exam_month__isnull=True) | models.Q(last_exam_month='') | models.Q(last_exam_year__isnull=True)).count()
+
+        if missing_convocation_count:
+            issues.append({
+                'type': 'MISSING_CONVOCATION',
+                'key': 'MISSING_CONVOCATION',
+                'count': missing_convocation_count,
+                'message': f"{missing_convocation_count} degree records have no convocation assignment"
+            })
+
+        if missing_exam_count:
+            issues.append({
+                'type': 'MISSING_EXAM_MONTH_OR_YEAR',
+                'key': 'MISSING_EXAM_MONTH_OR_YEAR',
+                'count': missing_exam_count,
+                'message': f"{missing_exam_count} degree records are missing exam month or exam year"
+            })
+
+        # Duplicate degree serial numbers (dg_sr_no)
+        dup_dg_sr = (
+            qs.values('dg_sr_no')
+            .annotate(cnt=models.Count('id'))
+            .filter(cnt__gt=1)
+        )
+        for g in dup_dg_sr:
+            key = g.get('dg_sr_no') or ''
+            issues.append({
+                'type': 'DUPLICATE_DG_SR_NO',
+                'key': key,
+                'count': g['cnt'],
+                'message': f"{g['cnt']} records share the same degree serial number '{key}'"
+            })
+
+        # Allow caller to request specific analysis types
+        analysis_param = request.query_params.get('analysis')
+        if analysis_param:
+            requested = {a.strip().upper() for a in analysis_param.split(',') if a.strip()}
+            issues = [it for it in issues if it.get('type') in requested]
+
+        response = {
+            'service': 'Degree',
+            'total_records': total,
+            'duplicate_groups': len(dup_exact) + len(dup_enr_names) + len(dup_enr_name_year) + len(dup_enr_name_months) + len(dup_name_diff_enr) + len(dup_dg_sr),
+            'records_with_duplicates': sum([g['cnt'] for g in dup_exact]) if dup_exact else 0,
+            'filters_applied': {
+                'exam_month': exam_month,
+                'exam_year': exam_year,
+                'convocation_no': convocation_no,
+                'institute': institute,
+            },
+            'duplicates': issues,
+            'statistics': {
+                'by_convocation': by_convocation,
+                'by_degree_name': by_degree,
+                'by_institute': by_institute,
+                'by_year': by_year,
+                'by_month': by_month,
+                'missing_convocation_count': missing_convocation_count,
+                'missing_exam_count': missing_exam_count,
+            }
+        }
+
+        return Response(response)
 
     @action(detail=False, methods=["get"], url_path="next-id")
     def next_id(self, request):
