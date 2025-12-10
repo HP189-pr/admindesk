@@ -1,864 +1,372 @@
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, generics, status
 from rest_framework.views import APIView
-from .domain_emp import EmpProfile, LeaveType, LeaveEntry
-from .serializers_emp import EmpProfileSerializer, LeaveTypeSerializer, LeaveEntrySerializer
-from django.db.models import Q
-from .domain_emp import LeavePeriod, LeaveAllocation
-from .serializers_emp import LeavePeriodSerializer, LeaveAllocationSerializer
-from rest_framework import generics, status
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from datetime import timedelta, date
-from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from django.db.models import Q
 from django.utils import timezone
-from .domain_leave_balance import compute_leave_balances, computeLeaveBalances, LeaveComputationConfig
+from datetime import date
 
+from .domain_emp import (
+    EmpProfile,
+    LeaveType,
+    LeaveEntry,
+    LeavePeriod,
+    LeaveAllocation,
+)
+
+from .serializers_emp import (
+    EmpProfileSerializer,
+    LeaveTypeSerializer,
+    LeaveEntrySerializer,
+    LeavePeriodSerializer,
+    LeaveAllocationSerializer,
+)
+
+from .domain_leave_balance import computeLeaveBalances
+
+
+# ============================================================
+# USER IDENTIFICATION HELPERS
+# ============================================================
 
 def _user_identifiers(user):
-	values = []
-	for attr in ('username', 'usercode'):
-		try:
-			val = getattr(user, attr, None)
-		except Exception:
-			val = None
-		if val:
-			values.append(str(val))
-	return values
+    """Match user → EmpProfile.username / usercode."""
+    vals = []
+    for f in ("username", "usercode"):
+        try:
+            v = getattr(user, f, None)
+            if v:
+                vals.append(str(v))
+        except:
+            pass
+    return vals
 
 
 def _profiles_matching_identifiers(qs, identifiers):
-	valid = [i for i in identifiers if i]
-	if not valid:
-		return qs.none()
-	lookup = Q()
-	for ident in valid:
-		lookup |= Q(username__iexact=ident) | Q(usercode__iexact=ident)
-	return qs.filter(lookup)
+    """Return profiles whose username/usercode matches user."""
+    valid = [i for i in identifiers if i]
+    if not valid:
+        return qs.none()
+
+    q = Q()
+    for ident in valid:
+        q |= Q(username__iexact=ident) | Q(usercode__iexact=ident)
+
+    return qs.filter(q)
 
 
 def _first_profile_for_user(user):
-	return _profiles_matching_identifiers(EmpProfile.objects.all(), _user_identifiers(user)).first()
+    """Return logged-in user's EmpProfile."""
+    return _profiles_matching_identifiers(
+        EmpProfile.objects.all(),
+        _user_identifiers(user)
+    ).first()
 
 
 def _profile_matches_user(profile, user):
-	identifiers = {i.lower() for i in _user_identifiers(user)}
-	if not identifiers:
-		return False
-	for attr in ('username', 'usercode'):
-		val = getattr(profile, attr, None)
-		if val and str(val).lower() in identifiers:
-			return True
-	return False
+    """Check if this profile belongs to the logged-in employee."""
+    identifiers = set(i.lower() for i in _user_identifiers(user) if i)
+    if not identifiers:
+        return False
 
+    for f in ("username", "usercode"):
+        v = getattr(profile, f, None)
+        if v and str(v).lower() in identifiers:
+            return True
+
+    return False
+
+
+# ============================================================
+# PERMISSIONS
+# ============================================================
 
 class IsLeaveManager(permissions.BasePermission):
-	"""Allow access if user is staff/superuser or belongs to leave_management group."""
-	def has_permission(self, request, view):
-		user = request.user
-		if not user or not user.is_authenticated:
-			return False
-		if user.is_staff or user.is_superuser:
-			return True
-		return user.groups.filter(name__iexact='leave_management').exists()
+    """Admin / Staff / HR (leave_management group)"""
+
+    def has_permission(self, request, view):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_staff or user.is_superuser:
+            return True
+        return user.groups.filter(name__iexact="leave_management").exists()
 
 
 class IsOwnerOrHR(permissions.BasePermission):
-	def has_permission(self, request, view):
-		# HR/Admin: is_staff or is_superuser
-		return request.user and (request.user.is_staff or request.user.is_superuser or request.user.is_authenticated)
+    """Employees see own data. HR/Managers/Admin see all."""
 
-	def has_object_permission(self, request, view, obj):
-		user = request.user
-		if not user or not user.is_authenticated:
-			return False
-		if user.is_staff or user.is_superuser:
-			return True
-		if isinstance(obj, EmpProfile):
-			return _profile_matches_user(obj, user)
-		if hasattr(obj, 'emp') and isinstance(getattr(obj, 'emp'), EmpProfile):
-			return _profile_matches_user(getattr(obj, 'emp'), user)
-		identifiers = {i.lower() for i in _user_identifiers(user)}
-		if not identifiers:
-			return False
-		for attr in ('username', 'usercode'):
-			if hasattr(obj, attr):
-				val = getattr(obj, attr)
-				if val and str(val).lower() in identifiers:
-					return True
-		return False
+    def has_permission(self, request, view):
+        user = request.user
+        return user and user.is_authenticated
 
+    def has_object_permission(self, request, view, obj):
+        user = request.user
+
+        # Admin / HR / Manager
+        if user.is_staff or user.is_superuser or IsLeaveManager().has_permission(request, view):
+            return True
+
+        # If object contains an employee reference
+        if isinstance(obj, EmpProfile):
+            return _profile_matches_user(obj, user)
+
+        if hasattr(obj, "emp") and isinstance(obj.emp, EmpProfile):
+            return _profile_matches_user(obj.emp, user)
+
+        return False
+
+
+# ============================================================
+# LEAVE PERIOD API
+# ============================================================
 
 class LeavePeriodListView(generics.ListCreateAPIView):
-	queryset = LeavePeriod.objects.all().order_by('-start_date')
-	serializer_class = LeavePeriodSerializer
-	permission_classes = [IsLeaveManager]
+    queryset = LeavePeriod.objects.all().order_by("-start_date")
+    serializer_class = LeavePeriodSerializer
+    permission_classes = [IsLeaveManager]
 
+
+# ============================================================
+# LEAVE ALLOCATION API (YOU APPROVED FINAL RULES)
+# ============================================================
 
 class LeaveAllocationListView(generics.ListCreateAPIView):
-	"""List and create LeaveAllocation records.
+    serializer_class = LeaveAllocationSerializer
+    permission_classes = [IsLeaveManager]
 
-	POST payload expects fields (emp_id nullable), period_id, leave_type_code (or leave_type), allocated.
-	If emp_id is blank/null the implementation will insert a NULL emp_id allocation (legacy default row) using SQL.
-	"""
-	serializer_class = LeaveAllocationSerializer
-	permission_classes = [IsLeaveManager]
+    def get_queryset(self):
+        """Return only allocations for selected period."""
+        period_id = self.request.query_params.get("period")
+        qs = LeaveAllocation.objects.select_related("period").all()
 
-	def get_queryset(self):
-		# Avoid joining the `profile` relation by default because some legacy
-		# databases store mixed types in `api_leaveallocation.emp_id` (bigint)
-		# while `EmpProfile.emp_id` may be varchar — that causes SQL type
-		# mismatch errors when Django emits a JOIN. Selectively include
-		# `leave_type` and `period` relations which are safe, and if the DB
-		# still fails, fall back to an un-joined queryset to prevent 500s.
-		try:
-			qs = LeaveAllocation.objects.select_related('leave_type', 'period').all()
-		except Exception:
-			import traceback
-			print("[WARN] LeaveAllocationListView.select_related failed, falling back to non-joined queryset")
-			traceback.print_exc()
-			qs = LeaveAllocation.objects.all()
-		# DEBUG: log caller identity and auth headers to help diagnose admin UI visibility issues
-		try:
-			user = getattr(self.request, 'user', None)
-			uname = getattr(user, 'username', None) if user else None
-			is_auth = bool(user and user.is_authenticated)
-			is_staff = bool(user and getattr(user, 'is_staff', False))
-			groups = []
-			try:
-				groups = [g.name for g in user.groups.all()] if user else []
-			except Exception:
-				groups = []
-			auth_hdr = self.request.META.get('HTTP_AUTHORIZATION') if hasattr(self.request, 'META') else None
-			print(f"[DEBUG] LeaveAllocationListView called by: user={uname} authenticated={is_auth} is_staff={is_staff} groups={groups} Authorization={'present' if auth_hdr else 'missing'})")
-		except Exception:
-			# avoid breaking the view on debug logging failures
-			pass
-		period = self.request.query_params.get('period')
-		institute = self.request.query_params.get('institute')
-		if period:
-			qs = qs.filter(period_id=period)
-		if institute:
-			qs = qs.filter(profile__institute_id__iexact=institute)
-		return qs
+        if period_id:
+            qs = qs.filter(period_id=period_id)
 
-	def post(self, request, *args, **kwargs):
-		data = request.data or {}
-		emp_id = data.get('emp_id') or data.get('profile_id')  # Accept both for compatibility
-		period_id = data.get('period_id') or data.get('period')
-		leave_code = data.get('leave_type_code') or data.get('leave_type')
-		allocated = data.get('allocated')
-		allocated_start_date = data.get('allocated_start_date')
-		allocated_end_date = data.get('allocated_end_date')
+        return qs
 
-		# validation
-		if not period_id:
-			return Response({'detail': 'period_id is required'}, status=status.HTTP_400_BAD_REQUEST)
-		if not leave_code:
-			return Response({'detail': 'leave_type_code is required'}, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request, *args, **kwargs):
+        data = request.data
 
-		try:
-			# ensure period exists
-			period = LeavePeriod.objects.filter(id=period_id).first()
-			if not period:
-				return Response({'detail': 'LeavePeriod not found'}, status=status.HTTP_404_NOT_FOUND)
+        leave_code = data.get("leave_code")
+        period_id = data.get("period")
+        apply_to = data.get("apply_to", "ALL")
+        allocated = data.get("allocated")
+        emp_id = data.get("emp_id")  # only for particular
 
-			# ensure leave type exists
-			lt = LeaveType.objects.filter(leave_code=leave_code).first()
-			if not lt:
-				return Response({'detail': 'LeaveType not found'}, status=status.HTTP_404_NOT_FOUND)
+        # --- VALIDATION ---
+        if not leave_code:
+            return Response({"detail": "leave_code is required"}, status=400)
+        if not period_id:
+            return Response({"detail": "period is required"}, status=400)
+        if allocated is None:
+            return Response({"detail": "allocated is required"}, status=400)
 
-			# parse allocated
-			try:
-				allocated_val = float(allocated) if allocated is not None and allocated != '' else 0.0
-			except Exception:
-				return Response({'detail': 'allocated must be a number'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            allocated_val = float(allocated)
+        except:
+            return Response({"detail": "allocated must be a number"}, status=400)
 
-			# if emp_id provided and not blank, create via ORM
-			if emp_id not in (None, '', 'null'):
-				# accept numeric id or emp_id string
-				try:
-					prof = EmpProfile.objects.filter(id=int(emp_id)).first()
-				except Exception:
-					prof = EmpProfile.objects.filter(emp_id=str(emp_id)).first()
-				if not prof:
-					return Response({'detail': 'EmpProfile not found'}, status=status.HTTP_404_NOT_FOUND)
+        period = LeavePeriod.objects.filter(id=period_id).first()
+        if not period:
+            return Response({"detail": "LeavePeriod not found"}, status=404)
 
-				# create or update existing allocation
-				defaults = {'allocated': allocated_val}
-				if allocated_start_date:
-					defaults['allocated_start_date'] = allocated_start_date
-				if allocated_end_date:
-					defaults['allocated_end_date'] = allocated_end_date
-				obj, created = LeaveAllocation.objects.get_or_create(profile=prof, leave_type=lt, period=period, defaults=defaults)
-				if not created:
-					obj.allocated = allocated_val
-					if allocated_start_date:
-						obj.allocated_start_date = allocated_start_date
-					if allocated_end_date:
-						obj.allocated_end_date = allocated_end_date
-					obj.save()
-				return Response({'id': obj.id, 'profile': obj.profile.id if obj.profile else None, 'leave_type': getattr(obj.leave_type, 'leave_code', obj.leave_type), 'allocated': float(obj.allocated), 'period': obj.period.id})
+        lt = LeaveType.objects.filter(leave_code=leave_code).first()
+        if not lt:
+            return Response({"detail": "LeaveType not found"}, status=404)
 
-			# emp_id is null/blank -> insert a default allocation row with NULL emp_id using SQL (legacy table structure)
-			from django.db import connection
-			with connection.cursor() as cur:
-				# Attempt to insert into the underlying table. Columns may vary across deployments; use common columns.
-				# use empty-string for leave_code when none provided to avoid NOT NULL constraint errors on some schemas
-				lc_param = leave_code if leave_code is not None else ''
-				params = [lc_param, allocated_val, period.id]
-				cols = ['leave_code', 'allocated', 'period_id', 'created_at', 'updated_at']
-				vals = ['%s', '%s', '%s', 'now()', 'now()']
-				if allocated_start_date:
-					cols.append('allocated_start_date')
-					vals.append('%s')
-					params.append(allocated_start_date)
-				if allocated_end_date:
-					cols.append('allocated_end_date')
-					vals.append('%s')
-					params.append(allocated_end_date)
-				sql = f"INSERT INTO api_leaveallocation (emp_id, {', '.join(cols)}) VALUES (NULL, {', '.join(vals)}) RETURNING id"
-				cur.execute(sql, params)
-				new_id = cur.fetchone()[0]
-			return Response({'id': new_id, 'profile': None, 'leave_type': leave_code, 'allocated': allocated_val, 'period': period.id}, status=status.HTTP_201_CREATED)
-		except Exception as e:
-			return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        # =======================================================
+        # APPLY_TO = PARTICULAR
+        # =======================================================
+        if apply_to == "PARTICULAR":
+            if not emp_id:
+                return Response({"detail": "emp_id required for PARTICULAR allocation"}, status=400)
 
+            prof = EmpProfile.objects.filter(emp_id=str(emp_id)).first()
+            if not prof:
+                return Response({"detail": "Employee not found"}, status=404)
+
+            obj, created = LeaveAllocation.objects.get_or_create(
+                leave_code=leave_code,
+                period=period,
+                emp=prof,
+                defaults={"allocated": allocated_val},
+            )
+            if not created:
+                obj.allocated = allocated_val
+                obj.save()
+
+            return Response(LeaveAllocationSerializer(obj).data, status=201)
+
+        # =======================================================
+        # APPLY_TO = ALL
+        # =======================================================
+        obj = LeaveAllocation.objects.create(
+            leave_code=leave_code,
+            apply_to="ALL",
+            period=period,
+            emp=None,
+            allocated=allocated_val
+        )
+
+        return Response(LeaveAllocationSerializer(obj).data, status=201)
+
+
+# ============================================================
+# LEAVE ALLOCATION DETAIL API
+# ============================================================
 
 class LeaveAllocationDetailView(APIView):
-	"""Allow authorized managers to update a single LeaveAllocation (allocated amount)."""
-	permission_classes = [IsLeaveManager]
+    permission_classes = [IsLeaveManager]
 
-	def patch(self, request, pk, *args, **kwargs):
-		from django.db import connection
-		from datetime import datetime
-		# allow updating allocated, sandwich flag, and date fields
-		data = request.data or {}
-		updated_fields = {}
-		if 'allocated' in data:
-			try:
-				updated_fields['allocated'] = float(data.get('allocated'))
-			except Exception:
-				return Response({'detail': 'allocated must be a number'}, status=status.HTTP_400_BAD_REQUEST)
-		if 'sandwich' in data:
-			# accept truthy/falsy values
-			sw = data.get('sandwich')
-			if isinstance(sw, str):
-				_sw = sw.lower() in ('1', 'true', 'yes', 'y')
-			else:
-				_sw = bool(sw)
-			updated_fields['sandwich'] = _sw
-		if 'allocated_start_date' in data:
-			val = data.get('allocated_start_date')
-			if val:
-				try:
-					updated_fields['allocated_start_date'] = datetime.strptime(val, '%Y-%m-%d').date() if isinstance(val, str) else val
-				except Exception:
-					return Response({'detail': 'allocated_start_date must be YYYY-MM-DD format'}, status=status.HTTP_400_BAD_REQUEST)
-			else:
-				updated_fields['allocated_start_date'] = None
-		if 'allocated_end_date' in data:
-			val = data.get('allocated_end_date')
-			if val:
-				try:
-					updated_fields['allocated_end_date'] = datetime.strptime(val, '%Y-%m-%d').date() if isinstance(val, str) else val
-				except Exception:
-					return Response({'detail': 'allocated_end_date must be YYYY-MM-DD format'}, status=status.HTTP_400_BAD_REQUEST)
-			else:
-				updated_fields['allocated_end_date'] = None
-		if not updated_fields:
-			return Response({'detail': 'At least one field (allocated, sandwich, allocated_start_date, allocated_end_date) is required'}, status=status.HTTP_400_BAD_REQUEST)
-		try:
-			updated_fields['updated_at'] = timezone.now()
-			updated = LeaveAllocation.objects.filter(pk=pk).update(**updated_fields)
-			if not updated:
-				return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
-			return Response({'id': pk, **{k: updated_fields[k] for k in updated_fields if k != 'updated_at'}})
-		except Exception as e:
-			return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    def patch(self, request, pk):
+        obj = LeaveAllocation.objects.filter(id=pk).first()
+        if not obj:
+            return Response({"detail": "Not found"}, status=404)
 
-	def get(self, request, pk, *args, **kwargs):
-		try:
-			obj = LeaveAllocation.objects.select_related('profile', 'leave_type', 'period').get(pk=pk)
-			data = {
-				'id': obj.id,
-				'profile': obj.profile.id if obj.profile else None,
-				'leave_type': getattr(obj.leave_type, 'leave_code', obj.leave_type),
-				'allocated': float(obj.allocated),
-				'period': obj.period.id if obj.period else None,
-			}
-			return Response(data)
-		except LeaveAllocation.DoesNotExist:
-			return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+        data = request.data
 
-	def delete(self, request, pk, *args, **kwargs):
-		# allow managers to delete an allocation row
-		try:
-			# attempt ORM delete first
-			deleted, _ = LeaveAllocation.objects.filter(pk=pk).delete()
-			if deleted:
-				return Response(status=status.HTTP_204_NO_CONTENT)
-			# fallback: try raw SQL delete for legacy table name
-			from django.db import connection
-			with connection.cursor() as cur:
-				cur.execute("DELETE FROM api_leaveallocation WHERE id=%s", [pk])
-				if cur.rowcount:
-					return Response(status=status.HTTP_204_NO_CONTENT)
-			return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
-		except Exception as e:
-			return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        if "allocated" in data:
+            try:
+                obj.allocated = float(data["allocated"])
+            except:
+                return Response({"detail": "allocated must be numeric"}, status=400)
+
+        if "allocated_start_date" in data:
+            obj.allocated_start_date = data["allocated_start_date"] or None
+
+        if "allocated_end_date" in data:
+            obj.allocated_end_date = data["allocated_end_date"] or None
+
+        obj.updated_at = timezone.now()
+        obj.save()
+
+        return Response(LeaveAllocationSerializer(obj).data)
+
+    def delete(self, request, pk):
+        obj = LeaveAllocation.objects.filter(id=pk).first()
+        if not obj:
+            return Response({"detail": "Not found"}, status=404)
+        obj.delete()
+        return Response(status=204)
 
 
-class MyLeaveBalanceView(generics.GenericAPIView):
-	permission_classes = [IsAuthenticated]
-
-	def get(self, request, *args, **kwargs):
-		# find profile linked to the authenticated user via userid/username/usercode
-		profile = _first_profile_for_user(request.user)
-		if not profile:
-			return Response({'detail': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
-
-		period = LeavePeriod.objects.order_by('-start_date').first()
-		if not period:
-			return Response({'detail': 'No leave periods found.'}, status=status.HTTP_404_NOT_FOUND)
-
-		# Use the centralized computation so business rules (prorating, waiting periods,
-		# split-across-periods) are consistent with reports and persisted snapshots.
-		try:
-			payload = computeLeaveBalances(leaveCalculationDate=None, selectedPeriodId=period.id)
-		except Exception:
-			# fallback: if computation fails, return a helpful error
-			import traceback
-			traceback.print_exc()
-			return Response({'detail': 'Failed to compute leave balances'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-		metadata = payload.get('metadata', {})
-		tracked_codes = list(metadata.get('tracked_leave_codes', ())) or ['EL', 'CL', 'SL', 'VAC']
-
-		# find the employee entry matching this profile
-		emp_entry = None
-		for e in payload.get('employees', []):
-			if e.get('emp_id') == profile.emp_id or str(e.get('emp_id')) == str(profile.emp_id):
-				emp_entry = e
-				break
-
-		if not emp_entry:
-			# no computed entry for this user (possible if not in scope); return empty structured payload
-			codes_payload = {code: {
-				'starting_balance': 0.0,
-				'period_allocation': 0.0,
-				'used_in_period': 0.0,
-				'ending_balance': 0.0,
-				'allocation_applied': False,
-				'allocation_reason': None,
-				'original_allocation': 0.0,
-				'effective_allocation': 0.0,
-			} for code in tracked_codes}
-			return Response({
-				'period': {'id': period.id, 'name': period.period_name, 'start': period.start_date.isoformat(), 'end': period.end_date.isoformat()},
-				'tracked_codes': tracked_codes,
-				'codes': codes_payload,
-				'emp_id': profile.emp_id,
-				'emp_name': profile.emp_name,
-			})
-
-		# pick the period entry for the active period
-		period_entry = next((p for p in emp_entry.get('periods', []) if p.get('period_id') == period.id), None)
-		if not period_entry:
-			# ensure we return something consistent even if the period data is missing
-			period_entry = {
-				'period_id': period.id,
-				'period_name': period.period_name,
-				'period_start': period.start_date,
-				'period_end': period.end_date,
-				'starting': {code: 0.0 for code in tracked_codes},
-				'allocation': {code: 0.0 for code in tracked_codes},
-				'used': {code: 0.0 for code in tracked_codes},
-				'ending': {code: 0.0 for code in tracked_codes},
-				'allocation_meta': {code: {'original_allocation': 0.0, 'effective_allocation': 0.0, 'applied': False, 'reason': None} for code in tracked_codes},
-			}
-
-		codes_payload = {}
-		for code in tracked_codes:
-			alloc_meta = period_entry.get('allocation_meta', {}).get(code) or {}
-			codes_payload[code] = {
-				'starting_balance': float(period_entry.get('starting', {}).get(code, 0.0)),
-				'period_allocation': float(period_entry.get('allocation', {}).get(code, 0.0)),
-				'used_in_period': float(period_entry.get('used', {}).get(code, 0.0)),
-				'ending_balance': float(period_entry.get('ending', {}).get(code, 0.0)),
-				'allocation_applied': bool(alloc_meta.get('applied', False)),
-				'allocation_reason': alloc_meta.get('reason'),
-				'original_allocation': float(alloc_meta.get('original_allocation', period_entry.get('allocation', {}).get(code, 0.0))),
-				'effective_allocation': float(alloc_meta.get('effective_allocation', period_entry.get('allocation', {}).get(code, 0.0))),
-			}
-
-		return Response({
-			'period': {'id': period.id, 'name': period.period_name, 'start': period.start_date.isoformat(), 'end': period.end_date.isoformat()},
-			'tracked_codes': tracked_codes,
-			'codes': codes_payload,
-			'emp_id': profile.emp_id,
-			'emp_name': profile.emp_name,
-			'position': getattr(profile, 'emp_designation', None),
-			'joining_date': getattr(profile, 'actual_joining', None).isoformat() if getattr(profile, 'actual_joining', None) else None,
-			'leaving_date': getattr(profile, 'left_date', None).isoformat() if getattr(profile, 'left_date', None) else None,
-		})
-
-class LeaveReportView(APIView):
-		"""Return per-employee leave balances for a selected period."""
-
-		permission_classes = [IsLeaveManager]
-
-		def get(self, request, *args, **kwargs):
-			period_param = request.query_params.get('period')
-			emp_param = request.query_params.get('emp_id')
-
-			# Use the new computeLeaveBalances backend function which implements
-			# effective-joining and prorated CL rules exactly. Fall back to the
-			# older compute_leave_balances if necessary.
-			try:
-				period_id = int(period_param) if period_param else None
-			except Exception:
-				period_id = None
-			payload = computeLeaveBalances(leaveCalculationDate=None, selectedPeriodId=period_id)
-			metadata = payload.get('metadata', {})
-			periods_meta = metadata.get('periods', [])
-			tracked_codes = list(metadata.get('tracked_leave_codes', ())) or ['EL', 'CL', 'SL', 'VAC']
-
-			def _serialise_period(period_dict):
-				if not period_dict:
-					return None
-				return {
-					'id': period_dict.get('id'),
-					'name': period_dict.get('name'),
-					'start': period_dict.get('start').isoformat() if isinstance(period_dict.get('start'), date) else period_dict.get('start'),
-					'end': period_dict.get('end').isoformat() if isinstance(period_dict.get('end'), date) else period_dict.get('end'),
-				}
-
-			selected_period = None
-			if period_param:
-				try:
-					period_id = int(period_param)
-				except ValueError:
-					return Response({'detail': 'Invalid period parameter'}, status=status.HTTP_400_BAD_REQUEST)
-				selected_period = next((p for p in periods_meta if p['id'] == period_id), None)
-			else:
-				selected_period = periods_meta[-1] if periods_meta else None
-
-			if not selected_period:
-				return Response({'detail': 'No leave periods found'}, status=status.HTTP_404_NOT_FOUND)
-
-			selected_period_id = selected_period['id']
-			employee_payload = payload.get('employees', [])
-			emp_ids = [emp['emp_id'] for emp in employee_payload if emp.get('emp_id')]
-			profiles = EmpProfile.objects.filter(emp_id__in=emp_ids)
-			profile_map = {prof.emp_id: prof for prof in profiles}
-
-			default_meta = {
-				'original_allocation': 0.0,
-				'effective_allocation': 0.0,
-				'applied': False,
-				'reason': None,
-			}
-
-			rows = []
-			for emp_data in employee_payload:
-				period_entry = next((p for p in emp_data.get('periods', []) if p['period_id'] == selected_period_id), None)
-				if not period_entry:
-					period_entry = {
-						'period_id': selected_period_id,
-						'period_name': selected_period.get('name'),
-						'period_start': selected_period.get('start'),
-						'period_end': selected_period.get('end'),
-						'starting': {code: 0.0 for code in tracked_codes},
-						'allocation': {code: 0.0 for code in tracked_codes},
-						'used': {code: 0.0 for code in tracked_codes},
-						'ending': {code: 0.0 for code in tracked_codes},
-						'allocation_meta': {code: default_meta.copy() for code in tracked_codes},
-					}
-
-				codes_payload = {}
-				for code in tracked_codes:
-					alloc_meta = period_entry.get('allocation_meta', {}).get(code)
-					if not alloc_meta:
-						alloc_meta = default_meta
-					codes_payload[code] = {
-						'starting_balance': float(period_entry['starting'].get(code, 0.0)),
-						'period_allocation': float(period_entry['allocation'].get(code, 0.0)),
-						'used_in_period': float(period_entry['used'].get(code, 0.0)),
-						'ending_balance': float(period_entry['ending'].get(code, 0.0)),
-						'allocation_applied': bool(alloc_meta.get('applied', False)),
-						'allocation_reason': alloc_meta.get('reason'),
-						'original_allocation': float(alloc_meta.get('original_allocation', period_entry['allocation'].get(code, 0.0))),
-						'effective_allocation': float(alloc_meta.get('effective_allocation', period_entry['allocation'].get(code, 0.0))),
-					}
-
-				profile = profile_map.get(emp_data.get('emp_id'))
-				rows.append({
-					'emp_id': emp_data.get('emp_id'),
-					'emp_name': emp_data.get('emp_name'),
-					'position': getattr(profile, 'emp_designation', None) if profile else None,
-					'leave_group': getattr(profile, 'leave_group', None) if profile else None,
-					'joining_date': getattr(profile, 'actual_joining', None).isoformat() if profile and getattr(profile, 'actual_joining', None) else None,
-					'leaving_date': getattr(profile, 'left_date', None).isoformat() if profile and getattr(profile, 'left_date', None) else None,
-					'period': {
-						'id': period_entry['period_id'],
-						'name': period_entry.get('period_name'),
-						'start': period_entry.get('period_start').isoformat() if isinstance(period_entry.get('period_start'), date) else period_entry.get('period_start'),
-						'end': period_entry.get('period_end').isoformat() if isinstance(period_entry.get('period_end'), date) else period_entry.get('period_end'),
-					},
-					'codes': codes_payload,
-				})
-
-			rows.sort(key=lambda r: (r['emp_id'] or ""))
-
-			return Response({
-				'period': _serialise_period(selected_period),
-				'periods': [_serialise_period(p) for p in periods_meta],
-				'tracked_codes': tracked_codes,
-				'rows': rows,
-				'overdrawn': metadata.get('overdrawn', []),
-				'generated_at': timezone.now().isoformat(),
-				'employee_count': len(rows),
-			})
-class EmpProfileViewSet(viewsets.ModelViewSet):
-	queryset = EmpProfile.objects.all()
-	serializer_class = EmpProfileSerializer
-	permission_classes = [IsOwnerOrHR]
-
-	def create(self, request, *args, **kwargs):
-		# Temporary debug logging for incoming create requests from Admin UI
-		try:
-			user = request.user
-			print(f"[DEBUG] EmpProfile create requested by: {getattr(user, 'username', None)} (is_staff={getattr(user, 'is_staff', None)})")
-			print("[DEBUG] Payload:", request.data)
-		except Exception as e:
-			print("[DEBUG] Failed to print request debug info:", e)
-
-		# Also persist debug info to a file for easier retrieval
-		try:
-			import json, os
-			log_path = os.path.join(os.path.dirname(__file__), '..', 'debug_empprofile_create.log')
-			# ensure directory exists (backend/api) and append
-			with open(log_path, 'a', encoding='utf-8') as f:
-				f.write(json.dumps({'user': getattr(user, 'username', None), 'payload': request.data}) + "\n")
-		except Exception:
-			# ignore file write issues
-			pass
-
-		# Proceed with normal create but capture serializer errors to log
-		serializer = self.get_serializer(data=request.data)
-		if not serializer.is_valid():
-			print("[DEBUG] Serializer errors:", serializer.errors)
-			return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-		self.perform_create(serializer)
-		# After create, synchronize usr_birth_date/usercode into auth_user and set default password if needed
-		try:
-			profile = EmpProfile.objects.get(emp_id=serializer.data.get('emp_id') or serializer.data.get('emp_id'))
-			birth = profile.usr_birth_date or profile.emp_birth_date
-			identifiers = [i for i in (profile.username, profile.usercode) if i]
-			if identifiers:
-				from django.db import connection
-				try:
-					with connection.cursor() as cur:
-						cur.execute("SELECT 1 FROM information_schema.columns WHERE table_name='auth_user' AND column_name='usr_birth_date'")
-						has_birth_column = bool(cur.fetchone())
-						cur.execute("SELECT 1 FROM information_schema.columns WHERE table_name='auth_user' AND column_name='usercode'")
-						has_usercode_column = bool(cur.fetchone())
-						for ident in identifiers:
-							if has_birth_column:
-								if birth:
-									cur.execute("UPDATE auth_user SET usr_birth_date = %s WHERE username = %s", [birth, ident])
-								else:
-									cur.execute("UPDATE auth_user SET usr_birth_date = NULL WHERE username = %s", [ident])
-							if has_usercode_column:
-								cur.execute("UPDATE auth_user SET usercode = %s WHERE username = %s", [profile.usercode, ident])
-				except Exception:
-					# ignore DB sync errors for auth_user updates
-					pass
-				from django.contrib.auth import get_user_model
-				User = get_user_model()
-				u = User.objects.filter(username__in=identifiers).first()
-				if u:
-					try:
-						needs = (not u.has_usable_password()) or (not u.password)
-					except Exception:
-						needs = not u.password
-					if needs and birth:
-						pw = birth.strftime('%d%m%y')
-						u.set_password(pw)
-						u.save()
-		except Exception as e:
-			print("[DEBUG] Post-create sync failed:", e)
-		headers = self.get_success_headers(serializer.data)
-		print("[DEBUG] Created EmpProfile:", serializer.data)
-		return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-
-	def get_queryset(self):
-		user = self.request.user
-		qs = super().get_queryset()
-		# Managers/staff see all profiles
-		if user.is_staff or user.is_superuser or IsLeaveManager().has_permission(self.request, self):
-			return qs
-		# Regular users see only their own profile
-		return _profiles_matching_identifiers(qs, _user_identifiers(user))
-
-class LeaveTypeViewSet(viewsets.ModelViewSet):
-	queryset = LeaveType.objects.all()
-	serializer_class = LeaveTypeSerializer
-	permission_classes = [IsOwnerOrHR]
-
-	def get_queryset(self):
-		qs = super().get_queryset()
-		active = self.request.query_params.get('active')
-		if active == '1':
-			qs = qs.filter(is_active=True)
-		return qs
-
-
-class LeavePeriodViewSet(viewsets.ModelViewSet):
-	"""Full CRUD for leave periods so frontend can edit/activate periods.
-	Activating a period will trigger allocation seeding via signal (server-side).
-	"""
-	queryset = LeavePeriod.objects.all().order_by('-start_date')
-	serializer_class = LeavePeriodSerializer
-	permission_classes = [IsLeaveManager]
-
-
-from rest_framework.views import APIView
-
-
-class SeedLeaveAllocationsView(APIView):
-	"""Admin endpoint to seed allocations for a given period (or active period if none provided).
-
-	POST payload: { "period_id": <int> } (optional)
-	Returns created_count and skipped_count.
-	"""
-	permission_classes = [IsLeaveManager]
-
-	def post(self, request, *args, **kwargs):
-		period_id = request.data.get('period_id') or request.query_params.get('period_id')
-		try:
-			if period_id:
-				period = LeavePeriod.objects.filter(id=int(period_id)).first()
-			else:
-				period = LeavePeriod.objects.order_by('-start_date').first()
-			if not period:
-				return Response({'detail': 'LeavePeriod not found'}, status=status.HTTP_404_NOT_FOUND)
-
-			types = LeaveType.objects.filter(is_active=True)
-			profiles = EmpProfile.objects.all()
-			created = 0
-			skipped = 0
-			for p in profiles:
-				for lt in types:
-					# compute prorated allocation based on period length (days / 365)
-					try:
-						annual = float(lt.annual_allocation or 0)
-					except Exception:
-						annual = 0.0
-					period_days = (period.end_date - period.start_date).days + 1
-					prorated = round(annual * (period_days / 365.0), 2)
-					if not LeaveAllocation.objects.filter(profile=p, leave_type=lt, period=period).exists():
-						try:
-							LeaveAllocation.objects.create(
-								profile=p,
-								leave_type=lt,
-								period=period,
-								allocated=prorated,
-								allocated_start_date=period.start_date,
-								allocated_end_date=period.end_date,
-							)
-							created += 1
-						except Exception:
-							skipped += 1
-					else:
-						skipped += 1
-			return Response({'created': created, 'skipped': skipped}, status=status.HTTP_200_OK)
-		except Exception as e:
-			return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-class LeaveTypeCompatView(APIView):
-	"""Compatibility endpoint: read leave types via raw SQL and return normalized fields.
-	This avoids ORM errors when the model and DB schema differ in column names.
-	"""
-	permission_classes = [IsOwnerOrHR]
-
-	def get(self, request, *args, **kwargs):
-		from django.db import connection
-		try:
-			with connection.cursor() as cur:
-				cur.execute("SELECT leave_code, leave_name, parent_leave, leave_unit, leave_mode, annual_limit, is_half, id FROM api_leavetype")
-				rows = cur.fetchall()
-				cols = [c[0] for c in cur.description]
-			data = []
-			for r in rows:
-				obj = dict(zip(cols, r))
-				# normalize names expected by frontend
-				data.append({
-					'leave_code': obj.get('leave_code'),
-					'leave_name': obj.get('leave_name'),
-					'main_type': obj.get('parent_leave'),
-					'day_value': obj.get('leave_unit'),
-					'session': obj.get('leave_mode'),
-					'annual_allocation': obj.get('annual_limit'),
-					'is_half': obj.get('is_half'),
-					'id': obj.get('id'),
-				})
-			return Response(data)
-		except Exception as e:
-			return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-class LeavePeriodCompatView(APIView):
-	"""Return leave periods with a relaxed permission check so frontend can list periods for editing UI.
-	"""
-	permission_classes = [IsOwnerOrHR]
-
-	def get(self, request, *args, **kwargs):
-		try:
-			qs = LeavePeriod.objects.all().order_by('-start_date')
-			data = []
-			for p in qs:
-				data.append({
-					'id': p.id,
-					'period_name': p.period_name,
-					'start_date': str(p.start_date),
-					'end_date': str(p.end_date),
-					'description': p.description,
-				})
-			return Response(data)
-		except Exception as e:
-			return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-	def post(self, request, *args, **kwargs):
-		# create a new leave type via SQL
-		data = request.data or {}
-		leave_code = data.get('leave_code')
-		leave_name = data.get('leave_name')
-		parent = data.get('main_type') or data.get('parent_leave') or leave_code
-		day_value = data.get('day_value') or data.get('leave_unit') or 1
-		session = data.get('session') or data.get('leave_mode')
-		annual = data.get('annual_allocation') or data.get('annual_limit')
-		is_half = bool(data.get('is_half'))
-		from django.db import connection
-		try:
-			with connection.cursor() as cur:
-				cur.execute(
-					"INSERT INTO api_leavetype (leave_code, leave_name, parent_leave, leave_unit, leave_mode, annual_limit, is_half, created_at, updated_at) VALUES (%s,%s,%s,%s,%s,%s,%s,now(),now()) RETURNING id",
-					[leave_code, leave_name, parent, day_value, session, annual, is_half]
-				)
-				new_id = cur.fetchone()[0]
-			return Response({'id': new_id, 'leave_code': leave_code, 'leave_name': leave_name}, status=status.HTTP_201_CREATED)
-		except Exception as e:
-			return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-
-class LeaveTypeCompatDetailView(APIView):
-	permission_classes = [IsOwnerOrHR]
-
-	def put(self, request, pk, *args, **kwargs):
-		data = request.data or {}
-		leave_name = data.get('leave_name')
-		parent = data.get('main_type') or data.get('parent_leave')
-		day_value = data.get('day_value') or data.get('leave_unit')
-		session = data.get('session') or data.get('leave_mode')
-		annual = data.get('annual_allocation') or data.get('annual_limit')
-		is_half = bool(data.get('is_half'))
-		from django.db import connection
-		try:
-			with connection.cursor() as cur:
-				cur.execute(
-					"UPDATE api_leavetype SET leave_name=%s, parent_leave=%s, leave_unit=%s, leave_mode=%s, annual_limit=%s, is_half=%s, updated_at=now() WHERE id=%s",
-					[leave_name, parent, day_value, session, annual, is_half, pk]
-				)
-			return Response({'id': pk, 'leave_name': leave_name})
-		except Exception as e:
-			return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-	def delete(self, request, pk, *args, **kwargs):
-		from django.db import connection
-		try:
-			with connection.cursor() as cur:
-				cur.execute("DELETE FROM api_leavetype WHERE id=%s", [pk])
-			return Response(status=status.HTTP_204_NO_CONTENT)
-		except Exception as e:
-			return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+# ============================================================
+# LEAVE ENTRY API
+# ============================================================
 
 class LeaveEntryViewSet(viewsets.ModelViewSet):
-	queryset = LeaveEntry.objects.select_related('emp', 'leave_type').all()
-	serializer_class = LeaveEntrySerializer
-	permission_classes = [IsOwnerOrHR]
+    queryset = LeaveEntry.objects.select_related("emp", "leave_type").all()
+    serializer_class = LeaveEntrySerializer
+    permission_classes = [IsOwnerOrHR]
 
-	def get_queryset(self):
-		user = self.request.user
-		qs = super().get_queryset()
-		# HR/Admin/leave managers: see all
-		if user.is_staff or user.is_superuser or IsLeaveManager().has_permission(self.request, self):
-			return qs
-		# Employees: see own leaves only
-		identifiers = _user_identifiers(user)
-		if not identifiers:
-			return qs.none()
-		lookup = Q()
-		for ident in identifiers:
-			# Match by linked EmpProfile fields: username, usercode or emp_id
-			lookup |= Q(emp__username__iexact=ident) | Q(emp__usercode__iexact=ident) | Q(emp__emp_id__iexact=ident)
-		return qs.filter(lookup)
+    def get_queryset(self):
+        """Employees see only their own leaves."""
+        user = self.request.user
+        qs = super().get_queryset()
 
-	def perform_create(self, serializer):
-		# Managers can create entries for any employee. Regular users may create only for themselves.
-		user = self.request.user
-		is_manager = (user.is_staff or user.is_superuser or IsLeaveManager().has_permission(self.request, self))
-		if is_manager:
-			# Managers may create entries directly; but if dates span multiple periods we will split into one-per-period rows
-			start = serializer.validated_data.get('start_date')
-			end = serializer.validated_data.get('end_date')
-			if start and end and end >= start:
-				# find overlapping periods and split
-				periods = LeavePeriod.objects.filter(end_date__gte=start, start_date__lte=end).order_by('start_date')
-				if periods.count() <= 1:
-					serializer.save(created_by=getattr(user, 'username', None))
-					return
-				# otherwise split per period
-				for per in periods:
-					s = max(start, per.start_date)
-					e = min(end, per.end_date)
-					data = dict(serializer.validated_data)
-					data['start_date'] = s
-					data['end_date'] = e
-					# create individual entry
-					from .serializers_emp import LeaveEntrySerializer
-					ss = LeaveEntrySerializer(data=data)
-					ss.is_valid(raise_exception=True)
-					ss.save(created_by=getattr(user, 'username', None))
-				return
-			# fallback
-			serializer.save(created_by=getattr(user, 'username', None))
-			return
-		# regular user: ensure emp in payload matches their profile
-		from rest_framework.exceptions import PermissionDenied
-		my_profile = _first_profile_for_user(user)
-		if not my_profile:
-			raise PermissionDenied('Profile not found for current user')
-		emp_payload = serializer.validated_data.get('emp')
-		# emp_payload might be EmpProfile instance or emp_id string
-		if isinstance(emp_payload, EmpProfile):
-			emp_id_val = emp_payload.emp_id
-		else:
-			emp_id_val = str(emp_payload)
-		if emp_id_val != my_profile.emp_id:
-			raise PermissionDenied('Cannot create leave for other employees')
-		serializer.save(created_by=getattr(user, 'username', None))
+        if user.is_staff or user.is_superuser or IsLeaveManager().has_permission(self.request, self):
+            return qs
 
-	def perform_update(self, serializer):
-		if not (self.request.user.is_staff or self.request.user.is_superuser or IsLeaveManager().has_permission(self.request, self)):
-			from rest_framework.exceptions import PermissionDenied
-			raise PermissionDenied('Not allowed to update leave entries')
-		serializer.save()
+        ids = _user_identifiers(user)
+        if not ids:
+            return qs.none()
 
-	def perform_destroy(self, instance):
-		if not (self.request.user.is_staff or self.request.user.is_superuser or IsLeaveManager().has_permission(self.request, self)):
-			from rest_framework.exceptions import PermissionDenied
-			raise PermissionDenied('Not allowed to delete leave entries')
-		instance.delete()
+        q = Q()
+        for ident in ids:
+            q |= Q(emp__username__iexact=ident) | Q(emp__usercode__iexact=ident) | Q(emp__emp_id__iexact=ident)
+
+        return qs.filter(q)
+
+    def perform_create(self, serializer):
+        """Managers create anything. Employees only their own leaves."""
+        user = self.request.user
+
+        is_manager = (
+            user.is_staff or user.is_superuser or IsLeaveManager().has_permission(self.request, self)
+        )
+
+        if not is_manager:
+            profile = _first_profile_for_user(user)
+            if not profile:
+                raise PermissionError("Profile not found")
+
+            emp = serializer.validated_data.get("emp")
+            if isinstance(emp, EmpProfile):
+                if emp.emp_id != profile.emp_id:
+                    raise PermissionError("Not allowed to create for other users")
+            else:
+                if str(emp) != profile.emp_id:
+                    raise PermissionError("Not allowed to create for other users")
+
+        serializer.save(created_by=user.username)
+
+
+# ============================================================
+# MY LEAVE BALANCE VIEW
+# ============================================================
+
+class MyLeaveBalanceView(generics.GenericAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        profile = _first_profile_for_user(request.user)
+        if not profile:
+            return Response({"detail": "Profile not found"}, status=404)
+
+        period = LeavePeriod.objects.order_by("-start_date").first()
+        if not period:
+            return Response({"detail": "No leave periods found"}, status=404)
+
+        result = computeLeaveBalances(
+            leaveCalculationDate=None,
+            selectedPeriodId=period.id
+        )
+
+        # Find this employee in payload
+        emp_data = next(
+            (e for e in result["employees"] if str(e["emp_id"]) == str(profile.emp_id)),
+            None
+        )
+        if not emp_data:
+            return Response({"detail": "Employee not included"}, status=404)
+
+        return Response(emp_data)
+
+
+# ============================================================
+# LEAVE REPORT VIEW
+# ============================================================
+
+class LeaveReportView(APIView):
+    permission_classes = [IsLeaveManager]
+
+    def get(self, request):
+        period_param = request.query_params.get("period")
+        try:
+            period_id = int(period_param) if period_param else None
+        except:
+            return Response({"detail": "Invalid period id"}, status=400)
+
+        payload = computeLeaveBalances(None, period_id)
+        return Response(payload)
+
+
+# ============================================================
+# EMP PROFILE API
+# ============================================================
+
+class EmpProfileViewSet(viewsets.ModelViewSet):
+    queryset = EmpProfile.objects.all()
+    serializer_class = EmpProfileSerializer
+    permission_classes = [IsOwnerOrHR]
+
+    def get_queryset(self):
+        user = self.request.user
+
+        if user.is_staff or user.is_superuser or IsLeaveManager().has_permission(self.request, self):
+            return EmpProfile.objects.all()
+
+        return _profiles_matching_identifiers(
+            EmpProfile.objects.all(),
+            _user_identifiers(user)
+        )
