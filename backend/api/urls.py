@@ -1,32 +1,24 @@
-"""
-File: backend/api/urls.py
-API routing configuration.
-"""
-
+# backend/api/urls.py
 from django.urls import path, include
 from django.http import HttpResponse
 
 try:
-    # DRF + JWT
     from rest_framework.routers import DefaultRouter
     from rest_framework_simplejwt.views import (
-        TokenObtainPairView,
         TokenRefreshView,
         TokenVerifyView,
     )
 
-    # --- COURSE / ENROLLMENT MODULE ---
+    # Import ViewSets / Views
     from .views_courses import (
         ModuleViewSet, MenuViewSet, UserPermissionViewSet,
         InstituteCourseOfferingViewSet, MainBranchViewSet,
         SubBranchViewSet, InstituteViewSet, EnrollmentViewSet,
     )
 
-    # --- MAIL / TRANSCRIPT ---
     from .views_mail_request import GoogleFormSubmissionViewSet
     from .view_transcript_generate import TranscriptRequestViewSet
 
-    # --- DOCUMENT MANAGEMENT ---
     from .views import (
         DocRecViewSet, VerificationViewSet, MigrationRecordViewSet,
         ProvisionalRecordViewSet, InstVerificationMainViewSet,
@@ -34,41 +26,35 @@ try:
         EcaViewSet, BulkUploadView, DataAnalysisView,
     )
 
-    # --- INVENTORY ---
     from .inventory import (
         InventoryItemViewSet, InventoryInwardViewSet,
         InventoryOutwardViewSet, StockSummaryView
     )
 
-    # --- ADMIN UPLOAD ---
     from .views_admin import UploadDocRecView
 
-    # --- EMPLOYEE / LEAVE MANAGEMENT (UPDATED) ---
+    # EMPLOYEE / LEAVE MANAGEMENT (OPTION A) - main views
     from .views_emp import (
-    LeavePeriodListView,
-    LeaveAllocationListView,
-    LeaveAllocationDetailView,
-    LeaveEntryViewSet,
-    MyLeaveBalanceView,
-    LeaveReportView,
-    EmpProfileViewSet,
+        LeavePeriodViewSet,
+        LeaveAllocationListView,
+        LeaveAllocationDetailView,
+        LeaveReportView,
+        MyLeaveBalanceView,
+        EmpProfileViewSet,
+        LeaveEntryViewSet,
+        LeaveTypeViewSet,
     )
     
-    # --- LIVE BALANCE ENGINE ---
-    from .views_leave_balance import (
-        CurrentLeaveBalanceView,
-        PeriodLeaveBalanceView,
-        LeaveHistoryView,
-        LeaveBalanceReportView,
+    # NEW: Leave Report Views (4 modes)
+    from .views_leave_reports import (
+        EmployeeSummaryView,
+        EmployeeDateRangeView,
+        EmployeeMultiYearView,
+        AllEmployeesBalanceView,
     )
 
-    # --- STUDENT SEARCH ---
     from .views_student_search import StudentSearchViewSet
-
-    # --- DEGREE MGMT ---
     from .views_degree import StudentDegreeViewSet, ConvocationMasterViewSet
-
-    # --- AUTH / NAVIGATION ---
     from .views_auth import (
         HolidayViewSet, LoginView, ChangePasswordView, UserProfileView,
         VerifyPasswordView, VerifyAdminPanelPasswordView, CustomTokenObtainPairView,
@@ -76,17 +62,11 @@ try:
         UserAPIView, UserDetailAPIView, AdminChangePasswordView
     )
 
-    # --- INWARD / OUTWARD REGISTER ---
     from .in_out_register import IN_OUT_REGISTER_URLS
-
-    # --- INST VERIFICATION PDF ---
     from .view_inst_verification import GenerateInstVerificationPDF, SuggestDocRec
 
-    # ---------------------------------------------
-    # ROUTER REGISTRATIONS
-    # ---------------------------------------------
-
     router = DefaultRouter()
+    # Core router registrations
     router.register(r'holidays', HolidayViewSet, basename='holidays')
     router.register(r'student-search', StudentSearchViewSet, basename='student-search')
     router.register(r'degrees', StudentDegreeViewSet, basename='degrees')
@@ -115,23 +95,17 @@ try:
 
     # EMPLOYEE + LEAVE
     router.register(r'empprofile', EmpProfileViewSet, basename='empprofile')
+    router.register(r'leavetype', LeaveTypeViewSet, basename='leavetype')
+    router.register(r'leave-periods', LeavePeriodViewSet, basename='leave-periods')
     router.register(r'leaveentry', LeaveEntryViewSet, basename='leaveentry')
 
-    # ---------------------------------------------
-    # URL PATTERNS (NO RAW SQL, NO SEEDING)
-    # ---------------------------------------------
-
     urlpatterns = [
-
-        # First: DocRec next ID endpoint
-        path('docrec/next-id/', DocRecViewSet.as_view({"get": "next_id"}), name='docrec-next-id'),
 
         # Router URLs
         path("", include(router.urls)),
 
         # JWT LOGIN
         path("backlogin/", CustomTokenObtainPairView.as_view(), name="backlogin"),
-        path("token/", CustomTokenObtainPairView.as_view(), name="token_obtain_pair"),
         path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
         path("token/verify/", TokenVerifyView.as_view(), name="token_verify"),
 
@@ -153,20 +127,19 @@ try:
         path("inst-verification/generate-pdf/", GenerateInstVerificationPDF.as_view(), name="inst-verification-generate-pdf"),
         path("inst-verification/suggest-doc-rec/", SuggestDocRec.as_view(), name="inst-verification-suggest-doc-rec"),
 
-        # LEAVE SYSTEM (UPDATED — CLEAN)
-        path("leave-periods/", LeavePeriodListView.as_view(), name="leave-periods"),
+        # LEAVE SYSTEM (OPTION A)
         path("leave-allocations/", LeaveAllocationListView.as_view(), name="leave-allocations"),
         path("leave-allocations/<int:pk>/", LeaveAllocationDetailView.as_view(), name="leave-allocation-detail"),
         path("my-leave-balance/", MyLeaveBalanceView.as_view(), name="my-leave-balance"),
         path("leave-report/", LeaveReportView.as_view(), name="leave-report"),
         
-        # LIVE BALANCE ENGINE
-        path("leave-balance/current/", CurrentLeaveBalanceView.as_view(), name="leave-balance-current"),
-        path("leave-balance/period/<int:period_id>/", PeriodLeaveBalanceView.as_view(), name="leave-balance-period"),
-        path("leave-balance/history/", LeaveHistoryView.as_view(), name="leave-balance-history"),
-        path("leave-balance/report/", LeaveBalanceReportView.as_view(), name="leave-balance-report"),
+        # NEW: Leave Report Modes
+        path("leave-report/employee-summary/", EmployeeSummaryView.as_view(), name="employee-summary"),
+        path("leave-report/employee-range/", EmployeeDateRangeView.as_view(), name="employee-range"),
+        path("leave-report/multi-year/", EmployeeMultiYearView.as_view(), name="employee-multi-year"),
+        path("leave-report/all-employees-balance/", AllEmployeesBalanceView.as_view(), name="all-employees-balance"),
 
-        # USER MANAGEMENT (AUTH USERS)
+        # USER MANAGEMENT
         path("users/", UserAPIView.as_view(), name="user-list-create"),
         path("users/<int:user_id>/", UserDetailAPIView.as_view(), name="user-detail"),
 
@@ -182,7 +155,6 @@ try:
 
         # ADMIN DOCREC UPLOAD
         path("admin/upload-docrec/", UploadDocRecView.as_view(), name="admin-upload-docrec"),
-
     ] + IN_OUT_REGISTER_URLS
 
 except Exception as e:

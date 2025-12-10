@@ -49,12 +49,37 @@ class EmpProfileSerializer(serializers.ModelSerializer):
     joining_year_allocation_sl = serializers.SerializerMethodField()
     joining_year_allocation_vac = serializers.SerializerMethodField()
 
-    # Dates formatted for UI
-    actual_joining = serializers.DateField(format='%d-%m-%Y', allow_null=True)
-    emp_birth_date = serializers.DateField(format='%d-%m-%Y', allow_null=True)
-    usr_birth_date = serializers.DateField(format='%d-%m-%Y', allow_null=True)
-    leave_calculation_date = serializers.DateField(format='%d-%m-%Y', allow_null=True)
-    left_date = serializers.DateField(format='%d-%m-%Y', allow_null=True)
+    # Dates formatted for UI (output) but accept ISO format (input from HTML date inputs)
+    actual_joining = serializers.DateField(
+        format='%d-%m-%Y', 
+        input_formats=['%Y-%m-%d', '%d-%m-%Y', 'iso-8601'], 
+        allow_null=True, 
+        required=False
+    )
+    emp_birth_date = serializers.DateField(
+        format='%d-%m-%Y', 
+        input_formats=['%Y-%m-%d', '%d-%m-%Y', 'iso-8601'], 
+        allow_null=True, 
+        required=False
+    )
+    usr_birth_date = serializers.DateField(
+        format='%d-%m-%Y', 
+        input_formats=['%Y-%m-%d', '%d-%m-%Y', 'iso-8601'], 
+        allow_null=True, 
+        required=False
+    )
+    leave_calculation_date = serializers.DateField(
+        format='%d-%m-%Y', 
+        input_formats=['%Y-%m-%d', '%d-%m-%Y', 'iso-8601'], 
+        allow_null=True, 
+        required=False
+    )
+    left_date = serializers.DateField(
+        format='%d-%m-%Y', 
+        input_formats=['%Y-%m-%d', '%d-%m-%Y', 'iso-8601'], 
+        allow_null=True, 
+        required=False
+    )
 
     class Meta:
         model = EmpProfile
@@ -79,7 +104,18 @@ class EmpProfileSerializer(serializers.ModelSerializer):
 class LeaveTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = LeaveType
-        fields = "__all__"
+        fields = ['id', 'leave_code', 'leave_name', 'main_type', 'day_value', 
+                  'session', 'annual_allocation', 'is_half', 'is_active']
+    
+    def to_representation(self, instance):
+        """Format the output for reading"""
+        ret = super().to_representation(instance)
+        # Format decimal fields for display
+        if ret.get('annual_allocation') is not None:
+            ret['annual_allocation'] = _format_decimal_for_json(ret['annual_allocation'])
+        if ret.get('day_value') is not None:
+            ret['day_value'] = _format_decimal_for_json(ret['day_value'])
+        return ret
 
 
 

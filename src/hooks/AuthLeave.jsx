@@ -8,7 +8,7 @@ import axios from '../api/axiosInstance';
  * - Works with new backend endpoints (see README snippet in conversation).
  * - Endpoints used:
  *   GET  /api/leavetype/
- *   GET  /api/leaveperiods/
+ *   GET  /api/leave-periods/
  *   GET  /api/leave-allocations/?period=<id>
  *   POST /api/leave-allocations/
  *   PATCH /api/leave-allocations/<id>/
@@ -44,7 +44,15 @@ export default function AuthLeave() {
     apply_to: '', // "ALL" or "PARTICULAR" (frontend convenience)
   });
 
-  const [typeForm, setTypeForm] = useState({ leave_code: '', leave_name: '', annual_allocation: '' });
+  const [typeForm, setTypeForm] = useState({ 
+    leave_code: '', 
+    leave_name: '', 
+    main_type: '', 
+    day_value: '1', 
+    session: '', 
+    annual_allocation: '', 
+    is_half: false 
+  });
   const [editingTypeId, setEditingTypeId] = useState(null);
 
   const [periodForm, setPeriodForm] = useState({ period_name: '', start_date: '', end_date: '' });
@@ -69,8 +77,18 @@ export default function AuthLeave() {
   async function loadTypes() {
     try {
       const res = await axios.get('/api/leavetype/');
-      // DRF list might be paginated (results) or plain array
-      const data = Array.isArray(res.data) ? res.data : res.data.results || res.data || [];
+      
+      // DRF ViewSet returns array directly for list endpoint
+      let data = [];
+      if (Array.isArray(res.data)) {
+        data = res.data;
+      } else if (res.data && res.data.results) {
+        data = res.data.results;
+      } else if (res.data && typeof res.data === 'object') {
+        // If it's an object, try to get an array property
+        data = Object.values(res.data);
+      }
+      
       setTypes(data);
     } catch (err) {
       console.error('loadTypes error', err);
@@ -83,7 +101,7 @@ export default function AuthLeave() {
   // ----------------------------
   async function loadPeriods() {
     try {
-      const res = await axios.get('/api/leaveperiods/');
+      const res = await axios.get('/api/leave-periods/');
       const data = Array.isArray(res.data) ? res.data : res.data.results || res.data || [];
       // sort newest first by start_date
       const sorted = data.slice().sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
@@ -199,15 +217,19 @@ export default function AuthLeave() {
   // ----------------------------
   function openCreateAllocForm() {
     setEditingAllocId(null);
+    
+    // Find the selected period to auto-populate dates
+    const selectedPeriodObj = periods.find(p => String(p.id) === String(selectedPeriod));
+    
     // prefill period if selected
     setAllocForm({
       emp_id: '',
       leave_code: '',
       period_id: selectedPeriod || '',
       allocated: '',
-      allocated_start_date: '',
-      allocated_end_date: '',
-      apply_to: selectedPeriod ? 'PARTICULAR' : 'PARTICULAR',
+      allocated_start_date: selectedPeriodObj?.start_date || '',
+      allocated_end_date: selectedPeriodObj?.end_date || '',
+      apply_to: 'PARTICULAR',
     });
     setShowAllocForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -215,13 +237,17 @@ export default function AuthLeave() {
 
   function openEditAllocation(a) {
     setEditingAllocId(a.id);
+    
+    // Find the period to auto-populate dates if not set
+    const selectedPeriodObj = periods.find(p => String(p.id) === String(a.period_id));
+    
     setAllocForm({
       emp_id: a.emp_id || '',
       leave_code: a.leave_code || '',
       period_id: a.period_id || '',
       allocated: a.allocated ?? '',
-      allocated_start_date: a.allocated_start_date || '',
-      allocated_end_date: a.allocated_end_date || '',
+      allocated_start_date: a.allocated_start_date || selectedPeriodObj?.start_date || '',
+      allocated_end_date: a.allocated_end_date || selectedPeriodObj?.end_date || '',
       apply_to: a.apply_to || (a.emp_id ? 'PARTICULAR' : 'ALL'),
     });
     setShowAllocForm(true);
@@ -305,7 +331,11 @@ export default function AuthLeave() {
     const payload = {
       leave_code: typeForm.leave_code,
       leave_name: typeForm.leave_name,
-      annual_allocation: typeForm.annual_allocation || 0,
+      main_type: typeForm.main_type || null,
+      day_value: typeForm.day_value || 1,
+      session: typeForm.session || null,
+      annual_allocation: typeForm.annual_allocation || null,
+      is_half: typeForm.is_half || false,
     };
     try {
       if (editingTypeId) {
@@ -313,7 +343,7 @@ export default function AuthLeave() {
       } else {
         await axios.post('/api/leavetype/', payload);
       }
-      setTypeForm({ leave_code: '', leave_name: '', annual_allocation: '' });
+      setTypeForm({ leave_code: '', leave_name: '', main_type: '', day_value: '1', session: '', annual_allocation: '', is_half: false });
       setEditingTypeId(null);
       await loadTypes();
     } catch (err) {
@@ -335,9 +365,9 @@ export default function AuthLeave() {
     };
     try {
       if (editingPeriodId) {
-        await axios.put(`/api/leaveperiods/${editingPeriodId}/`, payload);
+        await axios.put(`/api/leave-periods/${editingPeriodId}/`, payload);
       } else {
-        await axios.post('/api/leaveperiods/', payload);
+        await axios.post('/api/leave-periods/', payload);
       }
       setPeriodForm({ period_name: '', start_date: '', end_date: '' });
       setEditingPeriodId(null);
@@ -471,7 +501,16 @@ export default function AuthLeave() {
 
                   <div>
                     <label className="block text-xs">Period</label>
-                    <select name="period_id" value={allocForm.period_id} onChange={e => setAllocForm(f => ({ ...f, period_id: e.target.value }))} className="p-2 border rounded w-full" required>
+                    <select name="period_id" value={allocForm.period_id} onChange={e => {
+                      const periodId = e.target.value;
+                      const selectedPeriodObj = periods.find(p => String(p.id) === String(periodId));
+                      setAllocForm(f => ({ 
+                        ...f, 
+                        period_id: periodId,
+                        allocated_start_date: selectedPeriodObj?.start_date || f.allocated_start_date,
+                        allocated_end_date: selectedPeriodObj?.end_date || f.allocated_end_date
+                      }));
+                    }} className="p-2 border rounded w-full" required>
                       <option value="">Select period</option>
                       {periods.map(p => <option key={p.id} value={p.id}>{p.period_name} ({p.start_date} - {p.end_date})</option>)}
                     </select>
@@ -506,33 +545,109 @@ export default function AuthLeave() {
 
       {tab === 'types' && (
         <div>
-          <h4 className="font-semibold mb-2">Leave Types</h4>
+          <div className="flex justify-between items-center mb-3">
+            <h4 className="font-semibold">Leave Types - All Fields (v2)</h4>
+            <span className="text-xs text-gray-500">Showing: Code, Name, Main Type, Day Value, Session, Annual, Half Day | Records: {types.length}</span>
+          </div>
           <div className="mb-4">
-            <form onSubmit={submitType} className="grid grid-cols-1 md:grid-cols-3 gap-3 max-w-xl">
-              <input name="leave_code" placeholder="Code" className="p-2 border rounded" required value={typeForm.leave_code} onChange={e => setTypeForm(f => ({ ...f, leave_code: e.target.value }))} disabled={!!editingTypeId} />
-              <input name="leave_name" placeholder="Name" className="p-2 border rounded" required value={typeForm.leave_name} onChange={e => setTypeForm(f => ({ ...f, leave_name: e.target.value }))} />
-              <input name="annual_allocation" placeholder="Annual Allocation" className="p-2 border rounded" type="number" step="0.01" value={typeForm.annual_allocation} onChange={e => setTypeForm(f => ({ ...f, annual_allocation: e.target.value }))} />
-              <div className="md:col-span-3 flex items-center space-x-2">
-                <button type="submit" className="bg-green-600 text-white px-3 py-1 rounded">{editingTypeId ? 'Save' : 'Create'}</button>
-                {editingTypeId && <button type="button" className="px-3 py-1 rounded border" onClick={() => { setEditingTypeId(null); setTypeForm({ leave_code: '', leave_name: '', annual_allocation: '' }); }}>Cancel</button>}
+            <form onSubmit={submitType} className="border rounded p-4 bg-gray-50">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                <div>
+                  <label className="block text-xs font-medium mb-1">Code *</label>
+                  <input name="leave_code" placeholder="Code" className="p-2 border rounded w-full" required value={typeForm.leave_code} onChange={e => setTypeForm(f => ({ ...f, leave_code: e.target.value }))} disabled={!!editingTypeId} />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-medium mb-1">Name *</label>
+                  <input name="leave_name" placeholder="Name" className="p-2 border rounded w-full" required value={typeForm.leave_name} onChange={e => setTypeForm(f => ({ ...f, leave_name: e.target.value }))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+                <div>
+                  <label className="block text-xs font-medium mb-1">Main Type</label>
+                  <input name="main_type" placeholder="Parent" className="p-2 border rounded w-full" value={typeForm.main_type} onChange={e => setTypeForm(f => ({ ...f, main_type: e.target.value }))} maxLength="10" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">Day Value</label>
+                  <input name="day_value" placeholder="1.00" className="p-2 border rounded w-full" type="number" step="0.01" min="0" max="9999" value={typeForm.day_value} onChange={e => setTypeForm(f => ({ ...f, day_value: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">Session</label>
+                  <input name="session" placeholder="Mode" className="p-2 border rounded w-full" value={typeForm.session} onChange={e => setTypeForm(f => ({ ...f, session: e.target.value }))} maxLength="10" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">Annual Allocation</label>
+                  <input name="annual_allocation" placeholder="Annual" className="p-2 border rounded w-full" type="number" step="0.01" value={typeForm.annual_allocation} onChange={e => setTypeForm(f => ({ ...f, annual_allocation: e.target.value }))} />
+                </div>
+              </div>
+              <div className="flex items-center space-x-3 mb-3">
+                <label className="flex items-center space-x-2">
+                  <input type="checkbox" checked={typeForm.is_half} onChange={e => setTypeForm(f => ({ ...f, is_half: e.target.checked }))} className="w-4 h-4" />
+                  <span className="text-sm">Is Half Day Leave</span>
+                </label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded">{editingTypeId ? 'Save' : 'Create'}</button>
+                {editingTypeId && <button type="button" className="px-4 py-2 rounded border" onClick={() => { setEditingTypeId(null); setTypeForm({ leave_code: '', leave_name: '', main_type: '', day_value: '1', session: '', annual_allocation: '', is_half: false }); }}>Cancel</button>}
               </div>
             </form>
           </div>
 
           <div className="overflow-auto border rounded">
             <table className="min-w-full text-sm">
-              <thead className="bg-gray-50"><tr><th className="p-2">Code</th><th className="p-2">Name</th><th className="p-2">Annual</th></tr></thead>
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="p-2 text-left">Code</th>
+                  <th className="p-2 text-left">Name</th>
+                  <th className="p-2 text-left">Main Type</th>
+                  <th className="p-2 text-left">Day Value</th>
+                  <th className="p-2 text-left">Session</th>
+                  <th className="p-2 text-left">Annual</th>
+                  <th className="p-2 text-center">Half Day</th>
+                </tr>
+              </thead>
               <tbody>
-                {types.map(t => {
+                {loading && types.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" className="p-4 text-center text-gray-500">
+                      Loading leave types...
+                    </td>
+                  </tr>
+                ) : types.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" className="p-4 text-center text-gray-500">
+                      No leave types found. Click "Create" to add a new leave type.
+                      <br />
+                      <small className="text-xs">Check browser console (F12) for API errors.</small>
+                    </td>
+                  </tr>
+                ) : (
+                  types.map(t => {
                   const key = t.leave_code || t.id;
                   return (
-                    <tr key={key} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => { setEditingTypeId(t.id || t.leave_code); setTypeForm({ leave_code: t.leave_code, leave_name: t.leave_name, annual_allocation: t.annual_allocation ?? t.annual_limit ?? '' }); setTab('types'); }}>
+                    <tr key={key} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => { 
+                      setEditingTypeId(t.id || t.leave_code); 
+                      setTypeForm({ 
+                        leave_code: t.leave_code, 
+                        leave_name: t.leave_name, 
+                        main_type: t.main_type || '', 
+                        day_value: t.day_value || '1', 
+                        session: t.session || '', 
+                        annual_allocation: t.annual_allocation ?? t.annual_limit ?? '', 
+                        is_half: t.is_half || false 
+                      }); 
+                      setTab('types'); 
+                    }}>
                       <td className="p-2">{t.leave_code}</td>
                       <td className="p-2">{t.leave_name}</td>
-                      <td className="p-2">{t.annual_allocation ?? t.annual_limit ?? ''}</td>
+                      <td className="p-2">{t.main_type || '-'}</td>
+                      <td className="p-2">{t.day_value || '1'}</td>
+                      <td className="p-2">{t.session || '-'}</td>
+                      <td className="p-2">{t.annual_allocation ?? t.annual_limit ?? '-'}</td>
+                      <td className="p-2 text-center">{t.is_half ? '✓' : ''}</td>
                     </tr>
                   );
-                })}
+                })
+                )}
               </tbody>
             </table>
           </div>
