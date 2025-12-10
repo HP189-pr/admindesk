@@ -13,8 +13,9 @@ from .domain_emp import (
     LeaveEntry,
     EmpProfile,
     LeaveType,
-    LeaveBalanceSnapshot,
 )
+
+# DEPRECATED: LeaveBalanceSnapshot removed - use leave_engine.py
 
 logger = logging.getLogger(__name__)
 
@@ -138,20 +139,8 @@ def activate_period(period_id: int) -> dict:
                 except Exception:
                     logger.exception('Failed to create allocation for %s %s', prof, lt)
 
-            # save a snapshot of current opening/closing for audit
-            try:
-                snap_date = period.start_date
-                snapshot, created = LeaveBalanceSnapshot.objects.get_or_create(profile=prof, balance_date=snap_date, defaults={
-                    'el_balance': prof.el_balance,
-                    'sl_balance': prof.sl_balance,
-                    'cl_balance': prof.cl_balance,
-                    'vacation_balance': prof.vacation_balance,
-                    'note': f'Activation for period {period.period_name}',
-                })
-                if created:
-                    summary['snapshots'] += 1
-            except Exception:
-                logger.exception('Failed to save snapshot for %s', prof)
+            # DEPRECATED: Snapshot creation removed
+            # Use live balance engine (leave_engine.py) for real-time calculations
 
     # mark period active
     period.is_active = True

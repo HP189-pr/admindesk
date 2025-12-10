@@ -45,14 +45,21 @@ try:
 
     # --- EMPLOYEE / LEAVE MANAGEMENT (UPDATED) ---
     from .views_emp import (
-        EmpProfileViewSet,
-        LeaveTypeViewSet,
-        LeavePeriodViewSet,
-        LeaveEntryViewSet,
-        LeaveAllocationListView,
-        LeaveAllocationDetailView,
-        MyLeaveBalanceView,
-        LeaveReportView,
+    LeavePeriodListView,
+    LeaveAllocationListView,
+    LeaveAllocationDetailView,
+    LeaveEntryViewSet,
+    MyLeaveBalanceView,
+    LeaveReportView,
+    EmpProfileViewSet,
+    )
+    
+    # --- LIVE BALANCE ENGINE ---
+    from .views_leave_balance import (
+        CurrentLeaveBalanceView,
+        PeriodLeaveBalanceView,
+        LeaveHistoryView,
+        LeaveBalanceReportView,
     )
 
     # --- STUDENT SEARCH ---
@@ -108,8 +115,6 @@ try:
 
     # EMPLOYEE + LEAVE
     router.register(r'empprofile', EmpProfileViewSet, basename='empprofile')
-    router.register(r'leavetype', LeaveTypeViewSet, basename='leavetype')
-    router.register(r'leaveperiods', LeavePeriodViewSet, basename='leaveperiods')
     router.register(r'leaveentry', LeaveEntryViewSet, basename='leaveentry')
 
     # ---------------------------------------------
@@ -149,10 +154,17 @@ try:
         path("inst-verification/suggest-doc-rec/", SuggestDocRec.as_view(), name="inst-verification-suggest-doc-rec"),
 
         # LEAVE SYSTEM (UPDATED — CLEAN)
+        path("leave-periods/", LeavePeriodListView.as_view(), name="leave-periods"),
         path("leave-allocations/", LeaveAllocationListView.as_view(), name="leave-allocations"),
         path("leave-allocations/<int:pk>/", LeaveAllocationDetailView.as_view(), name="leave-allocation-detail"),
         path("my-leave-balance/", MyLeaveBalanceView.as_view(), name="my-leave-balance"),
         path("leave-report/", LeaveReportView.as_view(), name="leave-report"),
+        
+        # LIVE BALANCE ENGINE
+        path("leave-balance/current/", CurrentLeaveBalanceView.as_view(), name="leave-balance-current"),
+        path("leave-balance/period/<int:period_id>/", PeriodLeaveBalanceView.as_view(), name="leave-balance-period"),
+        path("leave-balance/history/", LeaveHistoryView.as_view(), name="leave-balance-history"),
+        path("leave-balance/report/", LeaveBalanceReportView.as_view(), name="leave-balance-report"),
 
         # USER MANAGEMENT (AUTH USERS)
         path("users/", UserAPIView.as_view(), name="user-list-create"),

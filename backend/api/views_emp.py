@@ -123,7 +123,13 @@ class IsOwnerOrHR(permissions.BasePermission):
 class LeavePeriodListView(generics.ListCreateAPIView):
     queryset = LeavePeriod.objects.all().order_by("-start_date")
     serializer_class = LeavePeriodSerializer
-    permission_classes = [IsLeaveManager]
+    permission_classes = [permissions.IsAuthenticated]  # Allow all authenticated users to view periods
+    
+    def get_permissions(self):
+        # Only managers can create periods (POST), but anyone authenticated can list (GET)
+        if self.request.method == 'POST':
+            return [IsLeaveManager()]
+        return [permissions.IsAuthenticated()]
 
 
 # ============================================================
@@ -338,17 +344,93 @@ class MyLeaveBalanceView(generics.GenericAPIView):
 # ============================================================
 
 class LeaveReportView(APIView):
-    permission_classes = [IsLeaveManager]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        # Check if user has leave management permissions
+        user = request.user
+        has_mgmt = (user.is_staff or user.is_superuser or 
+                   user.groups.filter(name__iexact="leave_management").exists())
+        
+        if not has_mgmt:
+            return Response(
+                {"detail": "You don't have permission to view the full leave report."},
+                status=403
+            )
+        
         period_param = request.query_params.get("period")
         try:
             period_id = int(period_param) if period_param else None
         except:
             return Response({"detail": "Invalid period id"}, status=400)
 
-        payload = computeLeaveBalances(None, period_id)
-        return Response(payload)
+        # Use keyword arguments since computeLeaveBalances requires them
+        payload = computeLeaveBalances(selectedPeriodId=period_id)
+        
+        # Transform the nested structure to flat rows for frontend
+        rows = []
+        if payload and 'employees' in payload:
+            for emp_data in payload['employees']:
+                emp_id = emp_data.get('emp_id', '')
+                emp_name = emp_data.get('emp_name', '')
+                emp_short = emp_data.get('emp_short', emp_id)
+                emp_designation = emp_data.get('designation', '')
+                leave_group = emp_data.get('leave_group', '')
+                actual_joining = emp_data.get('actual_joining', '')
+                left_date = emp_data.get('left_date', 'Cont')
+                
+                # Find period data for the selected period
+                period_data = None
+                if emp_data.get('periods'):
+                    for p in emp_data['periods']:
+                        if period_id is None or p.get('period_id') == period_id:
+                            period_data = p
+                            break
+                    # If period_id specified but not found, use first period
+                    if period_data is None and emp_data['periods']:
+                        period_data = emp_data['periods'][0]
+                
+                if period_data:
+                    starting = period_data.get('starting', {})
+                    allocation = period_data.get('allocation', {})
+                    used = period_data.get('used', {})
+                    ending = period_data.get('ending', {})
+                    
+                    row = {
+                        'emp_id': emp_id,
+                        'emp_short': emp_short,
+                        'emp_name': emp_name,
+                        'emp_designation': emp_designation,
+                        'leave_group': leave_group,
+                        'actual_joining': actual_joining,
+                        'left_date': left_date,
+                        # Starting balances
+                        'start_sl': starting.get('SL', 0),
+                        'start_el': starting.get('EL', 0),
+                        'start_cl': 0,  # CL doesn't carry forward typically
+                        # Allocations
+                        'alloc_sl': allocation.get('SL', 0),
+                        'alloc_el': allocation.get('EL', 0),
+                        'alloc_cl': allocation.get('CL', 0),
+                        'alloc_vac': 0,
+                        # Used
+                        'used_sl': used.get('SL', 0),
+                        'used_el': used.get('EL', 0),
+                        'used_cl': used.get('CL', 0),
+                        'used_vac': 0,
+                        'used_dl': 0,
+                        'used_lwp': 0,
+                        'used_ml': 0,
+                        'used_pl': 0,
+                        # Ending balances
+                        'end_sl': ending.get('SL', 0),
+                        'end_el': ending.get('EL', 0),
+                        'end_cl': ending.get('CL', 0),
+                        'end_vac': 0,
+                    }
+                    rows.append(row)
+        
+        return Response({'rows': rows, 'metadata': payload.get('metadata', {})})
 
 
 # ============================================================

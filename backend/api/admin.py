@@ -1,7 +1,6 @@
 from django.contrib import admin
 from django.db import models as djmodels
 from .domain_emp import EmpProfile, LeaveType, LeaveEntry, LeavePeriod, LeaveAllocation
-from .domain_emp import LeaveBalanceSnapshot
 from .domain_logs import UserActivityLog, ErrorLog
 from .domain_degree import StudentDegree, ConvocationMaster
 import csv
@@ -57,31 +56,31 @@ class LeavePeriodAdmin(admin.ModelAdmin):
 @admin.register(LeaveAllocation)
 class LeaveAllocationAdmin(admin.ModelAdmin):
     list_display = (
-        'id', 'emp_id_field', 'leave_code_field', 'period_id_field',
+        'id', 'emp_id_field', 'leave_code_field', 'period_id_field', 'apply_to',
         'allocated', 'allocated_start_date', 'allocated_end_date',
         'created_at', 'updated_at'
     )
     list_display_links = ('id',)
     # Allow quick edits for allocation numeric/date columns directly in the changelist
     list_editable = ('allocated', 'allocated_start_date', 'allocated_end_date')
-    search_fields = ('profile__emp_name', 'leave_type__leave_name', 'profile__emp_id')
-    list_filter = ('period', 'leave_type', 'profile')
+    search_fields = ('emp__emp_name', 'leave_code', 'emp__emp_id')
+    list_filter = ('period', 'apply_to', 'leave_code')
     readonly_fields = ('created_at', 'updated_at')
     fields = (
-        'profile', 'leave_type', 'period',
+        'apply_to', 'emp', 'leave_code', 'period',
         'allocated', 'allocated_start_date', 'allocated_end_date',
         'created_at', 'updated_at'
     )
-    raw_id_fields = ('profile', 'leave_type', 'period')
+    raw_id_fields = ('emp', 'period')
 
     def emp_id_field(self, obj):
-        """Display emp_id for employee-specific allocations, or 'All' for defaults"""
+        """Display emp_id for employee-specific allocations, or 'ALL' for global"""
         try:
-            if obj.profile:
-                return obj.profile.emp_id
-            return 'All'
+            if obj.apply_to == 'ALL':
+                return 'ALL'
+            return obj.emp.emp_id if obj.emp else 'N/A'
         except Exception:
-            return 'All'
+            return 'N/A'
     emp_id_field.short_description = 'emp_id'
     
     def period_id_field(self, obj):
@@ -93,14 +92,9 @@ class LeaveAllocationAdmin(admin.ModelAdmin):
     period_id_field.short_description = 'period_id'
 
     def leave_code_field(self, obj):
-        """Display leave_code - empty for default allocations (emp_id=All)"""
+        """Display leave_code"""
         try:
-            if obj.profile is None:
-                return ''
-            # The FK `leave_type` maps to DB column `leave_code`
-            if obj.leave_type:
-                return obj.leave_type.leave_code
-            return obj.leave_type_id or ''
+            return obj.leave_code or ''
         except Exception:
             return ''
     leave_code_field.short_description = 'leave_code'
@@ -123,11 +117,10 @@ class LeaveAllocationAdmin(admin.ModelAdmin):
     period_id_field.short_description = 'period_id'
 
 
-@admin.register(LeaveBalanceSnapshot)
-class LeaveBalanceSnapshotAdmin(admin.ModelAdmin):
-    list_display = ('profile', 'balance_date', 'el_balance', 'sl_balance', 'cl_balance', 'vacation_balance')
-    search_fields = ('profile__emp_id', 'profile__emp_name')
-    list_filter = ('balance_date',)
+# ============================================================================
+# REMOVED: LeaveBalanceSnapshot Admin
+# LeaveBalanceSnapshot removed - using live balance engine (leave_engine.py)
+# ============================================================================
 
 
 # Inline admin registrations so allocations and leave entries can be edited on EmpProfile page

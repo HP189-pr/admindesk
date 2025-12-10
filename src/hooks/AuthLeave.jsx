@@ -127,10 +127,10 @@ export default function AuthLeave() {
   function normalizeAlloc(a) {
     return {
       id: a.id || a.pk || null,
-      emp_id: a.emp_id ?? (a.emp ? (a.emp.emp_id || a.emp) : null) || (a.emp === null ? null : a.emp),
+      emp_id: (a.emp_id ?? (a.emp ? (a.emp.emp_id || a.emp) : null)) || (a.emp === null ? null : a.emp),
       leave_code: a.leave_code || a.leave_type || (a.leave_type && a.leave_type.leave_code) || null,
       leave_name: a.leave_type_name || (a.leave_type && a.leave_type.leave_name) || null,
-      period_id: a.period_id ?? (a.period && (a.period.id || a.period)) || null,
+      period_id: (a.period_id ?? (a.period && (a.period.id || a.period))) || null,
       period_name: a.period_name || (a.period && a.period.period_name) || null,
       allocated: a.allocated ?? a.allotted ?? 0,
       allocated_start_date: a.allocated_start_date || a.allocation_start_date || null,

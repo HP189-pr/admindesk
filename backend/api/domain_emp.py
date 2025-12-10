@@ -232,8 +232,8 @@ class LeavePeriod(models.Model):
 
 class LeaveAllocation(models.Model):
     APPLY_CHOICES = (
-        ("ALL", "All Employees"),
-        ("PARTICULAR", "Particular Employee"),
+        ("All", "All Employees"),
+        ("Particular", "Particular Employee"),
     )
 
     leave_code = models.CharField(max_length=20, db_column="leave_code")
@@ -244,7 +244,7 @@ class LeaveAllocation(models.Model):
         related_name="allocations",
     )
 
-    apply_to = models.CharField(max_length=20, choices=APPLY_CHOICES, default="ALL")
+    apply_to = models.CharField(max_length=20, choices=APPLY_CHOICES, default="All", db_column="apply_to")
 
     emp = models.ForeignKey(
         EmpProfile,
@@ -270,7 +270,7 @@ class LeaveAllocation(models.Model):
         unique_together = ("leave_code", "period", "emp")
 
     def save(self, *args, **kwargs):
-        if self.apply_to == "ALL":
+        if self.apply_to == "All":
             self.emp = None
         super().save(*args, **kwargs)
 
@@ -283,7 +283,8 @@ class LeaveAllocation(models.Model):
     def used_days(self, emp_profile=None):
         from .domain_emp import LeaveEntry
 
-        if self.apply_to == "PARTICULAR":
+        # Since apply_to is commented out, assume if emp is set it's PARTICULAR, else ALL
+        if self.emp:
             target = self.emp
         else:
             if not emp_profile:
@@ -320,5 +321,5 @@ class LeaveAllocation(models.Model):
         return float(self.allocated) - self.used_days(emp_profile)
 
     def __str__(self):
-        target = "ALL" if self.apply_to == "ALL" else self.emp
+        target = "ALL" if self.emp is None else self.emp
         return f"{self.leave_code} - {self.period.period_name} -> {target}"
