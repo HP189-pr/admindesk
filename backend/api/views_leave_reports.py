@@ -8,11 +8,12 @@ New leave report views supporting 4 different modes:
 """
 from decimal import Decimal
 from datetime import datetime
+from django.db import models
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
 
-from .domain_emp import EmpProfile, LeavePeriod, LeaveEntry, LeaveType
+from .domain_emp import EmpProfile, LeavePeriod, LeaveEntry, LeaveType, LeaveAllocation
 from .domain_leave_balance import compute_leave_balances, LeaveComputationConfig, _group_code, _to_decimal
 
 
@@ -106,13 +107,43 @@ def _get_employee_balance_summary(emp_id, period_id=None, start_date=None, end_d
         'VAC': _to_decimal(profile.vacation_balance)
     }
     
-    # Get allocations (from joining year allocations or period allocations)
+    # Get allocations from LeaveAllocation table for this period
     allocated = {
-        'CL': _to_decimal(profile.joining_year_allocation_cl),
-        'SL': _to_decimal(profile.joining_year_allocation_sl),
-        'EL': _to_decimal(profile.joining_year_allocation_el),
-        'VAC': _to_decimal(profile.joining_year_allocation_vac)
+        'CL': Decimal('0'),
+        'SL': Decimal('0'),
+        'EL': Decimal('0'),
+        'VAC': Decimal('0')
     }
+    
+    if period_id:
+        # Get allocations for this employee in this period
+        # Check both specific allocations (emp=profile) and global allocations (emp=None, apply_to='All')
+        allocations = LeaveAllocation.objects.filter(
+            period_id=period_id
+        ).filter(
+            models.Q(emp=profile) | models.Q(emp=None, apply_to='All')
+        )
+        
+        for alloc in allocations:
+            # Get the leave type to determine the group
+            try:
+                leave_type = LeaveType.objects.get(leave_code=alloc.leave_code)
+                group = _group_code(leave_type) or str(leave_type.leave_code).upper()
+                allocated[group] = allocated.get(group, Decimal('0')) + _to_decimal(alloc.allocated)
+            except LeaveType.DoesNotExist:
+                # Fallback to using leave_code directly
+                code = str(alloc.leave_code).upper()
+                if code in allocated:
+                    allocated[code] = allocated.get(code, Decimal('0')) + _to_decimal(alloc.allocated)
+    
+    # Fallback to joining year allocations if no period allocations found
+    if all(v == 0 for v in allocated.values()):
+        allocated = {
+            'CL': _to_decimal(profile.joining_year_allocation_cl),
+            'SL': _to_decimal(profile.joining_year_allocation_sl),
+            'EL': _to_decimal(profile.joining_year_allocation_el),
+            'VAC': _to_decimal(profile.joining_year_allocation_vac)
+        }
     
     # Calculate closing balance
     closing = {}
