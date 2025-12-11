@@ -37,7 +37,7 @@ def _format_date(d):
     return d.strftime('%d-%m-%Y')
 
 
-def _get_employee_balance_summary(emp_id, period_id=None, start_date=None, end_date=None):
+def _get_employee_balance_summary(emp_id, period_id=None, start_date=None, end_date=None, debug=False):
     """
     Core function to compute employee balance summary.
     Used by multiple endpoints.
@@ -60,6 +60,7 @@ def _get_employee_balance_summary(emp_id, period_id=None, start_date=None, end_d
         return None
     
     # Determine period
+    allocations_matched = []
     if period_id:
         try:
             period = LeavePeriod.objects.get(id=period_id)
@@ -117,24 +118,73 @@ def _get_employee_balance_summary(emp_id, period_id=None, start_date=None, end_d
     
     if period_id:
         # Get allocations for this employee in this period
-        # Check both specific allocations (emp=profile) and global allocations (emp=None, apply_to='All')
-        allocations = LeaveAllocation.objects.filter(
-            period_id=period_id
-        ).filter(
-            models.Q(emp=profile) | models.Q(emp=None, apply_to='All')
+        # Include specific allocations (emp=profile) and global allocations (emp is null or apply_to='All')
+        allocations = LeaveAllocation.objects.filter(period_id=period_id).filter(
+            models.Q(emp=profile) | models.Q(emp__isnull=True) | models.Q(apply_to__iexact='All')
         )
-        
-        for alloc in allocations:
-            # Get the leave type to determine the group
-            try:
-                leave_type = LeaveType.objects.get(leave_code=alloc.leave_code)
-                group = _group_code(leave_type) or str(leave_type.leave_code).upper()
-                allocated[group] = allocated.get(group, Decimal('0')) + _to_decimal(alloc.allocated)
-            except LeaveType.DoesNotExist:
-                # Fallback to using leave_code directly
-                code = str(alloc.leave_code).upper()
-                if code in allocated:
-                    allocated[code] = allocated.get(code, Decimal('0')) + _to_decimal(alloc.allocated)
+    elif start_date and end_date:
+        # Date-range mode: include allocations whose period overlaps the custom window
+        allocations = LeaveAllocation.objects.filter(
+            (
+                models.Q(period__start_date__lte=end_date) & models.Q(period__end_date__gte=start_date)
+            ) | (
+                models.Q(allocated_start_date__lte=end_date) & models.Q(allocated_end_date__gte=start_date)
+            ) | (
+                models.Q(allocated_start_date__isnull=True) & models.Q(allocated_end_date__isnull=True)
+            )
+        ).filter(
+            models.Q(emp=profile) | models.Q(emp__isnull=True) | models.Q(apply_to__iexact='All')
+        )
+    else:
+        allocations = []
+
+    for alloc in allocations:
+        # If allocation has explicit start/end dates, ensure it overlaps the chosen window (period or custom range)
+        try:
+            if getattr(alloc, 'allocated_start_date', None) and getattr(alloc, 'allocated_end_date', None):
+                a_start = alloc.allocated_start_date
+                a_end = alloc.allocated_end_date
+                # If period_id mode, start_date/end_date were set above from the period; otherwise keep provided range
+                if a_end < start_date or a_start > end_date:
+                    # allocation outside this period/window
+                    continue
+        except Exception:
+            pass
+
+        code_raw = str(getattr(alloc, 'leave_code', '') or '').strip()
+        code_up = code_raw.upper()
+
+        # Try to resolve a LeaveType for the allocation code (case-insensitive)
+        leave_type = LeaveType.objects.filter(leave_code__iexact=code_raw).first()
+        group = None
+        if leave_type:
+            group = _group_code(leave_type) or str(leave_type.leave_code).upper()
+        else:
+            # Heuristic fallback: map HCL*/HSL* etc. to parent groups
+            if 'CL' in code_up:
+                group = 'CL'
+            elif 'SL' in code_up:
+                group = 'SL'
+            elif 'EL' in code_up:
+                group = 'EL'
+            elif 'VAC' in code_up or 'VC' in code_up:
+                group = 'VAC'
+            else:
+                group = code_up
+
+        if group in allocated:
+            allocated[group] = allocated.get(group, Decimal('0')) + _to_decimal(alloc.allocated)
+
+        # collect for debug output
+        allocations_matched.append({
+            'leave_code': getattr(alloc, 'leave_code', None),
+            'apply_to': getattr(alloc, 'apply_to', None),
+            'emp': getattr(getattr(alloc, 'emp', None), 'emp_id', None),
+            'allocated': float(_to_decimal(getattr(alloc, 'allocated', 0))),
+            'start': getattr(alloc, 'allocated_start_date', None),
+            'end': getattr(alloc, 'allocated_end_date', None),
+            'resolved_group': group,
+        })
     
     # Fallback to joining year allocations if no period allocations found
     if all(v == 0 for v in allocated.values()):
@@ -157,7 +207,7 @@ def _get_employee_balance_summary(emp_id, period_id=None, start_date=None, end_d
     def fmt(val):
         return float(val) if isinstance(val, Decimal) else val
     
-    return {
+    result = {
         'emp_id': profile.emp_id,
         'emp_name': profile.emp_name,
         'emp_short': profile.emp_short,
@@ -176,6 +226,9 @@ def _get_employee_balance_summary(emp_id, period_id=None, start_date=None, end_d
         'used': {k: fmt(used.get(k, Decimal('0'))) for k in ['CL', 'SL', 'EL', 'VAC', 'DL', 'LWP', 'ML', 'PL']},
         'closing': {k: fmt(v) for k, v in closing.items()}
     }
+    if debug:
+        result['allocations_matched'] = allocations_matched
+    return result
 
 
 class EmployeeSummaryView(APIView):
@@ -200,6 +253,7 @@ class EmployeeSummaryView(APIView):
     def get(self, request):
         emp_id = request.query_params.get('emp_id')
         period_id = request.query_params.get('period_id')
+        debug = bool(request.query_params.get('debug'))
         
         if not emp_id or not period_id:
             return Response(
@@ -215,7 +269,7 @@ class EmployeeSummaryView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        result = _get_employee_balance_summary(emp_id, period_id=period_id)
+        result = _get_employee_balance_summary(emp_id, period_id=period_id, debug=debug)
         
         if not result:
             return Response(
@@ -317,21 +371,31 @@ class EmployeeMultiYearView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        # Get all periods, ordered by start date
-        periods = LeavePeriod.objects.all().order_by('start_date')
-        
+        # Use the canonical compute engine to get progressive multi-year balances
+        try:
+            payload = compute_leave_balances(employee_ids=[str(emp_id)])
+        except Exception:
+            payload = compute_leave_balances(employee_ids=[str(emp_id)])
+
+        emp_payload = next((e for e in payload.get('employees', []) if str(e.get('emp_id')) == str(emp_id)), None)
+        if not emp_payload:
+            return Response({'detail': 'No data for employee'}, status=status.HTTP_404_NOT_FOUND)
+
         years = []
-        for period in periods:
-            summary = _get_employee_balance_summary(emp_id, period_id=period.id)
-            if summary:
-                years.append({
-                    'period': summary['period'],
-                    'opening': summary['opening'],
-                    'allocated': summary['allocated'],
-                    'used': summary['used'],
-                    'closing': summary['closing']
-                })
-        
+        for p in emp_payload.get('periods', []):
+            years.append({
+                'period': {
+                    'id': p.get('period_id'),
+                    'name': p.get('period_name') or p.get('period_name') ,
+                    'start': _format_date(p.get('period_start')),
+                    'end': _format_date(p.get('period_end')),
+                },
+                'opening': {k: float(v) for k, v in p.get('starting', {}).items()},
+                'allocated': {k: float(v) for k, v in p.get('allocation', {}).items()},
+                'used': {k: float(v) for k, v in p.get('used', {}).items()},
+                'closing': {k: float(v) for k, v in p.get('ending', {}).items()},
+            })
+
         return Response({
             'emp_id': profile.emp_id,
             'emp_name': profile.emp_name,
