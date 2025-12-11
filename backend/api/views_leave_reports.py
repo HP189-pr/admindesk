@@ -194,6 +194,36 @@ def _get_employee_balance_summary(emp_id, period_id=None, start_date=None, end_d
             'EL': _to_decimal(profile.joining_year_allocation_el),
             'VAC': _to_decimal(profile.joining_year_allocation_vac)
         }
+
+    # If employee has a joining/left date, prorate allocations for the portion
+    # of the period the employee was actually active (start_date..end_date overlap)
+    try:
+        period_days = (end_date - start_date).days + 1 if (start_date and end_date) else 0
+        emp_join = getattr(profile, 'actual_joining', None)
+        emp_left = getattr(profile, 'left_date', None)
+
+        # Determine active window for the employee within this requested window
+        active_start = start_date
+        if emp_join and emp_join > active_start:
+            active_start = emp_join
+        active_end = end_date
+        if emp_left and emp_left < active_end:
+            active_end = emp_left
+
+        active_days = 0
+        if period_days > 0 and active_start and active_end and active_end >= active_start:
+            active_days = (active_end - active_start).days + 1
+
+        if period_days > 0 and active_days < period_days:
+            # prorate each allocation proportionally
+            for k in list(allocated.keys()):
+                if active_days <= 0:
+                    allocated[k] = Decimal('0')
+                else:
+                    allocated[k] = (_to_decimal(allocated.get(k, Decimal('0'))) * Decimal(active_days) / Decimal(period_days))
+    except Exception:
+        # keep allocated as-is on any error
+        pass
     
     # Calculate closing balance
     closing = {}
