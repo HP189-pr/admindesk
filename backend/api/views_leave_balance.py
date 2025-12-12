@@ -1,443 +1,234 @@
+# views_leave_balance.py
 """
-Live Leave Balance Views - Using Real-time Calculation Engine
-
-This module provides API endpoints that use the live balance calculation engine
-(leave_engine.py) instead of pre-computed snapshots. All balances are calculated
-on-demand from source data (LeaveAllocation + LeaveEntry).
-
-Benefits:
-- Always accurate, even with historical changes
-- No snapshot recomputation needed
-- Automatic cascade updates
-- Zero chance of balance mismatch
-
+DRF views that use the live engine for balances.
 Endpoints:
-- GET /api/leave-balance/current/ - Current balance for authenticated user
-- GET /api/leave-balance/period/<period_id>/ - Balance breakdown for specific period
-- GET /api/leave-balance/history/ - Complete leave history for user
-- GET /api/leave-balance/report/ - Balance report for all employees (HR/Admin only)
+- GET /api/leave-balance/current/         -> CurrentLeaveBalanceView
+- GET /api/leave-balance/period/<id>/     -> PeriodLeaveBalanceView
+- GET /api/leave-balance/history/         -> LeaveHistoryView
+- GET /api/leave-balance/report/          -> LeaveBalanceReportView (HR/Admin only)
 """
-
-from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from django.utils import timezone
+from rest_framework import status, permissions
 from datetime import date
 from decimal import Decimal
 
-from .leave_engine import leave_engine
+from .leave_engine import engine
 from .domain_emp import EmpProfile, LeavePeriod, LeaveType
 
-
 def _user_identifiers(user):
-	"""Extract username/usercode from user object."""
-	values = []
-	for attr in ('username', 'usercode'):
-		try:
-			val = getattr(user, attr, None)
-		except Exception:
-			val = None
-		if val:
-			values.append(str(val))
-	return values
-
+    vals = []
+    for f in ("username", "usercode"):
+        try:
+            v = getattr(user, f, None)
+            if v:
+                vals.append(str(v))
+        except Exception:
+            pass
+    return vals
 
 def _first_profile_for_user(user):
-	"""Find EmpProfile matching authenticated user."""
-	from django.db.models import Q
-	identifiers = _user_identifiers(user)
-	valid = [i for i in identifiers if i]
-	if not valid:
-		return None
-	lookup = Q()
-	for ident in valid:
-		lookup |= Q(username__iexact=ident) | Q(usercode__iexact=ident)
-	return EmpProfile.objects.filter(lookup).first()
+    from django.db.models import Q
+    ids = _user_identifiers(user)
+    if not ids:
+        return None
+    q = Q()
+    for ident in ids:
+        q |= Q(username__iexact=ident) | Q(usercode__iexact=ident)
+    return EmpProfile.objects.filter(q).first()
 
-
-def _is_hr_or_admin(user):
-	"""Check if user has HR/Admin permissions."""
-	if not user or not user.is_authenticated:
-		return False
-	if user.is_staff or user.is_superuser:
-		return True
-	return user.groups.filter(name__iexact='leave_management').exists()
-
+def _is_hr_admin(user):
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_staff or user.is_superuser:
+        return True
+    return user.groups.filter(name__iexact="leave_management").exists()
 
 class CurrentLeaveBalanceView(APIView):
-	"""
-	Get current leave balance for authenticated user.
-	
-	GET /api/leave-balance/current/
-	
-	Response:
-	{
-	    "emp_id": "12345",
-	    "emp_name": "John Doe",
-	    "as_of_date": "2025-01-15",
-	    "balances": [
-	        {
-	            "leave_code": "CL",
-	            "leave_name": "Casual Leave",
-	            "current_balance": 12.5,
-	            "unit": "days"
-	        },
-	        ...
-	    ]
-	}
-	"""
-	permission_classes = [IsAuthenticated]
-	
-	def get(self, request):
-		# Find employee profile for authenticated user
-		profile = _first_profile_for_user(request.user)
-		if not profile:
-			return Response(
-				{'detail': 'Employee profile not found for authenticated user'},
-				status=status.HTTP_404_NOT_FOUND
-			)
-		
-		# Get as_of_date from query params or use today
-		as_of_str = request.query_params.get('as_of_date')
-		if as_of_str:
-			try:
-				as_of_date = date.fromisoformat(as_of_str)
-			except ValueError:
-				return Response(
-					{'detail': 'Invalid as_of_date format. Use YYYY-MM-DD'},
-					status=status.HTTP_400_BAD_REQUEST
-				)
-		else:
-			as_of_date = date.today()
-		
-		# Calculate current balance for all leave types
-		try:
-			summary = leave_engine.get_employee_summary(profile, as_of_date)
-		except Exception as e:
-			return Response(
-				{'detail': f'Failed to calculate balance: {str(e)}'},
-				status=status.HTTP_500_INTERNAL_SERVER_ERROR
-			)
-		
-		# Format response
-		balances = []
-		for item in summary:
-			leave_type = LeaveType.objects.filter(leave_code=item['leave_code']).first()
-			balances.append({
-				'leave_code': item['leave_code'],
-				'leave_name': leave_type.leave_name if leave_type else item['leave_code'],
-				'current_balance': float(item['balance']),
-				'unit': 'days'
-			})
-		
-		return Response({
-			'emp_id': profile.emp_id,
-			'emp_name': profile.emp_name,
-			'as_of_date': as_of_date.isoformat(),
-			'balances': balances
-		})
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        profile = _first_profile_for_user(request.user)
+        if not profile:
+            return Response({"detail": "Profile not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        as_of = request.query_params.get("as_of_date")
+        if as_of:
+            try:
+                as_of_date = date.fromisoformat(as_of)
+            except Exception:
+                return Response({"detail": "Invalid date format (YYYY-MM-DD)"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            as_of_date = date.today()
+
+        # compute entire payload for employee
+        payload = engine.compute(employee_ids=[str(profile.emp_id)], leave_calculation_date=as_of_date)
+        emp = next((e for e in payload.get("employees", []) if str(e.get("emp_id")) == str(profile.emp_id)), None)
+        if not emp:
+            return Response({"balances": []})
+
+        # prefer latest period that ended <= as_of_date, else last period
+        periods = emp.get("periods", [])
+        target_period = None
+        for p in reversed(periods):
+            ps_end = p.get("period_end")
+            if isinstance(ps_end, date) and ps_end <= as_of_date:
+                target_period = p
+                break
+        if not target_period and periods:
+            target_period = periods[-1]
+
+        balances = []
+        # leave codes known from engine metadata
+        codes = payload.get("metadata", {}).get("tracked_leave_codes", ["CL","SL","EL","VAC"])
+        for code in codes:
+            balances.append({
+                "leave_code": code,
+                "leave_name": (LeaveType.objects.filter(leave_code__iexact=code).first().leave_name if LeaveType.objects.filter(leave_code__iexact=code).exists() else code),
+                "current_balance": target_period.get("ending", {}).get(code, 0) if target_period else 0,
+                "unit": "days"
+            })
+        return Response({
+            "emp_id": profile.emp_id,
+            "emp_name": profile.emp_name,
+            "as_of_date": as_of_date.isoformat(),
+            "balances": balances
+        })
 
 
 class PeriodLeaveBalanceView(APIView):
-	"""
-	Get detailed leave balance breakdown for a specific period.
-	
-	GET /api/leave-balance/period/<period_id>/
-	GET /api/leave-balance/period/<period_id>/?leave_code=CL
-	
-	Response:
-	{
-	    "emp_id": "12345",
-	    "emp_name": "John Doe",
-	    "period": {
-	        "id": 5,
-	        "name": "2024-2025",
-	        "start_date": "2024-04-01",
-	        "end_date": "2025-03-31"
-	    },
-	    "balances": [
-	        {
-	            "leave_code": "CL",
-	            "leave_name": "Casual Leave",
-	            "opening_balance": 10.0,
-	            "allocated_in_period": 12.0,
-	            "used_in_period": 5.5,
-	            "closing_balance": 16.5
-	        },
-	        ...
-	    ]
-	}
-	"""
-	permission_classes = [IsAuthenticated]
-	
-	def get(self, request, period_id):
-		# Find employee profile for authenticated user
-		profile = _first_profile_for_user(request.user)
-		if not profile:
-			return Response(
-				{'detail': 'Employee profile not found for authenticated user'},
-				status=status.HTTP_404_NOT_FOUND
-			)
-		
-		# Get period
-		try:
-			period = LeavePeriod.objects.get(id=period_id)
-		except LeavePeriod.DoesNotExist:
-			return Response(
-				{'detail': 'Leave period not found'},
-				status=status.HTTP_404_NOT_FOUND
-			)
-		
-		# Get optional leave_code filter
-		leave_code = request.query_params.get('leave_code')
-		
-		# Calculate balance for period
-		try:
-			if leave_code:
-				# Single leave type
-				breakdown = leave_engine.calculate_period_balance(profile, leave_code, period)
-				leave_type = LeaveType.objects.filter(leave_code=leave_code).first()
-				balances = [{
-					'leave_code': leave_code,
-					'leave_name': leave_type.leave_name if leave_type else leave_code,
-					'opening_balance': float(breakdown['opening_balance']),
-					'allocated_in_period': float(breakdown['allocated_in_period']),
-					'used_in_period': float(breakdown['used_in_period']),
-					'closing_balance': float(breakdown['closing_balance'])
-				}]
-			else:
-				# All leave types
-				all_balances = leave_engine.calculate_all_leave_types_for_period(profile, period)
-				balances = []
-				for item in all_balances:
-					leave_type = LeaveType.objects.filter(leave_code=item['leave_code']).first()
-					balances.append({
-						'leave_code': item['leave_code'],
-						'leave_name': leave_type.leave_name if leave_type else item['leave_code'],
-						'opening_balance': float(item['opening_balance']),
-						'allocated_in_period': float(item['allocated_in_period']),
-						'used_in_period': float(item['used_in_period']),
-						'closing_balance': float(item['closing_balance'])
-					})
-		except Exception as e:
-			return Response(
-				{'detail': f'Failed to calculate balance: {str(e)}'},
-				status=status.HTTP_500_INTERNAL_SERVER_ERROR
-			)
-		
-		return Response({
-			'emp_id': profile.emp_id,
-			'emp_name': profile.emp_name,
-			'period': {
-				'id': period.id,
-				'name': period.period_name,
-				'start_date': period.start_date.isoformat(),
-				'end_date': period.end_date.isoformat()
-			},
-			'balances': balances
-		})
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, period_id):
+        profile = _first_profile_for_user(request.user)
+        if not profile:
+            return Response({"detail": "Profile not found"}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            period = LeavePeriod.objects.get(id=period_id)
+        except LeavePeriod.DoesNotExist:
+            return Response({"detail": "Period not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        leave_code = request.query_params.get("leave_code")
+
+        payload = engine.compute(employee_ids=[str(profile.emp_id)])
+        emp = next((e for e in payload.get("employees", []) if str(e.get("emp_id")) == str(profile.emp_id)), None)
+        if not emp:
+            return Response({"detail": "No data"}, status=status.HTTP_404_NOT_FOUND)
+        rec = next((p for p in emp.get("periods", []) if p.get("period_id") == int(period_id)), None)
+        if not rec:
+            return Response({"detail": "No data for requested period"}, status=status.HTTP_404_NOT_FOUND)
+
+        balances = []
+        codes = [leave_code] if leave_code else payload.get("metadata", {}).get("tracked_leave_codes", ["CL","SL","EL","VAC"])
+        for code in codes:
+            balances.append({
+                "leave_code": code,
+                "leave_name": (LeaveType.objects.filter(leave_code__iexact=code).first().leave_name if LeaveType.objects.filter(leave_code__iexact=code).exists() else code),
+                "opening_balance": rec.get("starting", {}).get(code, 0),
+                "allocated_in_period": rec.get("allocation", {}).get(code, 0),
+                "used_in_period": rec.get("used", {}).get(code, 0),
+                "closing_balance": rec.get("ending", {}).get(code, 0),
+            })
+        return Response({
+            "emp_id": profile.emp_id,
+            "emp_name": profile.emp_name,
+            "period": {
+                "id": period.id, "name": period.period_name,
+                "start_date": period.start_date.isoformat(), "end_date": period.end_date.isoformat()
+            },
+            "balances": balances
+        })
 
 
 class LeaveHistoryView(APIView):
-	"""
-	Get complete leave balance history across all periods.
-	
-	GET /api/leave-balance/history/
-	GET /api/leave-balance/history/?leave_code=CL
-	
-	Response:
-	{
-	    "emp_id": "12345",
-	    "emp_name": "John Doe",
-	    "history": [
-	        {
-	            "period": {...},
-	            "leave_code": "CL",
-	            "leave_name": "Casual Leave",
-	            "opening_balance": 0.0,
-	            "allocated_in_period": 12.0,
-	            "used_in_period": 2.0,
-	            "closing_balance": 10.0
-	        },
-	        ...
-	    ]
-	}
-	"""
-	permission_classes = [IsAuthenticated]
-	
-	def get(self, request):
-		# Find employee profile for authenticated user
-		profile = _first_profile_for_user(request.user)
-		if not profile:
-			return Response(
-				{'detail': 'Employee profile not found for authenticated user'},
-				status=status.HTTP_404_NOT_FOUND
-			)
-		
-		# Get optional leave_code filter
-		leave_code = request.query_params.get('leave_code')
-		
-		# Calculate history
-		try:
-			if leave_code:
-				# Single leave type across all periods
-				history_data = leave_engine.calculate_all_periods_for_employee(profile, leave_code)
-				leave_type = LeaveType.objects.filter(leave_code=leave_code).first()
-				history = []
-				for item in history_data:
-					history.append({
-						'period': {
-							'id': item['period'].id,
-							'name': item['period'].period_name,
-							'start_date': item['period'].start_date.isoformat(),
-							'end_date': item['period'].end_date.isoformat()
-						},
-						'leave_code': leave_code,
-						'leave_name': leave_type.leave_name if leave_type else leave_code,
-						'opening_balance': float(item['opening_balance']),
-						'allocated_in_period': float(item['allocated_in_period']),
-						'used_in_period': float(item['used_in_period']),
-						'closing_balance': float(item['closing_balance'])
-					})
-			else:
-				# All leave types across all periods
-				periods = leave_engine.get_all_periods()
-				history = []
-				for period in periods:
-					balances = leave_engine.calculate_all_leave_types_for_period(profile, period)
-					for item in balances:
-						leave_type = LeaveType.objects.filter(leave_code=item['leave_code']).first()
-						history.append({
-							'period': {
-								'id': period.id,
-								'name': period.period_name,
-								'start_date': period.start_date.isoformat(),
-								'end_date': period.end_date.isoformat()
-							},
-							'leave_code': item['leave_code'],
-							'leave_name': leave_type.leave_name if leave_type else item['leave_code'],
-							'opening_balance': float(item['opening_balance']),
-							'allocated_in_period': float(item['allocated_in_period']),
-							'used_in_period': float(item['used_in_period']),
-							'closing_balance': float(item['closing_balance'])
-						})
-		except Exception as e:
-			return Response(
-				{'detail': f'Failed to calculate history: {str(e)}'},
-				status=status.HTTP_500_INTERNAL_SERVER_ERROR
-			)
-		
-		return Response({
-			'emp_id': profile.emp_id,
-			'emp_name': profile.emp_name,
-			'history': history
-		})
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        profile = _first_profile_for_user(request.user)
+        if not profile:
+            return Response({"detail": "Profile not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        leave_code = request.query_params.get("leave_code")
+        payload = engine.compute(employee_ids=[str(profile.emp_id)])
+        emp = next((e for e in payload.get("employees", []) if str(e.get("emp_id")) == str(profile.emp_id)), None)
+        if not emp:
+            return Response({"emp_id": profile.emp_id, "emp_name": profile.emp_name, "history": []})
+
+        history = []
+        for p in emp.get("periods", []):
+            codes = [leave_code] if leave_code else payload.get("metadata", {}).get("tracked_leave_codes", [])
+            for code in codes:
+                history.append({
+                    "period": {
+                        "id": p.get("period_id"),
+                        "name": p.get("period_name"),
+                        "start_date": p.get("period_start").isoformat() if isinstance(p.get("period_start"), date) else str(p.get("period_start")),
+                        "end_date": p.get("period_end").isoformat() if isinstance(p.get("period_end"), date) else str(p.get("period_end")),
+                    },
+                    "leave_code": code,
+                    "opening_balance": p.get("starting", {}).get(code, 0),
+                    "allocated_in_period": p.get("allocation", {}).get(code, 0),
+                    "used_in_period": p.get("used", {}).get(code, 0),
+                    "closing_balance": p.get("ending", {}).get(code, 0),
+                })
+        return Response({"emp_id": profile.emp_id, "emp_name": profile.emp_name, "history": history})
 
 
 class LeaveBalanceReportView(APIView):
-	"""
-	Get leave balance report for all employees (HR/Admin only).
-	
-	GET /api/leave-balance/report/?period_id=5
-	GET /api/leave-balance/report/?period_id=5&leave_code=CL
-	
-	Response:
-	{
-	    "period": {...},
-	    "leave_code": "CL",  # if filtered
-	    "employees": [
-	        {
-	            "emp_id": "12345",
-	            "emp_name": "John Doe",
-	            "opening_balance": 10.0,
-	            "allocated_in_period": 12.0,
-	            "used_in_period": 5.5,
-	            "closing_balance": 16.5
-	        },
-	        ...
-	    ]
-	}
-	"""
-	permission_classes = [IsAuthenticated]
-	
-	def get(self, request):
-		# Check HR/Admin permission
-		if not _is_hr_or_admin(request.user):
-			return Response(
-				{'detail': 'Only HR/Admin can access leave balance reports'},
-				status=status.HTTP_403_FORBIDDEN
-			)
-		
-		# Get period_id (required for report)
-		period_id_str = request.query_params.get('period_id')
-		if not period_id_str:
-			# Default to latest period
-			period = LeavePeriod.objects.order_by('-start_date').first()
-			if not period:
-				return Response(
-					{'detail': 'No leave periods found'},
-					status=status.HTTP_404_NOT_FOUND
-				)
-		else:
-			try:
-				period = LeavePeriod.objects.get(id=int(period_id_str))
-			except (ValueError, LeavePeriod.DoesNotExist):
-				return Response(
-					{'detail': 'Invalid or missing period_id'},
-					status=status.HTTP_400_BAD_REQUEST
-				)
-		
-		# Get optional leave_code filter
-		leave_code = request.query_params.get('leave_code')
-		
-		# Get all active employees
-		employees = EmpProfile.objects.filter(emp_status='Active').order_by('emp_id')
-		
-		# Calculate balances for all employees
-		report_data = []
-		for emp in employees:
-			try:
-				if leave_code:
-					# Single leave type
-					breakdown = leave_engine.calculate_period_balance(emp, leave_code, period)
-					report_data.append({
-						'emp_id': emp.emp_id,
-						'emp_name': emp.emp_name,
-						'opening_balance': float(breakdown['opening_balance']),
-						'allocated_in_period': float(breakdown['allocated_in_period']),
-						'used_in_period': float(breakdown['used_in_period']),
-						'closing_balance': float(breakdown['closing_balance'])
-					})
-				else:
-					# All leave types
-					all_balances = leave_engine.calculate_all_leave_types_for_period(emp, period)
-					for item in all_balances:
-						report_data.append({
-							'emp_id': emp.emp_id,
-							'emp_name': emp.emp_name,
-							'leave_code': item['leave_code'],
-							'opening_balance': float(item['opening_balance']),
-							'allocated_in_period': float(item['allocated_in_period']),
-							'used_in_period': float(item['used_in_period']),
-							'closing_balance': float(item['closing_balance'])
-						})
-			except Exception as e:
-				# Log error but continue with other employees
-				print(f"[WARN] Failed to calculate balance for {emp.emp_id}: {e}")
-				continue
-		
-		response_data = {
-			'period': {
-				'id': period.id,
-				'name': period.period_name,
-				'start_date': period.start_date.isoformat(),
-				'end_date': period.end_date.isoformat()
-			},
-			'employees': report_data
-		}
-		
-		if leave_code:
-			response_data['leave_code'] = leave_code
-		
-		return Response(response_data)
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        if not _is_hr_admin(request.user):
+            return Response({"detail": "Only HR/Admin can access"}, status=status.HTTP_403_FORBIDDEN)
+
+        period_id = request.query_params.get("period_id")
+        if not period_id:
+            period = LeavePeriod.objects.order_by("-start_date").first()
+            if not period:
+                return Response({"detail": "No periods defined"}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            try:
+                period = LeavePeriod.objects.get(id=int(period_id))
+            except Exception:
+                return Response({"detail": "Invalid period_id"}, status=status.HTTP_400_BAD_REQUEST)
+
+        leave_code = request.query_params.get("leave_code")
+        # compute for all employees (engine will load employees itself)
+        payload = engine.compute()
+        employees_out = []
+        for emp in payload.get("employees", []):
+            rec = next((p for p in emp.get("periods", []) if p.get("period_id") == period.id), None)
+            if not rec:
+                continue
+            if leave_code:
+                employees_out.append({
+                    "emp_id": emp.get("emp_id"),
+                    "emp_name": emp.get("emp_name"),
+                    "opening_balance": rec.get("starting", {}).get(leave_code, 0),
+                    "allocated_in_period": rec.get("allocation", {}).get(leave_code, 0),
+                    "used_in_period": rec.get("used", {}).get(leave_code, 0),
+                    "closing_balance": rec.get("ending", {}).get(leave_code, 0),
+                })
+            else:
+                lt_list = []
+                for c in payload.get("metadata", {}).get("tracked_leave_codes", ["CL","SL","EL","VAC"]):
+                    lt_list.append({
+                        "code": c,
+                        "allocated": rec.get("allocation", {}).get(c, 0),
+                        "used": rec.get("used", {}).get(c, 0),
+                        "balance": rec.get("ending", {}).get(c, 0)
+                    })
+                employees_out.append({
+                    "emp_id": emp.get("emp_id"),
+                    "emp_short": emp.get("emp_short"),
+                    "emp_name": emp.get("emp_name"),
+                    "leave_types": lt_list
+                })
+
+        response = {
+            "period": {"id": period.id, "name": period.period_name, "start": period.start_date.isoformat(), "end": period.end_date.isoformat()},
+            "employees": employees_out
+        }
+        if leave_code:
+            response["leave_code"] = leave_code
+        return Response(response)

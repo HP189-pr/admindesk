@@ -64,6 +64,8 @@ const LeaveReport = ({ user, defaultPeriod = '', mode = 'report', onPeriodChange
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [balanceData, setBalanceData] = useState(null);
+  const [balanceError, setBalanceError] = useState(null);
+  const [leaveGroupFilter, setLeaveGroupFilter] = useState('all'); // for All Employees filter: 'all' | 'vc' | 'el'
 
   // permission check - show full report only to admin users (Leave Management module access)
   const currentUser = user || authUser;
@@ -139,6 +141,7 @@ const LeaveReport = ({ user, defaultPeriod = '', mode = 'report', onPeriodChange
     
     setLoading(true);
     setBalanceData(null);
+    setBalanceError(null);
     
     try {
       let url = '';
@@ -147,6 +150,7 @@ const LeaveReport = ({ user, defaultPeriod = '', mode = 'report', onPeriodChange
       switch (balanceMode) {
         case 'employee-summary':
           if (!selectedEmpId || !selectedPeriod) {
+            setBalanceError('Please enter Employee ID and select a Period');
             setLoading(false);
             return;
           }
@@ -155,16 +159,20 @@ const LeaveReport = ({ user, defaultPeriod = '', mode = 'report', onPeriodChange
           break;
           
         case 'employee-range':
+        case 'certificate-range':
           if (!selectedEmpId || !fromDate || !toDate) {
+            setBalanceError('Please enter Employee ID and select both dates');
             setLoading(false);
             return;
           }
+          // Both employee-range and certificate-range use the same backend date-range endpoint
           url = '/api/leave-report/employee-range/';
           params = { emp_id: selectedEmpId, from: fromDate, to: toDate };
           break;
           
         case 'multi-year':
           if (!selectedEmpId) {
+            setBalanceError('Please enter Employee ID');
             setLoading(false);
             return;
           }
@@ -174,6 +182,7 @@ const LeaveReport = ({ user, defaultPeriod = '', mode = 'report', onPeriodChange
           
         case 'all-employees':
           if (!selectedPeriod) {
+            setBalanceError('Please select a Period');
             setLoading(false);
             return;
           }
@@ -188,12 +197,108 @@ const LeaveReport = ({ user, defaultPeriod = '', mode = 'report', onPeriodChange
       
       const response = await axios.get(url, { params });
       setBalanceData(response.data);
+      setBalanceError(null);
     } catch (error) {
       console.error('Failed to load balance data:', error);
+      const errorMsg = error.response?.data?.detail || error.message || 'Failed to load balance data';
+      setBalanceError(errorMsg);
       setBalanceData(null);
     }
     
     setLoading(false);
+  };
+
+  // Print helper: open a new window containing only the .print-area and print it
+  const handlePrintClick = (e) => {
+    try {
+      // find closest printable area relative to the clicked button, otherwise pick the first VISIBLE .print-area
+      const btn = e && e.currentTarget;
+      const area = (btn && btn.closest) ? btn.closest('.print-area') : null;
+      let printEl = area || null;
+      if (!printEl) {
+        const all = Array.from(document.querySelectorAll('.print-area'));
+        // prefer the first visible print-area
+        printEl = all.find(el => {
+          try {
+            return el && (el.offsetParent !== null || el.getClientRects().length > 0) && (el.clientWidth > 0 || el.clientHeight > 0);
+          } catch (_) { return false; }
+        }) || all[0] || null;
+      }
+      if (!printEl) {
+        // fallback to browser print if nothing found
+        console.warn('No .print-area found; calling window.print() fallback');
+        window.print();
+        return;
+      }
+
+      // Diagnostic: log size of the printable content
+      try {
+        console.debug('LeaveReport: chosen print element length', (printEl && printEl.innerHTML && printEl.innerHTML.length) || 0);
+      } catch (_) {}
+
+      // Create a top-level temporary host and append a cloned copy of the print content there.
+      const hostId = 'admindesk-print-host';
+      // remove any existing host
+      const prevHost = document.getElementById(hostId);
+      if (prevHost) prevHost.remove();
+
+      const host = document.createElement('div');
+      host.id = hostId;
+      // keep it out of flow, but visible to print
+      host.style.position = 'relative';
+      host.style.zIndex = '999999';
+
+      const cloned = printEl.cloneNode(true);
+      // ensure cloned root has print-area class so CSS targets it
+      cloned.classList.add('print-area');
+      host.appendChild(cloned);
+      document.body.appendChild(host);
+
+      // create temporary style to hide everything except our host during print
+      const tempId = 'admindesk-temp-print-style';
+      const existing = document.getElementById(tempId);
+      if (existing) existing.remove();
+
+      const style = document.createElement('style');
+      style.id = tempId;
+      style.type = 'text/css';
+      style.appendChild(document.createTextNode(`
+        @media print {
+          html, body { height: auto !important; }
+          body > * { display: none !important; }
+          #${hostId} { display: block !important; }
+          #${hostId} .print-area { display: block !important; margin: 0 auto !important; width: calc(210mm - 40mm) !important; }
+          #${hostId} .print-area * { display: initial !important; }
+          #${hostId} .no-print { display: none !important; }
+        }
+        /* ensure quick on-screen preview in some browsers */
+        #${hostId} { display: none; }
+        body.printing-temp > * { display: none !important; }
+        body.printing-temp #${hostId} { display: block !important; }
+      `));
+
+      document.head.appendChild(style);
+      // add helper class to body so some browsers immediately reflect the layout change
+      document.body.classList.add('printing-temp');
+
+      // Diagnostic: log cloned content length
+      try { console.debug('LeaveReport: cloned print host length', cloned.innerHTML.length); } catch (_) {}
+
+      // call native print for current window
+      try {
+        window.print();
+      } finally {
+        // cleanup after short delay to allow print dialog to open
+        setTimeout(() => {
+          try { document.body.classList.remove('printing-temp'); } catch (_) {}
+          try { const s = document.getElementById(tempId); if (s) s.remove(); } catch (_) {}
+          try { const h = document.getElementById(hostId); if (h) h.remove(); } catch (_) {}
+        }, 600);
+      }
+    } catch (err) {
+      console.error('Print failed, falling back to window.print()', err);
+      try { window.print(); } catch (_) {}
+    }
   };
 
   // Convert backend codes format to flat row format
@@ -304,6 +409,14 @@ const LeaveReport = ({ user, defaultPeriod = '', mode = 'report', onPeriodChange
   const period = periods.find(p => String(p.id) === String(selectedPeriod));
   const periodLabel = period ? `${fmtDate(period.start_date)} to ${fmtDate(period.end_date)}` : '';
 
+  // Safe defaults for balanceData to avoid crashing when API returns unexpected shape
+  const opening = (balanceData && balanceData.opening) ? balanceData.opening : { CL: 0, SL: 0, EL: 0, VAC: 0 };
+  const allocated = (balanceData && balanceData.allocated) ? balanceData.allocated : { CL: 0, SL: 0, EL: 0, VAC: 0 };
+  const used = (balanceData && balanceData.used) ? balanceData.used : { CL: 0, SL: 0, EL: 0, VAC: 0, DL: 0, LWP: 0, ML: 0, PL: 0 };
+  const closing = (balanceData && balanceData.closing) ? balanceData.closing : { CL: 0, SL: 0, EL: 0, VAC: 0 };
+  const yearsArr = (balanceData && Array.isArray(balanceData.years)) ? balanceData.years : [];
+  const employeesArr = (balanceData && Array.isArray(balanceData.employees)) ? balanceData.employees : [];
+
   // Filter rows based on period dates
   const filteredRows = (() => {
     if (!period || !period.start_date || !period.end_date) {
@@ -359,6 +472,36 @@ const LeaveReport = ({ user, defaultPeriod = '', mode = 'report', onPeriodChange
 
   return (
     <div className="p-4">
+      <style>{`@media print {
+        /* Use A4 paper and reasonable margins */
+        @page { size: A4 portrait; margin: 20mm; }
+        -webkit-print-color-adjust: exact;
+
+        /* Hide all top-level content by default to avoid printing nav/menus */
+        html, body { height: auto !important; }
+        body > * { display: none !important; }
+
+        /* Show only the printable container */
+        .print-area { display: block !important; }
+        .print-area * { display: initial !important; }
+
+        /* Center printable content horizontally within A4 page margins */
+        .print-area {
+          margin: 0 auto !important;
+          width: calc(210mm - 40mm) !important; /* A4 width minus left/right margins */
+          box-sizing: border-box !important;
+          position: static !important;
+          transform: none !important;
+          top: auto !important;
+        }
+
+        /* Hide interactive controls when printing */
+        .no-print { display: none !important; }
+
+        /* Table break handling */
+        table { page-break-inside: auto; }
+        tr { page-break-inside: avoid; page-break-after: auto; }
+      }`}</style>
       <div className="flex justify-between items-center mb-4">
         <div className="text-lg font-semibold">{mode === 'balance' ? 'Leave Balance' : 'Leave Report'}</div>
         <div className="flex gap-2 items-center">
@@ -377,7 +520,7 @@ const LeaveReport = ({ user, defaultPeriod = '', mode = 'report', onPeriodChange
             ))}
           </select>
           {periods.length === 0 && <span className="text-xs text-gray-500">(No periods available)</span>}
-          <button onClick={() => window.print()} className="px-4 py-2 bg-blue-600 text-white rounded text-sm">Generate PDF</button>
+          <button onClick={(e) => handlePrintClick(e)} className="px-4 py-2 bg-blue-600 text-white rounded text-sm no-print">Generate PDF</button>
         </div>
       </div>
 
@@ -417,6 +560,7 @@ const LeaveReport = ({ user, defaultPeriod = '', mode = 'report', onPeriodChange
                   <option value="employee-range">2. Employee Date Range</option>
                   <option value="multi-year">3. Multi-Year Employee Report</option>
                   <option value="all-employees">4. All Employees for Year</option>
+                  <option value="certificate-range">5. Certificate (From → To)</option>
                 </select>
                 
                 {/* Mode 1: Employee Summary */}
@@ -448,8 +592,8 @@ const LeaveReport = ({ user, defaultPeriod = '', mode = 'report', onPeriodChange
                   </div>
                 )}
                 
-                {/* Mode 2: Employee Range */}
-                {balanceMode === 'employee-range' && (
+                {/* Mode 2: Employee Range (also used for Certificate From→To) */}
+                  {(balanceMode === 'employee-range' || balanceMode === 'certificate-range') && (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-sm font-medium mb-1">Employee ID *</label>
@@ -514,6 +658,14 @@ const LeaveReport = ({ user, defaultPeriod = '', mode = 'report', onPeriodChange
                         ))}
                       </select>
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Leave Group Filter</label>
+                      <select value={leaveGroupFilter} onChange={e => setLeaveGroupFilter(e.target.value)} className="w-full p-2 border rounded">
+                        <option value="all">All (VC & EL)</option>
+                        <option value="vc">Vacation (VC) only</option>
+                        <option value="el">EL only</option>
+                      </select>
+                    </div>
                   </div>
                 )}
                 
@@ -526,17 +678,80 @@ const LeaveReport = ({ user, defaultPeriod = '', mode = 'report', onPeriodChange
                 </button>
               </div>
               
+              {/* Error Message */}
+              {balanceError && (
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                  {balanceError}
+                </div>
+              )}
+              
               {/* Display Results */}
               {balanceData && (
                 <div className="mt-4">
                   {/* Mode 1 & 2: Single Employee Summary */}
-                  {(balanceMode === 'employee-summary' || balanceMode === 'employee-range') && (
-                    <div className="bg-white border rounded p-4">
-                      <div className="mb-4">
-                        <h3 className="text-lg font-semibold">{balanceData.emp_name} (#{balanceData.emp_short})</h3>
-                        <p className="text-sm text-gray-600">
-                          {balanceData.period.name} • {balanceData.period.start} to {balanceData.period.end}
-                        </p>
+                  {/* Certificate (From→To) - print-style single employee layout */}
+                  {balanceMode === 'certificate-range' && balanceData && balanceData.period && (
+                    <div className="bg-white border rounded p-6 max-w-3xl mx-auto print-area">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="text-center w-full">
+                          <div className="text-2xl font-bold">Balance Certificate</div>
+                          <div className="text-sm text-gray-600 mt-1">{balanceData?.period?.name || ''} • {balanceData?.period?.start || ''} to {balanceData?.period?.end || ''}</div>
+                        </div>
+                        <div className="ml-4">
+                          <button onClick={(e) => handlePrintClick(e)} className="px-3 py-1 bg-blue-600 text-white rounded text-sm no-print">Print / Save PDF</button>
+                        </div>
+                      </div>
+
+                      <div className="mb-4 text-sm">
+                        <div><strong>Employee:</strong> {balanceData?.emp_name || ''} (#{balanceData?.emp_short || ''})</div>
+                        <div><strong>Designation:</strong> {balanceData?.emp_designation || ''}</div>
+                        <div><strong>Joining:</strong> {balanceData?.actual_joining || ''} &nbsp; <strong>Leaving:</strong> {balanceData?.left_date || 'Cont'}</div>
+                      </div>
+
+                      <div className="overflow-auto">
+                        <table className="min-w-full text-sm border-collapse">
+                          <thead>
+                            <tr className="bg-gray-100">
+                              <th className="p-2 border text-left">Leave Type</th>
+                              <th className="p-2 border text-right">Start (Allocated)</th>
+                              <th className="p-2 border text-right">Allocated</th>
+                              <th className="p-2 border text-right">Used</th>
+                              <th className="p-2 border text-right">Closing</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(() => {
+                              const lg = (balanceData && (balanceData.leave_group || balanceData.emp_leave_group || balanceData.emp?.leave_group)) || null;
+                              const codes = lg === 'el' || lg === 'EL' ? ['CL','SL','EL'] : (lg === 'vc' || lg === 'VC' ? ['CL','SL','VAC'] : ['CL','SL','EL','VAC']);
+                              return codes.map(code => (
+                                <tr key={code} className="border-b hover:bg-gray-50">
+                                  <td className="p-2 border font-semibold">{code}</td>
+                                  <td className="p-2 border text-right">{roundLeave(opening[code] ?? 0, code)} {allocated[code] ? <span className="text-xs text-gray-600">({roundLeave(allocated[code], code)})</span> : null}</td>
+                                  <td className="p-2 border text-right">{roundLeave(allocated[code] ?? 0, code)}</td>
+                                  <td className="p-2 border text-right">{roundLeave(used[code] ?? 0, code)}</td>
+                                  <td className="p-2 border text-right font-semibold">{roundLeave(closing[code] ?? 0, code)}</td>
+                                </tr>
+                              ));
+                            })()}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="mt-6 text-xs text-gray-600">This certificate shows opening balances with allocations in parentheses for the selected date range.</div>
+                    </div>
+                  )}
+
+                  {/* Default single-employee display (employee-summary and employee-range) */}
+                  {(balanceMode === 'employee-summary' || balanceMode === 'employee-range') && balanceData && balanceData.period && (
+                    <div className="bg-white border rounded p-4 print-area">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className="text-lg font-semibold">{balanceData?.emp_name || ''} (#{balanceData?.emp_short || ''})</h3>
+                          <p className="text-sm text-gray-600">{balanceData?.period?.name || ''} • {balanceData?.period?.start || ''} to {balanceData?.period?.end || ''}</p>
+                        </div>
+                        <div>
+                          <button onClick={(e) => handlePrintClick(e)} className="px-3 py-1 bg-blue-600 text-white rounded text-sm no-print">Print / Save PDF</button>
+                        </div>
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -544,10 +759,17 @@ const LeaveReport = ({ user, defaultPeriod = '', mode = 'report', onPeriodChange
                         <div className="border rounded p-3 bg-blue-50">
                           <h4 className="font-semibold mb-2">Opening Balance</h4>
                           <div className="space-y-1 text-sm">
-                            <div>CL: {balanceData.opening.CL}</div>
-                            <div>SL: {balanceData.opening.SL}</div>
-                            <div>EL: {balanceData.opening.EL}</div>
-                            <div>VAC: {balanceData.opening.VAC}</div>
+                            {(() => {
+                              const lg = (balanceData && (balanceData.leave_group || balanceData.emp_leave_group || balanceData.emp?.leave_group)) || null;
+                              return (
+                                <>
+                                  <div>CL: {roundLeave(opening.CL ?? 0, 'CL')} {allocated.CL ? `(${roundLeave(allocated.CL ?? 0, 'CL')})` : ''}</div>
+                                  <div>SL: {roundLeave(opening.SL ?? 0, 'SL')} {allocated.SL ? `(${roundLeave(allocated.SL ?? 0, 'SL')})` : ''}</div>
+                                  {(lg === 'vc' || lg === 'VC') ? null : <div>EL: {roundLeave(opening.EL ?? 0, 'EL')} {allocated.EL ? `(${roundLeave(allocated.EL ?? 0, 'EL')})` : ''}</div>}
+                                  {(lg === 'el' || lg === 'EL') ? null : <div>VAC: {roundLeave(opening.VAC ?? 0, 'VAC')} {allocated.VAC ? `(${roundLeave(allocated.VAC ?? 0, 'VAC')})` : ''}</div>}
+                                </>
+                              );
+                            })()}
                           </div>
                         </div>
                         
@@ -555,10 +777,17 @@ const LeaveReport = ({ user, defaultPeriod = '', mode = 'report', onPeriodChange
                         <div className="border rounded p-3 bg-green-50">
                           <h4 className="font-semibold mb-2">Allocated</h4>
                           <div className="space-y-1 text-sm">
-                            <div>CL: {balanceData.allocated.CL}</div>
-                            <div>SL: {balanceData.allocated.SL}</div>
-                            <div>EL: {balanceData.allocated.EL}</div>
-                            <div>VAC: {balanceData.allocated.VAC}</div>
+                            {(() => {
+                              const lg = (balanceData && (balanceData.leave_group || balanceData.emp_leave_group || balanceData.emp?.leave_group)) || null;
+                              return (
+                                <>
+                                  <div>CL: {roundLeave(allocated.CL ?? 0, 'CL')}</div>
+                                  <div>SL: {roundLeave(allocated.SL ?? 0, 'SL')}</div>
+                                  {(lg === 'vc' || lg === 'VC') ? null : <div>EL: {roundLeave(allocated.EL ?? 0, 'EL')}</div>}
+                                  {(lg === 'el' || lg === 'EL') ? null : <div>VAC: {roundLeave(allocated.VAC ?? 0, 'VAC')}</div>}
+                                </>
+                              );
+                            })()}
                           </div>
                         </div>
                         
@@ -566,14 +795,21 @@ const LeaveReport = ({ user, defaultPeriod = '', mode = 'report', onPeriodChange
                         <div className="border rounded p-3 bg-orange-50">
                           <h4 className="font-semibold mb-2">Used Leaves</h4>
                           <div className="space-y-1 text-sm">
-                            <div>CL: {balanceData.used.CL}</div>
-                            <div>SL: {balanceData.used.SL}</div>
-                            <div>EL: {balanceData.used.EL}</div>
-                            <div>VAC: {balanceData.used.VAC}</div>
-                            <div>DL: {balanceData.used.DL}</div>
-                            <div>LWP: {balanceData.used.LWP}</div>
-                            <div>ML: {balanceData.used.ML}</div>
-                            <div>PL: {balanceData.used.PL}</div>
+                            {(() => {
+                              const lg = (balanceData && (balanceData.leave_group || balanceData.emp_leave_group || balanceData.emp?.leave_group)) || null;
+                              return (
+                                <>
+                                  <div>CL: {roundLeave(used.CL ?? 0, 'CL')}</div>
+                                  <div>SL: {roundLeave(used.SL ?? 0, 'SL')}</div>
+                                  {(lg === 'vc' || lg === 'VC') ? null : <div>EL: {roundLeave(used.EL ?? 0, 'EL')}</div>}
+                                  {(lg === 'el' || lg === 'EL') ? null : <div>VAC: {roundLeave(used.VAC ?? 0, 'VAC')}</div>}
+                                  <div>DL: {used.DL}</div>
+                                  <div>LWP: {used.LWP}</div>
+                                  <div>ML: {used.ML}</div>
+                                  <div>PL: {used.PL}</div>
+                                </>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -582,49 +818,87 @@ const LeaveReport = ({ user, defaultPeriod = '', mode = 'report', onPeriodChange
                       <div className="mt-4 border rounded p-3 bg-purple-50">
                         <h4 className="font-semibold mb-2">Closing Balance</h4>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-                          <div>CL: <span className="font-semibold">{balanceData.closing.CL}</span></div>
-                          <div>SL: <span className="font-semibold">{balanceData.closing.SL}</span></div>
-                          <div>EL: <span className="font-semibold">{balanceData.closing.EL}</span></div>
-                          <div>VAC: <span className="font-semibold">{balanceData.closing.VAC}</span></div>
+                          {(() => {
+                            const lg = (balanceData && (balanceData.leave_group || balanceData.emp_leave_group || balanceData.emp?.leave_group)) || null;
+                            return (
+                              <>
+                                <div>CL: <span className="font-semibold">{roundLeave(closing.CL ?? 0, 'CL')}</span></div>
+                                <div>SL: <span className="font-semibold">{roundLeave(closing.SL ?? 0, 'SL')}</span></div>
+                                {(lg === 'vc' || lg === 'VC') ? <></> : <div>EL: <span className="font-semibold">{roundLeave(closing.EL ?? 0, 'EL')}</span></div>}
+                                {(lg === 'el' || lg === 'EL') ? <></> : <div>VAC: <span className="font-semibold">{roundLeave(closing.VAC ?? 0, 'VAC')}</span></div>}
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
                   )}
                   
                   {/* Mode 3: Multi-Year */}
-                  {balanceMode === 'multi-year' && (
-                    <div className="bg-white border rounded p-4">
-                      <h3 className="text-lg font-semibold mb-4">{balanceData.emp_name} (#{balanceData.emp_short})</h3>
+                  {balanceMode === 'multi-year' && yearsArr.length > 0 && (
+                    <div className="bg-white border rounded p-4 print-area">
+                      <div className="flex justify-end mb-3">
+                        <button onClick={(e) => handlePrintClick(e)} className="px-3 py-1 bg-blue-600 text-white rounded text-sm no-print">Print / Save PDF</button>
+                      </div>
+                      <h3 className="text-lg font-semibold mb-4">{balanceData?.emp_name || ''} (#{balanceData?.emp_short || ''})</h3>
                       
                       <div className="space-y-4">
-                        {balanceData.years.map((year, idx) => (
+                        {yearsArr.map((year, idx) => (
                           <div key={idx} className="border rounded p-3 bg-gray-50">
-                            <h4 className="font-semibold mb-2">{year.period.name}</h4>
-                            <p className="text-xs text-gray-600 mb-2">{year.period.start} to {year.period.end}</p>
+                            <h4 className="font-semibold mb-2">{(year.period && year.period.name) || ''}</h4>
+                            <p className="text-xs text-gray-600 mb-2">{(year.period && year.period.start) || ''} to {(year.period && year.period.end) || ''}</p>
                             
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                               <div>
                                 <div className="font-medium text-blue-600">Opening</div>
-                                <div>SL: {year.opening.SL}</div>
-                                <div>EL: {year.opening.EL}</div>
+                                {(() => {
+                                  const lg = (balanceData && (balanceData.leave_group || balanceData.emp_leave_group || balanceData.emp?.leave_group)) || null;
+                                  return (
+                                    <>
+                                      <div>SL: {roundLeave((year.opening && year.opening.SL) || 0, 'SL')} {((year.allocated && year.allocated.SL) ? `(${roundLeave(year.allocated.SL || 0, 'SL')})` : '')}</div>
+                                      {(lg === 'vc' || lg === 'VC') ? <div>VAC: {roundLeave((year.opening && year.opening.VAC) || 0, 'VAC')} {((year.allocated && year.allocated.VAC) ? `(${roundLeave(year.allocated.VAC || 0, 'VAC')})` : '')}</div> : <div>EL: {roundLeave((year.opening && year.opening.EL) || 0, 'EL')} {((year.allocated && year.allocated.EL) ? `(${roundLeave(year.allocated.EL || 0, 'EL')})` : '')}</div>}
+                                    </>
+                                  );
+                                })()}
                               </div>
                               <div>
                                 <div className="font-medium text-green-600">Allocated</div>
-                                <div>CL: {year.allocated.CL}</div>
-                                <div>SL: {year.allocated.SL}</div>
-                                <div>EL: {year.allocated.EL}</div>
+                                {(() => {
+                                  const lg = (balanceData && (balanceData.leave_group || balanceData.emp_leave_group || balanceData.emp?.leave_group)) || null;
+                                  return (
+                                    <>
+                                      <div>CL: {roundLeave((year.allocated && year.allocated.CL) || 0, 'CL')}</div>
+                                      <div>SL: {roundLeave((year.allocated && year.allocated.SL) || 0, 'SL')}</div>
+                                      {(lg === 'vc' || lg === 'VC') ? <div>VAC: {roundLeave((year.allocated && year.allocated.VAC) || 0, 'VAC')}</div> : <div>EL: {roundLeave((year.allocated && year.allocated.EL) || 0, 'EL')}</div>}
+                                    </>
+                                  );
+                                })()}
                               </div>
                               <div>
                                 <div className="font-medium text-orange-600">Used</div>
-                                <div>CL: {year.used.CL}</div>
-                                <div>SL: {year.used.SL}</div>
-                                <div>EL: {year.used.EL}</div>
+                                {(() => {
+                                  const lg = (balanceData && (balanceData.leave_group || balanceData.emp_leave_group || balanceData.emp?.leave_group)) || null;
+                                  return (
+                                    <>
+                                      <div>CL: {roundLeave((year.used && year.used.CL) || 0, 'CL')}</div>
+                                      <div>SL: {roundLeave((year.used && year.used.SL) || 0, 'SL')}</div>
+                                      {(lg === 'vc' || lg === 'VC') ? <div>VAC: {roundLeave((year.used && year.used.VAC) || 0, 'VAC')}</div> : <div>EL: {roundLeave((year.used && year.used.EL) || 0, 'EL')}</div>}
+                                    </>
+                                  );
+                                })()}
                               </div>
                               <div>
                                 <div className="font-medium text-purple-600">Closing</div>
-                                <div>CL: {year.closing.CL}</div>
-                                <div>SL: {year.closing.SL}</div>
-                                <div>EL: {year.closing.EL}</div>
+                                {(() => {
+                                  const lg = (balanceData && (balanceData.leave_group || balanceData.emp_leave_group || balanceData.emp?.leave_group)) || null;
+                                  return (
+                                    <>
+                                      <div>CL: {roundLeave((year.closing && year.closing.CL) || 0, 'CL')}</div>
+                                      <div>SL: {roundLeave((year.closing && year.closing.SL) || 0, 'SL')}</div>
+                                      {(lg === 'vc' || lg === 'VC') ? <div>VAC: {roundLeave((year.closing && year.closing.VAC) || 0, 'VAC')}</div> : <div>EL: {roundLeave((year.closing && year.closing.EL) || 0, 'EL')}</div>}
+                                    </>
+                                  );
+                                })()}
                               </div>
                             </div>
                           </div>
@@ -634,42 +908,150 @@ const LeaveReport = ({ user, defaultPeriod = '', mode = 'report', onPeriodChange
                   )}
                   
                   {/* Mode 4: All Employees */}
-                  {balanceMode === 'all-employees' && (
-                    <div className="bg-white border rounded">
+                  {balanceMode === 'all-employees' && balanceData && balanceData.period && employeesArr.length > 0 && (
+                    <div className="bg-white border rounded print-area">
+                      {/* --- REPLACED HEADING: center-aligned simplified heading to match screenshot-2 --- */}
                       <div className="p-3 bg-gray-50 border-b">
-                        <h3 className="font-semibold">Balance Certificate (All Employees)</h3>
-                        <p className="text-sm text-gray-600">{balanceData.period.name} • {balanceData.period.start} to {balanceData.period.end}</p>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold">{balanceData?.org_name || 'Organization Name'}</div>
+                          <div className="text-4xl font-bold text-blue-600 mt-2">
+                            {(() => {
+                              const p = balanceData && balanceData.period ? balanceData.period : period || null;
+                              const name = p && p.name ? p.name : (p && p.period_name ? p.period_name : '');
+                              const m = name && name.match ? name.match(/\d{4}/) : null;
+                              return m ? (m[0] || '') : '';
+                            })()}
+                          </div>
+                          <div className="text-sm text-red-600 mt-1">
+                            {(() => {
+                              const p = balanceData && balanceData.period ? balanceData.period : period || null;
+                              if (!p) return '';
+                              const start = p.start || p.start_date || '';
+                              const end = p.end || p.end_date || '';
+                              return `${start ? fmtDate(start) : ''}${start && end ? ' to ' : ''}${end ? fmtDate(end) : ''}`;
+                            })()}
+                          </div>
+                          <h3 className="font-semibold mt-2">Balance Certificate (All Employees)</h3>
+                        </div>
+                        <div className="text-right">
+                          <button onClick={(e) => handlePrintClick(e)} className="px-3 py-1 bg-blue-600 text-white rounded text-sm no-print">Print / Save PDF</button>
+                        </div>
                       </div>
                       
                       <div className="overflow-auto">
+                        {/* --- REPLACED TABLE HEADER: grouped header layout matching screenshot-2 --- */}
                         <table className="min-w-full text-sm">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="p-2 border">Emp ID</th>
-                              <th className="p-2 border">Name</th>
-                              <th className="p-2 border">Leave Type</th>
-                              <th className="p-2 border">Allocated</th>
-                              <th className="p-2 border">Used</th>
-                              <th className="p-2 border">Balance</th>
+                          <thead>
+                            {/* TOP GROUP HEADER ROW */}
+                            <tr className="bg-gray-100 text-center font-semibold">
+                              <th rowSpan={2} className="p-2 border">Emp ID</th>
+                              <th rowSpan={2} className="p-2 border">Name</th>
+
+                              {/* Balance Start */}
+                              <th colSpan={2} className="p-2 border bg-blue-50">Balance Start (Allocated)</th>
+
+                              {/* Allocation */}
+                              <th colSpan={4} className="p-2 border bg-green-50">Leave Allocation</th>
+
+                              {/* Used Leave */}
+                              <th colSpan={8} className="p-2 border bg-orange-50">Used Leave</th>
+
+                              {/* End Balance */}
+                              <th colSpan={4} className="p-2 border bg-purple-50">Balance (End)</th>
+                            </tr>
+
+                            {/* SECOND ROW → INDIVIDUAL COLUMNS */}
+                            <tr className="bg-gray-50 text-center text-xs">
+                              {/* Balance Start (SL, EL) */}
+                              <th className="p-2 border bg-blue-50">SL</th>
+                              <th className="p-2 border bg-blue-50">EL</th>
+
+                              {/* Leave Allocation */}
+                              <th className="p-2 border bg-green-50">CL</th>
+                              <th className="p-2 border bg-green-50">SL</th>
+                              <th className="p-2 border bg-green-50">EL</th>
+                              <th className="p-2 border bg-green-50">VAC</th>
+
+                              {/* Used Leave */}
+                              <th className="p-2 border bg-orange-50">CL</th>
+                              <th className="p-2 border bg-orange-50">SL</th>
+                              <th className="p-2 border bg-orange-50">EL</th>
+                              <th className="p-2 border bg-orange-50">VAC</th>
+                              <th className="p-2 border bg-orange-50">DL</th>
+                              <th className="p-2 border bg-orange-50">LWP</th>
+                              <th className="p-2 border bg-orange-50">ML</th>
+                              <th className="p-2 border bg-orange-50">PL</th>
+
+                              {/* End Balance */}
+                              <th className="p-2 border bg-purple-50">CL</th>
+                              <th className="p-2 border bg-purple-50">SL</th>
+                              <th className="p-2 border bg-purple-50">EL</th>
+                              <th className="p-2 border bg-purple-50">VAC</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {balanceData.employees.map((emp, idx) => (
-                              emp.leave_types.map((lt, ltIdx) => (
-                                <tr key={`${idx}-${ltIdx}`} className="border-b hover:bg-gray-50">
-                                  {ltIdx === 0 && (
-                                    <>
-                                      <td className="p-2 border text-center" rowSpan={emp.leave_types.length}>{emp.emp_short}</td>
-                                      <td className="p-2 border" rowSpan={emp.leave_types.length}>{emp.emp_name}</td>
-                                    </>
-                                  )}
-                                  <td className="p-2 border text-center font-semibold">{lt.code}</td>
-                                  <td className="p-2 border text-right">{lt.allocated}</td>
-                                  <td className="p-2 border text-right">{lt.used}</td>
-                                  <td className="p-2 border text-right font-semibold">{lt.balance}</td>
+                            {(() => {
+                              const list = Array.isArray(employeesArr) ? (() => {
+                                // Defensive normalization: support multiple possible field names and trim/case-normalize
+                                const beforeCount = employeesArr.length;
+                                const filtered = employeesArr.filter(emp => {
+                                  if (!leaveGroupFilter || leaveGroupFilter === 'all') return true;
+                                  const raw = emp?.leave_group ?? emp?.emp_leave_group ?? emp?.leaveGroup ?? emp?.group ?? '';
+                                  let lg = (raw === null || raw === undefined) ? '' : String(raw).trim().toLowerCase();
+                                  if (!lg) return false;
+                                  // normalize separators and multiple values (e.g. "vc & el", "vc,el", "vacation & el")
+                                  const normalized = lg.replace(/[&,]/g, ' ').replace(/\s+/g, ' ').trim();
+                                  if (leaveGroupFilter === 'vc') return normalized.includes('vc') || normalized.includes('vac');
+                                  if (leaveGroupFilter === 'el') return normalized.includes('el');
+                                  return true;
+                                });
+                                try { console.debug('LeaveReport: employeesArr before/after filter', beforeCount, filtered.length, 'filter=', leaveGroupFilter); } catch (_) {}
+                                return filtered;
+                              })() : [];
+
+                              return list.map((emp, idx) => {
+                              const types = Array.isArray(emp.leave_types) ? emp.leave_types : [];
+                              const byCode = types.reduce((acc, lt) => {
+                                const code = (lt.code || lt.leave_type || '').toString().toUpperCase();
+                                acc[code] = lt;
+                                return acc;
+                              }, {});
+
+                              const safe = (c, k) => {
+                                const v = byCode[c];
+                                return v && (v[k] !== undefined && v[k] !== null) ? v[k] : 0;
+                              };
+
+                              return (
+                                <tr key={idx} className="border-b hover:bg-gray-50">
+                                  <td className="p-2 border text-center">{emp.emp_short || emp.emp_id}</td>
+                                  <td className="p-2 border">{emp.emp_name}</td>
+
+                                  <td className="p-2 border text-right">{roundLeave(safe('SL', 'starting') || safe('SL', 'start') || 0, 'SL')}</td>
+                                  <td className="p-2 border text-right">{roundLeave(safe('EL', 'starting') || safe('EL', 'start') || 0, 'EL')}</td>
+
+                                  <td className="p-2 border text-right">{roundLeave(safe('CL', 'allocated'), 'CL')}</td>
+                                  <td className="p-2 border text-right">{roundLeave(safe('SL', 'allocated'), 'SL')}</td>
+                                  <td className="p-2 border text-right">{roundLeave(safe('EL', 'allocated'), 'EL')}</td>
+                                  <td className="p-2 border text-right">{roundLeave(safe('VAC', 'allocated'), 'VAC')}</td>
+
+                                  <td className="p-2 border text-right">{roundLeave(safe('CL', 'used'), 'CL')}</td>
+                                  <td className="p-2 border text-right">{roundLeave(safe('SL', 'used'), 'SL')}</td>
+                                  <td className="p-2 border text-right">{roundLeave(safe('EL', 'used'), 'EL')}</td>
+                                  <td className="p-2 border text-right">{roundLeave(safe('VAC', 'used'), 'VAC')}</td>
+                                  <td className="p-2 border text-right">{roundLeave(safe('DL', 'used') || 0, 'CL')}</td>
+                                  <td className="p-2 border text-right">{roundLeave(safe('LWP', 'used') || 0, 'CL')}</td>
+                                  <td className="p-2 border text-right">{roundLeave(safe('ML', 'used') || 0, 'CL')}</td>
+                                  <td className="p-2 border text-right">{roundLeave(safe('PL', 'used') || 0, 'CL')}</td>
+
+                                  <td className="p-2 border text-right font-semibold">{roundLeave(safe('CL', 'balance'), 'CL')}</td>
+                                  <td className="p-2 border text-right font-semibold">{roundLeave(safe('SL', 'balance'), 'SL')}</td>
+                                  <td className="p-2 border text-right font-semibold">{roundLeave(safe('EL', 'balance'), 'EL')}</td>
+                                  <td className="p-2 border text-right font-semibold">{roundLeave(safe('VAC', 'balance'), 'VAC')}</td>
                                 </tr>
-                              ))
-                            ))}
+                              );
+                              });
+                            })()}
                           </tbody>
                         </table>
                       </div>
@@ -683,8 +1065,8 @@ const LeaveReport = ({ user, defaultPeriod = '', mode = 'report', onPeriodChange
       )}
 
       {/* Full screenshot-like report table (shown in report mode OR managers in balance mode if they want detail) */}
-      {mode !== 'balance' && (
-        <div>
+        {mode !== 'balance' && (
+          <div className="print-area">
           {(!selectedPeriod) ? (
             <div className="text-center py-8 text-gray-500">Please select a period to view report</div>
           ) : (
@@ -709,7 +1091,7 @@ const LeaveReport = ({ user, defaultPeriod = '', mode = 'report', onPeriodChange
                       <th rowSpan={2} className="p-2 border font-semibold">Joining Date</th>
                       <th rowSpan={2} className="p-2 border font-semibold">Leaving Date</th>
 
-                      <th colSpan={2} className="p-2 border text-center font-semibold bg-blue-50">Balance: Start</th>
+                      <th colSpan={2} className="p-2 border text-center font-semibold bg-blue-50">Balance: Start (Allocated)</th>
 
                       <th colSpan={4} className="p-2 border text-center font-semibold bg-green-50">Leave Allocation</th>
 
@@ -719,7 +1101,7 @@ const LeaveReport = ({ user, defaultPeriod = '', mode = 'report', onPeriodChange
                     </tr>
 
                     <tr className="bg-yellow-50">
-                      <th className="p-2 border font-semibold bg-blue-50">SL</th>
+                        <th className="p-2 border font-semibold bg-blue-50">SL</th>
                       <th className="p-2 border font-semibold bg-blue-50">EL</th>
 
                       <th className="p-2 border font-semibold bg-green-50">CL</th>
@@ -755,8 +1137,8 @@ const LeaveReport = ({ user, defaultPeriod = '', mode = 'report', onPeriodChange
                         <td className="p-2 border text-center">{fmtDate(r.actual_joining) || ''}</td>
                         <td className="p-2 border text-center">{r.left_date || 'Cont'}</td>
 
-                        <td className="p-2 border text-right">{roundLeave(r.start_sl, 'SL')}</td>
-                        <td className="p-2 border text-right">{roundLeave(r.start_el, 'EL')}</td>
+                        <td className="p-2 border text-right">{roundLeave(r.start_sl, 'SL')} {r.alloc_sl ? <span className="text-xs text-gray-600">({roundLeave(r.alloc_sl, 'SL')})</span> : null}</td>
+                        <td className="p-2 border text-right">{roundLeave(r.start_el, 'EL')} {r.alloc_el ? <span className="text-xs text-gray-600">({roundLeave(r.alloc_el, 'EL')})</span> : null}</td>
 
                         <td className="p-2 border text-right">{roundLeave(r.alloc_cl, 'CL')}</td>
                         <td className="p-2 border text-right">{roundLeave(r.alloc_sl, 'SL')}</td>

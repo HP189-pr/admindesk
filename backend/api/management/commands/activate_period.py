@@ -1,8 +1,5 @@
 from django.core.management.base import BaseCommand, CommandError
 
-from ...leave_activation import activate_period
-
-
 class Command(BaseCommand):
     help = 'Activate a leave period by id (computes carryforward and allocations)'
 
@@ -11,6 +8,13 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         pid = options['period_id']
+        try:
+            # Import lazily so missing optional `leave_activation` module
+            # doesn't break normal runtime. If it's absent, inform the user.
+            from ...leave_activation import activate_period
+        except Exception as e:
+            raise CommandError(f'Activation module not available: {e}')
+
         try:
             summary = activate_period(pid)
             self.stdout.write(self.style.SUCCESS(f'Activation complete: {summary}'))
