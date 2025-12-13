@@ -52,7 +52,14 @@ populate_sqls = [
         COALESCE(student_name_dg, '') || ' ' ||
         COALESCE(dg_sr_no, '') || ' ' ||
         COALESCE(degree_name, '') || ' ' ||
-        COALESCE(institute_name_dg, '')
+        COALESCE(institute_name_dg, '') || ' ' ||
+        COALESCE(specialisation, '') || ' ' ||
+        COALESCE(class_obtain, '') || ' ' ||
+        COALESCE(dg_contact, '') || ' ' ||
+        COALESCE(course_language, '') || ' ' ||
+        COALESCE(dg_address, '') || ' ' ||
+        COALESCE(dg_rec_no, '') || ' ' ||
+        COALESCE(seat_last_exam, '')
     )
     WHERE search_vector IS NULL OR search_vector = ''::tsvector;
     """,

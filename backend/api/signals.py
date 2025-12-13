@@ -349,8 +349,10 @@ def update_studentdegree_search_vector_post(sender, instance, **kwargs):
     try:
         StudentDegree.objects.filter(pk=instance.pk).update(
             search_vector=SearchVector(
-                'enrollment_no', 'student_name_dg', 'dg_sr_no', 
-                'degree_name', 'institute_name_dg'
+                'enrollment_no', 'student_name_dg', 'dg_sr_no',
+                'degree_name', 'institute_name_dg', 'specialisation',
+                'class_obtain', 'dg_contact', 'course_language',
+                'dg_address', 'dg_rec_no', 'seat_last_exam'
             )
         )
     except Exception:

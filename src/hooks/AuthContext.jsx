@@ -9,6 +9,7 @@ export const AuthProvider = ({ children }) => {
         const storedUser = localStorage.getItem("user");
         return storedUser ? JSON.parse(storedUser) : null;
     });
+    const [token, setToken] = useState(() => localStorage.getItem("access_token"));
 
     const [profilePicture, setProfilePicture] = useState("/profilepic/default-profile.png");
     const [loading, setLoading] = useState(true);
@@ -16,9 +17,9 @@ export const AuthProvider = ({ children }) => {
 
     // 🔹 Fetch user profile
     const fetchUserProfile = async () => {
-        const token = localStorage.getItem("access_token");
+        const storedToken = localStorage.getItem("access_token");
     
-        if (!token) {
+        if (!storedToken) {
             setLoading(false);
             return;
         }
@@ -26,7 +27,7 @@ export const AuthProvider = ({ children }) => {
         // Validate token before making API request
         try {
             await axios.post(`${API_BASE_URL}/api/token/verify/`, 
-                { token },
+                { token: storedToken },
                 { headers: { "Content-Type": "application/json" } }
             );
         } catch (error) {
@@ -37,11 +38,12 @@ export const AuthProvider = ({ children }) => {
             }
             return;
         }
+        setToken(storedToken);
     
         // Fetch user profile
         try {
             const { data } = await axios.get(`${API_BASE_URL}/api/profile/`, {
-                headers: { Authorization: `Bearer ${token}` },
+                headers: { Authorization: `Bearer ${storedToken}` },
             });
     
             setUser({
@@ -66,7 +68,7 @@ export const AuthProvider = ({ children }) => {
             try {
                 // Fallback/confirmation: call server to check admin access via flags/groups
                 const checkRes = await axios.get(`${API_BASE_URL}/api/check-admin-access/`, {
-                    headers: { Authorization: `Bearer ${token}` },
+                    headers: { Authorization: `Bearer ${storedToken}` },
                     validateStatus: () => true,
                 });
                 if (checkRes.status === 200 && checkRes.data && typeof checkRes.data.is_admin !== 'undefined') {
@@ -87,9 +89,9 @@ export const AuthProvider = ({ children }) => {
     
 
     useEffect(() => {
-        const token = localStorage.getItem("access_token");
+        const storedToken = localStorage.getItem("access_token");
         const initAuth = async () => {
-            if (token) {
+            if (storedToken) {
                 await fetchUserProfile();
             } else {
                 setUser(null);
@@ -112,6 +114,7 @@ export const AuthProvider = ({ children }) => {
             if (data.access) {
                 localStorage.setItem("access_token", data.access);
                 localStorage.setItem("refresh_token", data.refresh);
+                setToken(data.access);
                 await fetchUserProfile();
                 return { success: true };
             }
@@ -181,6 +184,7 @@ export const AuthProvider = ({ children }) => {
         try {
             const { data } = await axios.post(`${API_BASE_URL}/api/token/refresh/`, { refresh: refresh_token });
             localStorage.setItem("access_token", data.access);
+            setToken(data.access);
             // Don't call fetchUserProfile here to avoid loop
             setLoading(false);
             return true;
@@ -197,6 +201,7 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
         setProfilePicture("/profilepic/default-profile.png");
         setIsAdmin(false);
+        setToken(null);
         if (navigate) navigate("/login");
     };
 
@@ -253,7 +258,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, isAdmin, profilePicture, loading, login, logout, refreshToken, verifyPassword, verifyAdminPanelPassword, isAdminPanelVerified, fetchUsers, fetchUserDetail, createUser, updateUser }}>
+        <AuthContext.Provider value={{ user, token, isAdmin, profilePicture, loading, login, logout, refreshToken, verifyPassword, verifyAdminPanelPassword, isAdminPanelVerified, fetchUsers, fetchUserDetail, createUser, updateUser }}>
             {children}
         </AuthContext.Provider>
     );

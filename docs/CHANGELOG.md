@@ -89,6 +89,7 @@ closing_balance = opening_balance + current_allocation - current_usage
 
 ### Added
 - Re-registered `MyNavigationView` under `/api/my-navigation/`, restoring the permissions feed required by Mail Request, Transcript Request, and Enrollment pages.
+- Admin bulk upload now supports the `DEGREE` service: templates include the 16 degree columns and `/api/bulk-upload/` upserts `student_degree` rows using `dg_sr_no`/`enrollment_no` keys.
 
 ### Changed
 - Synced the leave calendar palette across backend, React defaults, and CSS chips:
@@ -99,6 +100,7 @@ closing_balance = opening_balance + current_allocation - current_usage
 ### Fixed
 - Eliminated repeated 404 errors in `mail_request.jsx` and `transcript_request.jsx` caused by the missing `/api/my-navigation/` route.
 - Addressed sandwich day visibility regressions by decoupling their styling from the leave background color.
+- Resolved 500 errors when selecting Degree in Admin Bulk Upload by actually processing `service=DEGREE` rows.
 
 ---
 

@@ -220,250 +220,6 @@ class DocRecViewSet(viewsets.ModelViewSet):
             pass
 
 
-class DataAnalysisView(APIView):
-    """Provides data analysis across services. Supports service=Degree for degree analysis."""
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, *args, **kwargs):
-        service = (request.query_params.get('service') or '').strip()
-        if not service:
-            return Response({'error': 'service parameter is required'}, status=400)
-
-        if service.lower() == 'degree':
-            return self._degree_analysis(request)
-
-        return Response({'error': f'service {service} not supported'}, status=400)
-
-    def _degree_analysis(self, request):
-        """Degree-specific analysis: duplicates and summaries."""
-        qs = StudentDegree.objects.all()
-
-        # If caller requests records for a specific duplicate group, return them
-        group_key = request.query_params.get('group_key')
-        group_type = request.query_params.get('group_type')
-        if group_key:
-            # parse and return matching degree records for the given group_type/key
-            try:
-                # normalize group_type for robustness
-                gt = (group_type or '').strip()
-                if gt == 'DUPLICATE_ENROLL_NAME_MONTH_YEAR':
-                    # key format: enrollment|name|month|year
-                    parts = group_key.split('|')
-                    enrollment = parts[0] if len(parts) > 0 else ''
-                    name = parts[1] if len(parts) > 1 else ''
-                    month = parts[2] if len(parts) > 2 else ''
-                    year = parts[3] if len(parts) > 3 else ''
-                    q = StudentDegree.objects.filter(enrollment_no__iexact=enrollment)
-                    if name: q = q.filter(student_name_dg__iexact=name)
-                    if month: q = q.filter(last_exam_month__iexact=month)
-                    if year:
-                        try:
-                            q = q.filter(last_exam_year=int(year))
-                        except Exception:
-                            pass
-                elif gt == 'ENROLLMENT_SAME_NAME_DIFFER':
-                    enrollment = group_key
-                    q = StudentDegree.objects.filter(enrollment_no__iexact=enrollment)
-                elif gt == 'ENROLLMENT_NAME_DIFF_YEARS':
-                    # key format: enrollment|name
-                    parts = group_key.split('|')
-                    enrollment = parts[0] if len(parts) > 0 else ''
-                    name = parts[1] if len(parts) > 1 else ''
-                    q = StudentDegree.objects.filter(enrollment_no__iexact=enrollment)
-                    if name: q = q.filter(student_name_dg__iexact=name)
-                elif gt == 'ENROLLMENT_NAME_DIFF_MONTHS':
-                    # key format: enrollment|name
-                    parts = group_key.split('|')
-                    enrollment = parts[0] if len(parts) > 0 else ''
-                    name = parts[1] if len(parts) > 1 else ''
-                    q = StudentDegree.objects.filter(enrollment_no__iexact=enrollment)
-                    if name: q = q.filter(student_name_dg__iexact=name)
-                elif gt == 'NAME_SAME_DIFFERENT_ENROLLMENT':
-                    name = group_key
-                    q = StudentDegree.objects.filter(student_name_dg__iexact=name)
-                else:
-                    # fallback: try to search enrollment value
-                    q = StudentDegree.objects.filter(enrollment_no__iexact=group_key)
-
-                # return basic fields
-                rows = list(q.values('id', 'dg_sr_no', 'enrollment_no', 'student_name_dg', 'last_exam_month', 'last_exam_year', 'convocation_no', 'degree_name', 'institute_name_dg'))
-                return Response({'group_type': group_type, 'group_key': group_key, 'records': rows})
-            except Exception as e:
-                return Response({'error': str(e)}, status=500)
-
-        # optional filters
-        exam_month = request.query_params.get('exam_month')
-        exam_year = request.query_params.get('exam_year')
-        convocation_no = request.query_params.get('convocation_no')
-        institute = request.query_params.get('institute')
-
-        if exam_month:
-            qs = qs.filter(last_exam_month__iexact=exam_month)
-        if exam_year:
-            try:
-                qs = qs.filter(last_exam_year=int(exam_year))
-            except Exception:
-                pass
-        if convocation_no:
-            try:
-                qs = qs.filter(convocation_no=int(convocation_no))
-            except Exception:
-                pass
-        if institute:
-            qs = qs.filter(institute_name_dg__icontains=institute)
-
-        # Total records
-        total = qs.count()
-
-        issues = []
-
-        # 1) Exact duplicates: enrollment + name + month + year
-        dup_exact = (
-            qs.values('enrollment_no', 'student_name_dg', 'last_exam_month', 'last_exam_year')
-            .annotate(cnt=models.Count('id'))
-            .filter(cnt__gt=1)
-        )
-        for g in dup_exact:
-            key = f"{g['enrollment_no']}|{g.get('student_name_dg') or ''}|{g.get('last_exam_month') or ''}|{g.get('last_exam_year') or ''}"
-            issues.append({
-                'type': 'DUPLICATE_ENROLL_NAME_MONTH_YEAR',
-                'key': key,
-                'count': g['cnt'],
-                'message': f"{g['cnt']} records with same enrollment+name+exam month+exam year"
-            })
-
-        # 2) Enrollment same but different names
-        dup_enr_names = (
-            qs.values('enrollment_no')
-            .annotate(total=models.Count('id'), distinct_names=models.Count('student_name_dg', distinct=True))
-            .filter(distinct_names__gt=1)
-        )
-        for g in dup_enr_names:
-            issues.append({
-                'type': 'ENROLLMENT_SAME_NAME_DIFFER',
-                'key': g['enrollment_no'],
-                'count': g['total'],
-                'message': f"Enrollment {g['enrollment_no']} has {g['distinct_names']} different student names across {g['total']} records"
-            })
-
-        # 3) Enrollment+name same but different exam years
-        dup_enr_name_year = (
-            qs.values('enrollment_no', 'student_name_dg')
-            .annotate(distinct_years=models.Count('last_exam_year', distinct=True), total=models.Count('id'))
-            .filter(distinct_years__gt=1)
-        )
-        for g in dup_enr_name_year:
-            key = f"{g['enrollment_no']}|{g.get('student_name_dg') or ''}"
-            issues.append({
-                'type': 'ENROLLMENT_NAME_DIFF_YEARS',
-                'key': key,
-                'count': g['total'],
-                'message': f"Enrollment+Name {key} appears in multiple exam years ({g['distinct_years']})"
-            })
-
-        # 4) Enrollment+Name same but different exam months
-        dup_enr_name_months = (
-            qs.values('enrollment_no', 'student_name_dg')
-            .annotate(distinct_months=models.Count('last_exam_month', distinct=True), total=models.Count('id'))
-            .filter(distinct_months__gt=1)
-        )
-        for g in dup_enr_name_months:
-            key = f"{g['enrollment_no']}|{g.get('student_name_dg') or ''}"
-            issues.append({
-                'type': 'ENROLLMENT_NAME_DIFF_MONTHS',
-                'key': key,
-                'count': g['total'],
-                'message': f"Enrollment+Name {key} appears in multiple exam months ({g['distinct_months']})"
-            })
-
-        # 5) Same student name but different enrollment numbers (possible name-duplication)
-        dup_name_diff_enr = (
-            qs.values('student_name_dg')
-            .annotate(distinct_enrollments=models.Count('enrollment_no', distinct=True), total=models.Count('id'))
-            .filter(distinct_enrollments__gt=1)
-        )
-        for g in dup_name_diff_enr:
-            key = g.get('student_name_dg') or ''
-            issues.append({
-                'type': 'NAME_SAME_DIFFERENT_ENROLLMENT',
-                'key': key,
-                'count': g['total'],
-                'message': f"Student name '{key}' appears across {g['distinct_enrollments']} different enrollment numbers"
-            })
-
-        # Summaries
-        by_convocation = list(qs.values('convocation_no').annotate(count=models.Count('id')).order_by('-convocation_no'))
-        by_degree = list(qs.values('degree_name').annotate(count=models.Count('id')).order_by('-count'))
-        by_institute = list(qs.values('institute_name_dg').annotate(count=models.Count('id')).order_by('-count'))
-        by_year = list(qs.values('last_exam_year').annotate(count=models.Count('id')).order_by('-last_exam_year'))
-        by_month = list(qs.values('last_exam_month').annotate(count=models.Count('id')).order_by('-count'))
-
-        # Missing / special cases
-        missing_convocation_count = qs.filter(models.Q(convocation_no__isnull=True) | models.Q(convocation_no='')).count()
-        missing_exam_count = qs.filter(models.Q(last_exam_month__isnull=True) | models.Q(last_exam_month='') | models.Q(last_exam_year__isnull=True)).count()
-
-        if missing_convocation_count:
-            issues.append({
-                'type': 'MISSING_CONVOCATION',
-                'key': 'MISSING_CONVOCATION',
-                'count': missing_convocation_count,
-                'message': f"{missing_convocation_count} degree records have no convocation assignment"
-            })
-
-        if missing_exam_count:
-            issues.append({
-                'type': 'MISSING_EXAM_MONTH_OR_YEAR',
-                'key': 'MISSING_EXAM_MONTH_OR_YEAR',
-                'count': missing_exam_count,
-                'message': f"{missing_exam_count} degree records are missing exam month or exam year"
-            })
-
-        # Duplicate degree serial numbers (dg_sr_no)
-        dup_dg_sr = (
-            qs.values('dg_sr_no')
-            .annotate(cnt=models.Count('id'))
-            .filter(cnt__gt=1)
-        )
-        for g in dup_dg_sr:
-            key = g.get('dg_sr_no') or ''
-            issues.append({
-                'type': 'DUPLICATE_DG_SR_NO',
-                'key': key,
-                'count': g['cnt'],
-                'message': f"{g['cnt']} records share the same degree serial number '{key}'"
-            })
-
-        # Allow caller to request specific analysis types
-        analysis_param = request.query_params.get('analysis')
-        if analysis_param:
-            requested = {a.strip().upper() for a in analysis_param.split(',') if a.strip()}
-            issues = [it for it in issues if it.get('type') in requested]
-
-        response = {
-            'service': 'Degree',
-            'total_records': total,
-            'duplicate_groups': len(dup_exact) + len(dup_enr_names) + len(dup_enr_name_year) + len(dup_enr_name_months) + len(dup_name_diff_enr) + len(dup_dg_sr),
-            'records_with_duplicates': sum([g['cnt'] for g in dup_exact]) if dup_exact else 0,
-            'filters_applied': {
-                'exam_month': exam_month,
-                'exam_year': exam_year,
-                'convocation_no': convocation_no,
-                'institute': institute,
-            },
-            'duplicates': issues,
-            'statistics': {
-                'by_convocation': by_convocation,
-                'by_degree_name': by_degree,
-                'by_institute': by_institute,
-                'by_year': by_year,
-                'by_month': by_month,
-                'missing_convocation_count': missing_convocation_count,
-                'missing_exam_count': missing_exam_count,
-            }
-        }
-
-        return Response(response)
-
     @action(detail=False, methods=["get"], url_path="next-id")
     def next_id(self, request):
         """Return the next doc_rec_id that would be assigned for a given apply_for.
@@ -1303,7 +1059,12 @@ class BulkUploadView(APIView):
             BulkService.VERIFICATION: [
                 "doc_rec_id","date","enrollment_no","second_enrollment_no","student_name","no_of_transcript","no_of_marksheet","no_of_degree","no_of_moi","no_of_backlog","status","final_no","pay_rec_no"
             ],
-            BulkService.DEGREE: None,
+            BulkService.DEGREE: [
+                "dg_sr_no","enrollment_no","student_name_dg","dg_address","dg_contact",
+                "institute_name_dg","degree_name","specialisation","seat_last_exam",
+                "last_exam_month","last_exam_year","class_obtain","course_language",
+                "dg_rec_no","dg_gender","convocation_no"
+            ],
             BulkService.EMP_PROFILE: [
                 "emp_id","emp_name","emp_designation","username","usercode","actual_joining","emp_birth_date","usr_birth_date","department_joining","institute_id","status","el_balance","sl_balance","cl_balance","vacation_balance",
                 "joining_year_allocation_el","joining_year_allocation_cl","joining_year_allocation_sl","joining_year_allocation_vac","leave_calculation_date","emp_short"
@@ -1487,6 +1248,110 @@ class BulkUploadView(APIView):
                 return s
             except Exception:
                 return str(val)
+
+        def _make_json_safe(o):
+            try:
+                import math
+                import numpy as _np
+                import pandas as _pd
+            except Exception:
+                _np = None
+                _pd = None
+                import math  # type: ignore
+
+            if o is None:
+                return None
+            if isinstance(o, (str, bool, int)):
+                return o
+            if isinstance(o, float):
+                try:
+                    if math.isnan(o) or o in (float('inf'), float('-inf')):
+                        return None
+                except Exception:
+                    pass
+                return o
+            try:
+                if _np is not None and isinstance(o, _np.generic):
+                    return _make_json_safe(o.item())
+            except Exception:
+                pass
+            try:
+                if _pd is not None and isinstance(o, _pd.Timestamp):
+                    return str(o.to_pydatetime())
+            except Exception:
+                pass
+            if isinstance(o, dict):
+                return {str(k): _make_json_safe(v) for k, v in o.items()}
+            if isinstance(o, (list, tuple)):
+                return [_make_json_safe(v) for v in o]
+            try:
+                import datetime as _dt
+                if isinstance(o, (_dt.date, _dt.datetime)):
+                    return o.isoformat()
+            except Exception:
+                pass
+            try:
+                return str(o)
+            except Exception:
+                return None
+
+        def _finalize_payload(error=False, detail=None):
+            nonlocal ok_count, fail_count, results
+            local_results = results or []
+            if error and detail and not local_results:
+                local_results.append({"row": 0, "key": service or "-", "status": "FAIL", "message": detail})
+
+            file_url = None
+            log_xlsx_b64 = None
+            log_name = None
+            try:
+                import pandas as pd  # type: ignore
+                logs_dir = os.path.join(settings.MEDIA_ROOT, 'logs')
+                os.makedirs(logs_dir, exist_ok=True)
+                df_log = pd.DataFrame(local_results or [{"row": None, "key": None, "status": "INFO", "message": detail or "No rows processed"}])
+                out = BytesIO()
+                with pd.ExcelWriter(out, engine='openpyxl') as writer:
+                    df_log.to_excel(writer, index=False, sheet_name='result')
+                out.seek(0)
+                fname = f"upload_log_{service.lower()}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+                fpath = os.path.join(logs_dir, fname)
+                with open(fpath, 'wb') as f:
+                    f.write(out.getvalue())
+                    file_url = settings.MEDIA_URL + 'logs/' + fname
+                try:
+                    import base64  # type: ignore
+                    log_xlsx_b64 = base64.b64encode(out.getvalue()).decode('utf-8')
+                    log_name = fname
+                except Exception:
+                    log_xlsx_b64 = None
+                    log_name = None
+            except Exception:
+                file_url = None
+                log_xlsx_b64 = None
+                log_name = None
+
+            summary = {"ok": ok_count, "fail": fail_count, "total": total_rows}
+            payload = {
+                "error": bool(error),
+                "mode": "confirm",
+                "summary": summary,
+                "log_url": file_url,
+                "results": local_results,
+            }
+            if detail:
+                payload["detail"] = detail
+            if log_xlsx_b64:
+                payload["log_xlsx"] = log_xlsx_b64
+                payload["log_name"] = log_name
+
+            safe_payload = _make_json_safe(payload)
+            if track_id:
+                cache_status = "error" if error else "done"
+                try:
+                    cache.set(f"bulk:{track_id}", {"status": cache_status, **safe_payload}, timeout=3600)
+                except Exception:
+                    logging.exception('Failed to cache bulk result for %s', track_id)
+            return safe_payload
 
         try:
             if service == BulkService.DOCREC:
@@ -2071,6 +1936,66 @@ class BulkUploadView(APIView):
                         _log(idx, normalized_prv or row.get("prv_number"), "Upserted", True)
                     except Exception as e:
                         _log(idx, row.get("prv_number"), str(e), False)
+                    _cache_progress(idx+1)
+
+            elif service == BulkService.DEGREE:
+                def _safe_int_optional(val):
+                    cleaned = _clean_cell(val)
+                    if cleaned is None:
+                        return None
+                    try:
+                        return int(float(cleaned))
+                    except Exception:
+                        return None
+
+                for idx, row in df.iterrows():
+                    try:
+                        enrollment_no = _clean_cell(row.get("enrollment_no"))
+                        if not enrollment_no:
+                            _log(idx, row.get("dg_sr_no") or f"row_{idx+1}", "Missing enrollment_no", False)
+                            _cache_progress(idx+1)
+                            continue
+
+                        degree_data = {
+                            "dg_sr_no": _normalize_prv_number(row.get("dg_sr_no")) or None,
+                            "enrollment_no": enrollment_no,
+                            "student_name_dg": _clean_cell(row.get("student_name_dg")),
+                            "dg_address": _clean_cell(row.get("dg_address")),
+                            "dg_contact": _clean_cell(row.get("dg_contact")),
+                            "institute_name_dg": _clean_cell(row.get("institute_name_dg")),
+                            "degree_name": _clean_cell(row.get("degree_name")),
+                            "specialisation": _clean_cell(row.get("specialisation")),
+                            "seat_last_exam": _clean_cell(row.get("seat_last_exam")),
+                            "last_exam_month": (_clean_cell(row.get("last_exam_month")) or None),
+                            "last_exam_year": _safe_int_optional(row.get("last_exam_year")),
+                            "class_obtain": _clean_cell(row.get("class_obtain")),
+                            "course_language": _clean_cell(row.get("course_language")),
+                            "dg_rec_no": _normalize_prv_number(row.get("dg_rec_no")) or None,
+                            "dg_gender": _clean_cell(row.get("dg_gender")),
+                            "convocation_no": _safe_int_optional(row.get("convocation_no")),
+                        }
+
+                        dg_sr_no = degree_data.get("dg_sr_no")
+                        obj = None
+                        if dg_sr_no:
+                            obj = StudentDegree.objects.filter(dg_sr_no=dg_sr_no).first()
+                        if obj is None:
+                            qs = StudentDegree.objects.filter(enrollment_no=enrollment_no)
+                            conv_no = degree_data.get("convocation_no")
+                            if conv_no:
+                                qs = qs.filter(convocation_no=conv_no)
+                            obj = qs.first()
+
+                        if obj:
+                            for field, value in degree_data.items():
+                                setattr(obj, field, value)
+                            obj.save()
+                            _log(idx, dg_sr_no or enrollment_no, "Updated", True)
+                        else:
+                            StudentDegree.objects.create(**degree_data)
+                            _log(idx, dg_sr_no or enrollment_no, "Created", True)
+                    except Exception as e:
+                        _log(idx, row.get("dg_sr_no") or row.get("enrollment_no"), str(e), False)
                     _cache_progress(idx+1)
 
             elif service == BulkService.EMP_PROFILE:
@@ -2687,142 +2612,11 @@ class BulkUploadView(APIView):
                         _log(idx, row.get('inst_veri_number') or row.get('doc_rec_id'), str(e), False)
                     _cache_progress(idx+1)
             else:
-                return {"error": True, "detail": f"Service {service} not implemented"}
+                return _finalize_payload(error=True, detail=f"Service {service} not implemented")
         except Exception as e:
-            # fatal error: attempt to write partial log (if any) so client gets a log file
-            try:
-                import pandas as _pd
-                import base64
-                logs_dir = os.path.join(settings.MEDIA_ROOT, 'logs')
-                os.makedirs(logs_dir, exist_ok=True)
-                df_log = _pd.DataFrame(results) if results else _pd.DataFrame([{"error": str(e)}])
-                out = BytesIO()
-                with _pd.ExcelWriter(out, engine='openpyxl') as writer:
-                    df_log.to_excel(writer, index=False, sheet_name='result')
-                out.seek(0)
-                fname = f"upload_log_{service.lower()}_{timezone.now().strftime('%Y%m%d_%H%M%S')}_partial.xlsx"
-                fpath = os.path.join(logs_dir, fname)
-                with open(fpath, 'wb') as f:
-                    f.write(out.getvalue())
-                file_url = settings.MEDIA_URL + 'logs/' + fname
-                try:
-                    logging.info('Wrote partial upload log to %s (url=%s)', fpath, file_url)
-                except Exception:
-                    pass
-                try:
-                    log_xlsx_b64 = base64.b64encode(out.getvalue()).decode('utf-8')
-                    log_name = fname
-                except Exception:
-                    log_xlsx_b64 = None
-                    log_name = None
-            except Exception:
-                file_url = None
-                log_xlsx_b64 = None
-                log_name = None
-            if track_id:
-                cache.set(f"bulk:{track_id}", {"status": "error", "detail": str(e), "log_url": file_url, **({'log_xlsx': log_xlsx_b64, 'log_name': log_name} if log_xlsx_b64 else {})}, timeout=3600)
-            return {"error": True, "detail": str(e), "log_url": file_url, **({'log_xlsx': log_xlsx_b64, 'log_name': log_name} if log_xlsx_b64 else {})}
+            return _finalize_payload(error=True, detail=str(e))
 
-        # Build log excel
-        file_url = None
-        try:
-            import pandas as pd
-            logs_dir = os.path.join(settings.MEDIA_ROOT, 'logs')
-            os.makedirs(logs_dir, exist_ok=True)
-            df_log = pd.DataFrame(results)
-            out = BytesIO()
-            with pd.ExcelWriter(out, engine='openpyxl') as writer:
-                df_log.to_excel(writer, index=False, sheet_name='result')
-            out.seek(0)
-            fname = f"upload_log_{service.lower()}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-            fpath = os.path.join(logs_dir, fname)
-            with open(fpath, 'wb') as f:
-                f.write(out.getvalue())
-                file_url = settings.MEDIA_URL + 'logs/' + fname
-            try:
-                import base64
-                log_xlsx_b64 = base64.b64encode(out.getvalue()).decode('utf-8')
-                log_name = fname
-            except Exception:
-                log_xlsx_b64 = None
-                log_name = None
-            try:
-                logging.info('Wrote upload log to %s (url=%s) size_bytes=%d base64_len=%d', fpath, file_url, len(out.getvalue()), len(log_xlsx_b64) if log_xlsx_b64 else 0)
-            except Exception:
-                pass
-        except Exception:
-            file_url = None
-
-        summary = {"ok": ok_count, "fail": fail_count, "total": len(results)}
-        result_payload = {
-            "error": False,
-            "mode": "confirm",
-            "summary": summary,
-            "log_url": file_url,
-            "results": results,
-            # Include base64-encoded XLSX so the frontend can trigger download even if
-            # relative media URL resolution fails in some deployments or client code.
-            **({'log_xlsx': log_xlsx_b64, 'log_name': log_name} if (log_xlsx_b64) else {}),
-        }
-        # Ensure payload is JSON-serializable (convert numpy/pandas NaN and numpy types to native Python)
-        def _make_json_safe(o):
-            try:
-                import math
-                import numpy as _np
-                import pandas as _pd
-            except Exception:
-                _np = None; _pd = None; math = __import__('math')
-
-            # primitives
-            if o is None:
-                return None
-            if isinstance(o, (str, bool, int)):
-                return o
-            if isinstance(o, float):
-                try:
-                    if math.isnan(o) or o in (float('inf'), float('-inf')):
-                        return None
-                except Exception:
-                    pass
-                return o
-            # numpy scalar
-            try:
-                if _np is not None and isinstance(o, _np.generic):
-                    return _make_json_safe(o.item())
-            except Exception:
-                pass
-            # pandas types
-            try:
-                if _pd is not None and isinstance(o, _pd.Timestamp):
-                    return str(o.to_pydatetime())
-            except Exception:
-                pass
-            # dict/list
-            if isinstance(o, dict):
-                return {str(k): _make_json_safe(v) for k, v in o.items()}
-            if isinstance(o, (list, tuple)):
-                return [_make_json_safe(v) for v in o]
-            # dates
-            try:
-                import datetime as _dt
-                if isinstance(o, (_dt.date, _dt.datetime)):
-                    return o.isoformat()
-            except Exception:
-                pass
-            # fallback: stringify
-            try:
-                return str(o)
-            except Exception:
-                return None
-
-        safe_payload = _make_json_safe(result_payload)
-        if track_id:
-            try:
-                cache.set(f"bulk:{track_id}", {"status": "done", **safe_payload}, timeout=3600)
-            except Exception:
-                # caching failure should not block response
-                logging.exception('Failed to cache bulk result for %s', track_id)
-        return safe_payload
+        return _finalize_payload()
 
     def post(self, request):  # noqa: C901
         action = request.query_params.get('action', 'preview')
@@ -3063,7 +2857,13 @@ class DataAnalysisView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        service = request.query_params.get('service', '').upper().strip()
+        service = (request.query_params.get('service') or '').strip().upper()
+        if not service:
+            return Response({"detail": "service parameter is required"}, status=400)
+
+        if service == BulkService.DEGREE:
+            return self._degree_analysis(request)
+
         issues = []
 
         def add(issue_type, key, msg):
@@ -3125,6 +2925,238 @@ class DataAnalysisView(APIView):
         for it in issues:
             summary['by_type'][it['type']] = summary['by_type'].get(it['type'], 0) + 1
         return Response({"summary": summary, "issues": issues})
+
+    def _degree_analysis(self, request):
+        qs = StudentDegree.objects.all()
+        student_name_field = 'student_name_dg'
+
+        group_key = request.query_params.get('group_key')
+        group_type = request.query_params.get('group_type')
+        if group_key:
+            try:
+                gt = (group_type or '').strip().upper()
+                if gt == 'DUPLICATE_ENROLL_NAME_MONTH_YEAR':
+                    parts = group_key.split('|')
+                    enrollment = parts[0] if len(parts) > 0 else ''
+                    name = parts[1] if len(parts) > 1 else ''
+                    month = parts[2] if len(parts) > 2 else ''
+                    year = parts[3] if len(parts) > 3 else ''
+                    q = StudentDegree.objects.filter(enrollment_no__iexact=enrollment)
+                    if name:
+                        q = q.filter(student_name_dg__iexact=name)
+                    if month:
+                        q = q.filter(last_exam_month__iexact=month)
+                    if year:
+                        try:
+                            q = q.filter(last_exam_year=int(year))
+                        except Exception:
+                            pass
+                elif gt == 'ENROLLMENT_SAME_NAME_DIFFER':
+                    q = StudentDegree.objects.filter(enrollment_no__iexact=group_key)
+                elif gt in ('ENROLLMENT_NAME_DIFF_YEARS', 'ENROLLMENT_NAME_DIFF_MONTHS'):
+                    parts = group_key.split('|')
+                    enrollment = parts[0] if len(parts) > 0 else ''
+                    name = parts[1] if len(parts) > 1 else ''
+                    q = StudentDegree.objects.filter(enrollment_no__iexact=enrollment)
+                    if name:
+                        q = q.filter(student_name_dg__iexact=name)
+                elif gt == 'NAME_SAME_DIFFERENT_ENROLLMENT':
+                    q = StudentDegree.objects.filter(student_name_dg__iexact=group_key)
+                else:
+                    q = StudentDegree.objects.filter(enrollment_no__iexact=group_key)
+
+                rows = list(q.values('id', 'dg_sr_no', 'enrollment_no', 'student_name_dg', 'last_exam_month', 'last_exam_year', 'convocation_no', 'degree_name', 'institute_name_dg'))
+                return Response({'group_type': group_type, 'group_key': group_key, 'records': rows})
+            except Exception as exc:
+                return Response({'detail': str(exc)}, status=500)
+
+        exam_month = request.query_params.get('exam_month')
+        exam_year = request.query_params.get('exam_year')
+        convocation_no = request.query_params.get('convocation_no')
+        institute = request.query_params.get('institute')
+
+        if exam_month:
+            qs = qs.filter(last_exam_month__iexact=exam_month)
+        if exam_year:
+            try:
+                qs = qs.filter(last_exam_year=int(exam_year))
+            except Exception:
+                pass
+        if convocation_no:
+            try:
+                qs = qs.filter(convocation_no=int(convocation_no))
+            except Exception:
+                pass
+        if institute:
+            qs = qs.filter(institute_name_dg__icontains=institute)
+
+        total = qs.count()
+        issues = []
+
+        dup_exact = (
+            qs.values('enrollment_no', student_name_field, 'last_exam_month', 'last_exam_year')
+            .annotate(cnt=models.Count('id'))
+            .filter(cnt__gt=1)
+        )
+        for g in dup_exact:
+            key = f"{g['enrollment_no']}|{g.get(student_name_field) or ''}|{g.get('last_exam_month') or ''}|{g.get('last_exam_year') or ''}"
+            issues.append({
+                'type': 'DUPLICATE_ENROLL_NAME_MONTH_YEAR',
+                'key': key,
+                'count': g['cnt'],
+                'message': f"{g['cnt']} records with same enrollment+name+exam month+exam year"
+            })
+
+        dup_enr_names = (
+            qs.values('enrollment_no')
+            .annotate(total=models.Count('id'), distinct_names=models.Count(student_name_field, distinct=True))
+            .filter(distinct_names__gt=1)
+        )
+        for g in dup_enr_names:
+            issues.append({
+                'type': 'ENROLLMENT_SAME_NAME_DIFFER',
+                'key': g['enrollment_no'],
+                'count': g['total'],
+                'message': f"Enrollment {g['enrollment_no']} has {g['distinct_names']} different student names across {g['total']} records"
+            })
+
+        dup_enr_name_year = (
+            qs.values('enrollment_no', student_name_field)
+            .annotate(distinct_years=models.Count('last_exam_year', distinct=True), total=models.Count('id'))
+            .filter(distinct_years__gt=1)
+        )
+        for g in dup_enr_name_year:
+            key = f"{g['enrollment_no']}|{g.get(student_name_field) or ''}"
+            issues.append({
+                'type': 'ENROLLMENT_NAME_DIFF_YEARS',
+                'key': key,
+                'count': g['total'],
+                'message': f"Enrollment+Name {key} appears in multiple exam years ({g['distinct_years']})"
+            })
+
+        dup_enr_name_months = (
+            qs.values('enrollment_no', student_name_field)
+            .annotate(distinct_months=models.Count('last_exam_month', distinct=True), total=models.Count('id'))
+            .filter(distinct_months__gt=1)
+        )
+        for g in dup_enr_name_months:
+            key = f"{g['enrollment_no']}|{g.get(student_name_field) or ''}"
+            issues.append({
+                'type': 'ENROLLMENT_NAME_DIFF_MONTHS',
+                'key': key,
+                'count': g['total'],
+                'message': f"Enrollment+Name {key} appears in multiple exam months ({g['distinct_months']})"
+            })
+
+        dup_name_diff_enr = (
+            qs.values(student_name_field)
+            .annotate(distinct_enrollments=models.Count('enrollment_no', distinct=True), total=models.Count('id'))
+            .filter(distinct_enrollments__gt=1)
+        )
+        for g in dup_name_diff_enr:
+            key = g.get(student_name_field) or ''
+            issues.append({
+                'type': 'NAME_SAME_DIFFERENT_ENROLLMENT',
+                'key': key,
+                'count': g['total'],
+                'message': f"Student name '{key}' appears across {g['distinct_enrollments']} different enrollment numbers"
+            })
+
+        by_convocation = list(qs.values('convocation_no').annotate(count=models.Count('id')).order_by('-convocation_no'))
+        by_degree = list(qs.values('degree_name').annotate(count=models.Count('id')).order_by('-count'))
+        by_institute = list(qs.values('institute_name_dg').annotate(count=models.Count('id')).order_by('-count'))
+        by_year = list(qs.values('last_exam_year').annotate(count=models.Count('id')).order_by('-last_exam_year'))
+        by_month = list(qs.values('last_exam_month').annotate(count=models.Count('id')).order_by('-count'))
+
+        missing_convocation_filter = models.Q(convocation_no__isnull=True) | models.Q(convocation_no__lte=0)
+        missing_convocation_count = qs.filter(missing_convocation_filter).count()
+        missing_exam_count = qs.filter(models.Q(last_exam_month__isnull=True) | models.Q(last_exam_month='') | models.Q(last_exam_year__isnull=True)).count()
+
+        if missing_convocation_count:
+            issues.append({
+                'type': 'MISSING_CONVOCATION',
+                'key': 'MISSING_CONVOCATION',
+                'count': missing_convocation_count,
+                'message': f"{missing_convocation_count} degree records have no convocation assignment"
+            })
+
+        if missing_exam_count:
+            issues.append({
+                'type': 'MISSING_EXAM_MONTH_OR_YEAR',
+                'key': 'MISSING_EXAM_MONTH_OR_YEAR',
+                'count': missing_exam_count,
+                'message': f"{missing_exam_count} degree records are missing exam month or exam year"
+            })
+
+        dup_dg_sr = (
+            qs.values('dg_sr_no')
+            .annotate(cnt=models.Count('id'))
+            .filter(cnt__gt=1)
+        )
+        for g in dup_dg_sr:
+            key = g.get('dg_sr_no') or ''
+            issues.append({
+                'type': 'DUPLICATE_DG_SR_NO',
+                'key': key,
+                'count': g['cnt'],
+                'message': f"{g['cnt']} records share the same degree serial number '{key}'"
+            })
+
+        analysis_param = request.query_params.get('analysis')
+        requested = None
+        if analysis_param:
+            requested = {a.strip().upper() for a in analysis_param.split(',') if a.strip()}
+            issues = [it for it in issues if it.get('type') in requested]
+
+        summary = {
+            'total_issues': len(issues),
+            'by_type': {}
+        }
+        for it in issues:
+            summary['by_type'][it['type']] = summary['by_type'].get(it['type'], 0) + 1
+
+        statistics = {
+            'by_convocation': by_convocation,
+            'by_degree_name': by_degree,
+            'by_institute': by_institute,
+            'by_year': by_year,
+            'by_month': by_month,
+            'missing_convocation_count': missing_convocation_count,
+            'missing_exam_count': missing_exam_count,
+        }
+
+        if requested:
+            stats_map = {
+                'STATS_CONVOCATION': ('by_convocation', by_convocation),
+                'STATS_COURSE': ('by_degree_name', by_degree),
+                'STATS_COLLEGE': ('by_institute', by_institute),
+                'STATS_YEAR': ('by_year', by_year),
+                'STATS_MONTH': ('by_month', by_month),
+            }
+            filtered_stats = {}
+            for key, (label, data) in stats_map.items():
+                if key in requested:
+                    filtered_stats[label] = data
+            if filtered_stats:
+                statistics = {**filtered_stats}
+                statistics['missing_convocation_count'] = missing_convocation_count
+                statistics['missing_exam_count'] = missing_exam_count
+
+        response = {
+            'service': 'DEGREE',
+            'total_records': total,
+            'filters_applied': {
+                'exam_month': exam_month,
+                'exam_year': exam_year,
+                'convocation_no': convocation_no,
+                'institute': institute,
+            },
+            'summary': summary,
+            'issues': issues,
+            'statistics': statistics,
+        }
+
+        return Response(response)
     def perform_update(self, serializer):
         serializer.save(updated_by=self.request.user if self.request.user.is_authenticated else None)
     

@@ -238,6 +238,11 @@ User selects "Internal" type in Inward Register form
 - Holidays now render with the requested medium light green (`#C6E0B4`) and sandwich-only days keep a transparent background while showing a highlighted border for easier spotting.
 - Table cells now derive weekend/holiday colors solely from the shared color map, so the color legend always matches rendered cells.
 
+#### 3. **Degree Bulk Upload Support via `/api/bulk-upload/`**
+- Added the 16-column Degree template (`dg_sr_no`, `enrollment_no`, `degree_name`, etc.) so Admin uploads can download a sample straight from `/api/bulk-upload/?service=DEGREE`.
+- Implemented `BulkService.DEGREE` handling in `BulkUploadView._process_confirm`, mirroring the dedicated `/api/degrees/bulk_upload/` logic (updates existing rows by `dg_sr_no` when possible, otherwise creates new `student_degree` entries).
+- Eliminates the `Service DEGREE not implemented` 500 responses seen in `AdminBulkUpload.jsx` while keeping CSV-based uploads untouched.
+
 ---
 
 ### December 9, 2025

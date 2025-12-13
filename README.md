@@ -27,6 +27,7 @@ AdminDesk streamlines university administrative operations with:
 
 - **Permissions API Restored**: `/api/my-navigation/` is registered again in Django routing so mail requests, transcript requests, and enrollment pages can fetch rights without 404s.
 - **Leave Calendar Visuals**: Backend, React defaults, and CSS chips now share the same palette. Holidays use a medium light green tone and sandwich-only days show a highlighted border instead of overriding the background.
+- **Degree Bulk Uploads**: The generic `/api/bulk-upload/` endpoint understands `service=DEGREE`, so the Admin upload console can insert/update `student_degree` rows via the Excel workflow.
 - **Changelog Refresh**: See [docs/CHANGELOG.md](docs/CHANGELOG.md) for the full summary of December 13 fixes.
 
 ---

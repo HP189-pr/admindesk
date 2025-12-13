@@ -104,10 +104,14 @@ export default function DataAnalysis() {
         if (!confirm(`Delete ${selectedIds.size} selected record(s)? This cannot be undone.`)) return;
         try {
           const endpointRoot = isDegree ? 'degrees' : isEnrollment ? 'enrollments' : 'provisional';
-          for (const id of Array.from(selectedIds)) {
+          const idsToDelete = Array.from(selectedIds);
+          await Promise.all(idsToDelete.map(async (id) => {
             const res = await fetch(`${apiBase}/${endpointRoot}/${id}/`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
-            if (!res.ok) console.warn('Failed to delete', id, await res.text());
-          }
+            if (!res.ok) {
+              const body = await res.text().catch(() => '');
+              console.warn('Failed to delete', id, body);
+            }
+          }));
           // refresh list and analysis
           setSelectedIds(new Set());
           if (currentGroupKey) {
@@ -132,6 +136,11 @@ export default function DataAnalysis() {
             rows = data.results || data || [];
           }
           if (!rows || rows.length <= 1) return alert('No duplicates found');
+          rows = [...rows].sort((a, b) => {
+            const aid = typeof a.id === 'number' ? a.id : Number(a.id) || 0;
+            const bid = typeof b.id === 'number' ? b.id : Number(b.id) || 0;
+            return aid - bid;
+          });
           // keep first, delete rest
           for (let i = 1; i < rows.length; i++) {
             const id = rows[i].id;
@@ -160,7 +169,8 @@ export default function DataAnalysis() {
             };
             const res = await fetch(`${apiBase}/degrees/${row.id}/`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
             if (!res.ok) throw new Error('Failed to save');
-            await loadRecordsForKey(row.enrollment_no || row.enrollment || '');
+            const groupKeyToReload = currentGroupKey || row.enrollment_no || row.enrollment || '';
+            await loadRecordsForKey(groupKeyToReload, currentGroupType);
             await runAnalysis();
             alert('Saved');
           } else {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 
 // Generic admin bulk upload UI. Props:
@@ -15,6 +15,10 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
   const [uploadPct, setUploadPct] = useState(0);
   const [result, setResult] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const failRows = useMemo(() => {
+    if (!result?.results) return [];
+    return result.results.filter((r) => String(r.status || '').toUpperCase() === 'FAIL');
+  }, [result]);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
   const headersForFetch = token ? { Authorization: `Bearer ${token}` } : {};
@@ -178,20 +182,46 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
     }catch(e){ setMessage('Preview failed: '+String(e)); }
   };
 
+  const downloadBase64Log = (logString, filename = 'upload_log.xlsx') => {
+    if (!logString) return;
+    try {
+      const bytes = atob(logString);
+      const buf = new Uint8Array(bytes.length);
+      for (let i = 0; i < bytes.length; i += 1) buf[i] = bytes.charCodeAt(i);
+      const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+        a.remove();
+      }, 500);
+    } catch (err) {
+      console.warn('Failed to download log', err);
+      setMessage('Log download failed: ' + (err?.message || err));
+    }
+  };
+
   const doCommit = async (selected, extra) => {
+    if (!file) { setMessage('Choose a file'); return; }
     const fd = new FormData(); fd.append('service', service); fd.append('action', 'confirm'); if (sheet) fd.append('sheet_name', sheet); fd.append('file', file);
     selected.forEach(c=>fd.append('columns[]', c));
     if (extra && extra.auto_create_docrec) fd.append('auto_create_docrec','1');
     try{
-      setUploadPct(0); setMessage('Uploading...'); setIsUploading(true);
-      const data = await postWithProgress(fd, (pct)=>{ setUploadPct(pct); });
-      if (data.error) {
-        // If server returned a raw HTML/text payload, include it in message for debugging
-        const detail = data.detail || (data.raw ? 'Server returned non-JSON response (see console)' : 'Upload error');
+      setUploadPct(0); setMessage('Preparing upload…'); setIsUploading(true); setResult(null);
+      const data = await postWithProgress(fd, (pct)=>{ setUploadPct(pct); setMessage(`Uploading… ${pct}%`); });
+      const detail = data?.detail || (data?.raw ? 'Server returned non-JSON response (see console)' : 'Upload error');
+      setResult(data || {});
+      setStep(4);
+      if (data?.error) {
         console.warn('Upload response (error):', data);
-        return setMessage(detail);
+        setMessage(detail);
+        return;
       }
-      setResult(data || {}); setMessage('Upload complete'); setStep(4);
+      setMessage('Upload complete');
       try{
         // notify other tabs/pages that a bulk upload completed so they can refresh
         if (typeof BroadcastChannel !== 'undefined'){
@@ -205,16 +235,6 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
           try{ localStorage.setItem('admindesk_last_bulk', JSON.stringify({ ts: Date.now(), service })); }catch(e){}
         }
       }catch(e){/* ignore */}
-      // handle base64 xlsx log if returned
-      if (data.log_xlsx && data.log_name){
-        try{
-          const bytes = atob(data.log_xlsx);
-          const buf = new Uint8Array(bytes.length);
-          for(let i=0;i<bytes.length;i++) buf[i]=bytes.charCodeAt(i);
-          const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-          const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=data.log_name || 'upload_log.xlsx'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(url); a.remove();},500);
-        }catch(e){ console.warn('Failed to download xlsx log', e); }
-      }
     }catch(e){ setMessage('Commit failed: '+String(e)); }
     finally{ setIsUploading(false); }
   };
@@ -290,15 +310,57 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
       )}
 
       {step === 4 && result && (
-        <div className="mt-2">
-          <div className="text-sm">OK: {result.summary?.ok ?? 0} | Fail: {result.summary?.fail ?? 0} | Total: {result.summary?.total ?? 0}</div>
+        <div className="mt-2 space-y-2">
+          <div className="text-sm">
+            OK: {result.summary?.ok ?? 0} | Fail: {result.summary?.fail ?? 0} | Total: {result.summary?.total ?? previewRows.length}
+          </div>
+          {result.detail && (
+            <div className="text-xs text-red-600">Server message: {result.detail}</div>
+          )}
           {(result.log_url || result.log_xlsx) && (
-            <div className="mt-1">
-              {result.log_url && (<a className="text-blue-500 underline mr-3" href={result.log_url} target="_blank" rel="noreferrer">Download Log (server)</a>)}
-              {/* If base64 blob present, offer client-side download as well */}
-              {result.log_xlsx && result.log_name && (<a className="text-blue-500 underline" href="#" onClick={(e)=>{e.preventDefault(); try{ const bytes = atob(result.log_xlsx); const buf = new Uint8Array(bytes.length); for(let i=0;i<bytes.length;i++) buf[i]=bytes.charCodeAt(i); const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=result.log_name || 'upload_log.xlsx'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(url); a.remove();},500);}catch(err){console.error('Download failed',err);}}}>Download Log (client)</a>)}
+            <div className="flex flex-wrap gap-3 text-sm">
+              {result.log_url && (
+                <a className="text-blue-600 underline" href={result.log_url} target="_blank" rel="noreferrer">
+                  Download Log (server)
+                </a>
+              )}
+              {result.log_xlsx && result.log_name && (
+                <button
+                  type="button"
+                  className="rounded bg-slate-900 px-3 py-1 text-white"
+                  onClick={() => downloadBase64Log(result.log_xlsx, result.log_name)}
+                >
+                  Download Log (client)
+                </button>
+              )}
             </div>
           )}
+        </div>
+      )}
+
+      {step === 4 && failRows.length > 0 && (
+        <div className="mt-3 border border-rose-200 bg-rose-50 p-3 text-xs text-rose-900">
+          <div className="font-semibold text-rose-700">Failed Rows ({failRows.length})</div>
+          <div className="mt-2 max-h-48 overflow-auto">
+            <table className="min-w-full">
+              <thead>
+                <tr className="text-left">
+                  <th className="pr-3">Row</th>
+                  <th className="pr-3">Key / Enrollment</th>
+                  <th>Error</th>
+                </tr>
+              </thead>
+              <tbody>
+                {failRows.map((r, idx) => (
+                  <tr key={`${r.row}-${idx}`} className="align-top">
+                    <td className="pr-3">{typeof r.row === 'number' && Number.isFinite(r.row) ? r.row + 1 : (r.row ?? '-')}</td>
+                    <td className="pr-3">{r.key || '-'}</td>
+                    <td>{r.message || 'Unknown error'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

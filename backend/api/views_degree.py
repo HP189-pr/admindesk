@@ -80,7 +80,20 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
                 queryset=queryset,
                 search_query=search,
                 search_fields=['search_vector'],  # FTS field
-                fallback_fields=['enrollment_no', 'student_name_dg', 'dg_sr_no', 'degree_name', 'institute_name_dg']
+                fallback_fields=[
+                    'enrollment_no',
+                    'student_name_dg',
+                    'dg_sr_no',
+                    'degree_name',
+                    'institute_name_dg',
+                    'specialisation',
+                    'class_obtain',
+                    'dg_contact',
+                    'course_language',
+                    'dg_address',
+                    'dg_rec_no',
+                    'seat_last_exam',
+                ]
             )
         
         # Filter by enrollment
