@@ -55,7 +55,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.postgres',  # PostgreSQL-specific features (FTS, JSONField, etc.)
-    'api',  # Our custom app
+    'api',  # Core API app
+    'reports',  # Analytics & calendar endpoints
 ]
 
 # optional apps: rest_framework, corsheaders

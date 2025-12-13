@@ -20,6 +20,7 @@ urlpatterns = [
 
     path("admin/", admin.site.urls),  # Admin Panel
     path("api/", include("api.urls")),  # API routes
+    path("api/reports/", include("reports.urls")),  # Analytics endpoints
 ]
 
 # ✅ Serve media files in development mode

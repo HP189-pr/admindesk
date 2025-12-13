@@ -21,3 +21,56 @@
 .topbar {
   @apply bg-dashboardAccent text-white p-4 flex justify-between items-center;
 }
+
+@media print {
+
+  /* Hide entire UI except print-area */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Show only print-area */
+  .print-area, .print-area * {
+    visibility: visible !important;
+  }
+
+  /* Position print-area at top for clean PDF */
+  .print-area {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
+
+/* ===== Leave Calendar Chips ===== */
+.leave-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.15rem 0.35rem;
+  border-radius: 9999px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  min-height: 1.2rem;
+  text-transform: uppercase;
+}
+
+.leave-CL { background-color: #f4b183; color: #3b2f1d; }
+.leave-HCL1,
+.leave-HCL2 { background-color: #fad7a0; color: #3b2f1d; }
+.leave-SL { background-color: #9dc3e6; color: #0f243e; }
+.leave-HSL1,
+.leave-HSL2 { background-color: #bdd7ee; color: #0f243e; }
+.leave-EL { background-color: #fff2cc; color: #3b2f1d; }
+.leave-DL { background-color: #d9d2e9; color: #3b285b; }
+.leave-LWP { background-color: #f4cccc; color: #7f1d1d; }
+.leave-VAC { background-color: #fce5cd; color: #5f3811; }
+.leave-ML { background-color: #f4b6c2; color: #7f1d1d; }
+.leave-PL { background-color: #cfe2f3; color: #0f243e; }
+.leave-SANDWICH { background-color: #b7b7b7; color: #1f1f1f; }
+.leave-WEEKEND { background-color: #e7e6e6; color: #1f1f1f; }
+.leave-HOLIDAY { background-color: #c6e0b4; color: #1f3d1a; }
+.leave-UNKNOWN { background-color: #64748b; color: #fff; }

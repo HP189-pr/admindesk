@@ -1,11 +1,13 @@
 // EmpLeavePage.jsx
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, Suspense, useMemo } from 'react';
 import axios from '../api/axiosInstance';
 import { useAuth } from '../hooks/AuthContext';
 import { FaUserTie, FaChevronUp, FaChevronDown } from 'react-icons/fa';
 
 // Lazy load the report page (keeps main bundle smaller)
-const LeaveReport = React.lazy(() => import('./LeaveReport'));
+const LeaveReport = React.lazy(() => import('../report/LeaveReport'));
+const LeaveBalance = React.lazy(() => import('../report/LeaveBalance'));
+const LeaveCalendar = React.lazy(() => import('../report/LeaveCalendar'));
 
 const normalize = (data) => {
   if (!data) return [];
@@ -38,8 +40,22 @@ const toISO = (s) => {
   return d ? d.toISOString().slice(0, 10) : null;
 };
 
+function getFiscalYear(dateInput) {
+  const dt = dateInput instanceof Date ? dateInput : parseDMY(dateInput) || new Date(dateInput);
+  if (!dt || dt.toString() === 'Invalid Date') return null;
+  return (dt.getMonth() + 1) >= 6 ? dt.getFullYear() : dt.getFullYear() - 1;
+}
+
+function formatFiscalLabel(year) {
+  if (year == null) return '';
+  const next = String(year + 1).slice(-2);
+  return `${year}-${next}`;
+}
+
 const EmpLeavePage = () => {
   const { user } = useAuth();
+  const baseFieldClass = 'w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500';
+  const readOnlyFieldClass = `${baseFieldClass} bg-gray-50`;
 
   // state
   const [leaveEntries, setLeaveEntries] = useState([]);
@@ -57,15 +73,38 @@ const EmpLeavePage = () => {
     end_date: '',
     remark: '',
     total_days: '',
-    status: ''
+    status: '',
+    sandwich_leave: ''
   });
   const [filterEmp, setFilterEmp] = useState('');
   const [yearFilter, setYearFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [recordSearch, setRecordSearch] = useState('');
 
-  const PANELS = ['Entry Leave', 'Leave Report', 'Balance Certificate'];
+  const currentFiscalYear = useMemo(() => getFiscalYear(new Date()), []);
+
+  const availableYears = useMemo(() => {
+    const ys = new Set();
+    if (currentFiscalYear) ys.add(currentFiscalYear);
+    (leaveEntries || []).forEach((le) => {
+      const fy = getFiscalYear(le.start_date);
+      if (fy) ys.add(fy);
+    });
+    return Array.from(ys).sort((a, b) => b - a);
+  }, [leaveEntries, currentFiscalYear]);
+
+  useEffect(() => {
+    if (yearFilter) return;
+    if (availableYears.includes(currentFiscalYear)) {
+      setYearFilter(String(currentFiscalYear));
+    } else if (availableYears.length) {
+      setYearFilter(String(availableYears[0]));
+    }
+  }, [availableYears, yearFilter, currentFiscalYear]);
+
+  const PANELS = ['Entry Leave', 'Leave Report', 'Balance Certificate', 'Calander View'];
   const [selectedPanel, setSelectedPanel] = useState('Entry Leave');
   const [panelOpen, setPanelOpen] = useState(true);
 
@@ -161,7 +200,13 @@ const EmpLeavePage = () => {
         start_date: toISO(form.start_date),
         end_date: toISO(form.end_date),
         remark: form.remark || null,
-        status: form.status || null
+        status: form.status || null,
+        sandwich_leave:
+          form.sandwich_leave === 'yes'
+            ? true
+            : form.sandwich_leave === 'no'
+              ? false
+              : null
       };
       if (editingId) await axios.patch(`/api/leaveentry/${editingId}/`, payload);
       else await axios.post('/api/leaveentry/', payload);
@@ -169,8 +214,16 @@ const EmpLeavePage = () => {
       const r = await axios.get('/api/leaveentry/');
       setLeaveEntries(normalize(r.data));
       setForm({
-        report_no: '', emp_id: '', emp_name: '', leave_type: '',
-        start_date: '', end_date: '', remark: '', total_days: '', status: ''
+        report_no: '',
+        emp_id: '',
+        emp_name: '',
+        leave_type: '',
+        start_date: '',
+        end_date: '',
+        remark: '',
+        total_days: '',
+        status: '',
+        sandwich_leave: ''
       });
       setEditingId(null);
     } catch (err) {
@@ -182,7 +235,7 @@ const EmpLeavePage = () => {
   };
 
   // filtering and parsed report helpers
-  const parseReport = (rrn) => {
+  function parseReport(rrn) {
     if (!rrn) return { year: null, seq: 0 };
     const s = String(rrn);
     let m = s.match(/^(\d{2})[_-](\d+)$/);
@@ -190,27 +243,47 @@ const EmpLeavePage = () => {
     m = s.match(/^(\d{2})(\d+)$/);
     if (m) return { year: 2000 + Number(m[1]), seq: Number(m[2]) };
     return { year: null, seq: 0 };
+  }
+
+  const getReportOrderValue = (rrn) => {
+    if (!rrn) return 0;
+    const numeric = Number(String(rrn).replace(/[^0-9]/g, ''));
+    if (!Number.isNaN(numeric) && numeric > 0) return numeric;
+    const parsed = parseReport(rrn);
+    if (parsed.year && parsed.seq) return parsed.year * 10000 + parsed.seq;
+    return 0;
   };
 
-  const filteredEntries = (leaveEntries || [])
-    .filter((le) => {
-      if (filterEmp && String(le.emp) !== String(filterEmp)) return false;
-      if (yearFilter) {
-        const y = parseReport(le.leave_report_no).year;
-        if (String(y) !== String(yearFilter)) return false;
-      }
-      if (monthFilter) {
-        const m = (new Date(le.start_date)).getMonth() + 1;
-        if (String(m) !== String(monthFilter)) return false;
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      const A = parseReport(a.leave_report_no);
-      const B = parseReport(b.leave_report_no);
-      if (A.year !== B.year) return B.year - A.year;
-      return B.seq - A.seq;
-    });
+  const filteredEntries = useMemo(() => {
+    return (leaveEntries || [])
+      .filter((le) => {
+        if (filterEmp && String(le.emp) !== String(filterEmp)) return false;
+        if (yearFilter) {
+          const fy = getFiscalYear(le.start_date);
+          if (String(fy) !== String(yearFilter)) return false;
+        }
+        if (monthFilter) {
+          const m = (new Date(le.start_date)).getMonth() + 1;
+          if (String(m) !== String(monthFilter)) return false;
+        }
+        if (recordSearch.trim()) {
+          const q = recordSearch.trim().toLowerCase();
+          const reportHit = String(le.leave_report_no || '').toLowerCase().includes(q);
+          const empIdHit = String(le.emp || '').toLowerCase().includes(q);
+          const empNameHit = String(le.emp_name || '').toLowerCase().includes(q);
+          if (!reportHit && !empIdHit && !empNameHit) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const orderA = getReportOrderValue(a.leave_report_no);
+        const orderB = getReportOrderValue(b.leave_report_no);
+        if (orderA !== orderB) return orderB - orderA;
+        const startA = new Date(a.start_date).getTime() || 0;
+        const startB = new Date(b.start_date).getTime() || 0;
+        return startB - startA;
+      });
+  }, [leaveEntries, filterEmp, yearFilter, monthFilter, recordSearch]);
 
   const handleTopbar = (p) => {
     if (selectedPanel === p) setPanelOpen(o => !o);
@@ -233,7 +306,13 @@ const EmpLeavePage = () => {
               onClick={() => handleTopbar(p)}
               className={`px-3 py-1.5 rounded border text-sm ${selectedPanel === p ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white border-gray-300 hover:bg-gray-50'}`}
             >
-              {p === 'Entry Leave' ? 'Add' : p === 'Leave Report' ? 'Report' : 'Balance'}
+              {p === 'Entry Leave'
+                ? 'Add'
+                : p === 'Leave Report'
+                  ? 'Report'
+                  : p === 'Calander View'
+                    ? 'Calendar'
+                    : 'Balance'}
             </button>
           ))}
         </div>
@@ -251,26 +330,155 @@ const EmpLeavePage = () => {
 
         {/* main content */}
         {selectedPanel === 'Leave Report' ? (
-          // Suspense for lazy loaded report component
           <Suspense fallback={<div className="p-4">Loading report...</div>}>
-            <LeaveReport
-              user={user}
-              defaultPeriod={selectedPeriod}
-              onPeriodChange={(p) => setSelectedPeriod(p)}
-            />
+            <LeaveReport user={user} defaultPeriod={selectedPeriod} onPeriodChange={setSelectedPeriod} />
           </Suspense>
         ) : selectedPanel === 'Balance Certificate' ? (
-          <Suspense fallback={<div className="p-4">Loading...</div>}>
-            <LeaveReport
-              user={user}
-              defaultPeriod={selectedPeriod}
-              mode="balance"
-              onPeriodChange={(p) => setSelectedPeriod(p)}
-            />
+          <Suspense fallback={<div className="p-4">Loading balance...</div>}>
+            <LeaveBalance user={user} defaultPeriod={selectedPeriod} onPeriodChange={setSelectedPeriod} />
+          </Suspense>
+        ) : selectedPanel === 'Calander View' ? (
+          <Suspense fallback={<div className="p-4">Loading calendar...</div>}>
+            <LeaveCalendar user={user} />
           </Suspense>
         ) : (
           // LastLeaveRecords (Entry Leave selected by default)
           <div>
+            {/* Entry form moved to top */}
+            <div className="bg-white border-b">
+              <div className="p-4">
+                <div className="flex flex-col gap-1">
+                  <div className="text-lg font-semibold">Add Leave Entry</div>
+                </div>
+
+                <form onSubmit={handleApply} className="mt-4 space-y-4">
+                  <div className="flex flex-col gap-3 md:flex-row">
+                    <div className="flex flex-col gap-1 md:w-28">
+                      <label className="text-xs text-gray-600">Report No</label>
+                      <input
+                        name="report_no"
+                        value={form.report_no}
+                        onChange={handleChange}
+                        className={baseFieldClass}
+                        placeholder="Auto"
+                        maxLength={9}
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1 md:w-32">
+                      <label className="text-xs text-gray-600">Employee ID</label>
+                      <select
+                        name="emp_id"
+                        value={form.emp_id}
+                        onChange={(e) => {
+                          handleChange(e);
+                          const p = profiles.find(pp => String(pp.emp_id) === String(e.target.value));
+                          if (p) setForm(f => ({ ...f, emp_name: p.emp_name }));
+                        }}
+                        className={baseFieldClass}
+                      >
+                        <option value="">-- select --</option>
+                        {profiles.map(p => (
+                          <option key={p.id} value={p.emp_id} title={`${p.emp_id} - ${p.emp_name}`}>
+                            {p.emp_id}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col gap-1 md:flex-1">
+                      <label className="text-xs text-gray-600">Employee Name</label>
+                      <input name="emp_name" value={form.emp_name} onChange={handleChange} className={baseFieldClass} />
+                    </div>
+
+                    <div className="flex flex-col gap-1 md:w-24">
+                      <label className="text-xs text-gray-600">Sandwich Leave</label>
+                      <select name="sandwich_leave" value={form.sandwich_leave} onChange={handleChange} className={baseFieldClass}>
+                        <option value="">-- select --</option>
+                        <option value="yes">Yes</option>
+                        <option value="no">No</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 md:flex-row">
+                    <div className="flex flex-col gap-1 md:w-28">
+                      <label className="text-xs text-gray-600">Start Date</label>
+                      <input name="start_date" value={form.start_date} onChange={handleChange} placeholder="dd-mm-yyyy" className={baseFieldClass} />
+                    </div>
+
+                    <div className="flex flex-col gap-1 md:w-28">
+                      <label className="text-xs text-gray-600">End Date</label>
+                      <input name="end_date" value={form.end_date} onChange={handleChange} placeholder="dd-mm-yyyy" className={baseFieldClass} />
+                    </div>
+
+                    <div className="flex flex-col gap-1 md:w-40">
+                      <label className="text-xs text-gray-600">Leave Type</label>
+                      <select name="leave_type" value={form.leave_type} onChange={handleChange} className={baseFieldClass}>
+                        <option value="">-- select --</option>
+                        {leaveTypes.map(lt => (
+                          <option key={lt.leave_code || lt.id} value={lt.leave_code || lt.id}>
+                            {lt.leave_name || lt.name} ({lt.leave_code || lt.id})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col gap-1 md:w-24">
+                      <label className="text-xs text-gray-600">Total Days</label>
+                      <input
+                        name="total_days"
+                        value={form.total_days}
+                        readOnly
+                        className={readOnlyFieldClass}
+                        maxLength={4}
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1 md:w-24">
+                      <label className="text-xs text-gray-600">Status</label>
+                      <select name="status" value={form.status} onChange={handleChange} className={`${baseFieldClass} border-gray-900 text-gray-900`}>
+                        <option value="">Draft</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Rejected">Rejected</option>
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col gap-1 md:flex-[1.2]">
+                      <label className="text-xs text-gray-600">Remark</label>
+                      <input name="remark" value={form.remark} onChange={handleChange} className={baseFieldClass} />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-2 border-t border-gray-100">
+                    <button type="submit" className="px-5 py-2 bg-indigo-600 text-white rounded shadow-sm hover:bg-indigo-500">{editingId ? 'Save' : 'Add'}</button>
+                    <button
+                      type="button"
+                      className="px-5 py-2 border border-gray-300 rounded hover:bg-gray-50"
+                      onClick={() => {
+                        setForm({
+                          report_no: '',
+                          emp_id: '',
+                          emp_name: '',
+                          leave_type: '',
+                          start_date: '',
+                          end_date: '',
+                          remark: '',
+                          total_days: '',
+                          status: '',
+                          sandwich_leave: ''
+                        });
+                        setEditingId(null);
+                      }}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
             {/* Last Leave Records panel */}
             <div className="border rounded-xl overflow-hidden mt-4">
               <div className="p-3 border-b bg-gray-50 flex justify-between">
@@ -278,16 +486,26 @@ const EmpLeavePage = () => {
                 <button onClick={() => axios.get('/api/leaveentry/').then(r => setLeaveEntries(normalize(r.data)))} className="text-sm px-3 py-1 bg-blue-600 text-white rounded">Refresh</button>
               </div>
 
-              <div className="p-3 bg-white border-b flex gap-3">
+              <div className="p-3 bg-white border-b flex flex-col gap-3 md:flex-row md:items-center">
                 <select value={yearFilter} onChange={e => setYearFilter(e.target.value)} className="border p-1 rounded text-sm">
                   <option value="">All Years</option>
-                  {[...new Set(leaveEntries.map(le => parseReport(le.leave_report_no).year).filter(Boolean))].sort((a,b)=>b-a).map(y => <option key={y} value={y}>{y}</option>)}
+                  {availableYears.map((y) => (
+                    <option key={y} value={y}>{formatFiscalLabel(y)}</option>
+                  ))}
                 </select>
 
                 <select value={monthFilter} onChange={e => setMonthFilter(e.target.value)} className="border p-1 rounded text-sm">
                   <option value="">All Months</option>
                   {Array.from({ length: 12 }).map((_, i) => <option key={i} value={i+1}>{i+1}</option>)}
                 </select>
+
+                <input
+                  type="text"
+                  className="border rounded p-2 text-sm flex-1"
+                  placeholder="Search by Report No or Employee ID"
+                  value={recordSearch}
+                  onChange={(e) => setRecordSearch(e.target.value)}
+                />
               </div>
 
               <div className="overflow-auto">
@@ -318,7 +536,13 @@ const EmpLeavePage = () => {
                             end_date: le.end_date,
                             remark: le.remark || le.reason || '',
                             total_days: le.total_days,
-                            status: le.status
+                            status: le.status,
+                            sandwich_leave:
+                              le.sandwich_leave === true
+                                ? 'yes'
+                                : le.sandwich_leave === false
+                                  ? 'no'
+                                  : ''
                           });
                           setEditingId(le.id);
                           setSelectedPanel('Entry Leave');
@@ -337,72 +561,6 @@ const EmpLeavePage = () => {
               </div>
 
               <div className="text-xs p-2 bg-gray-50 text-gray-500">Click a row to open it in the Add panel.</div>
-            </div>
-
-            {/* Entry form */}
-            <div className="p-4 bg-white border-t mt-4">
-              <form onSubmit={handleApply} className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <label className="text-xs">Report No</label>
-                  <input name="report_no" value={form.report_no} onChange={handleChange} className="w-full border rounded p-2 text-sm" />
-                </div>
-
-                <div>
-                  <label className="text-xs">Employee ID</label>
-                  <select name="emp_id" value={form.emp_id} onChange={(e) => { handleChange(e); const p = profiles.find(pp => String(pp.emp_id) === String(e.target.value)); if (p) setForm(f=>({...f, emp_name: p.emp_name})); }} className="w-full border rounded p-2 text-sm">
-                    <option value="">-- select --</option>
-                    {profiles.map(p => <option key={p.id} value={p.emp_id}>{p.emp_id} - {p.emp_name}</option>)}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs">Employee Name</label>
-                  <input name="emp_name" value={form.emp_name} onChange={handleChange} className="w-full border rounded p-2 text-sm" />
-                </div>
-
-                <div>
-                  <label className="text-xs">Start Date</label>
-                  <input name="start_date" value={form.start_date} onChange={handleChange} placeholder="dd-mm-yyyy" className="w-full border rounded p-2 text-sm" />
-                </div>
-
-                <div>
-                  <label className="text-xs">End Date</label>
-                  <input name="end_date" value={form.end_date} onChange={handleChange} placeholder="dd-mm-yyyy" className="w-full border rounded p-2 text-sm" />
-                </div>
-
-                <div>
-                  <label className="text-xs">Leave Type</label>
-                  <select name="leave_type" value={form.leave_type} onChange={handleChange} className="w-full border rounded p-2 text-sm">
-                    <option value="">-- select --</option>
-                    {leaveTypes.map(lt => <option key={lt.leave_code || lt.id} value={lt.leave_code || lt.id}>{lt.leave_name || lt.name} ({lt.leave_code || lt.id})</option>)}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs">Total Days</label>
-                  <input name="total_days" value={form.total_days} readOnly className="w-full border rounded p-2 text-sm bg-gray-50" />
-                </div>
-
-                <div>
-                  <label className="text-xs">Status</label>
-                  <select name="status" value={form.status} onChange={handleChange} className="w-full border rounded p-2 text-sm">
-                    <option value="">Draft</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Approved">Approved</option>
-                    <option value="Rejected">Rejected</option>
-                  </select>
-                </div>
-
-                <div className="md:col-span-3">
-                  <label className="text-xs">Remark</label>
-                  <input name="remark" value={form.remark} onChange={handleChange} className="w-full border rounded p-2 text-sm" />
-                </div>
-
-                <div className="md:col-span-3 flex gap-3">
-                  <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">{editingId ? 'Save' : 'Add'}</button>
-                  <button type="button" className="px-4 py-2 border rounded" onClick={() => { setForm({ report_no:'', emp_id:'', emp_name:'', leave_type:'', start_date:'', end_date:'', remark:'', total_days:'', status:'' }); setEditingId(null); }}>Clear</button>
-                </div>
-              </form>
             </div>
           </div>
         )}
