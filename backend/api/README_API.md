@@ -1,6 +1,6 @@
 # AdminDesk - Complete System Documentation
 **Django 5.2.3 + React + Vite + DRF + PostgreSQL**  
-*Last Updated: December 9, 2025*
+*Last Updated: December 13, 2025*
 
 ---
 
@@ -225,6 +225,20 @@ User selects "Internal" type in Inward Register form
 ---
 
 ## 🆕 Recent Updates
+
+### December 13, 2025
+
+#### 1. **Navigation Permissions Endpoint Restored**
+- Added `path("my-navigation/", MyNavigationView.as_view())` to `backend/api/urls.py` so `/api/my-navigation/` responds again for React modules (mail requests, transcript requests, enrollment) that fetch rights via `axios.get(`${API_BASE_URL}/api/my-navigation/)`.
+- No serializer or view changes were required; the route now exposes the existing `MyNavigationView` which aggregates module/menu rights (admin users still inherit full access).
+- Recommended test: `curl -H "Authorization: Bearer <token>" http://127.0.0.1:8000/api/my-navigation/` should return modules/menus JSON with rights flags.
+
+#### 2. **Leave Calendar Palette & UX Alignment**
+- Unified the `LEAVE_COLOR_MAP` defaults across backend (`backend/reports/utils/leave_calendar.py`), React (`src/report/LeaveCalendar.jsx`), and chip styles (`src/styles/index.css`).
+- Holidays now render with the requested medium light green (`#C6E0B4`) and sandwich-only days keep a transparent background while showing a highlighted border for easier spotting.
+- Table cells now derive weekend/holiday colors solely from the shared color map, so the color legend always matches rendered cells.
+
+---
 
 ### December 9, 2025
 

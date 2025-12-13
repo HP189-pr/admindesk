@@ -23,6 +23,14 @@ AdminDesk streamlines university administrative operations with:
 
 ---
 
+## 🆕 Latest Updates (December 13, 2025)
+
+- **Permissions API Restored**: `/api/my-navigation/` is registered again in Django routing so mail requests, transcript requests, and enrollment pages can fetch rights without 404s.
+- **Leave Calendar Visuals**: Backend, React defaults, and CSS chips now share the same palette. Holidays use a medium light green tone and sandwich-only days show a highlighted border instead of overriding the background.
+- **Changelog Refresh**: See [docs/CHANGELOG.md](docs/CHANGELOG.md) for the full summary of December 13 fixes.
+
+---
+
 ## 🚀 Quick Start
 
 ### Prerequisites

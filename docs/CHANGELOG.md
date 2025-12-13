@@ -85,6 +85,23 @@ closing_balance = opening_balance + current_allocation - current_usage
 
 ---
 
+## [December 13, 2025]
+
+### Added
+- Re-registered `MyNavigationView` under `/api/my-navigation/`, restoring the permissions feed required by Mail Request, Transcript Request, and Enrollment pages.
+
+### Changed
+- Synced the leave calendar palette across backend, React defaults, and CSS chips:
+  - Holidays now use the requested medium light green tone.
+  - Sandwich-only days keep a transparent background and render with a highlighted border for easier identification.
+  - Weekend/holiday handling in the grid now relies entirely on the provided color map, ensuring legend parity.
+
+### Fixed
+- Eliminated repeated 404 errors in `mail_request.jsx` and `transcript_request.jsx` caused by the missing `/api/my-navigation/` route.
+- Addressed sandwich day visibility regressions by decoupling their styling from the leave background color.
+
+---
+
 ## [December 9, 2025]
 
 ### Added
