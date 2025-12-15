@@ -172,6 +172,19 @@ export const getDegreeStatistics = async () => {
 };
 
 /**
+ * Get aggregated degree report data
+ */
+export const getDegreeReport = async (params = {}, config = {}) => {
+    try {
+        const response = await axios.get(`${API_URL}report/`, { params, ...config });
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching degree report:', error);
+        throw error;
+    }
+};
+
+/**
  * Search degrees by enrollment number
  */
 export const searchDegreesByEnrollment = async (enrollmentNo) => {
@@ -303,6 +316,7 @@ export default {
     deleteDegree,
     bulkUploadDegrees,
     getDegreeStatistics,
+    getDegreeReport,
     searchDegreesByEnrollment,
     getConvocations,
     getAllConvocations,

@@ -15,6 +15,7 @@ import {
     getBulkUploadProgress,
     downloadBulkUploadLog
 } from '../services/degreeService';
+import DegreeReport from '../report/DegreeReport';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -77,7 +78,10 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
             };
             
             if (searchTerm) params.search = searchTerm;
-            if (filterConvocation) params.convocation_no = filterConvocation;
+            if (filterConvocation) {
+                const convParam = Number(filterConvocation);
+                params.convocation_no = Number.isNaN(convParam) ? filterConvocation : convParam;
+            }
             if (filterExamYear) params.last_exam_year = filterExamYear;
             
             const data = await getDegrees(params);
@@ -417,7 +421,7 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
                             </div>
                         )}
                         {selectedMenu === '📄 Report' && (
-                            <div className="text-sm text-gray-600">Report view coming soon…</div>
+                            <DegreeReport />
                         )}
                     </div>
                 )}

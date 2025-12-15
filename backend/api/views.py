@@ -1976,24 +1976,20 @@ class BulkUploadView(APIView):
                         }
 
                         dg_sr_no = degree_data.get("dg_sr_no")
-                        obj = None
-                        if dg_sr_no:
-                            obj = StudentDegree.objects.filter(dg_sr_no=dg_sr_no).first()
-                        if obj is None:
-                            qs = StudentDegree.objects.filter(enrollment_no=enrollment_no)
-                            conv_no = degree_data.get("convocation_no")
-                            if conv_no:
-                                qs = qs.filter(convocation_no=conv_no)
-                            obj = qs.first()
+                        if not dg_sr_no:
+                            _log(idx, enrollment_no, "Missing dg_sr_no", False)
+                            _cache_progress(idx+1)
+                            continue
 
-                        if obj:
+                        existing = StudentDegree.objects.filter(dg_sr_no=dg_sr_no).first()
+                        if existing:
                             for field, value in degree_data.items():
-                                setattr(obj, field, value)
-                            obj.save()
-                            _log(idx, dg_sr_no or enrollment_no, "Updated", True)
+                                setattr(existing, field, value)
+                            existing.save()
+                            _log(idx, dg_sr_no, "Updated", True)
                         else:
                             StudentDegree.objects.create(**degree_data)
-                            _log(idx, dg_sr_no or enrollment_no, "Created", True)
+                            _log(idx, dg_sr_no, "Created", True)
                     except Exception as e:
                         _log(idx, row.get("dg_sr_no") or row.get("enrollment_no"), str(e), False)
                     _cache_progress(idx+1)

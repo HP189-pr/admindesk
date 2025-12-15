@@ -3,7 +3,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Subquery, OuterRef
 from django.core.paginator import Paginator
 import csv
 import io
@@ -104,7 +104,18 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
         # Filter by convocation
         convocation_no = self.request.query_params.get('convocation_no', None)
         if convocation_no:
-            queryset = queryset.filter(convocation_no=convocation_no)
+            conv_value = str(convocation_no).strip()
+            try:
+                conv_number = int(conv_value)
+            except (TypeError, ValueError):
+                queryset = queryset.none()
+            else:
+                filtered = queryset.filter(convocation_no=conv_number)
+                if not filtered.exists():
+                    conv_master = ConvocationMaster.objects.filter(convocation_no=conv_number).values('id').first()
+                    if conv_master:
+                        filtered = queryset.filter(convocation_no=conv_master['id'])
+                queryset = filtered
         
         # Filter by exam year
         exam_year = self.request.query_params.get('last_exam_year', None)
@@ -146,6 +157,28 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
         csv_file = request.FILES['file']
+        
+        def _normalize_dg_sr(value):
+            """Normalize dg_sr_no values read from CSV (trim, drop trailing .0)."""
+            if value is None:
+                return None
+            if isinstance(value, (int,)):
+                return str(value)
+            try:
+                s = str(value).strip()
+            except Exception:
+                return None
+            if not s:
+                return None
+            if s.endswith('.0') and s.replace('.', '', 1).isdigit():
+                return s.split('.')[0]
+            try:
+                f = float(s)
+                if f.is_integer():
+                    return str(int(f))
+            except Exception:
+                pass
+            return s
         
         try:
             # Read CSV file into memory to compute total rows for progress
@@ -191,9 +224,19 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
                             cache.set(progress_key, progress, timeout=60*60)
                             continue
 
+                        dg_sr_no_raw = row.get('dg_sr_no', '')
+                        dg_sr_no = _normalize_dg_sr(dg_sr_no_raw)
+                        if not dg_sr_no:
+                            msg = f"Row {row_num}: dg_sr_no is required"
+                            progress['errors'].append(msg)
+                            logf.write(msg + '\n')
+                            progress['processed'] = idx
+                            cache.set(progress_key, progress, timeout=60*60)
+                            continue
+
                         # Prepare data
                         degree_data = {
-                            'dg_sr_no': row.get('dg_sr_no', '').strip() or None,
+                            'dg_sr_no': dg_sr_no,
                             'enrollment_no': enrollment_no,
                             'student_name_dg': row.get('student_name_dg', '').strip() or None,
                             'dg_address': row.get('dg_address', '').strip() or None,
@@ -211,17 +254,12 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
                             'convocation_no': int(row.get('convocation_no', 0)) if row.get('convocation_no', '').strip() else None,
                         }
 
-                        dg_sr_no = degree_data.get('dg_sr_no')
-                        if dg_sr_no:
-                            existing = StudentDegree.objects.filter(dg_sr_no=dg_sr_no).first()
-                            if existing:
-                                for key, value in degree_data.items():
-                                    setattr(existing, key, value)
-                                existing.save()
-                                progress['updated'] += 1
-                            else:
-                                StudentDegree.objects.create(**degree_data)
-                                progress['created'] += 1
+                        existing = StudentDegree.objects.filter(dg_sr_no=dg_sr_no).first()
+                        if existing:
+                            for field, value in degree_data.items():
+                                setattr(existing, field, value)
+                            existing.save()
+                            progress['updated'] += 1
                         else:
                             StudentDegree.objects.create(**degree_data)
                             progress['created'] += 1
@@ -278,6 +316,86 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
             'by_convocation': list(by_convocation),
             'by_degree_name': list(by_degree),
             'by_exam_year': list(by_year)
+        })
+
+    @action(detail=False, methods=['get'], url_path='report')
+    def report_summary(self, request):
+        """Aggregated report data for convocation, institution, and course analysis"""
+        queryset = StudentDegree.objects.all()
+
+        convocation_no = request.query_params.get('convocation_no')
+        if convocation_no:
+            queryset = queryset.filter(convocation_no=convocation_no)
+
+        institute_name = request.query_params.get('institute_name_dg')
+        if institute_name:
+            queryset = queryset.filter(institute_name_dg__icontains=institute_name)
+
+        degree_name = request.query_params.get('degree_name')
+        if degree_name:
+            queryset = queryset.filter(degree_name__icontains=degree_name)
+
+        exam_year = request.query_params.get('last_exam_year')
+        if exam_year:
+            queryset = queryset.filter(last_exam_year=exam_year)
+
+        convocation_title_sq = ConvocationMaster.objects.filter(
+            convocation_no=OuterRef('convocation_no')
+        ).values('convocation_title')[:1]
+
+        convocation_month_sq = ConvocationMaster.objects.filter(
+            convocation_no=OuterRef('convocation_no')
+        ).values('month_year')[:1]
+
+        convocations = list(
+            queryset.exclude(convocation_no__isnull=True)
+            .values('convocation_no')
+            .annotate(
+                total=Count('id'),
+                convocation_title=Subquery(convocation_title_sq),
+                month_year=Subquery(convocation_month_sq)
+            )
+            .order_by('-convocation_no')
+        )
+
+        institutions = list(
+            queryset.exclude(institute_name_dg__isnull=True)
+            .exclude(institute_name_dg='')
+            .values('institute_name_dg')
+            .annotate(total=Count('id'))
+            .order_by('-total')[:50]
+        )
+
+        courses = list(
+            queryset.exclude(degree_name__isnull=True)
+            .exclude(degree_name='')
+            .values('degree_name')
+            .annotate(total=Count('id'))
+            .order_by('-total')[:50]
+        )
+
+        institution_course = list(
+            queryset.exclude(institute_name_dg__isnull=True)
+            .exclude(institute_name_dg='')
+            .exclude(degree_name__isnull=True)
+            .exclude(degree_name='')
+            .values('institute_name_dg', 'degree_name')
+            .annotate(total=Count('id'))
+            .order_by('-total')[:100]
+        )
+
+        return Response({
+            'filters': {
+                'convocation_no': convocation_no,
+                'institute_name_dg': institute_name,
+                'degree_name': degree_name,
+                'last_exam_year': exam_year,
+            },
+            'overall_total': queryset.count(),
+            'convocations': convocations,
+            'institutions': institutions,
+            'courses': courses,
+            'institution_course': institution_course,
         })
     
     @action(detail=False, methods=['get'])
