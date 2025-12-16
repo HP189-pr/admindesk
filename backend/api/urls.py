@@ -31,6 +31,11 @@ try:
         InventoryOutwardViewSet, StockSummaryView
     )
 
+    from .cash_register import (
+        FeeTypeViewSet,
+        CashRegisterViewSet,
+    )
+
     from .views_admin import UploadDocRecView
 
     # EMPLOYEE / LEAVE MANAGEMENT (OPTION A) - main views
@@ -74,6 +79,8 @@ try:
     router.register(r'inventory-items', InventoryItemViewSet, basename='inventory-items')
     router.register(r'inventory-inward', InventoryInwardViewSet, basename='inventory-inward')
     router.register(r'inventory-outward', InventoryOutwardViewSet, basename='inventory-outward')
+    router.register(r'fee-types', FeeTypeViewSet, basename='fee-types')
+    router.register(r'cash-register', CashRegisterViewSet, basename='cash-register')
     router.register(r'modules', ModuleViewSet, basename='modules')
     router.register(r'menus', MenuViewSet, basename='menus')
     router.register(r'userpermissions', UserPermissionViewSet, basename='userpermissions')
