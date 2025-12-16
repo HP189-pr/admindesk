@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import * as XLSX from 'xlsx';
 
 // Generic admin bulk upload UI. Props:
 // - service: service key string (e.g., 'MIGRATION')
 // - uploadApi: URL to POST to (defaults to '/api/bulk-upload/')
-export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = '/api/bulk-upload/', sheetName: preferredSheetProp = '', resetKey = null }) {
+export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = '/api/bulk-upload/', sheetName: preferredSheetProp = '', resetKey = null, onServiceChange = null }) {
   const [step, setStep] = useState(0);
   const [sheets, setSheets] = useState([]);
   const [sheet, setSheet] = useState('');
@@ -15,6 +15,10 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
   const [uploadPct, setUploadPct] = useState(0);
   const [result, setResult] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [serverProgress, setServerProgress] = useState(null);
+  const [serverUploadId, setServerUploadId] = useState(null);
+  const progressTimerRef = useRef(null);
+  const autoSwitchRef = useRef(null);
   const failRows = useMemo(() => {
     if (!result?.results) return [];
     return result.results.filter((r) => String(r.status || '').toUpperCase() === 'FAIL');
@@ -22,17 +26,97 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
   const headersForFetch = token ? { Authorization: `Bearer ${token}` } : {};
+  const buildUrl = (suffix) => `${uploadApi}${uploadApi.includes('?') ? '&' : '?'}${suffix}`;
+  const normalizedService = (service || '').toString().toUpperCase();
+
+  const detectServiceFromColumns = (cols = []) => {
+    try {
+      const norm = new Set(cols.map((c) => String(c || '').trim().toLowerCase()));
+      if (norm.has('dg_sr_no')) return 'DEGREE';
+      if (norm.has('prv_number')) return 'PROVISIONAL';
+      if (norm.has('mg_number')) return 'MIGRATION';
+      if (norm.has('doc_rec_id') && norm.has('apply_for')) return 'DOCREC';
+      if (norm.has('enrollment_no') && norm.has('institute_id')) return 'ENROLLMENT';
+      return null;
+    } catch (err) {
+      console.warn('Service detection failed', err);
+      return null;
+    }
+  };
+
+  const clearProgressTimer = () => {
+    try {
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+    } catch (err) {
+      console.warn('Failed clearing progress timer', err);
+    }
+    progressTimerRef.current = null;
+  };
+
+  const resetProgressState = () => {
+    clearProgressTimer();
+    setServerProgress(null);
+    setServerUploadId(null);
+  };
+
+  const finalizeFromServerData = (data) => {
+    setResult(data || {});
+    setStep(4);
+    setIsUploading(false);
+    setMessage(data?.error ? (data?.detail || 'Upload failed') : 'Upload complete');
+    try {
+      if (!data?.error) {
+        if (typeof BroadcastChannel !== 'undefined') {
+          const bc = new BroadcastChannel('admindesk-updates');
+          bc.postMessage({ type: 'bulk_upload_complete', service, result: data });
+          bc.close();
+        } else if (typeof window !== 'undefined') {
+          localStorage.setItem('admindesk_last_bulk', JSON.stringify({ ts: Date.now(), service }));
+        }
+      }
+    } catch (err) {
+      console.warn('Broadcast error', err);
+    }
+  };
+
+  const pollServerProgress = (uploadId) => {
+    if (!uploadId) return;
+    setServerUploadId(uploadId);
+    clearProgressTimer();
+
+    const poll = async () => {
+      try {
+        const res = await fetch(buildUrl(`upload_id=${uploadId}`), { method: 'GET', credentials: 'include', headers: headersForFetch });
+        if (!res.ok) {
+          console.warn('Progress fetch failed', res.status);
+          return;
+        }
+        const data = await res.json();
+        setServerProgress(data);
+        const statusVal = (data?.status || '').toLowerCase();
+        if (['done', 'error', 'finished'].includes(statusVal)) {
+          clearProgressTimer();
+          finalizeFromServerData(data);
+        }
+      } catch (err) {
+        console.warn('Progress poll error', err);
+      }
+    };
+
+    poll();
+    progressTimerRef.current = setInterval(poll, 2000);
+  };
 
   // Use credentials: 'include' to allow cross-origin cookies to be sent when
   // frontend runs on a different origin (Vite dev server) than the Django backend.
-  const postForm = (fd) => fetch(uploadApi + (uploadApi.includes('?') ? '&' : '?') + 'action=init', { method: 'POST', body: fd, credentials: 'include', headers: headersForFetch });
+  const postForm = (fd) => fetch(buildUrl('action=init'), { method: 'POST', body: fd, credentials: 'include', headers: headersForFetch });
 
-  const postGeneric = (fd) => fetch(uploadApi + (uploadApi.includes('?') ? '&' : '?') + 'action=preview', { method: 'POST', body: fd, credentials: 'include', headers: headersForFetch });
+  const postGeneric = (fd) => fetch(buildUrl('action=preview'), { method: 'POST', body: fd, credentials: 'include', headers: headersForFetch });
 
   const postWithProgress = (fd, onProgress) => {
     return new Promise((resolve, reject)=>{
       const xhr = new XMLHttpRequest();
-        const url = uploadApi + (uploadApi.includes('?') ? '&' : '?') + 'action=commit';
+        const url = buildUrl('action=commit&async=1');
         xhr.open('POST', url, true);
         xhr.withCredentials = true;
         // set Authorization header if token present
@@ -96,12 +180,20 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
     setColumns([]);
     setFile(null);
     setPreviewRows([]);
-    setMessage('');
     setUploadPct(0);
     setResult(null);
     setIsUploading(false);
+    resetProgressState();
+    if (autoSwitchRef.current && autoSwitchRef.current === normalizedService) {
+      setMessage(`Detected ${normalizedService} template. Please reload columns.`);
+      autoSwitchRef.current = null;
+    } else {
+      setMessage('');
+    }
     // if resetKey provided, also listen - resetting handled here
-  }, [service, preferredSheetProp, resetKey]);
+  }, [service, preferredSheetProp, resetKey, normalizedService]);
+
+  useEffect(() => () => { resetProgressState(); }, []);
 
   const loadColumns = async () => {
     if (!file) return setMessage('Choose a file');
@@ -112,8 +204,16 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
       const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
       // header row is first row if present, otherwise derive generic column names
       const headerRow = rows && rows.length ? rows[0] : [];
-      const cols = headerRow.map(h => String(h).trim()).filter((x,i,a)=>x!=='' || a.length===1);
-      setColumns(cols.length ? cols : headerRow.map((_,i)=>`col_${i+1}`));
+      let cols = headerRow.map(h => String(h).trim()).filter((x,i,a)=>x!=='' || a.length===1);
+      cols = cols.length ? cols : headerRow.map((_,i)=>`col_${i+1}`);
+      const detected = detectServiceFromColumns(cols);
+      if (detected && detected !== normalizedService && typeof onServiceChange === 'function') {
+        setMessage(`Detected ${detected} template. Switching service…`);
+        autoSwitchRef.current = detected;
+        onServiceChange(detected);
+        return;
+      }
+      setColumns(cols);
       setMessage('Columns loaded'); setStep(2);
     }catch(e){ setMessage('Load columns failed: '+String(e)); }
   };
@@ -207,13 +307,22 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
 
   const doCommit = async (selected, extra) => {
     if (!file) { setMessage('Choose a file'); return; }
+    resetProgressState();
     const fd = new FormData(); fd.append('service', service); fd.append('action', 'confirm'); if (sheet) fd.append('sheet_name', sheet); fd.append('file', file);
     selected.forEach(c=>fd.append('columns[]', c));
     if (extra && extra.auto_create_docrec) fd.append('auto_create_docrec','1');
+    let serverSideProcessing = false;
     try{
       setUploadPct(0); setMessage('Preparing upload…'); setIsUploading(true); setResult(null);
       const data = await postWithProgress(fd, (pct)=>{ setUploadPct(pct); setMessage(`Uploading… ${pct}%`); });
       const detail = data?.detail || (data?.raw ? 'Server returned non-JSON response (see console)' : 'Upload error');
+      if (data?.mode === 'started' && data?.upload_id) {
+        serverSideProcessing = true;
+        setMessage('File uploaded. Processing on server…');
+        setServerProgress({ status: 'running', processed: 0, total: data?.total || 0, ok: 0, fail: 0 });
+        pollServerProgress(data.upload_id);
+        return;
+      }
       setResult(data || {});
       setStep(4);
       if (data?.error) {
@@ -236,12 +345,45 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
         }
       }catch(e){/* ignore */}
     }catch(e){ setMessage('Commit failed: '+String(e)); }
-    finally{ setIsUploading(false); }
+    finally{ if (!serverSideProcessing) setIsUploading(false); }
   };
+
+  const totalRows = Number(serverProgress?.total) || 0;
+  const hasServerTotals = totalRows > 0;
+  const processedRowsRaw = Number(serverProgress?.processed);
+  const processedRows = hasServerTotals
+    ? Math.max(0, Math.min(totalRows, Number.isFinite(processedRowsRaw) ? processedRowsRaw : 0))
+    : Math.max(0, Number.isFinite(processedRowsRaw) ? processedRowsRaw : 0);
+  const percentFromTotals = hasServerTotals && totalRows > 0
+    ? (processedRows / totalRows) * 100
+    : null;
+  const percentFromServer = serverProgress && serverProgress.percent != null
+    ? Number(serverProgress.percent)
+    : null;
+  let normalizedPct = uploadPct;
+  if (percentFromTotals != null && Number.isFinite(percentFromTotals)) {
+    normalizedPct = percentFromTotals;
+  } else if (percentFromServer != null && Number.isFinite(percentFromServer)) {
+    normalizedPct = percentFromServer;
+  }
+  normalizedPct = Math.max(0, Math.min(100, Math.round(normalizedPct)));
+  const circleDash = 100;
+  const dashOffset = circleDash - normalizedPct;
+  const progressCaption = hasServerTotals
+    ? `${processedRows}/${totalRows}`
+    : `${normalizedPct}%`;
+  const createdVal = serverProgress?.created ?? serverProgress?.ok ?? 0;
+  const updatedVal = serverProgress?.updated ?? 0;
+  const skippedVal = serverProgress?.skipped ?? 0;
+  const failVal = serverProgress?.fail ?? (Array.isArray(serverProgress?.errors) ? serverProgress.errors.length : 0);
+  const showServerStats = !!serverProgress && (hasServerTotals || createdVal || updatedVal || skippedVal || failVal);
 
   return (
     <div className="p-3 border rounded bg-white">
-      <h3 className="font-semibold mb-2">{service} Bulk Upload</h3>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="font-semibold">{normalizedService || 'SERVICE'} Bulk Upload</h3>
+        <span className="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-600 border">Service: {normalizedService || 'UNKNOWN'}</span>
+      </div>
       <div className="mb-2 text-sm">{message}</div>
       <div className="mb-2">
         <input type="file" accept=".xlsx,.xls,.csv" onChange={e=>setFile(e.target.files?.[0]||null)} />
@@ -290,13 +432,31 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
               <div style={{width:56, height:56, position:'relative', display:'inline-block'}} aria-hidden>
                 <svg viewBox="0 0 36 36" style={{transform:'rotate(-90deg)'}}>
                   <path d="M18 2.0845a15.9155 15.9155 0 1 1 0 31.831" fill="none" stroke="#e6eef8" strokeWidth="3.8"/>
-                  <path d="M18 2.0845a15.9155 15.9155 0 1 1 0 31.831" fill="none" stroke="url(#g)" strokeWidth="3.8" strokeDasharray={`${uploadPct},100`} strokeLinecap="round" />
+                  <path
+                    d="M18 2.0845a15.9155 15.9155 0 1 1 0 31.831"
+                    fill="none"
+                    stroke="url(#g)"
+                    strokeWidth="3.8"
+                    strokeDasharray={`${circleDash} ${circleDash}`}
+                    strokeDashoffset={dashOffset}
+                    strokeLinecap="round"
+                  />
                   <defs>
                     <linearGradient id="g" x1="0%" x2="100%"><stop offset="0%" stopColor="#4aa3ff"/><stop offset="100%" stopColor="#2b8dd6"/></linearGradient>
                   </defs>
                 </svg>
-                <div style={{position:'absolute', left:0, right:0, top:0, bottom:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700}}>{uploadPct}%</div>
+                <div style={{position:'absolute', left:0, right:0, top:0, bottom:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700}}>{progressCaption}</div>
               </div>
+              {showServerStats ? (
+                <div className="text-xs text-slate-600 mt-1 text-center space-y-0.5">
+                  {hasServerTotals ? (
+                    <div>{processedRows}/{totalRows} rows processed</div>
+                  ) : null}
+                  <div>
+                    OK/Created {createdVal} · Updated {updatedVal} · Skipped {skippedVal} · Fail {failVal}
+                  </div>
+                </div>
+              ) : null}
             </div>
             <button
               disabled={isUploading || columns.filter(c=>document.querySelector(`input[value="${c}"]`)?.checked).length===0}

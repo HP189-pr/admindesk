@@ -17,7 +17,7 @@ const SERVICES = [
 export default function AuthUpload() {
   // We don't expose token in context; read it at call time from localStorage
   const { user } = useAuth();
-  const [service, setService] = useState('ENROLLMENT');
+  const [service, setService] = useState('DEGREE');
   const [file, setFile] = useState(null);
   const [sheetName, setSheetName] = useState('');
   const [preview, setPreview] = useState(null);
@@ -132,7 +132,12 @@ export default function AuthUpload() {
       </div>
 
       <div>
-        <AdminBulkUpload service={service} uploadApi="/api/bulk-upload/" sheetName={sheetName} />
+        <AdminBulkUpload
+          service={service}
+          uploadApi="/api/bulk-upload/"
+          sheetName={sheetName}
+          onServiceChange={setService}
+        />
       </div>
     </div>
   );

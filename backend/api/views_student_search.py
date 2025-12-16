@@ -11,6 +11,7 @@ from django.shortcuts import get_object_or_404
 
 from .domain_enrollment import Enrollment, StudentProfile
 from .domain_verification import Verification, InstVerificationStudent, InstVerificationMain, MigrationRecord, ProvisionalRecord
+from .domain_degree import StudentDegree, ConvocationMaster
 from .domain_courses import Institute, MainBranch, SubBranch
 from .domain_documents import DocRec
 from .search_utils import apply_fts_search
@@ -200,19 +201,89 @@ class StudentSearchViewSet(viewsets.ViewSet):
                 'remark': '',
             })
         
-        # Degree summary from verification records
+        # Degree records from student_degree table
+        degree_records = list(
+            StudentDegree.objects.filter(
+                enrollment_no__iexact=enroll_no
+            ).order_by('-id')
+        )
+
+        convocation_map = {}
+        convocation_numbers = set()
+        for dg in degree_records:
+            if dg.convocation_no in (None, ''):
+                continue
+            conv_str = str(dg.convocation_no).strip()
+            if not conv_str:
+                continue
+            try:
+                convocation_numbers.add(int(conv_str))
+            except ValueError:
+                continue
+
+        if convocation_numbers:
+            convocation_qs = ConvocationMaster.objects.filter(
+                convocation_no__in=convocation_numbers
+            )
+            for conv in convocation_qs:
+                label = ''
+                if conv.month_year:
+                    label = conv.month_year.strip()
+                elif conv.convocation_date:
+                    label = conv.convocation_date.strftime('%b-%Y')
+                if label:
+                    convocation_map[str(conv.convocation_no)] = label
+
         degree_list = []
-        for vr in verifications:
-            if vr.dg_count and vr.dg_count > 0:
-                degree_list.append({
-                    'id': vr.id,
-                    'doc_rec_id': vr.doc_rec.doc_rec_id if vr.doc_rec else '',
-                    'date': vr.doc_rec_date.strftime('%Y-%m-%d') if vr.doc_rec_date else '',
-                    'degree_count': vr.dg_count,
-                    'status': vr.status or '',
-                    'final_no': vr.final_no or '',
-                    'remark': vr.remark or '',
-                })
+        for dg in degree_records:
+            exam_month = (dg.last_exam_month or '').strip()
+            exam_year = dg.last_exam_year or ''
+            exam_period = ''
+            if exam_month and exam_year:
+                exam_period = f"{exam_month} {exam_year}"
+            elif exam_year:
+                exam_period = str(exam_year)
+            elif exam_month:
+                exam_period = exam_month
+
+            passing_year = ''
+            month_abbr = exam_month[:3].upper() if exam_month else ''
+            if month_abbr and exam_year:
+                passing_year = f"{month_abbr}-{exam_year}"
+            elif exam_year:
+                passing_year = str(exam_year)
+            elif month_abbr:
+                passing_year = month_abbr
+
+            conv_label = ''
+            conv_key = str(dg.convocation_no).strip() if dg.convocation_no not in (None, '') else ''
+            if conv_key and conv_key in convocation_map:
+                conv_label = convocation_map[conv_key]
+            elif conv_key:
+                conv_label = f"Conv-{conv_key}"
+
+            degree_list.append({
+                'id': dg.id,
+                'doc_rec_id': dg.dg_rec_no or '',
+                'date': exam_period,
+                'degree_count': 1,
+                'status': 'ISSUED' if dg.dg_sr_no else '',
+                'final_no': dg.dg_sr_no or '',
+                'remark': dg.specialisation or '',
+                'degree_name': dg.degree_name or '',
+                'exam_month': exam_month,
+                'exam_year': exam_year,
+                'convocation_no': dg.convocation_no,
+                'dg_sr_no': dg.dg_sr_no or '',
+                'enrollment_no': dg.enrollment_no or '',
+                'student_name_dg': dg.student_name_dg or '',
+                'dg_contact': dg.dg_contact or '',
+                'specialisation': dg.specialisation or '',
+                'last_exam_year': dg.last_exam_year or '',
+                'class_obtain': dg.class_obtain or '',
+                'passing_year': passing_year,
+                'convocation_period': conv_label,
+            })
         
         return {
             'verification': verification_list,

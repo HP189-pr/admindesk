@@ -1,11 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { getAllConvocations, getDegreeReport } from '../services/degreeService';
+import { getAllConvocations, getDegreeReport, getDegreeFilterOptions } from '../services/degreeService';
 
 const defaultFilters = {
     convocation_no: '',
     last_exam_year: '',
     institute_name_dg: '',
     degree_name: ''
+};
+
+const emptyFilterOptions = {
+    years: [],
+    institutes: [],
+    courses: []
 };
 
 const SummaryCard = ({ title, value = 0, sublabel }) => (
@@ -60,12 +66,44 @@ const TableSection = ({ title, columns, rows = [], emptyLabel }) => (
 const DegreeReport = () => {
     const [filters, setFilters] = useState(defaultFilters);
     const [convocations, setConvocations] = useState([]);
+    const [filterOptions, setFilterOptions] = useState(emptyFilterOptions);
+    const [filterOptionsLoading, setFilterOptionsLoading] = useState(false);
     const [report, setReport] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
     useEffect(() => {
-        getAllConvocations().then(setConvocations).catch(() => setConvocations([]));
+        let isMounted = true;
+
+        getAllConvocations()
+            .then((data) => {
+                if (isMounted) setConvocations(data);
+            })
+            .catch(() => {
+                if (isMounted) setConvocations([]);
+            });
+
+        const loadFilterOptions = async () => {
+            setFilterOptionsLoading(true);
+            try {
+                const data = await getDegreeFilterOptions();
+                if (!isMounted) return;
+                setFilterOptions({
+                    years: Array.isArray(data?.years) ? data.years : [],
+                    institutes: Array.isArray(data?.institutes) ? data.institutes : [],
+                    courses: Array.isArray(data?.courses) ? data.courses : [],
+                });
+            } catch (err) {
+                if (isMounted) setFilterOptions(emptyFilterOptions);
+            } finally {
+                if (isMounted) setFilterOptionsLoading(false);
+            }
+        };
+
+        loadFilterOptions();
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
     useEffect(() => {
@@ -126,36 +164,48 @@ const DegreeReport = () => {
                     </div>
                     <div className="flex-1 min-w-[140px]">
                         <label className="text-xs text-slate-500">Exam Year</label>
-                        <input
-                            type="number"
+                        <select
                             name="last_exam_year"
                             value={filters.last_exam_year}
                             onChange={handleInput}
-                            placeholder="e.g., 2024"
                             className="w-full mt-1 px-3 py-2 border rounded-lg"
-                        />
+                            disabled={filterOptionsLoading}
+                        >
+                            <option value="">All Years</option>
+                            {filterOptions.years.map((year) => (
+                                <option key={year} value={year}>{year}</option>
+                            ))}
+                        </select>
                     </div>
                     <div className="flex-1 min-w-[200px]">
                         <label className="text-xs text-slate-500">Institute</label>
-                        <input
-                            type="text"
+                        <select
                             name="institute_name_dg"
                             value={filters.institute_name_dg}
                             onChange={handleInput}
-                            placeholder="Filter by institute"
                             className="w-full mt-1 px-3 py-2 border rounded-lg"
-                        />
+                            disabled={filterOptionsLoading}
+                        >
+                            <option value="">All Institutes</option>
+                            {filterOptions.institutes.map((name) => (
+                                <option key={name} value={name}>{name}</option>
+                            ))}
+                        </select>
                     </div>
                     <div className="flex-1 min-w-[200px]">
                         <label className="text-xs text-slate-500">Course / Degree</label>
-                        <input
-                            type="text"
+                        <select
                             name="degree_name"
                             value={filters.degree_name}
                             onChange={handleInput}
-                            placeholder="Filter by course"
                             className="w-full mt-1 px-3 py-2 border rounded-lg"
-                        />
+                            disabled={filterOptionsLoading}
+                        >
+                            <option value="">All Courses</option>
+                            {filterOptions.courses.map((name) => (
+                                <option key={name} value={name}>{name}</option>
+                            ))}
+                        </select>
                     </div>
                     <div className="flex items-end">
                         <button
@@ -169,6 +219,7 @@ const DegreeReport = () => {
                 </div>
                 <p className="text-xs text-slate-400 mt-3">
                     Filters drive both the visual report and the downstream data-analysis exports.
+                    {filterOptionsLoading && ' Loading filter lists…'}
                 </p>
             </div>
 

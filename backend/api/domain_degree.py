@@ -65,6 +65,9 @@ class StudentDegree(models.Model):
             models.Index(fields=['convocation_no'], name='idx_stdg_conv_no'),
             models.Index(fields=['last_exam_year'], name='idx_stdg_exam_year'),
         ]
+        constraints = [
+            models.UniqueConstraint(fields=['dg_sr_no'], name='uniq_student_degree_dg_sr_no'),
+        ]
     
     def __str__(self):
         return f"{self.dg_sr_no or 'DG'} - {self.student_name_dg or self.enrollment_no}"

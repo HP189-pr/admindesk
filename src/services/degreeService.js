@@ -185,6 +185,19 @@ export const getDegreeReport = async (params = {}, config = {}) => {
 };
 
 /**
+ * Get distinct values for degree report filters
+ */
+export const getDegreeFilterOptions = async () => {
+    try {
+        const response = await axios.get(`${API_URL}filter-options/`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching degree filter options:', error);
+        throw error;
+    }
+};
+
+/**
  * Search degrees by enrollment number
  */
 export const searchDegreesByEnrollment = async (enrollmentNo) => {

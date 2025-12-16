@@ -32,6 +32,7 @@ class StudentDegreeSerializer(serializers.ModelSerializer):
     """Serializer for StudentDegree model"""
     convocation_title = serializers.SerializerMethodField()
     convocation_date = serializers.SerializerMethodField()
+    convocation_month_year = serializers.SerializerMethodField()
     
     class Meta:
         model = StudentDegree
@@ -41,9 +42,9 @@ class StudentDegreeSerializer(serializers.ModelSerializer):
             'specialisation', 'seat_last_exam', 'last_exam_month',
             'last_exam_year', 'class_obtain', 'course_language',
             'dg_rec_no', 'dg_gender', 'convocation_no',
-            'convocation_title', 'convocation_date'
+            'convocation_title', 'convocation_date', 'convocation_month_year'
         ]
-        read_only_fields = ['id', 'convocation_title', 'convocation_date']
+        read_only_fields = ['id', 'convocation_title', 'convocation_date', 'convocation_month_year']
     
     def get_convocation_title(self, obj):
         """Get convocation title from related convocation"""
@@ -54,6 +55,17 @@ class StudentDegreeSerializer(serializers.ModelSerializer):
         """Get convocation date from related convocation"""
         convocation = obj.get_convocation()
         return convocation.convocation_date.strftime('%Y-%m-%d') if convocation else None
+
+    def get_convocation_month_year(self, obj):
+        """Get convocation month-year label"""
+        convocation = obj.get_convocation()
+        if not convocation:
+            return None
+        if convocation.month_year:
+            return convocation.month_year
+        if convocation.convocation_date:
+            return convocation.convocation_date.strftime('%b-%Y')
+        return None
 
 
 class StudentDegreeDetailSerializer(serializers.ModelSerializer):

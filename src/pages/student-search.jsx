@@ -50,13 +50,147 @@ export default function StudentSearch() {
   };
 
   const InfoRow = ({ label, value }) => {
-    // Don't render if value is null, undefined, empty string, or just "-"
-    if (!value || value === "-" || value === "" || value === "null") return null;
-    
+    if (!value || value === '-' || value === '' || value === 'null') return null;
     return (
       <div className="flex justify-between py-2 border-b border-gray-100">
         <span className="font-medium text-gray-600">{label}:</span>
         <span className="text-gray-900">{value}</span>
+      </div>
+    );
+  };
+
+  const DetailStat = ({ label, value, large = false }) => (
+    <div className="space-y-1">
+      <p className="text-xs uppercase tracking-wide text-gray-500">{label}</p>
+      <p className={`${large ? 'text-2xl' : 'text-sm'} font-semibold text-gray-900`}>{value || '—'}</p>
+    </div>
+  );
+
+  const renderExamPeriod = (entry) => {
+    if (!entry) return '-';
+    const parts = [];
+    if (entry.exam_month) parts.push(entry.exam_month);
+    if (entry.exam_year) parts.push(entry.exam_year);
+    const label = parts.join(' ').trim();
+    if (label) return label;
+    if (entry.date && entry.date.includes('-')) {
+      return formatDate(entry.date);
+    }
+    return entry.date || '-';
+  };
+
+  const formatTableDate = (value) => {
+    if (!value) return '-';
+    const str = String(value);
+    return str.includes('-') ? formatDate(str) : str;
+  };
+
+  const formatISODate = (value) => {
+    if (!value) return '';
+    return formatDate(value);
+  };
+
+  const serviceTables = {
+    verification: {
+      title: 'Verification',
+      columns: [
+        { key: 'doc_rec_id', label: 'Doc Rec ID' },
+        { key: 'date', label: 'Date', render: (val) => formatTableDate(val) },
+        { key: 'status', label: 'Status', render: (val) => <StatusBadge status={val} /> },
+        { key: 'final_no', label: 'Final No', className: 'font-semibold' },
+        { key: 'tr_count', label: 'TR', align: 'center' },
+        { key: 'ms_count', label: 'MS', align: 'center' },
+        { key: 'dg_count', label: 'DG', align: 'center' },
+        { key: 'vr_done_date', label: 'Done Date', render: (val) => formatTableDate(val) },
+        { key: 'pay_rec_no', label: 'Pay Rec' },
+      ],
+    },
+    provisional: {
+      title: 'Provisional',
+      columns: [
+        { key: 'doc_rec_id', label: 'Doc Rec ID' },
+        { key: 'date', label: 'Date', render: (val) => formatTableDate(val) },
+        { key: 'status', label: 'Status', render: (val) => <StatusBadge status={val} /> },
+        { key: 'final_no', label: 'Provisional No', className: 'font-semibold' },
+        { key: 'remark', label: 'Remark' },
+      ],
+    },
+    migration: {
+      title: 'Migration',
+      columns: [
+        { key: 'doc_rec_id', label: 'Doc Rec ID' },
+        { key: 'date', label: 'Date', render: (val) => formatTableDate(val) },
+        { key: 'status', label: 'Status', render: (val) => <StatusBadge status={val} /> },
+        { key: 'final_no', label: 'Migration No', className: 'font-semibold' },
+        { key: 'remark', label: 'Remark' },
+      ],
+    },
+    institutional_verification: {
+      title: 'Institutional Verification',
+      columns: [
+        { key: 'doc_rec_id', label: 'Doc Rec ID' },
+        { key: 'date', label: 'Date', render: (val) => formatTableDate(val) },
+        { key: 'status', label: 'Status', render: (val) => <StatusBadge status={val} /> },
+        { key: 'remark', label: 'Remark' },
+      ],
+    },
+    degree: {
+      title: 'Degree',
+      columns: [
+        { key: 'dg_sr_no', label: 'DG SR No', className: 'font-semibold text-gray-900' },
+        { key: 'enrollment_no', label: 'Enrollment' },
+        { key: 'student_name_dg', label: 'Student Name' },
+        { key: 'degree_name', label: 'Degree' },
+        { key: 'specialisation', label: 'Specialisation' },
+        { key: 'passing_year', label: 'Passing Year', render: (val, row) => row.passing_year || renderExamPeriod(row) },
+        { key: 'class_obtain', label: 'Class' },
+        { key: 'convocation_no', label: 'Conv' },
+        { key: 'convocation_period', label: 'Convocation Month-Year', render: (val, row) => row.convocation_period || '-' },
+      ],
+    },
+  };
+
+  const generalInfo = studentData?.general || {};
+
+  const renderServiceSection = (serviceKey) => {
+    const rows = studentData?.services?.[serviceKey] || [];
+    const config = serviceTables[serviceKey];
+    if (!config || rows.length === 0) return null;
+
+    const renderCell = (column, row) => {
+      const rawValue = column.key === 'exam_period' ? null : row[column.key];
+      const value = column.render ? column.render(rawValue, row) : (rawValue ?? '-');
+      const alignClass = column.align === 'center' ? 'text-center' : '';
+      return (
+        <td key={column.key} className={`px-4 py-3 text-sm ${alignClass} ${column.className || ''}`}>
+          {value}
+        </td>
+      );
+    };
+
+    return (
+      <div className="mb-8" key={serviceKey}>
+        <h3 className="text-xl font-semibold text-gray-700 mb-4 pb-2 border-b-2 border-indigo-200">
+          {config.title} ({rows.length})
+        </h3>
+        <div className="overflow-x-auto">
+          <table className="min-w-full bg-white border border-gray-200">
+            <thead className="bg-indigo-50">
+              <tr>
+                {config.columns.map((col) => (
+                  <th key={col.key} className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">{col.label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {rows.map((row, idx) => (
+                <tr key={row.id || `${serviceKey}-${idx}`} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                  {config.columns.map((col) => renderCell(col, row))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   };
@@ -107,248 +241,84 @@ export default function StudentSearch() {
               )}
             </div>
           </form>
-
-          {/* Error Message */}
-          {error && (
-            <div className="mt-4 p-4 bg-red-50 border-l-4 border-red-500 text-red-700">
-              <p className="font-semibold">Error</p>
-              <p>{error}</p>
-            </div>
-          )}
         </div>
 
-        {/* Student Data Display */}
         {studentData && (
-          <div className="space-y-6">
-            {/* Section 1: General Information */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <div className="flex items-center space-x-3 mb-6">
-                <FaUser className="text-indigo-600 text-2xl" />
-                <h2 className="text-2xl font-bold text-gray-800">General Information</h2>
+          <>
+            {/* Section 1: Student & Institute Details */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <div className="flex items-center space-x-3 mb-4">
+                  <FaUser className="text-indigo-600 text-2xl" />
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-800">Student Information</h2>
+                    <p className="text-gray-500 text-sm">Enrollment & profile overview</p>
+                  </div>
+                </div>
+                <div className="space-y-6">
+                  <DetailStat label="Student Name" value={generalInfo.student_name} large />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <DetailStat label="Enrollment No" value={generalInfo.enrollment_no} />
+                    <DetailStat label="Temp Enrollment" value={generalInfo.temp_enrollment_no} />
+                    <DetailStat label="Batch" value={generalInfo.batch} />
+                    <DetailStat label="Category" value={generalInfo.category} />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <DetailStat label="Gender" value={generalInfo.gender} />
+                    <DetailStat label="Admission Date" value={formatISODate(generalInfo.admission_date)} />
+                    <DetailStat label="Enrollment Date" value={formatISODate(generalInfo.enrollment_date)} />
+                    <DetailStat label="ABC ID" value={generalInfo.abc_id} />
+                    <DetailStat label="Aadhaar No" value={generalInfo.aadhar_no} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-indigo-50">
+                    <FaPhone className="text-indigo-600 text-xl" />
+                    <div>
+                      <p className="text-xs uppercase text-gray-500">Contact</p>
+                      <p className="text-sm font-semibold text-gray-900">{generalInfo.contact_no || '—'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-indigo-50">
+                    <FaEnvelope className="text-indigo-600 text-xl" />
+                    <div>
+                      <p className="text-xs uppercase text-gray-500">Email</p>
+                      <p className="text-sm font-semibold text-gray-900">{generalInfo.email || '—'}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold text-indigo-600 mb-3">Student Details</h3>
-                  <InfoRow label="Name" value={studentData.general.student_name} />
-                  <InfoRow label="Enrollment No" value={studentData.general.enrollment_no} />
-                  <InfoRow label="Temp Enrollment" value={studentData.general.temp_enrollment_no} />
-                  <InfoRow label="Gender" value={studentData.general.gender} />
-                  <InfoRow label="Birth Date" value={formatDate(studentData.general.birth_date)} />
-                  <InfoRow label="Category" value={studentData.general.category} />
-                  <InfoRow label="Aadhar No" value={studentData.general.aadhar_no} />
-                  <InfoRow label="ABC ID" value={studentData.general.abc_id} />
-                </div>
 
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold text-indigo-600 mb-3 flex items-center gap-2">
-                    <FaUniversity /> Institute Details
-                  </h3>
-                  <InfoRow label="Institute Name" value={studentData.general.institute_name} />
-                  <InfoRow label="Institute Code" value={studentData.general.institute_code} />
-                  <InfoRow label="Address" value={studentData.general.institute_address} />
-                  <InfoRow label="City" value={studentData.general.institute_city} />
-                  <InfoRow label="Main Course" value={studentData.general.maincourse} />
-                  <InfoRow label="Sub Course" value={studentData.general.subcourse} />
-                  <InfoRow label="Batch" value={studentData.general.batch} />
-                  <InfoRow label="Admission Date" value={formatDate(studentData.general.admission_date)} />
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <div className="flex items-center space-x-3 mb-4">
+                  <FaUniversity className="text-indigo-600 text-2xl" />
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-800">Institute Details</h2>
+                    <p className="text-gray-500 text-sm">Affiliated institute snapshot</p>
+                  </div>
                 </div>
-
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold text-indigo-600 mb-3 flex items-center gap-2">
-                    <FaPhone /> Contact Information
-                  </h3>
-                  <InfoRow label="Contact No" value={studentData.general.contact_no} />
-                  <InfoRow label="Email" value={studentData.general.email} />
-                  <InfoRow label="Address 1" value={studentData.general.address1} />
-                  <InfoRow label="City 1" value={studentData.general.city1} />
-                  <InfoRow label="Address 2" value={studentData.general.address2} />
-                  <InfoRow label="City 2" value={studentData.general.city2} />
-                  <InfoRow label="Mother Name" value={studentData.general.mother_name} />
-                  <InfoRow label="Father Name" value={studentData.general.father_name} />
+                <div className="space-y-6">
+                  <DetailStat label="Institute Name" value={generalInfo.institute_name} large />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <DetailStat label="Institute Code" value={generalInfo.institute_code} />
+                    <DetailStat label="Institute City" value={generalInfo.institute_city} />
+                    <DetailStat label="Main Course" value={generalInfo.maincourse} />
+                    <DetailStat label="Specialisation" value={generalInfo.subcourse} />
+                  </div>
+                  <DetailStat label="Institute Address" value={generalInfo.institute_address} />
                 </div>
               </div>
             </div>
 
             {/* Section 2: Services */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
               <div className="flex items-center space-x-3 mb-6">
                 <FaFileAlt className="text-indigo-600 text-2xl" />
                 <h2 className="text-2xl font-bold text-gray-800">Services</h2>
               </div>
-
-              {/* Verification - Only show if data exists */}
-              {studentData.services.verification.length > 0 && (
-                <div className="mb-8">
-                  <h3 className="text-xl font-semibold text-gray-700 mb-4 pb-2 border-b-2 border-indigo-200">
-                    Verification ({studentData.services.verification.length})
-                  </h3>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white border border-gray-200">
-                      <thead className="bg-indigo-50">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Doc Rec ID</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Date</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Status</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Final No</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">TR</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">MS</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">DG</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Done Date</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Pay Rec</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {studentData.services.verification.map((vr, idx) => (
-                          <tr key={vr.id} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                            <td className="px-4 py-3 text-sm">{vr.doc_rec_id}</td>
-                            <td className="px-4 py-3 text-sm">{formatDate(vr.date)}</td>
-                            <td className="px-4 py-3"><StatusBadge status={vr.status} /></td>
-                            <td className="px-4 py-3 text-sm font-semibold">{vr.final_no || '-'}</td>
-                            <td className="px-4 py-3 text-sm text-center">{vr.tr_count}</td>
-                            <td className="px-4 py-3 text-sm text-center">{vr.ms_count}</td>
-                            <td className="px-4 py-3 text-sm text-center">{vr.dg_count}</td>
-                            <td className="px-4 py-3 text-sm">{formatDate(vr.vr_done_date)}</td>
-                            <td className="px-4 py-3 text-sm">{vr.pay_rec_no || '-'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* Provisional - Only show if data exists */}
-              {studentData.services.provisional.length > 0 && (
-                <div className="mb-8">
-                  <h3 className="text-xl font-semibold text-gray-700 mb-4 pb-2 border-b-2 border-indigo-200">
-                    Provisional ({studentData.services.provisional.length})
-                  </h3>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white border border-gray-200">
-                      <thead className="bg-indigo-50">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Doc Rec ID</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Date</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Status</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Final No</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Remark</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {studentData.services.provisional.map((pr, idx) => (
-                          <tr key={pr.id} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                            <td className="px-4 py-3 text-sm">{pr.doc_rec_id}</td>
-                            <td className="px-4 py-3 text-sm">{formatDate(pr.date)}</td>
-                            <td className="px-4 py-3"><StatusBadge status={pr.status} /></td>
-                            <td className="px-4 py-3 text-sm font-semibold">{pr.final_no || '-'}</td>
-                            <td className="px-4 py-3 text-sm">{pr.remark || '-'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* Migration - Only show if data exists */}
-              {studentData.services.migration.length > 0 && (
-                <div className="mb-8">
-                  <h3 className="text-xl font-semibold text-gray-700 mb-4 pb-2 border-b-2 border-indigo-200">
-                    Migration ({studentData.services.migration.length})
-                  </h3>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white border border-gray-200">
-                      <thead className="bg-indigo-50">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Doc Rec ID</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Date</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Status</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Final No</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Remark</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {studentData.services.migration.map((mg, idx) => (
-                          <tr key={mg.id} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                            <td className="px-4 py-3 text-sm">{mg.doc_rec_id}</td>
-                            <td className="px-4 py-3 text-sm">{formatDate(mg.date)}</td>
-                            <td className="px-4 py-3"><StatusBadge status={mg.status} /></td>
-                            <td className="px-4 py-3 text-sm font-semibold">{mg.final_no || '-'}</td>
-                            <td className="px-4 py-3 text-sm">{mg.remark || '-'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* Institutional Verification - Only show if data exists */}
-              {studentData.services.institutional_verification.length > 0 && (
-                <div className="mb-8">
-                  <h3 className="text-xl font-semibold text-gray-700 mb-4 pb-2 border-b-2 border-indigo-200">
-                    Institutional Verification ({studentData.services.institutional_verification.length})
-                  </h3>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white border border-gray-200">
-                      <thead className="bg-indigo-50">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Doc Rec ID</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Date</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Status</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Remark</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {studentData.services.institutional_verification.map((iv, idx) => (
-                          <tr key={iv.id} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                            <td className="px-4 py-3 text-sm">{iv.doc_rec_id}</td>
-                            <td className="px-4 py-3 text-sm">{formatDate(iv.date)}</td>
-                            <td className="px-4 py-3"><StatusBadge status={iv.status} /></td>
-                            <td className="px-4 py-3 text-sm">{iv.remark || '-'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* Degree - Only show if data exists */}
-              {studentData.services.degree.length > 0 && (
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-700 mb-4 pb-2 border-b-2 border-indigo-200">
-                    Degree ({studentData.services.degree.length})
-                  </h3>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white border border-gray-200">
-                      <thead className="bg-indigo-50">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Doc Rec ID</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Date</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Status</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Final No</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Degree Count</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Remark</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {studentData.services.degree.map((dg, idx) => (
-                          <tr key={dg.id} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                            <td className="px-4 py-3 text-sm">{dg.doc_rec_id}</td>
-                            <td className="px-4 py-3 text-sm">{formatDate(dg.date)}</td>
-                            <td className="px-4 py-3"><StatusBadge status={dg.status} /></td>
-                            <td className="px-4 py-3 text-sm font-semibold">{dg.final_no || '-'}</td>
-                            <td className="px-4 py-3 text-sm text-center font-bold text-indigo-600">{dg.degree_count}</td>
-                            <td className="px-4 py-3 text-sm">{dg.remark || '-'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
+              {['verification', 'provisional', 'migration', 'institutional_verification', 'degree'].map((key) => (
+                renderServiceSection(key)
+              ))}
             </div>
 
             {/* Section 3: Fees */}
@@ -357,24 +327,24 @@ export default function StudentSearch() {
                 <FaMoneyBillWave className="text-indigo-600 text-2xl" />
                 <h2 className="text-2xl font-bold text-gray-800">Fees Information</h2>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-lg border-l-4 border-green-500">
                   <p className="text-sm text-gray-600 mb-2">Total Fees</p>
                   <p className="text-3xl font-bold text-green-700">
-                    ₹{studentData.fees.total_fees.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    ₹{(studentData?.fees?.total_fees ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
-                
+
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border-l-4 border-blue-500">
                   <p className="text-sm text-gray-600 mb-2">Hostel Required</p>
                   <p className="text-3xl font-bold text-blue-700">
-                    {studentData.fees.hostel_required ? 'Yes' : 'No'}
+                    {studentData?.fees?.hostel_required ? 'Yes' : 'No'}
                   </p>
                 </div>
               </div>
             </div>
-          </div>
+          </>
         )}
 
         {/* No Results Message */}

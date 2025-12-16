@@ -10,13 +10,15 @@ const SERVICES = [
 ];
 
 export default function DataAnalysis() {
-  const { token } = useAuth();
+  const { token, refreshToken } = useAuth();
   const [service, setService] = useState('ENROLLMENT');
   const [report, setReport] = useState(null);
   const [duplicates, setDuplicates] = useState(null);
   const [currentGroupKey, setCurrentGroupKey] = useState(null);
   const [currentGroupType, setCurrentGroupType] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisError, setAnalysisError] = useState(null);
   const [analysisOptions, setAnalysisOptions] = useState({
     DUPLICATE_ENROLL_NAME_MONTH_YEAR: true,
     ENROLLMENT_SAME_NAME_DIFFER: true,
@@ -38,31 +40,101 @@ export default function DataAnalysis() {
   const [filterInstitute, setFilterInstitute] = useState('');
   const apiBase = '/api';
 
+  const resolveAccessToken = () => token || localStorage.getItem('access_token') || '';
+
+  const authFetch = async (url, options = {}, attempt = 0) => {
+    let accessToken = resolveAccessToken();
+    if (!accessToken && typeof refreshToken === 'function') {
+      const refreshed = await refreshToken();
+      if (refreshed) {
+        accessToken = resolveAccessToken();
+      }
+    }
+
+    if (!accessToken) {
+      throw new Error('Authentication required. Please login again.');
+    }
+
+    const headers = new Headers(options.headers || {});
+    headers.set('Authorization', `Bearer ${accessToken}`);
+
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
+
+    if (response.status === 401 && attempt < 1 && typeof refreshToken === 'function') {
+      const refreshed = await refreshToken();
+      if (refreshed) {
+        return authFetch(url, options, attempt + 1);
+      }
+    }
+
+    return response;
+  };
+
   const isDegree = service && String(service).toUpperCase() === 'DEGREE';
   const isEnrollment = service && String(service).toUpperCase() === 'ENROLLMENT';
 
+  const getSelectedAnalysisKeys = () => Object.entries(analysisOptions)
+    .filter(([, enabled]) => enabled)
+    .map(([key]) => key);
+  const selectedAnalysisKeys = isDegree ? getSelectedAnalysisKeys() : [];
+  const hideSummaryTable = isDegree &&
+    selectedAnalysisKeys.length === 1 &&
+    ['DUPLICATE_ENROLL_NAME_MONTH_YEAR', 'ENROLLMENT_SAME_NAME_DIFFER'].includes(selectedAnalysisKeys[0]);
+
+  const getConvocationText = (issue) => {
+    if (!issue) return '--';
+    if (typeof issue.convocations_display === 'string' && issue.convocations_display.trim()) {
+      return issue.convocations_display;
+    }
+    if (Array.isArray(issue.convocations) && issue.convocations.length > 0) {
+      return issue.convocations.join(', ');
+    }
+    if (Array.isArray(issue.records) && issue.records.length > 0) {
+      const convos = issue.records
+        .map((row) => row.convocation_no)
+        .filter((val) => val !== null && val !== undefined && val !== '' && val !== 0)
+        .map((val) => String(val));
+      const unique = Array.from(new Set(convos));
+      if (unique.length > 0) return unique.join(', ');
+    }
+    return '--';
+  };
+
   const runAnalysis = async () => {
     try {
+      setAnalysisError(null);
+      setAnalysisLoading(true);
+      setReport(null);
+      setDuplicates(null);
+      setCurrentGroupKey(null);
+      setCurrentGroupType(null);
+      setSelectedIds(new Set());
       let qs = `service=${service}`;
       if (isDegree) {
-        const selected = Object.entries(analysisOptions).filter(([_, v]) => v).map(([k]) => k).join(',');
-        if (selected) qs += `&analysis=${encodeURIComponent(selected)}`;
+        const selectedKeys = getSelectedAnalysisKeys();
+        if (selectedKeys.length > 0) qs += `&analysis=${encodeURIComponent(selectedKeys.join(','))}`;
         if (filterExamMonth) qs += `&exam_month=${encodeURIComponent(filterExamMonth)}`;
         if (filterExamYear) qs += `&exam_year=${encodeURIComponent(filterExamYear)}`;
         if (filterConvocation) qs += `&convocation_no=${encodeURIComponent(filterConvocation)}`;
         if (filterInstitute) qs += `&institute=${encodeURIComponent(filterInstitute)}`;
       }
 
-          const res = await fetch(`${apiBase}/data-analysis/?${qs}`, { headers: { Authorization: `Bearer ${token}` } });
-          if (!res.ok) throw new Error('Analysis request failed');
-          const data = await res.json();
-          setReport(data);
-          setSelectedIds(new Set());
-          setDuplicates(null);
-        } catch (e) {
-          alert('Failed: ' + e.message);
-        }
-      };
+      const res = await authFetch(`${apiBase}/data-analysis/?${qs}&_=${Date.now()}`);
+      if (!res.ok) throw new Error('Analysis request failed');
+      const data = await res.json();
+      setReport(data);
+      setSelectedIds(new Set());
+      setDuplicates(null);
+    } catch (e) {
+      setAnalysisError(e.message || 'Failed to run analysis');
+      alert('Failed: ' + e.message);
+    } finally {
+      setAnalysisLoading(false);
+    }
+  };
 
       const loadRecordsForKey = async (key, groupType = null) => {
         try {
@@ -71,7 +143,7 @@ export default function DataAnalysis() {
           if (isDegree) {
             setCurrentGroupKey(key);
             setCurrentGroupType(groupType);
-            const res = await fetch(`${apiBase}/data-analysis/?service=Degree&group_type=${encodeURIComponent(groupType || '')}&group_key=${encodeURIComponent(key)}`, { headers: { Authorization: `Bearer ${token}` } });
+            const res = await authFetch(`${apiBase}/data-analysis/?service=Degree&group_type=${encodeURIComponent(groupType || '')}&group_key=${encodeURIComponent(key)}`);
             if (!res.ok) throw new Error('Failed to fetch group records');
             const data = await res.json();
             setDuplicates(data.records || []);
@@ -84,7 +156,7 @@ export default function DataAnalysis() {
           else if (isEnrollment) endpoint = `${apiBase}/enrollments/?search=${encodeURIComponent(key)}`;
           else endpoint = `${apiBase}/provisional/?search=${encodeURIComponent(key)}`;
 
-          const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
+          const res = await authFetch(endpoint);
           if (!res.ok) throw new Error('Failed to fetch records');
           const data = await res.json();
           setDuplicates(data.results || data || []);
@@ -99,14 +171,18 @@ export default function DataAnalysis() {
         setSelectedIds(s);
       };
 
-      const deleteSelected = async () => {
-        if (selectedIds.size === 0) return alert('No rows selected');
-        if (!confirm(`Delete ${selectedIds.size} selected record(s)? This cannot be undone.`)) return;
+      const deleteSelected = async (idsOverride = null) => {
+        const idsArray = Array.isArray(idsOverride)
+          ? [...idsOverride]
+          : idsOverride instanceof Set
+            ? Array.from(idsOverride)
+            : Array.from(selectedIds);
+        if (idsArray.length === 0) return alert('No rows selected');
+        if (!confirm(`Delete ${idsArray.length} selected record(s)? This cannot be undone.`)) return;
         try {
           const endpointRoot = isDegree ? 'degrees' : isEnrollment ? 'enrollments' : 'provisional';
-          const idsToDelete = Array.from(selectedIds);
-          await Promise.all(idsToDelete.map(async (id) => {
-            const res = await fetch(`${apiBase}/${endpointRoot}/${id}/`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+          await Promise.all(idsArray.map(async (id) => {
+            const res = await authFetch(`${apiBase}/${endpointRoot}/${id}/`, { method: 'DELETE' });
             if (!res.ok) {
               const body = await res.text().catch(() => '');
               console.warn('Failed to delete', id, body);
@@ -121,17 +197,22 @@ export default function DataAnalysis() {
         } catch (e) { alert('Delete error: '+e.message); }
       };
 
+      const deleteSingleRecord = async (id) => {
+        if (!id) return;
+        await deleteSelected([id]);
+      };
+
       const deleteDuplicatesKeepOne = async (key) => {
         if (!confirm(`Delete duplicate records for '${key}', keeping one record?`)) return;
         try {
           const endpointRoot = isDegree ? 'degrees' : isEnrollment ? 'enrollments' : 'provisional';
           let rows = [];
           if (isDegree) {
-            const res = await fetch(`${apiBase}/data-analysis/?service=Degree&group_type=${encodeURIComponent(currentGroupType || '')}&group_key=${encodeURIComponent(key)}`, { headers: { Authorization: `Bearer ${token}` } });
+            const res = await authFetch(`${apiBase}/data-analysis/?service=Degree&group_type=${encodeURIComponent(currentGroupType || '')}&group_key=${encodeURIComponent(key)}`);
             const j = await res.json();
             rows = j.records || [];
           } else {
-            const res = await fetch(`${apiBase}/${endpointRoot}/?search=${encodeURIComponent(key)}`, { headers: { Authorization: `Bearer ${token}` } });
+            const res = await authFetch(`${apiBase}/${endpointRoot}/?search=${encodeURIComponent(key)}`);
             const data = await res.json();
             rows = data.results || data || [];
           }
@@ -144,7 +225,7 @@ export default function DataAnalysis() {
           // keep first, delete rest
           for (let i = 1; i < rows.length; i++) {
             const id = rows[i].id;
-            const dres = await fetch(`${apiBase}/${endpointRoot}/${id}/`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+            const dres = await authFetch(`${apiBase}/${endpointRoot}/${id}/`, { method: 'DELETE' });
             if (!dres.ok) console.warn('Failed to delete', id, await dres.text());
           }
           await runAnalysis();
@@ -167,10 +248,8 @@ export default function DataAnalysis() {
               last_exam_month: newMonth,
               last_exam_year: newYear ? parseInt(newYear) : null,
             };
-            const res = await fetch(`${apiBase}/degrees/${row.id}/`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
+            const res = await authFetch(`${apiBase}/degrees/${row.id}/`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             if (!res.ok) throw new Error('Failed to save');
-            const groupKeyToReload = currentGroupKey || row.enrollment_no || row.enrollment || '';
-            await loadRecordsForKey(groupKeyToReload, currentGroupType);
             await runAnalysis();
             alert('Saved');
           } else {
@@ -188,8 +267,18 @@ export default function DataAnalysis() {
                 <option key={s.key} value={s.key}>{s.label}</option>
               ))}
             </select>
-            <button onClick={runAnalysis} className="ml-2 px-3 py-1 bg-blue-600 text-white rounded">Run Analysis</button>
+            <button
+              onClick={runAnalysis}
+              className={`ml-2 px-3 py-1 rounded text-white ${analysisLoading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+              disabled={analysisLoading}
+            >
+              {analysisLoading ? 'Running...' : 'Run Analysis'}
+            </button>
+            {analysisLoading && <span className="text-xs text-gray-500">Working on it...</span>}
           </div>
+          {analysisError && (
+            <div className="text-xs text-red-600">{analysisError}</div>
+          )}
 
           {isDegree && (
             <div className="p-4 bg-white rounded text-sm space-y-3 text-black border border-gray-200 shadow-sm">
@@ -239,7 +328,7 @@ export default function DataAnalysis() {
             </div>
           )}
 
-          {report && (
+          {report && !hideSummaryTable && (
             <div className="space-y-3">
               <div>
                 <div className="text-sm">Total issues: {report.summary?.total_issues}</div>
@@ -250,21 +339,33 @@ export default function DataAnalysis() {
                   ))}
                 </ul>
               </div>
-              <div className="bg-gray-800 rounded p-3 overflow-auto" style={{ maxHeight: 320 }}>
-                <table className="min-w-full text-sm">
+              <div className="bg-white rounded p-3 overflow-auto border border-gray-200" style={{ maxHeight: 320 }}>
+                <table className="min-w-full text-sm text-black">
                   <thead>
                     <tr>
-                      <th className="text-left pr-4 pb-1 border-b border-gray-700">Type</th>
-                      <th className="text-left pr-4 pb-1 border-b border-gray-700">Key</th>
-                      <th className="text-left pr-4 pb-1 border-b border-gray-700">Message</th>
+                      <th className="text-left pr-4 pb-1 border-b border-gray-200">Key</th>
+                      {isDegree && <th className="text-left pr-4 pb-1 border-b border-gray-200">Convocation(s)</th>}
+                      <th className="text-left pr-4 pb-1 border-b border-gray-200">Details</th>
+                      <th className="text-left pr-4 pb-1 border-b border-gray-200">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     { (report.issues || report.duplicates || []).map((it, i) => (
-                      <tr key={i} className="border-b border-gray-700">
-                        <td className="pr-4 py-1">{it.type}</td>
+                      <tr key={i} className="border-b border-gray-200">
                         <td className="pr-4 py-1">{it.key}</td>
-                        <td className="pr-4 py-1">{it.message}</td>
+                        {isDegree && (
+                          <td className="pr-4 py-1 text-sm text-gray-700">{getConvocationText(it)}</td>
+                        )}
+                        <td className="pr-4 py-1">
+                          <div className="space-y-1">
+                            {it.type && (
+                              <span className="inline-flex px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[11px] font-semibold tracking-wide uppercase">
+                                {it.type.replace(/_/g, ' ')}
+                              </span>
+                            )}
+                            <div>{it.message}</div>
+                          </div>
+                        </td>
                         <td className="pl-4 py-1">
                           {(service === 'PROVISIONAL' && (it.type?.includes('DUPLICATE') || it.type === 'DUPLICATE_PRV_NUMBER')) && (
                             <div className="flex gap-2">
@@ -274,7 +375,6 @@ export default function DataAnalysis() {
                           )}
                           {service === 'DEGREE' && (
                             <div className="flex gap-2">
-                              <button onClick={() => loadRecordsForKey(it.key, it.type)} className="px-2 py-0.5 bg-green-600 text-white rounded text-xs">View</button>
                               <button onClick={() => deleteDuplicatesKeepOne(it.key)} className="px-2 py-0.5 bg-red-600 text-white rounded text-xs">Delete dup (keep 1)</button>
                             </div>
                           )}
@@ -287,6 +387,58 @@ export default function DataAnalysis() {
             </div>
           )}
 
+          {isDegree && report?.issues?.some((issue) => Array.isArray(issue.records) && issue.records.length > 0) && (
+            <div className="space-y-4">
+              <div className="text-base font-semibold">Duplicate Records</div>
+              {(report.issues || []).filter((issue) => Array.isArray(issue.records) && issue.records.length > 0).map((issue) => (
+                <div key={`${issue.type}-${issue.key}`} className="bg-white border border-gray-200 rounded shadow-sm">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 px-4 py-3 border-b border-gray-100">
+                    <div>
+                      <div className="font-semibold text-sm text-gray-800">{issue.key}</div>
+                      <div className="text-xs text-gray-500">{issue.message}</div>
+                    </div>
+                    <div className="text-xs text-gray-600">Convocation(s): {getConvocationText(issue)}</div>
+                  </div>
+                  <div className="overflow-auto">
+                    <table className="min-w-full text-xs text-black">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="p-2 text-left border-b border-gray-200">#</th>
+                          <th className="p-2 text-left border-b border-gray-200">Enrollment No</th>
+                          <th className="p-2 text-left border-b border-gray-200">Name</th>
+                          <th className="p-2 text-left border-b border-gray-200">Convocation</th>
+                          <th className="p-2 text-left border-b border-gray-200">Exam Month</th>
+                          <th className="p-2 text-left border-b border-gray-200">Exam Year</th>
+                          <th className="p-2 text-left border-b border-gray-200">Degree</th>
+                          <th className="p-2 text-left border-b border-gray-200">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {issue.records.map((row, idx) => (
+                          <tr key={row.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                            <td className="p-2 border-b border-gray-100">{idx + 1}</td>
+                            <td className="p-2 border-b border-gray-100 font-semibold">{row.enrollment_no}</td>
+                            <td className="p-2 border-b border-gray-100">{row.student_name_dg || row.student_name || '--'}</td>
+                            <td className="p-2 border-b border-gray-100">{row.convocation_no || '--'}</td>
+                            <td className="p-2 border-b border-gray-100">{row.last_exam_month || '--'}</td>
+                            <td className="p-2 border-b border-gray-100">{row.last_exam_year || '--'}</td>
+                            <td className="p-2 border-b border-gray-100">{row.degree_name || '--'}</td>
+                            <td className="p-2 border-b border-gray-100">
+                              <div className="flex gap-2">
+                                <button onClick={() => editRecord(row)} className="px-2 py-0.5 bg-yellow-600 text-white rounded">Edit</button>
+                                <button onClick={() => deleteSingleRecord(row.id)} className="px-2 py-0.5 bg-red-600 text-white rounded">Delete</button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {duplicates && (
             <div className="mt-4 space-y-2">
               <div className="flex items-center justify-between">
@@ -295,37 +447,37 @@ export default function DataAnalysis() {
                   <button onClick={deleteSelected} className="px-3 py-1 bg-red-600 text-white rounded">Delete selected</button>
                 </div>
               </div>
-              <div className="bg-gray-800 rounded p-3 overflow-auto" style={{ maxHeight: 320 }}>
-                <table className="min-w-full text-sm">
+              <div className="bg-white rounded p-3 overflow-auto border border-gray-200" style={{ maxHeight: 320 }}>
+                <table className="min-w-full text-sm text-black">
                   <thead>
                     <tr>
-                      <th className="text-left pr-4 pb-1 border-b border-gray-700">#</th>
-                      <th className="text-left pr-4 pb-1 border-b border-gray-700">Sel</th>
-                      <th className="text-left pr-4 pb-1 border-b border-gray-700">ID</th>
+                      <th className="text-left pr-4 pb-1 border-b border-gray-200">#</th>
+                      <th className="text-left pr-4 pb-1 border-b border-gray-200">Sel</th>
+                      <th className="text-left pr-4 pb-1 border-b border-gray-200">ID</th>
                       {service === 'DEGREE' ? (
                         <>
-                          <th className="text-left pr-4 pb-1 border-b border-gray-700">DG SR No</th>
-                          <th className="text-left pr-4 pb-1 border-b border-gray-700">Enrollment</th>
-                          <th className="text-left pr-4 pb-1 border-b border-gray-700">Student Name</th>
-                          <th className="text-left pr-4 pb-1 border-b border-gray-700">Exam Month</th>
-                          <th className="text-left pr-4 pb-1 border-b border-gray-700">Exam Year</th>
-                          <th className="text-left pr-4 pb-1 border-b border-gray-700">Convocation</th>
-                          <th className="text-left pr-4 pb-1 border-b border-gray-700">Degree</th>
+                          <th className="text-left pr-4 pb-1 border-b border-gray-200">DG SR No</th>
+                          <th className="text-left pr-4 pb-1 border-b border-gray-200">Enrollment</th>
+                          <th className="text-left pr-4 pb-1 border-b border-gray-200">Student Name</th>
+                          <th className="text-left pr-4 pb-1 border-b border-gray-200">Exam Month</th>
+                          <th className="text-left pr-4 pb-1 border-b border-gray-200">Exam Year</th>
+                          <th className="text-left pr-4 pb-1 border-b border-gray-200">Convocation</th>
+                          <th className="text-left pr-4 pb-1 border-b border-gray-200">Degree</th>
                         </>
                       ) : (
                         <>
-                          <th className="text-left pr-4 pb-1 border-b border-gray-700">prv_number</th>
-                          <th className="text-left pr-4 pb-1 border-b border-gray-700">doc_rec_id</th>
-                          <th className="text-left pr-4 pb-1 border-b border-gray-700">enrollment_no</th>
-                          <th className="text-left pr-4 pb-1 border-b border-gray-700">student_name</th>
-                          <th className="text-left pr-4 pb-1 border-b border-gray-700">prv_date</th>
+                          <th className="text-left pr-4 pb-1 border-b border-gray-200">prv_number</th>
+                          <th className="text-left pr-4 pb-1 border-b border-gray-200">doc_rec_id</th>
+                          <th className="text-left pr-4 pb-1 border-b border-gray-200">enrollment_no</th>
+                          <th className="text-left pr-4 pb-1 border-b border-gray-200">student_name</th>
+                          <th className="text-left pr-4 pb-1 border-b border-gray-200">prv_date</th>
                         </>
                       )}
                     </tr>
                   </thead>
                   <tbody>
                     {duplicates.map((r, i) => (
-                      <tr key={r.id} className="border-b border-gray-700">
+                      <tr key={r.id} className="border-b border-gray-200">
                         <td className="pr-4 py-1">{i+1}</td>
                         <td className="pr-4 py-1"><input type="checkbox" checked={selectedIds.has(r.id)} onChange={() => toggleSelect(r.id)} /></td>
                         <td className="pr-4 py-1">{r.id}</td>

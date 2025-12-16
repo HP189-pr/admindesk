@@ -204,6 +204,9 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
 
   const period = periods.find((p) => String(p.id) === String(selectedPeriod));
   const periodLabel = period ? `${fmtDate(period.start_date)} to ${fmtDate(period.end_date)}` : '';
+  const periodName = period?.period_name ? String(period.period_name) : '';
+  const periodYearMatch = periodName.match(/\d{4}/);
+  const periodYearDisplay = periodYearMatch ? periodYearMatch[0] : '';
 
   const filteredRows = useMemo(() => {
     if (!period || !period.start_date || !period.end_date) return rows;
@@ -274,11 +277,7 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
         ) : (
           <>
             <div className="flex flex-col items-center mb-4">
-              <div className="text-4xl font-bold text-blue-600">
-                {period && period.period_name && period.period_name.match(/\d{4}/)
-                  ? (period.period_name.match(/\d{4}/) || [''])[0]
-                  : ''}
-              </div>
+              <div className="text-4xl font-bold text-blue-600">{periodYearDisplay}</div>
               <div className="text-sm text-red-600 mt-1">{periodLabel}</div>
             </div>
 

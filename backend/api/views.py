@@ -1983,10 +1983,16 @@ class BulkUploadView(APIView):
 
                         existing = StudentDegree.objects.filter(dg_sr_no=dg_sr_no).first()
                         if existing:
+                            changed = False
                             for field, value in degree_data.items():
-                                setattr(existing, field, value)
-                            existing.save()
-                            _log(idx, dg_sr_no, "Updated", True)
+                                if getattr(existing, field) != value:
+                                    setattr(existing, field, value)
+                                    changed = True
+                            if changed:
+                                existing.save()
+                                _log(idx, dg_sr_no, "Updated", True)
+                            else:
+                                _log(idx, dg_sr_no, "Skipped (no changes)", True)
                         else:
                             StudentDegree.objects.create(**degree_data)
                             _log(idx, dg_sr_no, "Created", True)
@@ -2926,41 +2932,101 @@ class DataAnalysisView(APIView):
         qs = StudentDegree.objects.all()
         student_name_field = 'student_name_dg'
 
+        def build_group_queryset(base_qs, issue_type, key):
+            gt = (issue_type or '').strip().upper()
+            q = base_qs
+            if gt == 'DUPLICATE_ENROLL_NAME_MONTH_YEAR':
+                parts = key.split('|') if key else []
+                enrollment = parts[0] if len(parts) > 0 else ''
+                name = parts[1] if len(parts) > 1 else ''
+                month = parts[2] if len(parts) > 2 else ''
+                year = parts[3] if len(parts) > 3 else ''
+                if enrollment:
+                    q = q.filter(enrollment_no__iexact=enrollment)
+                if name:
+                    q = q.filter(**{f"{student_name_field}__iexact": name})
+                if month:
+                    q = q.filter(last_exam_month__iexact=month)
+                if year:
+                    try:
+                        q = q.filter(last_exam_year=int(year))
+                    except Exception:
+                        pass
+                return q
+            if gt == 'ENROLLMENT_SAME_NAME_DIFFER':
+                if not key:
+                    return q.none()
+                return q.filter(enrollment_no__iexact=key)
+            if gt in ('ENROLLMENT_NAME_DIFF_YEARS', 'ENROLLMENT_NAME_DIFF_MONTHS'):
+                parts = key.split('|') if key else []
+                enrollment = parts[0] if len(parts) > 0 else ''
+                name = parts[1] if len(parts) > 1 else ''
+                if not enrollment:
+                    return q.none()
+                q = q.filter(enrollment_no__iexact=enrollment)
+                if name:
+                    q = q.filter(**{f"{student_name_field}__iexact": name})
+                return q
+            if gt == 'NAME_SAME_DIFFERENT_ENROLLMENT':
+                if not key:
+                    return q.none()
+                return q.filter(**{f"{student_name_field}__iexact": key})
+            if gt == 'DUPLICATE_DG_SR_NO':
+                if not key:
+                    return q.none()
+                return q.filter(dg_sr_no__iexact=key)
+            if key:
+                return q.filter(enrollment_no__iexact=key)
+            return q.none()
+
+        def serialize_group(issue_type, key, message, extra=None):
+            group_qs = build_group_queryset(qs, issue_type, key)
+            rows = list(
+                group_qs
+                .values(
+                    'id',
+                    'dg_sr_no',
+                    'enrollment_no',
+                    student_name_field,
+                    'last_exam_month',
+                    'last_exam_year',
+                    'convocation_no',
+                    'degree_name',
+                    'institute_name_dg',
+                )
+                .order_by('id')
+            )
+
+            convos = []
+            seen = set()
+            for row in rows:
+                value = row.get('convocation_no')
+                if value in (None, '', 0):
+                    continue
+                sval = str(value).strip()
+                if not sval or sval in seen:
+                    continue
+                seen.add(sval)
+                convos.append(sval)
+
+            payload = {
+                'type': issue_type,
+                'key': key,
+                'message': message,
+                'records': rows,
+                'convocations': convos,
+                'convocations_display': ', '.join(convos),
+            }
+            if extra:
+                payload.update(extra)
+            return payload
+
         group_key = request.query_params.get('group_key')
         group_type = request.query_params.get('group_type')
         if group_key:
             try:
-                gt = (group_type or '').strip().upper()
-                if gt == 'DUPLICATE_ENROLL_NAME_MONTH_YEAR':
-                    parts = group_key.split('|')
-                    enrollment = parts[0] if len(parts) > 0 else ''
-                    name = parts[1] if len(parts) > 1 else ''
-                    month = parts[2] if len(parts) > 2 else ''
-                    year = parts[3] if len(parts) > 3 else ''
-                    q = StudentDegree.objects.filter(enrollment_no__iexact=enrollment)
-                    if name:
-                        q = q.filter(student_name_dg__iexact=name)
-                    if month:
-                        q = q.filter(last_exam_month__iexact=month)
-                    if year:
-                        try:
-                            q = q.filter(last_exam_year=int(year))
-                        except Exception:
-                            pass
-                elif gt == 'ENROLLMENT_SAME_NAME_DIFFER':
-                    q = StudentDegree.objects.filter(enrollment_no__iexact=group_key)
-                elif gt in ('ENROLLMENT_NAME_DIFF_YEARS', 'ENROLLMENT_NAME_DIFF_MONTHS'):
-                    parts = group_key.split('|')
-                    enrollment = parts[0] if len(parts) > 0 else ''
-                    name = parts[1] if len(parts) > 1 else ''
-                    q = StudentDegree.objects.filter(enrollment_no__iexact=enrollment)
-                    if name:
-                        q = q.filter(student_name_dg__iexact=name)
-                elif gt == 'NAME_SAME_DIFFERENT_ENROLLMENT':
-                    q = StudentDegree.objects.filter(student_name_dg__iexact=group_key)
-                else:
-                    q = StudentDegree.objects.filter(enrollment_no__iexact=group_key)
-
+                base_qs = StudentDegree.objects.all()
+                q = build_group_queryset(base_qs, group_type, group_key)
                 rows = list(q.values('id', 'dg_sr_no', 'enrollment_no', 'student_name_dg', 'last_exam_month', 'last_exam_year', 'convocation_no', 'degree_name', 'institute_name_dg'))
                 return Response({'group_type': group_type, 'group_key': group_key, 'records': rows})
             except Exception as exc:
@@ -2996,12 +3062,14 @@ class DataAnalysisView(APIView):
         )
         for g in dup_exact:
             key = f"{g['enrollment_no']}|{g.get(student_name_field) or ''}|{g.get('last_exam_month') or ''}|{g.get('last_exam_year') or ''}"
-            issues.append({
-                'type': 'DUPLICATE_ENROLL_NAME_MONTH_YEAR',
-                'key': key,
-                'count': g['cnt'],
-                'message': f"{g['cnt']} records with same enrollment+name+exam month+exam year"
-            })
+            issues.append(
+                serialize_group(
+                    'DUPLICATE_ENROLL_NAME_MONTH_YEAR',
+                    key,
+                    f"{g['cnt']} records with same enrollment+name+exam month+exam year",
+                    {'count': g['cnt']},
+                )
+            )
 
         dup_enr_names = (
             qs.values('enrollment_no')
@@ -3009,12 +3077,14 @@ class DataAnalysisView(APIView):
             .filter(distinct_names__gt=1)
         )
         for g in dup_enr_names:
-            issues.append({
-                'type': 'ENROLLMENT_SAME_NAME_DIFFER',
-                'key': g['enrollment_no'],
-                'count': g['total'],
-                'message': f"Enrollment {g['enrollment_no']} has {g['distinct_names']} different student names across {g['total']} records"
-            })
+            issues.append(
+                serialize_group(
+                    'ENROLLMENT_SAME_NAME_DIFFER',
+                    g['enrollment_no'],
+                    f"Enrollment {g['enrollment_no']} has {g['distinct_names']} different student names across {g['total']} records",
+                    {'count': g['total']},
+                )
+            )
 
         dup_enr_name_year = (
             qs.values('enrollment_no', student_name_field)
@@ -3023,12 +3093,14 @@ class DataAnalysisView(APIView):
         )
         for g in dup_enr_name_year:
             key = f"{g['enrollment_no']}|{g.get(student_name_field) or ''}"
-            issues.append({
-                'type': 'ENROLLMENT_NAME_DIFF_YEARS',
-                'key': key,
-                'count': g['total'],
-                'message': f"Enrollment+Name {key} appears in multiple exam years ({g['distinct_years']})"
-            })
+            issues.append(
+                serialize_group(
+                    'ENROLLMENT_NAME_DIFF_YEARS',
+                    key,
+                    f"Enrollment+Name {key} appears in multiple exam years ({g['distinct_years']})",
+                    {'count': g['total']},
+                )
+            )
 
         dup_enr_name_months = (
             qs.values('enrollment_no', student_name_field)
@@ -3037,12 +3109,14 @@ class DataAnalysisView(APIView):
         )
         for g in dup_enr_name_months:
             key = f"{g['enrollment_no']}|{g.get(student_name_field) or ''}"
-            issues.append({
-                'type': 'ENROLLMENT_NAME_DIFF_MONTHS',
-                'key': key,
-                'count': g['total'],
-                'message': f"Enrollment+Name {key} appears in multiple exam months ({g['distinct_months']})"
-            })
+            issues.append(
+                serialize_group(
+                    'ENROLLMENT_NAME_DIFF_MONTHS',
+                    key,
+                    f"Enrollment+Name {key} appears in multiple exam months ({g['distinct_months']})",
+                    {'count': g['total']},
+                )
+            )
 
         dup_name_diff_enr = (
             qs.values(student_name_field)
@@ -3051,12 +3125,14 @@ class DataAnalysisView(APIView):
         )
         for g in dup_name_diff_enr:
             key = g.get(student_name_field) or ''
-            issues.append({
-                'type': 'NAME_SAME_DIFFERENT_ENROLLMENT',
-                'key': key,
-                'count': g['total'],
-                'message': f"Student name '{key}' appears across {g['distinct_enrollments']} different enrollment numbers"
-            })
+            issues.append(
+                serialize_group(
+                    'NAME_SAME_DIFFERENT_ENROLLMENT',
+                    key,
+                    f"Student name '{key}' appears across {g['distinct_enrollments']} different enrollment numbers",
+                    {'count': g['total']},
+                )
+            )
 
         by_convocation = list(qs.values('convocation_no').annotate(count=models.Count('id')).order_by('-convocation_no'))
         by_degree = list(qs.values('degree_name').annotate(count=models.Count('id')).order_by('-count'))
@@ -3091,12 +3167,14 @@ class DataAnalysisView(APIView):
         )
         for g in dup_dg_sr:
             key = g.get('dg_sr_no') or ''
-            issues.append({
-                'type': 'DUPLICATE_DG_SR_NO',
-                'key': key,
-                'count': g['cnt'],
-                'message': f"{g['cnt']} records share the same degree serial number '{key}'"
-            })
+            issues.append(
+                serialize_group(
+                    'DUPLICATE_DG_SR_NO',
+                    key,
+                    f"{g['cnt']} records share the same degree serial number '{key}'",
+                    {'count': g['cnt']},
+                )
+            )
 
         analysis_param = request.query_params.get('analysis')
         requested = None

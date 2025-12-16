@@ -2,7 +2,7 @@
  * Degree.jsx
  * Main degree management component with CRUD operations
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import PageTopbar from '../components/PageTopbar';
 import { FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import {
@@ -11,6 +11,10 @@ import {
     updateDegree,
     deleteDegree,
     getAllConvocations,
+    getConvocations,
+    createConvocation,
+    updateConvocation,
+    deleteConvocation,
     bulkUploadDegrees,
     getBulkUploadProgress,
     downloadBulkUploadLog
@@ -36,6 +40,24 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterConvocation, setFilterConvocation] = useState('');
     const [filterExamYear, setFilterExamYear] = useState('');
+    const [filterConvocationMonth, setFilterConvocationMonth] = useState('');
+    const [appliedSearchTerm, setAppliedSearchTerm] = useState('');
+    const [appliedConvocation, setAppliedConvocation] = useState('');
+    const [appliedExamYear, setAppliedExamYear] = useState('');
+    const [appliedConvocationMonth, setAppliedConvocationMonth] = useState('');
+    const [hasSearched, setHasSearched] = useState(false);
+    const [convocationList, setConvocationList] = useState([]);
+    const [convocationLoading, setConvocationLoading] = useState(false);
+    const [convocationSearchTerm, setConvocationSearchTerm] = useState('');
+    const [convocationYear, setConvocationYear] = useState('');
+    const [showConvocationModal, setShowConvocationModal] = useState(false);
+    const [editingConvocation, setEditingConvocation] = useState(null);
+    const [convocationFormData, setConvocationFormData] = useState({
+        convocation_no: '',
+        convocation_title: '',
+        convocation_date: '',
+        month_year: ''
+    });
     
     // Modal state
     const [showModal, setShowModal] = useState(false);
@@ -65,9 +87,19 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
     });
 
     useEffect(() => {
-        fetchDegrees();
         fetchConvocations();
-    }, [currentPage, pageSize, searchTerm, filterConvocation, filterExamYear]);
+    }, []);
+
+    useEffect(() => {
+        if (!hasSearched) return;
+        fetchDegrees();
+    }, [currentPage, pageSize, appliedSearchTerm, appliedConvocation, appliedExamYear, hasSearched]);
+
+    useEffect(() => {
+        if (selectedMenu === '🎖 Convocation') {
+            fetchConvocationList();
+        }
+    }, [selectedMenu]);
 
     const fetchDegrees = async () => {
         setLoading(true);
@@ -77,12 +109,17 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
                 page_size: pageSize,
             };
             
-            if (searchTerm) params.search = searchTerm;
-            if (filterConvocation) {
-                const convParam = Number(filterConvocation);
-                params.convocation_no = Number.isNaN(convParam) ? filterConvocation : convParam;
+            if (appliedSearchTerm) params.search = appliedSearchTerm;
+            if (appliedConvocation) {
+                const convParam = Number(appliedConvocation);
+                params.convocation_no = Number.isNaN(convParam) ? appliedConvocation : convParam;
+            } else if (appliedConvocationMonth) {
+                const match = convocations.find((conv) => conv.month_year === appliedConvocationMonth);
+                if (match) {
+                    params.convocation_no = match.convocation_no;
+                }
             }
-            if (filterExamYear) params.last_exam_year = filterExamYear;
+            if (appliedExamYear) params.last_exam_year = appliedExamYear;
             
             const data = await getDegrees(params);
             setDegrees(data.results || []);
@@ -102,6 +139,136 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
         } catch (err) {
             console.error('Failed to load convocations:', err);
         }
+    };
+
+    const fetchConvocationList = async (overrides = {}) => {
+        setConvocationLoading(true);
+        try {
+            const params = {};
+            const searchValue = overrides.search ?? convocationSearchTerm;
+            const yearValue = overrides.year ?? convocationYear;
+            if (searchValue) params.search = searchValue.trim();
+            if (yearValue) params.year = yearValue;
+            const data = await getConvocations(params);
+            const list = Array.isArray(data)
+                ? data
+                : Array.isArray(data?.results)
+                    ? data.results
+                    : [];
+            setConvocationList(list);
+        } catch (err) {
+            toast.error('Failed to load convocations: ' + (err.response?.data?.detail || err.message));
+        } finally {
+            setConvocationLoading(false);
+        }
+    };
+
+    const handleConvocationFiltersApply = () => {
+        fetchConvocationList();
+    };
+
+    const handleConvocationFiltersReset = () => {
+        setConvocationSearchTerm('');
+        setConvocationYear('');
+        fetchConvocationList({ search: '', year: '' });
+    };
+
+    const resetConvocationForm = () => {
+        setConvocationFormData({
+            convocation_no: '',
+            convocation_title: '',
+            convocation_date: '',
+            month_year: ''
+        });
+        setEditingConvocation(null);
+    };
+
+    const handleConvocationFormChange = (e) => {
+        const { name, value } = e.target;
+        setConvocationFormData((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const openConvocationModal = () => {
+        resetConvocationForm();
+        setShowConvocationModal(true);
+    };
+
+    const handleConvocationSubmit = async (e) => {
+        e.preventDefault();
+        const convInput = convocationFormData.convocation_no;
+        const convNumber = convInput === '' || convInput === null || typeof convInput === 'undefined'
+            ? null
+            : Number(convInput);
+        const payload = {
+            convocation_no: Number.isNaN(convNumber) ? null : convNumber,
+            convocation_title: convocationFormData.convocation_title?.trim() || null,
+            convocation_date: convocationFormData.convocation_date || null,
+            month_year: convocationFormData.month_year?.trim() || null,
+        };
+
+        try {
+            if (editingConvocation) {
+                await updateConvocation(editingConvocation.id, payload);
+                toast.success('Convocation updated successfully');
+            } else {
+                await createConvocation(payload);
+                toast.success('Convocation created successfully');
+            }
+            setShowConvocationModal(false);
+            resetConvocationForm();
+            fetchConvocationList();
+            fetchConvocations();
+        } catch (err) {
+            toast.error('Failed to save convocation: ' + (err.response?.data?.detail || err.message));
+        }
+    };
+
+    const handleEditConvocation = (convocation) => {
+        setEditingConvocation(convocation);
+        setConvocationFormData({
+            convocation_no: convocation.convocation_no ?? '',
+            convocation_title: convocation.convocation_title ?? '',
+            convocation_date: convocation.convocation_date ?? '',
+            month_year: convocation.month_year ?? ''
+        });
+        setShowConvocationModal(true);
+    };
+
+    const handleDeleteConvocation = async (convocation) => {
+        if (!window.confirm('Are you sure you want to delete this convocation?')) return;
+        try {
+            await deleteConvocation(convocation.id);
+            toast.success('Convocation deleted successfully');
+            fetchConvocationList();
+            fetchConvocations();
+        } catch (err) {
+            toast.error('Failed to delete convocation: ' + (err.response?.data?.detail || err.message));
+        }
+    };
+
+    const handleSearchDegrees = () => {
+        setAppliedSearchTerm(searchTerm.trim());
+        setAppliedConvocation(filterConvocation);
+        setAppliedExamYear(filterExamYear);
+        setAppliedConvocationMonth(filterConvocationMonth);
+        setCurrentPage(1);
+        setHasSearched(true);
+    };
+
+    const handleClearSearch = () => {
+        setSearchTerm('');
+        setFilterConvocation('');
+        setFilterExamYear('');
+        setFilterConvocationMonth('');
+        setAppliedSearchTerm('');
+        setAppliedConvocation('');
+        setAppliedExamYear('');
+        setAppliedConvocationMonth('');
+        setDegrees([]);
+        setTotalPages(1);
+        setTotalCount(0);
+        setCurrentPage(1);
+        setHasSearched(false);
     };
 
     const handleSubmit = async (e) => {
@@ -309,7 +476,38 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
         toast.success('Template downloaded!');
     };
 
-    const actions = ["➕", "🔍", "📄 Report"];
+    const actions = ["➕", "🔍", "📄 Report", "🎖 Convocation"];
+
+    const panelTitle = selectedMenu === '➕'
+        ? 'ADD Panel'
+        : selectedMenu === '🔍'
+            ? 'SEARCH Panel'
+            : selectedMenu === '📄 Report'
+                ? 'REPORT Panel'
+                : 'CONVOCATION Panel';
+
+    const convocationMonthYearOptions = useMemo(() => {
+        const seen = new Set();
+        const options = [];
+        convocations.forEach((conv) => {
+            if (conv.month_year && !seen.has(conv.month_year)) {
+                seen.add(conv.month_year);
+                options.push({ label: conv.month_year, value: conv.month_year, convocation_no: conv.convocation_no });
+            }
+        });
+        return options;
+    }, [convocations]);
+
+    const handleConvocationMonthFilterChange = (value) => {
+        setFilterConvocationMonth(value);
+        if (!value) {
+            return;
+        }
+        const match = convocationMonthYearOptions.find((opt) => opt.value === value);
+        if (match) {
+            setFilterConvocation(String(match.convocation_no));
+        }
+    };
 
     const handleTopbarSelect = (action) => {
         setSelectedMenu(action);
@@ -341,9 +539,7 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
             {/* Collapsible Action Panel */}
             <div className="border rounded-2xl overflow-hidden shadow-sm">
                 <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
-                    <div className="font-semibold">
-                        {selectedMenu === '➕' ? 'ADD Panel' : selectedMenu === '🔍' ? 'SEARCH Panel' : 'REPORT Panel'}
-                    </div>
+                    <div className="font-semibold">{panelTitle}</div>
                     <button
                         onClick={() => setPanelOpen((o) => !o)}
                         className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
@@ -373,111 +569,195 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
                             </div>
                         )}
                         {selectedMenu === '🔍' && (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Search</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Search enrollment, name, etc..."
-                                        value={searchTerm}
-                                        onChange={(e) => {
-                                            setSearchTerm(e.target.value);
-                                            setCurrentPage(1);
-                                        }}
-                                        className="w-full px-3 py-2 border rounded-lg"
-                                    />
+                            <div className="space-y-4 bg-white/80 border border-indigo-100 rounded-2xl p-4 shadow-sm">
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-600 mb-1">Search</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Search enrollment, name, etc..."
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-200"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-600 mb-1">Convocation</label>
+                                        <select
+                                            value={filterConvocation}
+                                            onChange={(e) => setFilterConvocation(e.target.value)}
+                                            className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-200 bg-white"
+                                        >
+                                            <option value="">All Convocations</option>
+                                            {convocations.map(conv => (
+                                                <option key={conv.id} value={conv.convocation_no}>
+                                                    Convocation {conv.convocation_no} - {conv.convocation_title}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-600 mb-1">Convocation Month-Year</label>
+                                        <select
+                                            value={filterConvocationMonth}
+                                            onChange={(e) => handleConvocationMonthFilterChange(e.target.value)}
+                                            className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-200 bg-white"
+                                        >
+                                            <option value="">Select Month-Year</option>
+                                            {convocationMonthYearOptions.map((option) => (
+                                                <option key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-600 mb-1">Exam Year</label>
+                                        <input
+                                            type="number"
+                                            placeholder="e.g., 2024"
+                                            value={filterExamYear}
+                                            onChange={(e) => setFilterExamYear(e.target.value)}
+                                            className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-200"
+                                        />
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Convocation</label>
-                                    <select
-                                        value={filterConvocation}
-                                        onChange={(e) => {
-                                            setFilterConvocation(e.target.value);
-                                            setCurrentPage(1);
-                                        }}
-                                        className="w-full px-3 py-2 border rounded-lg"
+                                <div className="flex flex-wrap justify-end gap-3">
+                                    {hasSearched && (
+                                        <button
+                                            type="button"
+                                            onClick={handleClearSearch}
+                                            className="px-4 py-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-indigo-50"
+                                        >
+                                            Clear
+                                        </button>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={handleSearchDegrees}
+                                        className="px-5 py-2.5 bg-[#5d4bff] text-white rounded-xl shadow hover:bg-[#4b3de6] disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                        disabled={loading}
                                     >
-                                        <option value="">All Convocations</option>
-                                        {convocations.map(conv => (
-                                            <option key={conv.id} value={conv.convocation_no}>
-                                                Convocation {conv.convocation_no} - {conv.convocation_title}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Exam Year</label>
-                                    <input
-                                        type="number"
-                                        placeholder="e.g., 2024"
-                                        value={filterExamYear}
-                                        onChange={(e) => {
-                                            setFilterExamYear(e.target.value);
-                                            setCurrentPage(1);
-                                        }}
-                                        className="w-full px-3 py-2 border rounded-lg"
-                                    />
+                                        Search Degrees
+                                    </button>
                                 </div>
                             </div>
                         )}
                         {selectedMenu === '📄 Report' && (
                             <DegreeReport />
                         )}
+                        {selectedMenu === '🎖 Convocation' && (
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Search</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Search number or title"
+                                            value={convocationSearchTerm}
+                                            onChange={(e) => setConvocationSearchTerm(e.target.value)}
+                                            className="w-full px-3 py-2 border rounded-lg"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Year</label>
+                                        <input
+                                            type="number"
+                                            placeholder="e.g., 2024"
+                                            value={convocationYear}
+                                            onChange={(e) => setConvocationYear(e.target.value)}
+                                            className="w-full px-3 py-2 border rounded-lg"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div className="flex gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={handleConvocationFiltersReset}
+                                            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                                        >
+                                            Reset Filters
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleConvocationFiltersApply}
+                                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                            disabled={convocationLoading}
+                                        >
+                                            Search Convocations
+                                        </button>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={openConvocationModal}
+                                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                                    >
+                                        ➕ Add Convocation
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
 
             {/* Records Section */}
-            {selectedMenu !== '➕' && (
+            {selectedMenu !== '➕' && selectedMenu !== '🎖 Convocation' && (
                 <div className="bg-white shadow rounded-2xl p-4 h-[calc(100vh-220px)] overflow-auto">
                     <h2 className="text-lg font-semibold mb-4">Degree Search</h2>
-                    <div className="overflow-x-auto">
-                        <table className="w-full border-collapse border">
+                    <div className="overflow-x-auto rounded-2xl border border-indigo-100 shadow-sm">
+                        <table className="w-full text-sm">
                             <thead>
-                                <tr className="bg-gray-100">
-                                    <th className="border p-2 text-left">DG SR No</th>
-                                    <th className="border p-2 text-left">Enrollment</th>
-                                    <th className="border p-2 text-left">Student Name</th>
-                                    <th className="border p-2 text-left">Contact</th>
-                                    <th className="border p-2 text-left">Degree</th>
-                                    <th className="border p-2 text-left">Specialisation</th>
-                                    <th className="border p-2 text-left">Year</th>
-                                    <th className="border p-2 text-left">Class</th>
-                                    <th className="border p-2 text-left">Conv</th>
-                                    <th className="border p-2 text-left">Actions</th>
+                                <tr className="bg-indigo-50 text-indigo-900 uppercase text-[11px] tracking-wide">
+                                    <th className="p-3 text-left font-semibold">DG SR No</th>
+                                    <th className="p-3 text-left font-semibold">Enrollment</th>
+                                    <th className="p-3 text-left font-semibold">Student Name</th>
+                                    <th className="p-3 text-left font-semibold">Contact</th>
+                                    <th className="p-3 text-left font-semibold">Degree</th>
+                                    <th className="p-3 text-left font-semibold">Specialisation</th>
+                                    <th className="p-3 text-left font-semibold">Year</th>
+                                    <th className="p-3 text-left font-semibold">Class</th>
+                                    <th className="p-3 text-left font-semibold">Conv</th>
+                                    <th className="p-3 text-left font-semibold">Convocation Month-Year</th>
+                                    <th className="p-3 text-left font-semibold">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan="10" className="border p-2 text-center">Loading...</td>
+                                    <td colSpan="11" className="p-4 text-center text-gray-500 bg-white">Loading...</td>
                                 </tr>
                             ) : degrees.length === 0 ? (
                                 <tr>
-                                    <td colSpan="10" className="border p-2 text-center">No degree records found.</td>
+                                    <td colSpan="11" className="p-4 text-center text-gray-500 bg-white">No degree records found.</td>
                                 </tr>
                             ) : (
-                                degrees.map((degree) => (
-                                    <tr key={degree.id}>
-                                        <td className="border p-2">{degree.dg_sr_no || '-'}</td>
-                                        <td className="border p-2">{degree.enrollment_no}</td>
-                                        <td className="border p-2">{degree.student_name_dg || '-'}</td>
-                                        <td className="border p-2">{degree.dg_contact || '-'}</td>
-                                        <td className="border p-2">{degree.degree_name || '-'}</td>
-                                        <td className="border p-2">{degree.specialisation || '-'}</td>
-                                        <td className="border p-2">{degree.last_exam_year || '-'}</td>
-                                        <td className="border p-2">{degree.class_obtain || '-'}</td>
-                                        <td className="border p-2">{degree.convocation_no || '-'}</td>
-                                        <td className="border p-2">
+                                degrees.map((degree, idx) => (
+                                    <tr
+                                        key={degree.id}
+                                        className={`border-b border-indigo-100 text-gray-700 ${idx % 2 === 0 ? 'bg-white' : 'bg-indigo-50/40'} hover:bg-indigo-50 transition-colors`}
+                                    >
+                                        <td className="p-3 font-semibold text-gray-900">{degree.dg_sr_no || '-'}</td>
+                                        <td className="p-3">{degree.enrollment_no}</td>
+                                        <td className="p-3">{degree.student_name_dg || '-'}</td>
+                                        <td className="p-3">{degree.dg_contact || '-'}</td>
+                                        <td className="p-3">{degree.degree_name || '-'}</td>
+                                        <td className="p-3">{degree.specialisation || '-'}</td>
+                                        <td className="p-3">{degree.last_exam_year || '-'}</td>
+                                        <td className="p-3">{degree.class_obtain || '-'}</td>
+                                        <td className="p-3">{degree.convocation_no || '-'}</td>
+                                        <td className="p-3">{degree.convocation_month_year || '-'}</td>
+                                        <td className="p-3">
                                             <button
                                                 onClick={() => handleEdit(degree)}
-                                                className="px-2 py-1 bg-yellow-500 text-white rounded mr-2"
+                                                className="px-3 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700 hover:bg-amber-200 mr-2"
                                             >
                                                 Edit
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(degree.id)}
-                                                className="px-2 py-1 bg-red-600 text-white rounded"
+                                                className="px-3 py-1 text-xs font-semibold rounded-full bg-rose-100 text-rose-700 hover:bg-rose-200"
                                             >
                                                 Delete
                                             </button>
@@ -489,6 +769,71 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
                     </table>
                 </div>
             </div>
+            )}
+
+            {selectedMenu === '🎖 Convocation' && (
+                <div className="bg-white shadow rounded-2xl p-4">
+                    <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+                        <h2 className="text-lg font-semibold">Convocation Master</h2>
+                        <button
+                            type="button"
+                            onClick={openConvocationModal}
+                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                        >
+                            ➕ Add Convocation
+                        </button>
+                    </div>
+                    <div className="overflow-x-auto rounded-2xl border border-indigo-100 shadow-sm">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="bg-indigo-50 text-indigo-900 uppercase text-[11px] tracking-wide">
+                                    <th className="p-3 text-left font-semibold">#</th>
+                                    <th className="p-3 text-left font-semibold">Title</th>
+                                    <th className="p-3 text-left font-semibold">Date</th>
+                                    <th className="p-3 text-left font-semibold">Month-Year</th>
+                                    <th className="p-3 text-left font-semibold">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {convocationLoading ? (
+                                    <tr>
+                                        <td colSpan="5" className="p-4 text-center text-gray-500 bg-white">Loading convocations...</td>
+                                    </tr>
+                                ) : convocationList.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="5" className="p-4 text-center text-gray-500 bg-white">No convocations found.</td>
+                                    </tr>
+                                ) : (
+                                    convocationList.map((conv, idx) => (
+                                        <tr
+                                            key={conv.id}
+                                            className={`border-b border-indigo-100 text-gray-700 ${idx % 2 === 0 ? 'bg-white' : 'bg-indigo-50/40'} hover:bg-indigo-50 transition-colors`}
+                                        >
+                                            <td className="p-3 font-semibold text-gray-900">{conv.convocation_no}</td>
+                                            <td className="p-3">{conv.convocation_title || '-'}</td>
+                                            <td className="p-3">{conv.convocation_date || '-'}</td>
+                                            <td className="p-3">{conv.month_year || '-'}</td>
+                                            <td className="p-3">
+                                                <button
+                                                    onClick={() => handleEditConvocation(conv)}
+                                                    className="px-3 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-700 hover:bg-indigo-200 mr-2"
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteConvocation(conv)}
+                                                    className="px-3 py-1 text-xs font-semibold rounded-full bg-rose-100 text-rose-700 hover:bg-rose-200"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             )}
 
             {/* Add/Edit Modal */}
@@ -582,6 +927,94 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
                             <div className="mt-6 flex justify-end gap-3">
                                 <button type="button" onClick={() => { setShowModal(false); resetForm(); }} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
                                 <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">{editingDegree ? 'Update' : 'Create'}</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {showConvocationModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl max-w-lg w-full">
+                        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                            <h2 className="text-2xl font-bold text-gray-800">
+                                {editingConvocation ? 'Edit Convocation' : 'Add Convocation'}
+                            </h2>
+                            <button
+                                onClick={() => {
+                                    setShowConvocationModal(false);
+                                    resetConvocationForm();
+                                }}
+                                className="text-gray-500 hover:text-gray-700"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <form onSubmit={handleConvocationSubmit} className="px-6 py-4 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Convocation Number <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    name="convocation_no"
+                                    value={convocationFormData.convocation_no}
+                                    onChange={handleConvocationFormChange}
+                                    required
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                                <input
+                                    type="text"
+                                    name="convocation_title"
+                                    value={convocationFormData.convocation_title || ''}
+                                    onChange={handleConvocationFormChange}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Convocation Date <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    name="convocation_date"
+                                    value={convocationFormData.convocation_date || ''}
+                                    onChange={handleConvocationFormChange}
+                                    required
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Month-Year Label</label>
+                                <input
+                                    type="text"
+                                    name="month_year"
+                                    placeholder="e.g., Oct-2024"
+                                    value={convocationFormData.month_year || ''}
+                                    onChange={handleConvocationFormChange}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowConvocationModal(false);
+                                        resetConvocationForm();
+                                    }}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                >
+                                    {editingConvocation ? 'Update' : 'Create'}
+                                </button>
                             </div>
                         </form>
                     </div>

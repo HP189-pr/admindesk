@@ -14,6 +14,7 @@ from django.core.cache import cache
 from django.conf import settings
 
 from .domain_degree import StudentDegree, ConvocationMaster
+from .domain_enrollment import Enrollment
 from .serializers_degree import (
     StudentDegreeSerializer,
     StudentDegreeDetailSerializer,
@@ -127,7 +128,7 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
         if degree_name:
             queryset = queryset.filter(degree_name__icontains=degree_name)
         
-        return queryset.order_by('-id')
+        return queryset.order_by('-convocation_no', '-last_exam_year', '-id')
     
     def list(self, request, *args, **kwargs):
         """List with pagination"""
@@ -199,6 +200,7 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
                 'processed': 0,
                 'created': 0,
                 'updated': 0,
+                'skipped': 0,
                 'errors': [],
                 'started_at': datetime.datetime.utcnow().isoformat() + 'Z'
             }
@@ -216,10 +218,22 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
                     try:
                         enrollment_no = row.get('enrollment_no', '').strip()
                         if not enrollment_no:
-                            msg = f"Row {row_num}: Enrollment number is required"
+                            msg = f"Row {row_num}: enrollment_no is required"
                             progress['errors'].append(msg)
                             logf.write(msg + '\n')
                             # update processed and cache
+                            progress['processed'] = idx
+                            cache.set(progress_key, progress, timeout=60*60)
+                            continue
+
+                        enrollment_exists = Enrollment.objects.filter(
+                            enrollment_no__iexact=enrollment_no
+                        ).exists()
+
+                        if not enrollment_exists:
+                            msg = f"Row {row_num}: enrollment_no '{enrollment_no}' not found in Enrollment table"
+                            progress['errors'].append(msg)
+                            logf.write(msg + '\n')
                             progress['processed'] = idx
                             cache.set(progress_key, progress, timeout=60*60)
                             continue
@@ -256,10 +270,16 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
 
                         existing = StudentDegree.objects.filter(dg_sr_no=dg_sr_no).first()
                         if existing:
+                            changed = False
                             for field, value in degree_data.items():
-                                setattr(existing, field, value)
-                            existing.save()
-                            progress['updated'] += 1
+                                if getattr(existing, field) != value:
+                                    setattr(existing, field, value)
+                                    changed = True
+                            if changed:
+                                existing.save()
+                                progress['updated'] += 1
+                            else:
+                                progress['skipped'] += 1
                         else:
                             StudentDegree.objects.create(**degree_data)
                             progress['created'] += 1
@@ -397,6 +417,60 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
             'courses': courses,
             'institution_course': institution_course,
         })
+
+    @action(detail=False, methods=['get'], url_path='filter-options')
+    def filter_options(self, request):
+        """Return distinct values for report filters"""
+        years_qs = (
+            StudentDegree.objects
+            .exclude(last_exam_year__isnull=True)
+            .exclude(last_exam_year='')
+            .values_list('last_exam_year', flat=True)
+            .order_by('-last_exam_year')
+            .distinct()
+        )
+
+        institutes_qs = (
+            StudentDegree.objects
+            .exclude(institute_name_dg__isnull=True)
+            .exclude(institute_name_dg='')
+            .values_list('institute_name_dg', flat=True)
+            .order_by('institute_name_dg')
+            .distinct()
+        )
+
+        courses_qs = (
+            StudentDegree.objects
+            .exclude(degree_name__isnull=True)
+            .exclude(degree_name='')
+            .values_list('degree_name', flat=True)
+            .order_by('degree_name')
+            .distinct()
+        )
+
+        def _clean_list(values):
+            cleaned = []
+            seen = set()
+            for value in values:
+                if value is None:
+                    continue
+                text = str(value).strip()
+                if not text or text in seen:
+                    continue
+                seen.add(text)
+                cleaned.append(text)
+            return cleaned
+
+        years = _clean_list(years_qs)
+        institutes = _clean_list(institutes_qs)
+        courses = _clean_list(courses_qs)
+
+        data = {
+            'years': years,
+            'institutes': institutes,
+            'courses': courses,
+        }
+        return Response(data)
     
     @action(detail=False, methods=['get'])
     def search_by_enrollment(self, request):
@@ -436,6 +510,7 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
             'processed': processed,
             'created': progress.get('created', 0),
             'updated': progress.get('updated', 0),
+                'skipped': progress.get('skipped', 0),
             'errors': progress.get('errors', []),
             'percent': percent,
             'log_file': progress.get('log_file')
