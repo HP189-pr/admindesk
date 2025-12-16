@@ -15,6 +15,7 @@ import TranscriptRequestPage from "./transcript_request";
 import StudentSearch from "./student-search";
 import AuthInventory from "../hooks/AuthInventory";
 import AuthDocRegister from "../hooks/AuthDocRegister";
+import AuthFees from "../hooks/AuthFees";
 
 
 
@@ -66,6 +67,8 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
   else if (l.includes("transcript")) key = "transcript_request";
   else if (l.includes("student") && l.includes("search")) key = "student_search";
   else if (l.includes("doc") && l.includes("register")) key = "doc_register";
+  else if (l.includes("cash register") || l.includes("daily register")) key = "cash_register";
+  else if (l.includes("fee type")) key = "fee_type_master";
   else if (l.includes("inventory")) key = "inventory";
   else if (l.includes("leave management")) key = "emp_leave";
   else if (l.includes("leave report")) key = "emp_leave_report";
@@ -147,6 +150,10 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
             onToggleChatbox={onToggleChatbox}
           />
         );
+      case "cash_register":
+        return <AuthFees view="cash-register" />;
+      case "fee_type_master":
+        return <AuthFees view="fee-type-master" />;
       case "inventory":
         return (
           <AuthInventory

@@ -35,7 +35,7 @@ const modules = [
     id: 'finance',
     name: 'Accounts & Finance',
     icon: '💰',
-    menu: ['📊 Cash Register', '💵 Student Fees', '🔍 Payment Track'],
+    menu: ['📊 Cash Register', '🧾 Fee Type Master', '💵 Student Fees', '🔍 Payment Track'],
   },
 ];
 
