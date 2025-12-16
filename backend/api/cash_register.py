@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from django.db import transaction
 from django.db.models import QuerySet
@@ -173,7 +173,9 @@ class CashRegisterSerializer(serializers.ModelSerializer):
             "id",
             "date",
             "payment_mode",
-            "receipt_no",
+            "receipt_no_full",
+            "rec_ref",
+            "rec_no",
             "fee_type",
             "fee_type_name",
             "fee_type_code",
@@ -184,7 +186,7 @@ class CashRegisterSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["receipt_no", "created_by", "created_at", "updated_at"]
+        read_only_fields = ["rec_ref", "rec_no", "receipt_no_full", "created_by", "created_at", "updated_at"]
 
     def get_created_by_name(self, obj) -> str:
         full_name = obj.created_by.get_full_name().strip()
@@ -225,20 +227,19 @@ class ReceiptNumberService:
         return f"{base}/{year:02d}/R/"
 
     @classmethod
-    def next_number(cls, payment_mode: str, entry_date: date, *, lock: bool = False) -> str:
-        prefix = cls._prefix(payment_mode, entry_date)
-        qs = CashRegister.objects.filter(payment_mode=payment_mode, receipt_no__startswith=prefix)
+    def next_numbers(cls, payment_mode: str, entry_date: date, *, lock: bool = False) -> Dict[str, Any]:
+        rec_ref = cls._prefix(payment_mode, entry_date)
+        qs = CashRegister.objects.filter(payment_mode=payment_mode, rec_ref=rec_ref)
         if lock:
             qs = qs.select_for_update()
-        last = qs.order_by("-receipt_no").first()
-        if last:
-            try:
-                seq = int(last.receipt_no.split("/")[-1]) + 1
-            except (ValueError, IndexError):
-                seq = 1
-        else:
-            seq = 1
-        return f"{prefix}{seq:06d}"
+        last_no = qs.order_by("-rec_no").values_list("rec_no", flat=True).first()
+        seq = (last_no or 0) + 1
+        receipt_no_full = CashRegister.normalize_receipt_no(f"{rec_ref}{seq:06d}")
+        return {
+            "rec_ref": rec_ref,
+            "rec_no": seq,
+            "receipt_no_full": receipt_no_full,
+        }
 
 
 class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
@@ -265,14 +266,35 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
         fee_type_code = self.request.query_params.get("fee_type_code")
         if fee_type_code:
             qs = qs.filter(fee_type__code__iexact=fee_type_code)
-        return qs.order_by("-date", "-receipt_no")
+        receipt_full = self.request.query_params.get("receipt_no_full")
+        if receipt_full:
+            normalized_full = CashRegister.normalize_receipt_no(receipt_full)
+            if normalized_full:
+                qs = qs.filter(receipt_no_full__iexact=normalized_full)
+            else:
+                return qs.none()
+        rec_ref = self.request.query_params.get("rec_ref")
+        if rec_ref:
+            qs = qs.filter(rec_ref__iexact=rec_ref.strip())
+        rec_no = self.request.query_params.get("rec_no")
+        if rec_no:
+            try:
+                qs = qs.filter(rec_no=int(rec_no))
+            except ValueError:
+                return qs.none()
+        return qs.order_by("-date", "-rec_ref", "-rec_no")
 
     @transaction.atomic
     def perform_create(self, serializer):
         payment_mode = serializer.validated_data["payment_mode"]
         entry_date = serializer.validated_data.get("date") or timezone.now().date()
-        receipt_no = ReceiptNumberService.next_number(payment_mode, entry_date, lock=True)
-        serializer.save(created_by=self.request.user, receipt_no=receipt_no)
+        next_numbers = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=True)
+        serializer.save(
+            created_by=self.request.user,
+            rec_ref=next_numbers["rec_ref"],
+            rec_no=next_numbers["rec_no"],
+            receipt_no_full=next_numbers["receipt_no_full"],
+        )
 
     @action(detail=False, methods=["get"], url_path="next-receipt")
     def next_receipt(self, request):
@@ -287,5 +309,9 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
                 return Response({"detail": "Invalid date format"}, status=400)
         else:
             entry_date = timezone.now().date()
-        next_no = ReceiptNumberService.next_number(payment_mode, entry_date, lock=False)
-        return Response({"next_receipt_no": next_no})
+        next_numbers = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=False)
+        return Response({
+            "rec_ref": next_numbers["rec_ref"],
+            "rec_no": next_numbers["rec_no"],
+            "receipt_no_full": next_numbers["receipt_no_full"],
+        })

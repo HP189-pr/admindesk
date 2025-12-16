@@ -4,6 +4,8 @@ This module stores the FeeType master and ledger-style CashRegister entries.
 """
 from __future__ import annotations
 
+from typing import Optional
+
 from django.contrib.auth import get_user_model
 from django.db import models
 
@@ -40,7 +42,16 @@ class CashRegister(models.Model):
 
     date = models.DateField()
     payment_mode = models.CharField(max_length=8, choices=PAYMENT_MODE_CHOICES)
-    receipt_no = models.CharField(max_length=32, unique=True, editable=False)
+    rec_ref = models.CharField(max_length=32, blank=True, default="")
+    rec_no = models.PositiveIntegerField(blank=True, null=True)
+    receipt_no_full = models.CharField(
+        max_length=64,
+        unique=True,
+        editable=False,
+        db_index=True,
+        blank=True,
+        null=False,
+    )
     fee_type = models.ForeignKey(
         FeeType,
         on_delete=models.PROTECT,
@@ -58,7 +69,67 @@ class CashRegister(models.Model):
 
     class Meta:
         db_table = "cash_register"
-        ordering = ["-date", "-receipt_no"]
+        ordering = ["-date", "-rec_ref", "-rec_no"]
 
     def __str__(self) -> str:  # pragma: no cover - repr helper
-        return self.receipt_no
+        if self.receipt_no_full:
+            return self.receipt_no_full
+        number = "" if self.rec_no is None else str(self.rec_no)
+        return f"{self.rec_ref}{number}".strip()
+
+    @staticmethod
+    def normalize_receipt_no(value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        try:
+            cleaned = (
+                str(value)
+                .replace("\t", "")
+                .replace("\n", "")
+                .replace("\r", "")
+                .replace(" ", "")
+            )
+        except Exception:
+            cleaned = str(value)
+        cleaned = cleaned.strip()
+        return cleaned or None
+
+    @staticmethod
+    def merge_reference_and_number(reference: Optional[str], number: Optional[str]) -> Optional[str]:
+        if not reference and not number:
+            return None
+        ref = str(reference or "").strip()
+        num = str(number or "").strip()
+        combined = f"{ref}{num}"
+        return CashRegister.normalize_receipt_no(combined)
+
+    @staticmethod
+    def split_receipt(value: Optional[str]):
+        normalized = CashRegister.normalize_receipt_no(value)
+        if not normalized or len(normalized) < 6:
+            return normalized, None
+        tail = normalized[-6:]
+        try:
+            number = int(tail)
+        except Exception:
+            return normalized, None
+        reference = normalized[:-6]
+        return reference, number
+
+    def save(self, *args, **kwargs):  # type: ignore[override]
+        if not self.receipt_no_full:
+            number_part = None
+            if self.rec_no is not None:
+                number_part = f"{self.rec_no:06d}"
+            normalized = self.merge_reference_and_number(self.rec_ref, number_part)
+        else:
+            normalized = self.normalize_receipt_no(self.receipt_no_full)
+        if normalized:
+            self.receipt_no_full = normalized
+        if (not getattr(self, "rec_ref", None) or getattr(self, "rec_no", None) is None) and self.receipt_no_full:
+            ref_guess, num_guess = self.split_receipt(self.receipt_no_full)
+            if ref_guess and not getattr(self, "rec_ref", None):
+                self.rec_ref = ref_guess
+            if num_guess is not None and getattr(self, "rec_no", None) is None:
+                self.rec_no = num_guess
+        super().save(*args, **kwargs)

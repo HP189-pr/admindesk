@@ -174,15 +174,18 @@ Notes:
 """
 
 import base64
+from decimal import Decimal, InvalidOperation
 from io import BytesIO
 from datetime import datetime, date, timedelta
 from typing import Any, Dict, List
 
 from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render
 from django.urls import path, reverse
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
 try:  # Optional pandas (Excel support)
@@ -193,9 +196,11 @@ except Exception:  # pragma: no cover
 from .models import (
     MainBranch, SubBranch, Module, Menu, UserPermission, Institute, Enrollment,
     DocRec, PayPrefixRule, Eca, InstVerificationMain, InstVerificationStudent,
-    MigrationRecord, ProvisionalRecord, StudentProfile, Verification
+    MigrationRecord, ProvisionalRecord, StudentProfile, Verification, FeeType,
+    CashRegister
 )
 from .models import ProvisionalStatus
+from .cash_register import ReceiptNumberService
 
 User = get_user_model()
 
@@ -305,6 +310,26 @@ def _clean_cell(val: Any):
     return s
 
 
+def _parse_boolean_cell(val: Any):
+    """Best-effort bool parser for Excel uploads."""
+    if val is None:
+        return None
+    if isinstance(val, bool):
+        return val
+    try:
+        sval = str(val).strip()
+    except Exception:
+        sval = str(val)
+    if sval == "":
+        return None
+    lowered = sval.lower()
+    if lowered in {"1", "true", "t", "yes", "y", "active", "enabled"}:
+        return True
+    if lowered in {"0", "false", "f", "no", "n", "inactive", "disabled"}:
+        return False
+    raise ValueError(f"Unrecognized boolean value: {val}")
+
+
 def resolve_docrec(raw_doc_rec_id: Any):
     """Try to resolve a DocRec object from a raw imported doc_rec_id.
 
@@ -412,6 +437,8 @@ def get_import_spec(model) -> Dict[str, Any]:
             # LeaveEntry bulk upload
             LeaveEntry: {"allowed_columns": ["leave_report_no", "emp_id", "leave_code", "start_date", "end_date", "total_days", "reason", "status", "created_by", "approved_by", "approved_at"], "required_keys": ["leave_report_no"], "create_requires": ["leave_report_no", "emp_id", "leave_code", "start_date"]},
         StudentProfile: {"allowed_columns": ["enrollment_no", "gender", "birth_date", "address1", "address2", "city1", "city2", "contact_no", "email", "fees", "hostel_required", "aadhar_no", "abc_id", "mobile_adhar", "name_adhar", "mother_name", "category", "photo_uploaded", "is_d2d", "program_medium"], "required_keys": ["enrollment_no"], "create_requires": ["enrollment_no"]},
+    FeeType: {"allowed_columns": ["code", "name", "is_active"], "required_keys": ["code", "name"], "create_requires": ["code", "name"]},
+    CashRegister: {"allowed_columns": ["receipt_no_full", "rec_ref", "rec_no", "date", "payment_mode", "fee_type", "fee_type_code", "amount", "remark"], "required_keys": ["date", "payment_mode", "amount"], "create_requires": ["date", "payment_mode", "amount"]},
     DocRec: {"allowed_columns": ["apply_for", "doc_rec_id", "pay_by", "pay_rec_no_pre", "pay_rec_no", "pay_amount", "doc_rec_date", "doc_rec_remark"], "required_keys": ["apply_for", "doc_rec_id", "pay_by"], "create_requires": ["apply_for", "doc_rec_id", "pay_by"]},
     MigrationRecord: {"allowed_columns": ["doc_rec_id", "enrollment_no", "student_name", "institute_id", "maincourse_id", "subcourse_id", "mg_number", "mg_date", "exam_year", "admission_year", "exam_details", "mg_status", "pay_rec_no"], "required_keys": ["doc_rec_id"], "create_requires": ["doc_rec_id"]},
     ProvisionalRecord: {"allowed_columns": ["doc_rec_id", "enrollment_no", "student_name", "institute_id", "maincourse_id", "subcourse_id", "prv_number", "prv_date", "class_obtain", "prv_degree_name", "passing_year", "prv_status", "pay_rec_no"], "required_keys": ["doc_rec_id"], "create_requires": ["doc_rec_id"]},
@@ -422,6 +449,40 @@ def get_import_spec(model) -> Dict[str, Any]:
         if issubclass(model, klass):
             return spec
     return {"allowed_columns": [], "required_keys": [], "create_requires": []}
+
+
+COLUMN_ALIAS_MAP: Dict[type, Dict[str, str]] = {
+    CashRegister: {
+        "fee_code": "fee_type_code",
+        "feecode": "fee_type_code",
+        "fee code": "fee_type_code",
+        "cash_rec_no": "receipt_no_full",
+        "cash rec no": "receipt_no_full",
+        "cashrecno": "receipt_no_full",
+        "receipt_no": "receipt_no_full",
+        "receipt no": "receipt_no_full",
+    },
+}
+
+
+def _build_allowed_maps(model):
+    spec = get_import_spec(model)
+    allowed_set = set(spec["allowed_columns"])
+    allowed_map = {str(col).lower(): col for col in allowed_set}
+    alias_map: Dict[str, str] = {}
+    for klass, aliases in COLUMN_ALIAS_MAP.items():
+        if issubclass(model, klass):
+            for alias, target in aliases.items():
+                if target in allowed_set:
+                    alias_map[alias.lower()] = target
+    return spec, allowed_set, allowed_map, alias_map
+
+
+def _resolve_column_name(raw, allowed_map, alias_map):
+    key = str(raw).strip().lower()
+    if not key:
+        return None
+    return allowed_map.get(key) or alias_map.get(key)
 
 # ---------------------------------------------------------------------------
 # AJAX Excel Upload Mixin
@@ -487,8 +548,7 @@ class ExcelUploadMixin:
                     encoded = request.session.get("excel_data")
                     if not encoded:
                         return JsonResponse({"error": "Session expired"}, status=400)
-                    spec = get_import_spec(self.model)
-                    allowed = set(spec["allowed_columns"])
+                    spec, allowed, allowed_map, alias_map = _build_allowed_maps(self.model)
                     required_keys = spec["required_keys"]
 
                     # Try to detect the correct header row. Some Excel files include title rows
@@ -508,7 +568,7 @@ class ExcelUploadMixin:
                         if sheet not in frames_try:
                             continue
                         cols_try = [str(c).strip() for c in frames_try[sheet].columns]
-                        usable_try = [c for c in cols_try if c in allowed]
+                        usable_try = [c for c in cols_try if _resolve_column_name(c, allowed_map, alias_map)]
                         score = len(usable_try)
                         # prefer header with more usable allowed columns
                         if score > best_score:
@@ -532,9 +592,17 @@ class ExcelUploadMixin:
                     request.session['excel_header_rows'] = header_map
 
                     cols_present = [str(c).strip() for c in frames[sheet].columns]
-                    usable = [c for c in cols_present if c in allowed]
-                    unrecognized = [c for c in cols_present if c not in allowed]
-                    required_missing = [rk for rk in required_keys if rk not in cols_present]
+                    usable: List[str] = []
+                    unrecognized: List[str] = []
+                    mapped_seen = set()
+                    for col in cols_present:
+                        resolved = _resolve_column_name(col, allowed_map, alias_map)
+                        if resolved:
+                            usable.append(col)
+                            mapped_seen.add(resolved)
+                        else:
+                            unrecognized.append(col)
+                    required_missing = [rk for rk in required_keys if rk not in mapped_seen]
                     return JsonResponse({
                         "columns": usable,
                         "unrecognized": unrecognized,
@@ -623,13 +691,32 @@ class ExcelUploadMixin:
                         return JsonResponse({"error": f"Read error: {e}"}, status=400)
                     if sheet not in frames:
                         return JsonResponse({"error": "Sheet not found"}, status=404)
-                    spec = get_import_spec(self.model)
-                    allowed = set(spec["allowed_columns"])
+                    spec, allowed, allowed_map, alias_map = _build_allowed_maps(self.model)
                     required = set(spec["required_keys"])
-                    chosen = [c for c in selected if c in allowed]
+                    normalized_selection: List[str] = []
+                    for raw in selected:
+                        resolved = _resolve_column_name(raw, allowed_map, alias_map)
+                        if resolved:
+                            normalized_selection.append(resolved)
+                    chosen = normalized_selection
                     if not required.issubset(chosen):
                         return JsonResponse({"error": "All required columns must be selected"}, status=400)
                     df = frames[sheet]
+                    try:
+                        df.columns = [str(c).strip() for c in df.columns]
+                    except Exception:
+                        pass
+                    if allowed_map:
+                        try:
+                            rename_map = {}
+                            for col in list(df.columns):
+                                resolved = _resolve_column_name(col, allowed_map, alias_map)
+                                if resolved and resolved != col:
+                                    rename_map[col] = resolved
+                            if rename_map:
+                                df.rename(columns=rename_map, inplace=True)
+                        except Exception:
+                            pass
                     # Clean numeric/foreign-key like id columns so pandas.nan does not get passed
                     try:
                         if pd is not None:
@@ -875,6 +962,127 @@ class ExcelUploadMixin:
                                         pass
                                 if created: counts["created"] += 1; add_log(i, "created", "Created", doc_rec_id)
                                 else: counts["updated"] += 1; add_log(i, "updated", "Updated", doc_rec_id)
+                        elif issubclass(self.model, FeeType):
+                            for i, (_, r) in enumerate(df.iterrows(), start=2):
+                                code = _clean_cell(r.get("code")) if "code" in eff else None
+                                name = _clean_cell(r.get("name")) if "name" in eff else None
+                                if not code or not name:
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Missing code/name"); continue
+                                code = str(code).upper()
+                                try:
+                                    is_active = _parse_boolean_cell(r.get("is_active")) if "is_active" in eff else None
+                                except ValueError as bool_err:
+                                    counts["skipped"] += 1; add_log(i, "skipped", f"Invalid is_active: {bool_err}"); continue
+                                defaults = {"name": name}
+                                if is_active is not None:
+                                    defaults["is_active"] = is_active
+                                obj, created = FeeType.objects.update_or_create(code=code, defaults=defaults)
+                                if created: counts["created"] += 1; add_log(i, "created", "Created", code)
+                                else: counts["updated"] += 1; add_log(i, "updated", "Updated", code)
+                        elif issubclass(self.model, CashRegister):
+                            if "fee_type_code" not in eff and "fee_type" not in eff:
+                                return JsonResponse({"error": "Select fee_type_code or fee_type column"}, status=400)
+                            valid_modes = {choice[0] for choice in CashRegister.PAYMENT_MODE_CHOICES}
+                            for i, (_, r) in enumerate(df.iterrows(), start=2):
+                                payment_raw = _clean_cell(r.get("payment_mode")) if "payment_mode" in eff else None
+                                payment_mode = (payment_raw or "").upper()
+                                if payment_mode not in valid_modes:
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Invalid payment_mode"); continue
+                                entry_date = parse_excel_date(r.get("date")) if "date" in eff else None
+                                if not entry_date:
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Missing/invalid date"); continue
+                                amount_raw = r.get("amount") if "amount" in eff else None
+                                try:
+                                    amount_val = Decimal(str(amount_raw))
+                                except (InvalidOperation, TypeError):
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Invalid amount"); continue
+                                fee_obj = None
+                                if "fee_type" in eff:
+                                    fee_pk = _clean_cell(r.get("fee_type"))
+                                    if fee_pk not in (None, ""):
+                                        try:
+                                            fee_obj = FeeType.objects.filter(pk=int(float(str(fee_pk)))).first()
+                                        except Exception:
+                                            fee_obj = FeeType.objects.filter(pk=fee_pk).first()
+                                if not fee_obj and "fee_type_code" in eff:
+                                    fee_code = _clean_cell(r.get("fee_type_code"))
+                                    if fee_code:
+                                        fee_obj = FeeType.objects.filter(code__iexact=str(fee_code)).first()
+                                if not fee_obj:
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Fee type not found"); continue
+                                remark = _clean_cell(r.get("remark")) if "remark" in eff else None
+
+                                rec_ref = _clean_cell(r.get("rec_ref")) if "rec_ref" in eff else None
+                                rec_no_raw = _clean_cell(r.get("rec_no")) if "rec_no" in eff else None
+                                rec_no_value = None
+                                if rec_no_raw not in (None, ""):
+                                    try:
+                                        rec_no_value = int(str(rec_no_raw).strip())
+                                    except Exception:
+                                        counts["skipped"] += 1; add_log(i, "skipped", "Invalid rec_no"); continue
+                                full_from_column = CashRegister.normalize_receipt_no(_clean_cell(r.get("receipt_no_full"))) if "receipt_no_full" in eff else None
+                                receipt_no_full = full_from_column
+                                if not receipt_no_full and rec_ref and rec_no_value is not None:
+                                    receipt_no_full = CashRegister.merge_reference_and_number(rec_ref, f"{rec_no_value:06d}")
+                                if receipt_no_full and (not rec_ref or rec_no_value is None):
+                                    ref_guess, num_guess = CashRegister.split_receipt(receipt_no_full)
+                                    if not rec_ref:
+                                        rec_ref = ref_guess
+                                    if rec_no_value is None and num_guess is not None:
+                                        rec_no_value = num_guess
+
+                                obj = None
+                                if receipt_no_full:
+                                    obj = CashRegister.objects.filter(receipt_no_full=receipt_no_full).first()
+                                if not obj and rec_ref and rec_no_value is not None:
+                                    obj = CashRegister.objects.filter(rec_ref=rec_ref, rec_no=rec_no_value).first()
+
+                                try:
+                                    if obj:
+                                        obj.date = entry_date
+                                        obj.payment_mode = payment_mode
+                                        obj.fee_type = fee_obj
+                                        obj.amount = amount_val
+                                        if remark is not None:
+                                            obj.remark = remark
+                                        if rec_ref:
+                                            obj.rec_ref = rec_ref
+                                        if rec_no_value is not None:
+                                            obj.rec_no = rec_no_value
+                                        if receipt_no_full:
+                                            obj.receipt_no_full = receipt_no_full
+                                        obj.save()
+                                        created = False
+                                    else:
+                                        if rec_ref is None or rec_no_value is None:
+                                            with transaction.atomic():
+                                                auto_vals = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=True)
+                                            rec_ref = rec_ref or auto_vals["rec_ref"]
+                                            rec_no_value = rec_no_value if rec_no_value is not None else auto_vals["rec_no"]
+                                            receipt_no_full = receipt_no_full or auto_vals["receipt_no_full"]
+                                        if not receipt_no_full and rec_ref and rec_no_value is not None:
+                                            receipt_no_full = CashRegister.merge_reference_and_number(rec_ref, f"{rec_no_value:06d}")
+                                        if not receipt_no_full:
+                                            counts["skipped"] += 1; add_log(i, "skipped", "Unable to resolve receipt number"); continue
+                                        obj = CashRegister.objects.create(
+                                            rec_ref=rec_ref or "",
+                                            rec_no=rec_no_value,
+                                            receipt_no_full=receipt_no_full,
+                                            date=entry_date,
+                                            payment_mode=payment_mode,
+                                            fee_type=fee_obj,
+                                            amount=amount_val,
+                                            remark=remark or "",
+                                            created_by=request.user,
+                                        )
+                                        created = True
+                                except Exception as row_err:
+                                    counts["skipped"] += 1; add_log(i, "skipped", f"Row error: {row_err}"); continue
+                                ref = obj.receipt_no_full
+                                if created:
+                                    counts["created"] += 1; add_log(i, "created", "Created", ref)
+                                else:
+                                    counts["updated"] += 1; add_log(i, "updated", "Updated", ref)
                         elif issubclass(self.model, MigrationRecord) and sheet_norm == "migration":
                             auto_create = bool(str(request.POST.get('auto_create_docrec', '')).strip())
                             for i, (_, r) in enumerate(df.iterrows(), start=2):
@@ -1543,6 +1751,42 @@ class ModuleAdmin(admin.ModelAdmin):
 class MenuAdmin(admin.ModelAdmin):
     list_display = ('menuid', 'name', 'module', 'created_at', 'updated_at', 'updated_by')
     search_fields = ('name', 'menuid')
+
+
+@admin.register(FeeType)
+class FeeTypeAdmin(CommonAdminMixin):
+    list_display = ("code", "name", "is_active", "created_at", "updated_at")
+    search_fields = ("code", "name")
+    list_filter = ("is_active",)
+    ordering = ("code",)
+    readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(CashRegister)
+class CashRegisterAdmin(CommonAdminMixin):
+    list_display = ("receipt_no_full", "rec_ref", "rec_no", "date", "payment_mode", "fee_type", "amount", "created_by", "created_at")
+    search_fields = ("receipt_no_full", "rec_ref", "fee_type__code", "fee_type__name", "remark__icontains")
+    list_filter = ("payment_mode", "fee_type", "date")
+    readonly_fields = ("receipt_no_full", "rec_ref", "rec_no", "created_by", "created_at", "updated_at")
+    autocomplete_fields = ("fee_type",)
+    ordering = ("-date", "-rec_ref", "-rec_no")
+    date_hierarchy = "date"
+
+    def save_model(self, request, obj, form, change):  # type: ignore[override]
+        if not change:
+            if not getattr(obj, "created_by", None):
+                _assign_user_field(obj, request.user, 'created_by')
+            if not getattr(obj, "receipt_no_full", None):
+                entry_date = obj.date or timezone.now().date()
+                with transaction.atomic():
+                    seq_vals = ReceiptNumberService.next_numbers(obj.payment_mode, entry_date, lock=True)
+                obj.rec_ref = seq_vals["rec_ref"]
+                obj.rec_no = seq_vals["rec_no"]
+                obj.receipt_no_full = seq_vals["receipt_no_full"]
+        normalized_full = CashRegister.normalize_receipt_no(getattr(obj, "receipt_no_full", None))
+        if normalized_full:
+            obj.receipt_no_full = normalized_full
+        super().save_model(request, obj, form, change)
 
 
 # ---------------------------------------------------------------------------
