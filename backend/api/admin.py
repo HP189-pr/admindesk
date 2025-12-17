@@ -310,6 +310,47 @@ def _clean_cell(val: Any):
     return s
 
 
+def _row_value(row, column_name: str):
+    """Return the scalar value for a column in a DataFrame row.
+
+    When alias renames create duplicate column headers pandas exposes the row
+    values as a Series. We collapse those duplicates by picking the last
+    non-empty value so we always feed scalars into downstream parsers.
+    """
+    if row is None or not column_name:
+        return None
+    try:
+        value = row.get(column_name)
+    except Exception:
+        return None
+    if pd is not None:
+        try:
+            series_cls = getattr(pd, "Series", None)
+        except Exception:
+            series_cls = None
+        if series_cls is not None and isinstance(value, series_cls):
+            try:
+                seq = list(value.tolist())
+            except Exception:
+                seq = list(value)
+            for item in reversed(seq):
+                if item is None:
+                    continue
+                if isinstance(item, str) and not item.strip():
+                    continue
+                return item
+            return None
+    if isinstance(value, (list, tuple)):
+        for item in value:
+            if item is None:
+                continue
+            if isinstance(item, str) and not item.strip():
+                continue
+            return item
+        return None
+    return value
+
+
 def _parse_boolean_cell(val: Any):
     """Best-effort bool parser for Excel uploads."""
     if val is None:
@@ -984,43 +1025,43 @@ class ExcelUploadMixin:
                                 return JsonResponse({"error": "Select fee_type_code or fee_type column"}, status=400)
                             valid_modes = {choice[0] for choice in CashRegister.PAYMENT_MODE_CHOICES}
                             for i, (_, r) in enumerate(df.iterrows(), start=2):
-                                payment_raw = _clean_cell(r.get("payment_mode")) if "payment_mode" in eff else None
+                                payment_raw = _clean_cell(_row_value(r, "payment_mode")) if "payment_mode" in eff else None
                                 payment_mode = (payment_raw or "").upper()
                                 if payment_mode not in valid_modes:
                                     counts["skipped"] += 1; add_log(i, "skipped", "Invalid payment_mode"); continue
-                                entry_date = parse_excel_date(r.get("date")) if "date" in eff else None
+                                entry_date = parse_excel_date(_row_value(r, "date")) if "date" in eff else None
                                 if not entry_date:
                                     counts["skipped"] += 1; add_log(i, "skipped", "Missing/invalid date"); continue
-                                amount_raw = r.get("amount") if "amount" in eff else None
+                                amount_raw = _row_value(r, "amount") if "amount" in eff else None
                                 try:
                                     amount_val = Decimal(str(amount_raw))
                                 except (InvalidOperation, TypeError):
                                     counts["skipped"] += 1; add_log(i, "skipped", "Invalid amount"); continue
                                 fee_obj = None
                                 if "fee_type" in eff:
-                                    fee_pk = _clean_cell(r.get("fee_type"))
+                                    fee_pk = _clean_cell(_row_value(r, "fee_type"))
                                     if fee_pk not in (None, ""):
                                         try:
                                             fee_obj = FeeType.objects.filter(pk=int(float(str(fee_pk)))).first()
                                         except Exception:
                                             fee_obj = FeeType.objects.filter(pk=fee_pk).first()
                                 if not fee_obj and "fee_type_code" in eff:
-                                    fee_code = _clean_cell(r.get("fee_type_code"))
+                                    fee_code = _clean_cell(_row_value(r, "fee_type_code"))
                                     if fee_code:
                                         fee_obj = FeeType.objects.filter(code__iexact=str(fee_code)).first()
                                 if not fee_obj:
                                     counts["skipped"] += 1; add_log(i, "skipped", "Fee type not found"); continue
-                                remark = _clean_cell(r.get("remark")) if "remark" in eff else None
+                                remark = _clean_cell(_row_value(r, "remark")) if "remark" in eff else None
 
-                                rec_ref = _clean_cell(r.get("rec_ref")) if "rec_ref" in eff else None
-                                rec_no_raw = _clean_cell(r.get("rec_no")) if "rec_no" in eff else None
+                                rec_ref = _clean_cell(_row_value(r, "rec_ref")) if "rec_ref" in eff else None
+                                rec_no_raw = _clean_cell(_row_value(r, "rec_no")) if "rec_no" in eff else None
                                 rec_no_value = None
                                 if rec_no_raw not in (None, ""):
                                     try:
                                         rec_no_value = int(str(rec_no_raw).strip())
                                     except Exception:
                                         counts["skipped"] += 1; add_log(i, "skipped", "Invalid rec_no"); continue
-                                full_from_column = CashRegister.normalize_receipt_no(_clean_cell(r.get("receipt_no_full"))) if "receipt_no_full" in eff else None
+                                full_from_column = CashRegister.normalize_receipt_no(_clean_cell(_row_value(r, "receipt_no_full"))) if "receipt_no_full" in eff else None
                                 receipt_no_full = full_from_column
                                 if not receipt_no_full and rec_ref and rec_no_value is not None:
                                     receipt_no_full = CashRegister.merge_reference_and_number(rec_ref, f"{rec_no_value:06d}")
