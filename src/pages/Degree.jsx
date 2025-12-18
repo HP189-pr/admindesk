@@ -515,7 +515,7 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
     };
 
     return (
-        <div className="p-4 space-y-4">
+        <div className="p-4 md:p-6 space-y-4 h-full bg-slate-100">
             {/* Page Topbar */}
             <PageTopbar
                 title="Degree"
@@ -537,7 +537,7 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
             />
 
             {/* Collapsible Action Panel */}
-            <div className="border rounded-2xl overflow-hidden shadow-sm">
+            <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
                 <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
                     <div className="font-semibold">{panelTitle}</div>
                     <button

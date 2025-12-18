@@ -5,7 +5,7 @@ from datetime import date, datetime
 from typing import Any, Dict, Optional
 
 from django.db import transaction
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 from django.utils import timezone
 from rest_framework import mixins, serializers, viewsets
 from rest_framework.decorators import action
@@ -229,10 +229,29 @@ class ReceiptNumberService:
     @classmethod
     def next_numbers(cls, payment_mode: str, entry_date: date, *, lock: bool = False) -> Dict[str, Any]:
         rec_ref = cls._prefix(payment_mode, entry_date)
-        qs = CashRegister.objects.filter(payment_mode=payment_mode, rec_ref=rec_ref)
+        legacy_ref = rec_ref.rstrip('/')
+        qs = CashRegister.objects.filter(payment_mode=payment_mode).filter(
+            Q(rec_ref=rec_ref)
+            | Q(rec_ref=legacy_ref)
+            | Q(receipt_no_full__istartswith=rec_ref)
+            | Q(receipt_no_full__istartswith=legacy_ref)
+        )
         if lock:
             qs = qs.select_for_update()
-        last_no = qs.order_by("-rec_no").values_list("rec_no", flat=True).first()
+        last_no = (
+            qs.exclude(rec_no__isnull=True)
+            .order_by("-rec_no")
+            .values_list("rec_no", flat=True)
+            .first()
+        )
+        if last_no is None:
+            max_from_receipts = 0
+            for receipt in qs.values_list("receipt_no_full", flat=True):
+                _, parsed = CashRegister.split_receipt(receipt)
+                if parsed and parsed > max_from_receipts:
+                    max_from_receipts = parsed
+            if max_from_receipts:
+                last_no = max_from_receipts
         seq = (last_no or 0) + 1
         receipt_no_full = CashRegister.normalize_receipt_no(f"{rec_ref}{seq:06d}")
         return {

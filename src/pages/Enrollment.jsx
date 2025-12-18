@@ -426,7 +426,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-4 h-full">
+    <div className="p-4 md:p-6 space-y-4 h-full bg-slate-100">
       <PageTopbar
         title="Enrollment"
         actions={actions}
@@ -446,7 +446,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
       />
 
       {/* Collapsible Action Box */}
-      <div className="border rounded-2xl overflow-hidden shadow-sm">
+      <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
         <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
           <div className="font-semibold">
             {getSelected() ? `${getSelected() === "➕" ? "ADD" : getSelected() === "🔍" ? "SEARCH" : getSelected() === "📄 Report" ? "REPORT" : "EXCEL"} Panel` : "Action Panel"}

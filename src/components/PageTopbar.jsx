@@ -14,7 +14,7 @@ const PageTopbar = ({
   actionsOnLeft = true,
 }) => {
   return (
-    <div className="w-full bg-white border-b px-3 py-2 flex items-center justify-between sticky top-0 z-20">
+    <div className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 flex items-center justify-between sticky top-0 z-20">
       <div className="flex items-center gap-2">
         {onToggleSidebar && (
           <button

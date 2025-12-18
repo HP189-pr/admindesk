@@ -389,7 +389,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
   ]), []);
 
   return (
-    <div className="p-4 md:p-6 space-y-4 h-full">
+    <div className="p-4 md:p-6 space-y-4 h-full bg-slate-100">
       {/* Top bar via shared component */}
       <PageTopbar
         title="Verification"
@@ -412,7 +412,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
       />
 
       {/* Collapsible Action Box */}
-      <div className="border rounded-2xl overflow-hidden shadow-sm">
+      <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
         {/* Title / toggle row */}
         <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
           <div className="font-semibold">{getSelected() ? `${getSelected()} Panel` : "Action Panel"}</div>

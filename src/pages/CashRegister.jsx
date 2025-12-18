@@ -7,6 +7,7 @@ import {
   fetchNextReceiptNumber,
 } from '../services/cashRegisterService';
 import { fetchFeeTypes } from '../services/feeTypeService';
+import PageTopbar from '../components/PageTopbar';
 
 const PAYMENT_MODES = [
   { value: 'CASH', label: 'Cash' },
@@ -21,6 +22,25 @@ const MODE_CARD_STYLES = {
 };
 
 const RECEIPT_SUFFIX_REGEX = /(\d{6})$/;
+
+const TOPBAR_ACTIONS = ['➕ Add', '🔍 Search', '📄 Report'];
+const ACTION_DESCRIPTIONS = {
+  '➕ Add': 'Capture new cash receipts for the selected day while seeing the live next number preview.',
+  '🔍 Search': 'Filter totals by date and payment mode, then review every receipt in the ledger below.',
+  '📄 Report': 'Use the day ledger to export or print official cash register summaries.',
+};
+
+const extractSequenceFromFull = (full) => {
+  if (!full) {
+    return null;
+  }
+  const match = String(full).match(RECEIPT_SUFFIX_REGEX);
+  if (!match) {
+    return null;
+  }
+  const parsed = Number(match[1]);
+  return Number.isNaN(parsed) ? null : parsed;
+};
 
 const extractSequenceNumber = (entry) => {
   if (!entry) {
@@ -67,7 +87,7 @@ const EmptyState = ({ title, message }) => (
 
 const DEFAULT_RIGHTS = { can_view: true, can_create: true, can_edit: true, can_delete: true };
 
-const CashRegister = ({ rights = DEFAULT_RIGHTS }) => {
+const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbox }) => {
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const formatReceiptDisplay = useCallback((full) => {
     if (!full) return '--';
@@ -75,6 +95,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS }) => {
     return String(full).replace(/\/(?=\d{6}$)/, '');
   }, []);
   const [filters, setFilters] = useState({ date: today, payment_mode: '' });
+  const [selectedTopbarMenu, setSelectedTopbarMenu] = useState('➕ Add');
   const [entries, setEntries] = useState([]);
   const [feeTypes, setFeeTypes] = useState([]);
   const [formState, setFormState] = useState({
@@ -85,6 +106,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS }) => {
     remark: '',
   });
   const [receiptPreview, setReceiptPreview] = useState('--');
+  const [receiptPreviewRaw, setReceiptPreviewRaw] = useState('');
   const [previewNonce, setPreviewNonce] = useState(0);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState('');
@@ -93,22 +115,32 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS }) => {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null);
   const [pageError, setPageError] = useState('');
+  const actionSummary = ACTION_DESCRIPTIONS[selectedTopbarMenu] || ACTION_DESCRIPTIONS['➕ Add'];
   const formatAmount = useCallback((value) => {
     const num = Number(value || 0);
     return num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }, []);
+
+  const applyPreview = useCallback(
+    (full) => {
+      const safeFull = full || '';
+      setReceiptPreviewRaw(safeFull);
+      setReceiptPreview(safeFull ? formatReceiptDisplay(safeFull) : '--');
+    },
+    [formatReceiptDisplay]
+  );
 
   const recNumberDisplay = useMemo(() => {
     if (editingEntry) {
       const seq = extractSequenceNumber(editingEntry);
       return seq != null ? String(seq).padStart(6, '0') : '';
     }
-    if (!receiptPreview || receiptPreview === '--') {
+    if (!receiptPreviewRaw) {
       return '';
     }
-    const match = String(receiptPreview).match(RECEIPT_SUFFIX_REGEX);
+    const match = String(receiptPreviewRaw).match(RECEIPT_SUFFIX_REGEX);
     return match ? match[1] : '';
-  }, [editingEntry, receiptPreview]);
+  }, [editingEntry, receiptPreviewRaw]);
 
   const filteredEntries = useMemo(() => {
     if (!filters.payment_mode) {
@@ -220,7 +252,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS }) => {
 
   useEffect(() => {
     if (!formState.date) {
-      setReceiptPreview('--');
+      applyPreview('');
       setPreviewError('Select a date to generate the next number.');
       setPreviewLoading(false);
       return;
@@ -229,10 +261,10 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS }) => {
     if (!rights.can_create) {
       const fallbackFull = computeFallbackReceipt(formState.payment_mode, formState.date);
       if (fallbackFull) {
-        setReceiptPreview(formatReceiptDisplay(fallbackFull));
+        applyPreview(fallbackFull);
         setPreviewError('View-only mode: showing estimated next number.');
       } else {
-        setReceiptPreview('--');
+        applyPreview('');
         setPreviewError('View-only mode: unable to estimate next number.');
       }
       setPreviewLoading(false);
@@ -244,7 +276,15 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS }) => {
       try {
         const data = await fetchNextReceiptNumber({ payment_mode: formState.payment_mode, date: formState.date });
         if (isActive) {
-          setReceiptPreview(formatReceiptDisplay(data?.receipt_no_full || data?.next_receipt_no));
+          const serverFull = data?.receipt_no_full || data?.next_receipt_no;
+          const fallbackFull = computeFallbackReceipt(formState.payment_mode, formState.date);
+          const serverSeq = extractSequenceFromFull(serverFull);
+          const fallbackSeq = extractSequenceFromFull(fallbackFull);
+          let resolvedFull = serverFull;
+          if (fallbackFull && fallbackSeq !== null && (serverSeq === null || fallbackSeq >= serverSeq)) {
+            resolvedFull = fallbackFull;
+          }
+          applyPreview(resolvedFull || '');
         }
       } catch (err) {
         if (!isActive) {
@@ -252,10 +292,10 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS }) => {
         }
         const fallbackFull = computeFallbackReceipt(formState.payment_mode, formState.date);
         if (fallbackFull) {
-          setReceiptPreview(formatReceiptDisplay(fallbackFull));
+          applyPreview(fallbackFull);
           setPreviewError('Live preview unavailable. Showing the next estimated number.');
         } else {
-          setReceiptPreview('--');
+          applyPreview('');
           setPreviewError('Unable to fetch next receipt number.');
         }
       } finally {
@@ -268,7 +308,30 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS }) => {
     return () => {
       isActive = false;
     };
-  }, [formState.date, formState.payment_mode, rights.can_create, formatReceiptDisplay, computeFallbackReceipt, previewNonce]);
+  }, [formState.date, formState.payment_mode, rights.can_create, computeFallbackReceipt, previewNonce, applyPreview]);
+
+  useEffect(() => {
+    if (!rights.can_create || editingEntry) {
+      return;
+    }
+    const fallbackFull = computeFallbackReceipt(formState.payment_mode, formState.date);
+    if (!fallbackFull) {
+      return;
+    }
+    const fallbackSeq = extractSequenceFromFull(fallbackFull);
+    const currentSeq = extractSequenceFromFull(receiptPreviewRaw);
+    if (fallbackSeq !== null && (currentSeq === null || fallbackSeq > currentSeq)) {
+      applyPreview(fallbackFull);
+    }
+  }, [
+    rights.can_create,
+    editingEntry,
+    computeFallbackReceipt,
+    formState.payment_mode,
+    formState.date,
+    receiptPreviewRaw,
+    applyPreview,
+  ]);
 
   useEffect(() => {
     if (!editingEntry && filters.date) {
@@ -289,6 +352,10 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS }) => {
 
   const handleFilterChange = (field, value) => {
     setFilters((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleTopbarSelect = (action) => {
+    setSelectedTopbarMenu(action);
   };
 
   const handleModeCardClick = (modeValue) => {
@@ -399,28 +466,39 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS }) => {
   }
 
   return (
-    <div className="min-h-full bg-slate-50 p-6">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <header>
-          <p className="text-sm uppercase tracking-wide text-blue-700">Accounts &amp; Finance</p>
-          <h1 className="text-3xl font-semibold text-gray-900">Cash Register (Daily Ledger)</h1>
-          <p className="text-sm text-gray-600">Every row equals a receipt. Manual entry, no auto roll-ups.</p>
-        </header>
-
+    <div className="p-4 md:p-6 space-y-4 h-full bg-slate-100">
+      <PageTopbar
+        title="Cash Register"
+        actions={TOPBAR_ACTIONS}
+        selected={selectedTopbarMenu}
+        onSelect={handleTopbarSelect}
+        onToggleSidebar={onToggleSidebar}
+        onToggleChatbox={onToggleChatbox}
+        actionsOnLeft
+        rightSlot={(
+          <a
+            href="/"
+            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow"
+          >
+            🏠 Home
+          </a>
+        )}
+      />
+      <div className="w-full space-y-5">
         {status && (
-          <div
-            className={`rounded border px-4 py-3 text-sm ${
+          <section
+            className={`rounded-2xl border border-slate-200 bg-white p-4 text-sm shadow-sm ${
               status.type === 'success'
                 ? 'border-green-200 bg-green-50 text-green-800'
                 : 'border-red-200 bg-red-50 text-red-700'
             }`}
           >
             {status.message}
-          </div>
+          </section>
         )}
 
         {/* Filters */}
-        <section className="rounded-lg bg-white p-4 shadow">
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold text-gray-800">Filter by date</h2>
             <button
@@ -431,7 +509,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS }) => {
               Reset to today
             </button>
           </div>
-          <div className="mt-4 flex flex-wrap items-end gap-3">
+          <div className="mt-4 flex flex-wrap items-center gap-3">
             <label className="flex flex-col text-xs font-medium text-gray-600">
               <span>Date</span>
               <input
@@ -481,19 +559,18 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS }) => {
         </section>
 
         {/* Entry form */}
-        <section className="rounded-lg bg-white p-4 shadow">
-          <div className="mb-4 flex flex-col gap-3 border-b border-gray-100 pb-3 md:flex-row md:items-center md:justify-between">
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-4 flex flex-col gap-2 border-b border-gray-100 pb-3 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-gray-800">
                 {editingEntry ? `Update receipt ${formatReceiptDisplay(editingEntry.receipt_no_full)}` : 'New entry'}
               </h2>
-              <p className="text-sm text-gray-500">Receipt number is generated by the backend and cannot be edited.</p>
             </div>
-            <div className="text-sm text-gray-600">
-              Next number preview:
-              <span className="ml-2 font-mono text-slate-900">
+            <div className="text-center text-sm font-semibold uppercase tracking-wide text-gray-500 md:text-right">
+              <span className="text-xs">Next number:</span>
+              <div className="font-mono text-xl text-gray-900">
                 {previewLoading ? 'Fetching...' : (receiptPreview || '--')}
-              </span>
+              </div>
               {previewError && <p className="text-xs text-red-600">{previewError}</p>}
             </div>
           </div>
@@ -605,7 +682,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS }) => {
         </section>
 
         {/* Table */}
-        <section className="rounded-lg bg-white p-4 shadow">
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold text-gray-800">Entries for {filters.date || 'selected date'}</h2>
@@ -640,11 +717,6 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS }) => {
                       <tr key={entry.id} className="hover:bg-slate-50">
                         <td className="px-4 py-2 font-mono text-sm text-gray-900">
                           <div>{formattedReceipt}</div>
-                          {(entry.rec_ref || entry.rec_no) && (
-                            <div className="text-xs text-gray-500">
-                              {(entry.rec_ref || '').trim()} {entry.rec_no != null ? `#${String(entry.rec_no).padStart(6, '0')}` : ''}
-                            </div>
-                          )}
                         </td>
                       <td className="px-4 py-2 capitalize text-gray-700">{entry.payment_mode.toLowerCase()}</td>
                       <td className="px-4 py-2 text-gray-700">

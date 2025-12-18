@@ -155,7 +155,7 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
   };
 
   return (
-  <div className="p-4 md:p-6 space-y-4 h-full">
+  <div className="p-4 md:p-6 space-y-4 h-full bg-slate-100">
       <PageTopbar
         title="Provisional"
         actions={ACTIONS}
@@ -166,7 +166,7 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
       />
 
       {/* Collapsible Action Box */}
-      <div className="border rounded-2xl overflow-hidden shadow-sm">
+      <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
         <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
           <div className="font-semibold">{selectedTopbarMenu || 'Panel'}</div>
           <button onClick={()=>setPanelOpen((o)=>!o)} className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50">{panelOpen ? 'Collapse':'Expand'}</button>
