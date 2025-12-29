@@ -1021,109 +1021,230 @@ class ExcelUploadMixin:
                                 if created: counts["created"] += 1; add_log(i, "created", "Created", code)
                                 else: counts["updated"] += 1; add_log(i, "updated", "Updated", code)
                         elif issubclass(self.model, CashRegister):
-                            if "fee_type_code" not in eff and "fee_type" not in eff:
-                                return JsonResponse({"error": "Select fee_type_code or fee_type column"}, status=400)
+                            # Enhanced upload: create Receipt + ReceiptItem instead of single-row CashRegister
+                            # Support two formats:
+                            # 1) Rows with 'fee_type' + 'amount' -> grouped by receipt_no_full/rec_ref+rec_no
+                            # 2) Rows where multiple fee columns exist (e.g., 'PGREG','DEGREE',...) -> one receipt per row, items for non-empty fee columns
                             valid_modes = {choice[0] for choice in CashRegister.PAYMENT_MODE_CHOICES}
-                            for i, (_, r) in enumerate(df.iterrows(), start=2):
-                                payment_raw = _clean_cell(_row_value(r, "payment_mode")) if "payment_mode" in eff else None
-                                payment_mode = (payment_raw or "").upper()
-                                if payment_mode not in valid_modes:
-                                    counts["skipped"] += 1; add_log(i, "skipped", "Invalid payment_mode"); continue
-                                entry_date = parse_excel_date(_row_value(r, "date")) if "date" in eff else None
-                                if not entry_date:
-                                    counts["skipped"] += 1; add_log(i, "skipped", "Missing/invalid date"); continue
-                                amount_raw = _row_value(r, "amount") if "amount" in eff else None
-                                try:
-                                    amount_val = Decimal(str(amount_raw))
-                                except (InvalidOperation, TypeError):
-                                    counts["skipped"] += 1; add_log(i, "skipped", "Invalid amount"); continue
-                                fee_obj = None
-                                if "fee_type" in eff:
-                                    fee_pk = _clean_cell(_row_value(r, "fee_type"))
-                                    if fee_pk not in (None, ""):
-                                        try:
-                                            fee_obj = FeeType.objects.filter(pk=int(float(str(fee_pk)))).first()
-                                        except Exception:
-                                            fee_obj = FeeType.objects.filter(pk=fee_pk).first()
-                                if not fee_obj and "fee_type_code" in eff:
-                                    fee_code = _clean_cell(_row_value(r, "fee_type_code"))
-                                    if fee_code:
-                                        fee_obj = FeeType.objects.filter(code__iexact=str(fee_code)).first()
-                                if not fee_obj:
-                                    counts["skipped"] += 1; add_log(i, "skipped", "Fee type not found"); continue
-                                remark = _clean_cell(_row_value(r, "remark")) if "remark" in eff else None
 
-                                rec_ref = _clean_cell(_row_value(r, "rec_ref")) if "rec_ref" in eff else None
-                                rec_no_raw = _clean_cell(_row_value(r, "rec_no")) if "rec_no" in eff else None
-                                rec_no_value = None
-                                if rec_no_raw not in (None, ""):
+                            # Identify potential fee columns (columns not part of normalized chosen set)
+                            raw_cols = [str(c).strip() for c in list(df.columns)]
+                            normalized_chosen = set(chosen)
+                            standard_keys = {"date", "payment_mode", "remark", "rec_ref", "rec_no", "receipt_no_full", "fee_type", "fee_type_code", "amount"}
+                            fee_cols = [c for c in raw_cols if c not in standard_keys and c not in normalized_chosen]
+
+                            # Cache FeeType lookups by code/name
+                            fee_types = list(FeeType.objects.all())
+                            fee_by_code = {ft.code.strip().lower(): ft for ft in fee_types if ft.code}
+                            fee_by_name = {ft.name.strip().lower(): ft for ft in fee_types if ft.name}
+
+                            # Helper to resolve fee by header or cell value
+                            def resolve_fee_by_header(header_name, cell_val=None):
+                                # Try by header first (for multi-column layout)
+                                if header_name:
+                                    hk = str(header_name).strip().lower()
+                                    if hk in fee_by_code:
+                                        return fee_by_code[hk]
+                                    if hk in fee_by_name:
+                                        return fee_by_name[hk]
+                                    # partial match
+                                    for k, v in fee_by_name.items():
+                                        if hk in k or k in hk:
+                                            return v
+                                # fallback: try cell value as code/name/id
+                                if cell_val:
                                     try:
-                                        rec_no_value = int(str(rec_no_raw).strip())
+                                        cv = str(cell_val).strip()
                                     except Exception:
-                                        counts["skipped"] += 1; add_log(i, "skipped", "Invalid rec_no"); continue
-                                full_from_column = CashRegister.normalize_receipt_no(_clean_cell(_row_value(r, "receipt_no_full"))) if "receipt_no_full" in eff else None
-                                receipt_no_full = full_from_column
-                                if not receipt_no_full and rec_ref and rec_no_value is not None:
-                                    receipt_no_full = CashRegister.merge_reference_and_number(rec_ref, f"{rec_no_value:06d}")
-                                if receipt_no_full and (not rec_ref or rec_no_value is None):
-                                    ref_guess, num_guess = CashRegister.split_receipt(receipt_no_full)
-                                    if not rec_ref:
-                                        rec_ref = ref_guess
-                                    if rec_no_value is None and num_guess is not None:
-                                        rec_no_value = num_guess
+                                        cv = None
+                                    if cv:
+                                        low = cv.lower()
+                                        if low in fee_by_code:
+                                            return fee_by_code[low]
+                                        if low in fee_by_name:
+                                            return fee_by_name[low]
+                                        try:
+                                            fid = int(float(cv))
+                                            return FeeType.objects.filter(pk=fid).first()
+                                        except Exception:
+                                            pass
+                                return None
 
-                                obj = None
-                                if receipt_no_full:
-                                    obj = CashRegister.objects.filter(receipt_no_full=receipt_no_full).first()
-                                if not obj and rec_ref and rec_no_value is not None:
-                                    obj = CashRegister.objects.filter(rec_ref=rec_ref, rec_no=rec_no_value).first()
+                            if fee_cols:
+                                # Multi-fee-column per-row format
+                                for i, (_, r) in enumerate(df.iterrows(), start=2):
+                                    payment_raw = _clean_cell(_row_value(r, "payment_mode")) if "payment_mode" in eff else None
+                                    payment_mode = (payment_raw or "").upper()
+                                    if payment_mode not in valid_modes:
+                                        counts["skipped"] += 1; add_log(i, "skipped", "Invalid payment_mode"); continue
+                                    entry_date = parse_excel_date(_row_value(r, "date")) if "date" in eff else None
+                                    if not entry_date:
+                                        counts["skipped"] += 1; add_log(i, "skipped", "Missing/invalid date"); continue
+                                    remark = _clean_cell(_row_value(r, "remark")) if "remark" in eff else ""
 
-                                try:
-                                    if obj:
-                                        obj.date = entry_date
-                                        obj.payment_mode = payment_mode
-                                        obj.fee_type = fee_obj
-                                        obj.amount = amount_val
-                                        if remark is not None:
-                                            obj.remark = remark
-                                        if rec_ref:
-                                            obj.rec_ref = rec_ref
-                                        if rec_no_value is not None:
-                                            obj.rec_no = rec_no_value
-                                        if receipt_no_full:
-                                            obj.receipt_no_full = receipt_no_full
-                                        obj.save()
-                                        created = False
+                                    # Resolve receipt identity (allow explicit receipt_no_full or generate)
+                                    rec_ref = _clean_cell(_row_value(r, "rec_ref")) if "rec_ref" in eff else None
+                                    rec_no_raw = _clean_cell(_row_value(r, "rec_no")) if "rec_no" in eff else None
+                                    rec_no_value = None
+                                    if rec_no_raw not in (None, ""):
+                                        try:
+                                            rec_no_value = int(str(rec_no_raw).strip())
+                                        except Exception:
+                                            counts["skipped"] += 1; add_log(i, "skipped", "Invalid rec_no"); continue
+                                    full_from_column = CashRegister.normalize_receipt_no(_clean_cell(_row_value(r, "receipt_no_full"))) if "receipt_no_full" in eff else None
+                                    receipt_no_full = full_from_column
+                                    if not receipt_no_full and rec_ref and rec_no_value is not None:
+                                        receipt_no_full = CashRegister.merge_reference_and_number(rec_ref, f"{rec_no_value:06d}")
+
+                                    # Create or reuse header
+                                    header = None
+                                    if receipt_no_full:
+                                        header = Receipt.objects.filter(receipt_no_full=receipt_no_full).first()
+                                    if not header and rec_ref and rec_no_value is not None:
+                                        header = Receipt.objects.filter(rec_ref=rec_ref, rec_no=rec_no_value).first()
+                                    try:
+                                        if not header:
+                                            if rec_ref is None or rec_no_value is None:
+                                                with transaction.atomic():
+                                                    auto_vals = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=True)
+                                                rec_ref = rec_ref or auto_vals["rec_ref"]
+                                                rec_no_value = rec_no_value if rec_no_value is not None else auto_vals["rec_no"]
+                                                receipt_no_full = receipt_no_full or auto_vals["receipt_no_full"]
+                                            header = Receipt.objects.create(
+                                                rec_ref=rec_ref or "",
+                                                rec_no=rec_no_value,
+                                                receipt_no_full=receipt_no_full or CashRegister.merge_reference_and_number(rec_ref or "", f"{rec_no_value or 0:06d}"),
+                                                date=entry_date,
+                                                payment_mode=payment_mode,
+                                                remark=remark or "",
+                                                created_by=request.user,
+                                            )
+                                        total = Decimal(0)
+                                        created_any = False
+                                        for col in fee_cols:
+                                            val = _row_value(r, col)
+                                            if val is None or (isinstance(val, str) and not val.strip()):
+                                                continue
+                                            fee_obj = resolve_fee_by_header(col, val)
+                                            if not fee_obj:
+                                                counts["skipped"] += 1; add_log(i, "skipped", f"Fee type not found for column {col}"); continue
+                                            try:
+                                                amt = Decimal(str(val))
+                                            except Exception:
+                                                counts["skipped"] += 1; add_log(i, "skipped", f"Invalid amount in column {col}"); continue
+                                            ReceiptItem.objects.create(receipt=header, fee_type=fee_obj, amount=amt, remark="")
+                                            total += amt
+                                            created_any = True
+                                        if created_any:
+                                            header.total_amount = total
+                                            header.save()
+                                            counts["created"] += 1; add_log(i, "created", "Created", header.receipt_no_full)
+                                        else:
+                                            header.delete()
+                                            counts["skipped"] += 1; add_log(i, "skipped", "No fee columns with values")
+                                    except Exception as row_err:
+                                        counts["skipped"] += 1; add_log(i, "skipped", f"Row error: {row_err}"); continue
+                            else:
+                                # Per-row items format (fee_type + amount columns) -> group by receipt key
+                                # Build grouping key for each row
+                                rows_by_key = {}
+                                for idx_row, (_, row) in enumerate(df.iterrows(), start=2):
+                                    key = None
+                                    full_from_column = CashRegister.normalize_receipt_no(_clean_cell(_row_value(row, "receipt_no_full"))) if "receipt_no_full" in eff else None
+                                    if full_from_column:
+                                        key = full_from_column
                                     else:
-                                        if rec_ref is None or rec_no_value is None:
-                                            with transaction.atomic():
-                                                auto_vals = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=True)
-                                            rec_ref = rec_ref or auto_vals["rec_ref"]
-                                            rec_no_value = rec_no_value if rec_no_value is not None else auto_vals["rec_no"]
-                                            receipt_no_full = receipt_no_full or auto_vals["receipt_no_full"]
-                                        if not receipt_no_full and rec_ref and rec_no_value is not None:
-                                            receipt_no_full = CashRegister.merge_reference_and_number(rec_ref, f"{rec_no_value:06d}")
-                                        if not receipt_no_full:
-                                            counts["skipped"] += 1; add_log(i, "skipped", "Unable to resolve receipt number"); continue
-                                        obj = CashRegister.objects.create(
-                                            rec_ref=rec_ref or "",
-                                            rec_no=rec_no_value,
-                                            receipt_no_full=receipt_no_full,
-                                            date=entry_date,
-                                            payment_mode=payment_mode,
-                                            fee_type=fee_obj,
-                                            amount=amount_val,
-                                            remark=remark or "",
-                                            created_by=request.user,
-                                        )
-                                        created = True
-                                except Exception as row_err:
-                                    counts["skipped"] += 1; add_log(i, "skipped", f"Row error: {row_err}"); continue
-                                ref = obj.receipt_no_full
-                                if created:
-                                    counts["created"] += 1; add_log(i, "created", "Created", ref)
-                                else:
-                                    counts["updated"] += 1; add_log(i, "updated", "Updated", ref)
+                                        rec_ref_r = _clean_cell(_row_value(row, "rec_ref")) if "rec_ref" in eff else None
+                                        rec_no_raw_r = _clean_cell(_row_value(row, "rec_no")) if "rec_no" in eff else None
+                                        if rec_ref_r and rec_no_raw_r not in (None, ""):
+                                            try:
+                                                rec_no_val = int(str(rec_no_raw_r).strip())
+                                                key = CashRegister.merge_reference_and_number(rec_ref_r, f"{rec_no_val:06d}")
+                                            except Exception:
+                                                key = None
+                                    rows_by_key.setdefault(key, []).append((idx_row, row))
+
+                                for key, group in rows_by_key.items():
+                                    # Determine header data from first row in group
+                                    first_idx, first_row = group[0]
+                                    payment_raw = _clean_cell(_row_value(first_row, "payment_mode")) if "payment_mode" in eff else None
+                                    payment_mode = (payment_raw or "").upper()
+                                    if payment_mode not in valid_modes:
+                                        for ri, _ in group:
+                                            counts["skipped"] += 1; add_log(ri, "skipped", "Invalid payment_mode")
+                                        continue
+                                    entry_date = parse_excel_date(_row_value(first_row, "date")) if "date" in eff else None
+                                    if not entry_date:
+                                        for ri, _ in group:
+                                            counts["skipped"] += 1; add_log(ri, "skipped", "Missing/invalid date")
+                                        continue
+                                    remark = _clean_cell(_row_value(first_row, "remark")) if "remark" in eff else ""
+                                    # Create or reuse header
+                                    header = None
+                                    if key:
+                                        header = Receipt.objects.filter(receipt_no_full=key).first()
+                                    try:
+                                        if not header:
+                                            # generate numbers if needed
+                                            rec_ref = None
+                                            rec_no_value = None
+                                            if key:
+                                                ref_guess, num_guess = CashRegister.split_receipt(key)
+                                                rec_ref = ref_guess
+                                                rec_no_value = num_guess
+                                            if rec_ref is None or rec_no_value is None:
+                                                with transaction.atomic():
+                                                    auto_vals = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=True)
+                                                rec_ref = rec_ref or auto_vals["rec_ref"]
+                                                rec_no_value = rec_no_value if rec_no_value is not None else auto_vals["rec_no"]
+                                                key = key or auto_vals["receipt_no_full"]
+                                            header = Receipt.objects.create(
+                                                rec_ref=rec_ref or "",
+                                                rec_no=rec_no_value,
+                                                receipt_no_full=key or CashRegister.merge_reference_and_number(rec_ref or "", f"{rec_no_value or 0:06d}"),
+                                                date=entry_date,
+                                                payment_mode=payment_mode,
+                                                remark=remark or "",
+                                                created_by=request.user,
+                                            )
+                                        total = Decimal(0)
+                                        created_any = False
+                                        for ri, row in group:
+                                            # find fee type per row
+                                            fee_obj = None
+                                            if "fee_type" in eff:
+                                                fee_pk = _clean_cell(_row_value(row, "fee_type"))
+                                                if fee_pk not in (None, ""):
+                                                    try:
+                                                        fee_obj = FeeType.objects.filter(pk=int(float(str(fee_pk)))).first()
+                                                    except Exception:
+                                                        fee_obj = FeeType.objects.filter(pk=fee_pk).first()
+                                            if not fee_obj and "fee_type_code" in eff:
+                                                fee_code = _clean_cell(_row_value(row, "fee_type_code"))
+                                                if fee_code:
+                                                    fee_obj = FeeType.objects.filter(code__iexact=str(fee_code)).first()
+                                            if not fee_obj:
+                                                counts["skipped"] += 1; add_log(ri, "skipped", "Fee type not found"); continue
+                                            amount_raw = _row_value(row, "amount") if "amount" in eff else None
+                                            try:
+                                                amt = Decimal(str(amount_raw))
+                                            except Exception:
+                                                counts["skipped"] += 1; add_log(ri, "skipped", "Invalid amount"); continue
+                                            ReceiptItem.objects.create(receipt=header, fee_type=fee_obj, amount=amt, remark=_clean_cell(_row_value(row, "remark")) if "remark" in eff else "")
+                                            total += amt
+                                            created_any = True
+                                        if created_any:
+                                            header.total_amount = total
+                                            header.save()
+                                            counts["created"] += 1; add_log(first_idx, "created", "Created", header.receipt_no_full)
+                                        else:
+                                            header.delete()
+                                            for ri, _ in group:
+                                                counts["skipped"] += 1; add_log(ri, "skipped", "No valid fee rows")
+                                    except Exception as row_err:
+                                        for ri, _ in group:
+                                            counts["skipped"] += 1; add_log(ri, "skipped", f"Row error: {row_err}")
+                                        continue
                         elif issubclass(self.model, MigrationRecord) and sheet_norm == "migration":
                             auto_create = bool(str(request.POST.get('auto_create_docrec', '')).strip())
                             for i, (_, r) in enumerate(df.iterrows(), start=2):

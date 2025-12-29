@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+import io
+import pandas as pd
 from typing import Any, Dict, Optional
 
 from django.db import transaction
@@ -12,8 +14,9 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from .domain_cash_register import CashRegister, FeeType
+from .domain_cash_register import CashRegister, FeeType, Receipt, ReceiptItem
 from .domain_core import Menu, Module, UserPermission
 
 FINANCE_MODULE_NAME = "Accounts & Finance"
@@ -334,3 +337,263 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
             "rec_no": next_numbers["rec_no"],
             "receipt_no_full": next_numbers["receipt_no_full"],
         })
+
+
+class UploadCashExcelView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        # Only allow staff or finance creators
+        if not getattr(request.user, "is_staff", False) and not _user_is_admin(request.user):
+            return Response({"detail": "Permission denied"}, status=403)
+
+        uploaded = request.FILES.get("file") or request.FILES.get("excel")
+        if not uploaded:
+            return Response({"detail": "No file uploaded. Send under form field 'file' or 'excel'."}, status=400)
+
+        try:
+            # Read Excel into pandas
+            content = uploaded.read()
+            df = pd.read_excel(io.BytesIO(content))
+        except Exception as exc:
+            return Response({"detail": f"Failed to read Excel: {exc}"}, status=400)
+
+        # Normalize columns
+        orig_cols = list(df.columns)
+        col_map = {c: str(c).strip() for c in orig_cols}
+        lower_cols = {c.lower(): c for c in orig_cols}
+
+        # Load fee types cache (by code and name)
+        fee_types = list(FeeType.objects.all())
+        fee_by_code = {ft.code.strip().lower(): ft for ft in fee_types if ft.code}
+        fee_by_name = {ft.name.strip().lower(): ft for ft in fee_types if ft.name}
+
+        results = {"created": 0, "errors": []}
+
+        try:
+            with transaction.atomic():
+                # Decide format: rows-as-items if columns include fee_type/fee_code & amount
+                lower_keys = set(k.lower() for k in orig_cols)
+                if ("fee_type" in lower_keys or "fee_code" in lower_keys) and "amount" in lower_keys:
+                    # Prefer grouping by normalized receipt_no_full when present to ensure one header per receipt
+                    receipt_col = lower_cols.get("receipt_no_full") if "receipt_no_full" in lower_keys else None
+
+                    if receipt_col:
+                        # create a normalized receipt key column for robust grouping
+                        df["_receipt_key"] = df[receipt_col].apply(lambda v: CashRegister.normalize_receipt_no(v) or "")
+                        grouped = df.groupby("_receipt_key")
+                    elif "rec_no" in lower_keys:
+                        grouped = df.groupby(lower_cols.get("rec_no"))
+                    else:
+                        grouped = [(None, df)]
+
+                    for key, group in grouped:
+                        first = group.iloc[0]
+                        date_val = first.get(lower_cols.get("date") if "date" in lower_cols else "date")
+                        payment_mode = (first.get(lower_cols.get("payment_mode")) or "CASH").upper()
+                        remark = first.get(lower_cols.get("remark")) if "remark" in lower_cols else ""
+
+                        # Respect Excel-provided receipt_no_full when available
+                        receipt_full = None
+                        if receipt_col:
+                            # key is normalized receipt; prefer original first cell if available, else use normalized
+                            raw_val = first.get(receipt_col)
+                            receipt_full = CashRegister.normalize_receipt_no(raw_val) or (key if key else None)
+
+                        header_kwargs = {"date": date_val, "payment_mode": payment_mode, "remark": remark, "created_by": request.user}
+                        if receipt_full:
+                            header_kwargs["receipt_no_full"] = receipt_full
+
+                        header = Receipt(**header_kwargs)
+                        header.save()
+                        total = 0
+                        for _, row in group.iterrows():
+                            ft_code = (
+                                row.get(lower_cols.get("fee_code"))
+                                or row.get(lower_cols.get("fee_type"))
+                            )
+                            amt = row.get(lower_cols.get("amount"))
+                            if pd.isna(amt) or amt == "":
+                                continue
+                            fee_obj = None
+                            if isinstance(ft_code, str) and ft_code.strip().lower() in fee_by_code:
+                                fee_obj = fee_by_code[ft_code.strip().lower()]
+                            elif isinstance(ft_code, str) and ft_code.strip().lower() in fee_by_name:
+                                fee_obj = fee_by_name[ft_code.strip().lower()]
+                            else:
+                                # try numeric id
+                                try:
+                                    fid = int(ft_code)
+                                    fee_obj = FeeType.objects.filter(id=fid).first()
+                                except Exception:
+                                    fee_obj = None
+                            if not fee_obj:
+                                raise ValueError(f"Fee type not found for value: {ft_code}")
+                            ReceiptItem.objects.create(receipt=header, fee_type=fee_obj, amount=float(amt), remark="")
+                            total += float(amt)
+                        header.total_amount = total
+                        header.save()
+                        results["created"] += 1
+                else:
+                    # Treat each row as a receipt header with multiple fee columns
+                    # Identify primary columns
+                    date_col = lower_cols.get("date") or next((c for c in orig_cols if c.lower().startswith("date")), None)
+                    receipt_col = lower_cols.get("receipt_no_full") or lower_cols.get("rec_no") or lower_cols.get("receipt_no")
+                    payment_col = lower_cols.get("payment_mode")
+                    remark_col = lower_cols.get("remark")
+
+                    # Fee columns are those not in known set
+                    known = {date_col, receipt_col, payment_col, remark_col, None}
+                    fee_cols = [c for c in orig_cols if c not in known]
+
+                    for idx, row in df.iterrows():
+                        date_val = row.get(date_col) if date_col else None
+                        payment_mode = (row.get(payment_col) or "CASH").upper() if payment_col else "CASH"
+                        remark = row.get(remark_col) if remark_col else ""
+                        header = Receipt(date=date_val, payment_mode=payment_mode, remark=remark, created_by=request.user)
+                        header.save()
+                        total = 0
+                        for col in fee_cols:
+                            val = row.get(col)
+                            if pd.isna(val) or val == "":
+                                continue
+                            # map column header to fee type by code or name
+                            col_key = str(col).strip().lower()
+                            fee_obj = fee_by_code.get(col_key) or fee_by_name.get(col_key)
+                            if not fee_obj:
+                                # try to find by partial match
+                                fee_obj = next((v for k, v in fee_by_name.items() if col_key in k), None)
+                            if not fee_obj:
+                                raise ValueError(f"Fee type column not recognized: {col}")
+                            ReceiptItem.objects.create(receipt=header, fee_type=fee_obj, amount=float(val), remark="")
+                            total += float(val)
+                        header.total_amount = total
+                        header.save()
+                        results["created"] += 1
+        except Exception as exc:
+            return Response({"detail": f"Upload failed: {exc}", "results": results}, status=400)
+
+        return Response({"detail": "Upload completed", "results": results})
+
+
+class ReceiptItemSerializer(serializers.ModelSerializer):
+    fee_type_code = serializers.CharField(source="fee_type.code", read_only=True)
+    fee_type_name = serializers.CharField(source="fee_type.name", read_only=True)
+
+    class Meta:
+        model = ReceiptItem
+        fields = ["id", "fee_type", "fee_type_code", "fee_type_name", "amount", "remark", "created_at"]
+        read_only_fields = ["created_at"]
+
+
+class ReceiptSerializer(serializers.ModelSerializer):
+    items = ReceiptItemSerializer(many=True, read_only=True)
+    created_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Receipt
+        fields = [
+            "id",
+            "date",
+            "payment_mode",
+            "rec_ref",
+            "rec_no",
+            "receipt_no_full",
+            "total_amount",
+            "remark",
+            "created_by",
+            "created_by_name",
+            "items",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["rec_ref", "rec_no", "receipt_no_full", "created_by", "created_at", "updated_at"]
+
+    def get_created_by_name(self, obj) -> str:
+        full_name = obj.created_by.get_full_name().strip()
+        return full_name or obj.created_by.username
+
+
+class ReceiptViewSet(FinancePermissionMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    queryset = Receipt.objects.select_related("created_by").prefetch_related("items__fee_type").all()
+    serializer_class = ReceiptSerializer
+    permission_classes = [IsAuthenticated]
+    finance_menu_name = "Cash Register"
+
+    def get_queryset(self) -> QuerySet[Receipt]:  # type: ignore[override]
+        qs = super().get_queryset()
+        date_str = self.request.query_params.get("date")
+        if date_str:
+            qs = qs.filter(date=date_str)
+        payment_mode = self.request.query_params.get("payment_mode")
+        if payment_mode:
+            qs = qs.filter(payment_mode=payment_mode.upper())
+        receipt_full = self.request.query_params.get("receipt_no_full")
+        if receipt_full:
+            normalized_full = CashRegister.normalize_receipt_no(receipt_full)
+            if normalized_full:
+                qs = qs.filter(receipt_no_full__iexact=normalized_full)
+            else:
+                return qs.none()
+        return qs.order_by("-date", "-rec_ref", "-rec_no")
+
+    @action(detail=False, methods=["post"], url_path="bulk-create")
+    def bulk_create(self, request):
+        """Accepts JSON payload of receipts with items and creates them atomically.
+
+        Expected payload: { "receipts": [ { "date": "YYYY-MM-DD", "payment_mode": "CASH", "items": [ { "fee_type_code": "PGREG", "amount": 1000 }, ... ] }, ... ] }
+        """
+        payload = request.data or {}
+        receipts = payload.get("receipts")
+        if not receipts or not isinstance(receipts, list):
+            return Response({"detail": "Invalid payload, receipts list required."}, status=400)
+
+        created = []
+        errors = []
+        with transaction.atomic():
+            for idx, rec in enumerate(receipts, start=1):
+                try:
+                    date_val = rec.get("date")
+                    payment_mode = (rec.get("payment_mode") or "CASH").upper()
+                    if payment_mode not in dict(CashRegister.PAYMENT_MODE_CHOICES):
+                        raise ValueError("Invalid payment_mode")
+                    items = rec.get("items") or []
+                    if not items:
+                        raise ValueError("No items for receipt")
+
+                    # Create receipt header
+                    header = Receipt(
+                        date=date_val,
+                        payment_mode=payment_mode,
+                        remark=rec.get("remark") or "",
+                        created_by=request.user,
+                    )
+                    # assign rec_ref/rec_no/receipt_no_full via save hooks
+                    header.save()
+
+                    total = 0
+                    for it in items:
+                        fee_code = it.get("fee_type_code")
+                        fee_id = it.get("fee_type")
+                        fee_obj = None
+                        if fee_id:
+                            fee_obj = FeeType.objects.filter(id=fee_id).first()
+                        elif fee_code:
+                            fee_obj = FeeType.objects.filter(code__iexact=fee_code).first()
+                        if not fee_obj:
+                            raise ValueError(f"Fee type not found for item: {it}")
+                        amount = it.get("amount")
+                        if amount is None:
+                            raise ValueError("Item amount required")
+                        ReceiptItem.objects.create(receipt=header, fee_type=fee_obj, amount=amount, remark=it.get("remark") or "")
+                        total += float(amount)
+
+                    header.total_amount = total
+                    header.save()
+                    created.append(header)
+                except Exception as exc:  # capture and continue/rollback
+                    errors.append({"index": idx, "error": str(exc)})
+                    raise
+
+        serializer = self.get_serializer(created, many=True)
+        return Response({"created": serializer.data, "errors": errors})

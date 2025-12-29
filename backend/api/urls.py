@@ -34,6 +34,8 @@ try:
     from .cash_register import (
         FeeTypeViewSet,
         CashRegisterViewSet,
+        ReceiptViewSet,
+        UploadCashExcelView,
     )
 
     from .views_admin import UploadDocRecView
@@ -81,6 +83,7 @@ try:
     router.register(r'inventory-outward', InventoryOutwardViewSet, basename='inventory-outward')
     router.register(r'fee-types', FeeTypeViewSet, basename='fee-types')
     router.register(r'cash-register', CashRegisterViewSet, basename='cash-register')
+    router.register(r'receipts', ReceiptViewSet, basename='receipts')
     router.register(r'modules', ModuleViewSet, basename='modules')
     router.register(r'menus', MenuViewSet, basename='menus')
     router.register(r'userpermissions', UserPermissionViewSet, basename='userpermissions')
@@ -163,6 +166,7 @@ try:
 
         # ADMIN DOCREC UPLOAD
         path("admin/upload-docrec/", UploadDocRecView.as_view(), name="admin-upload-docrec"),
+        path("admin/upload-cash-excel/", UploadCashExcelView.as_view(), name="admin-upload-cash-excel"),
     ] + IN_OUT_REGISTER_URLS
 
 except Exception as e:
