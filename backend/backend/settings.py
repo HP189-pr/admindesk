@@ -1,3 +1,5 @@
+# Allow large Excel uploads (default is 1000, increase as needed)
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 20000
 from pathlib import Path
 from datetime import timedelta
 import hmac

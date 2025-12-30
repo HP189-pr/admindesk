@@ -10,7 +10,7 @@ from datetime import datetime
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 django.setup()
 
-from api.models import CashRegister, FeeType
+from api.models import Receipt, ReceiptItem, FeeType
 from api.cash_register import ReceiptNumberService
 from django.db import transaction
 from django.contrib.auth.models import User
@@ -96,14 +96,15 @@ def import_excel_data(excel_path):
             
             # Check if entry already exists for this receipt
             if receipt_no_full:
-                existing = CashRegister.objects.filter(receipt_no_full=receipt_no_full).exists()
+                existing = Receipt.objects.filter(receipt_no_full=receipt_no_full).exists()
                 if existing:
                     print(f"Row {idx+2}: Skipping - receipt {receipt_no_full} already exists")
                     skipped_count += 1
                     continue
             
-            # Process each fee column
+            # Process each fee column and create a Receipt header + ReceiptItems
             fee_created_for_row = False
+            header = None
             for excel_col, fee_code in COLUMN_TO_FEETYPE.items():
                 # Find column in Excel (case-insensitive)
                 fee_col = None
@@ -134,26 +135,41 @@ def import_excel_data(excel_path):
                     print(f"Row {idx+2}: FeeType '{fee_code}' not found in database")
                     continue
                 
-                # Create CashRegister entry
                 try:
-                    entry = CashRegister.objects.create(
-                        date=date_val,
-                        payment_mode=payment_mode,
-                        fee_type=fee_type,
-                        amount=amount,
-                        rec_ref=rec_ref,
-                        rec_no=rec_no,
-                        receipt_no_full=receipt_no_full,
-                        created_by=admin_user,
-                        remark=f"Imported from Excel"
-                    )
-                    created_count += 1
+                    # Ensure header exists for this row
+                    if header is None:
+                        # If a full receipt string was present, try to parse or else allocate new numbers
+                        if receipt_no_full:
+                            header = Receipt.objects.filter(receipt_no_full=receipt_no_full).first()
+                        if not header:
+                            numbers = ReceiptNumberService.next_numbers(payment_mode, date_val, lock=True)
+                            header = Receipt.objects.create(
+                                date=date_val,
+                                payment_mode=payment_mode,
+                                rec_ref=numbers["rec_ref"],
+                                rec_no=numbers["rec_no"],
+                                receipt_no_full=numbers["receipt_no_full"],
+                                total_amount=0,
+                                remark="Imported from Excel",
+                                created_by=admin_user,
+                            )
+                    # Create a ReceiptItem for this fee
+                    ReceiptItem.objects.create(receipt=header, fee_type=fee_type, amount=amount, remark="Imported from Excel")
                     fee_created_for_row = True
-                    print(f"Row {idx+2}: Created entry {receipt_no_full} + {fee_code} = {amount}")
+                    print(f"Row {idx+2}: Created receipt {header.receipt_no_full} + {fee_code} = {amount}")
                 except Exception as e:
                     print(f"Row {idx+2}: Error creating entry for {fee_code}: {e}")
             
-            if not fee_created_for_row:
+            if header and fee_created_for_row:
+                # Update total on header
+                try:
+                    total = ReceiptItem.objects.filter(receipt=header).aggregate(total_amount=models.Sum('amount'))['total_amount'] or 0
+                    header.total_amount = total
+                    header.save()
+                    created_count += 1
+                except Exception:
+                    pass
+            else:
                 skipped_count += 1
     
     print(f"\n{'='*60}")

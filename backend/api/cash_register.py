@@ -7,8 +7,9 @@ import pandas as pd
 from typing import Any, Dict, Optional
 
 from django.db import transaction
-from django.db.models import Q, QuerySet
+from django.db.models import Q, QuerySet, Sum
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from rest_framework import mixins, serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -16,7 +17,15 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .domain_cash_register import CashRegister, FeeType, Receipt, ReceiptItem
+from .domain_cash_register import (
+    FeeType,
+    Receipt,
+    ReceiptItem,
+    normalize_receipt_no,
+    split_receipt,
+    PAYMENT_MODE_CHOICES,
+)
+from .excel_import.helpers import parse_excel_date
 from .domain_core import Menu, Module, UserPermission
 
 FINANCE_MODULE_NAME = "Accounts & Finance"
@@ -165,47 +174,7 @@ class FeeTypeSerializer(serializers.ModelSerializer):
         return value.strip()
 
 
-class CashRegisterSerializer(serializers.ModelSerializer):
-    fee_type_name = serializers.CharField(source="fee_type.name", read_only=True)
-    fee_type_code = serializers.CharField(source="fee_type.code", read_only=True)
-    created_by_name = serializers.SerializerMethodField()
 
-    class Meta:
-        model = CashRegister
-        fields = [
-            "id",
-            "date",
-            "payment_mode",
-            "receipt_no_full",
-            "rec_ref",
-            "rec_no",
-            "fee_type",
-            "fee_type_name",
-            "fee_type_code",
-            "amount",
-            "remark",
-            "created_by",
-            "created_by_name",
-            "created_at",
-            "updated_at",
-        ]
-        read_only_fields = ["rec_ref", "rec_no", "receipt_no_full", "created_by", "created_at", "updated_at"]
-
-    def get_created_by_name(self, obj) -> str:
-        full_name = obj.created_by.get_full_name().strip()
-        return full_name or obj.created_by.username
-
-    def validate_payment_mode(self, value: str) -> str:
-        if value not in dict(CashRegister.PAYMENT_MODE_CHOICES):
-            raise serializers.ValidationError("Invalid payment mode")
-        return value
-
-    def validate_amount(self, value):
-        if value is None:
-            raise serializers.ValidationError("Amount is required")
-        if value <= 0:
-            raise serializers.ValidationError("Amount must be greater than zero")
-        return value
 
 
 class FeeTypeViewSet(FinancePermissionMixin, mixins.ListModelMixin, mixins.CreateModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
@@ -233,30 +202,35 @@ class ReceiptNumberService:
     def next_numbers(cls, payment_mode: str, entry_date: date, *, lock: bool = False) -> Dict[str, Any]:
         rec_ref = cls._prefix(payment_mode, entry_date)
         legacy_ref = rec_ref.rstrip('/')
-        qs = CashRegister.objects.filter(payment_mode=payment_mode).filter(
-            Q(rec_ref=rec_ref)
-            | Q(rec_ref=legacy_ref)
-            | Q(receipt_no_full__istartswith=rec_ref)
-            | Q(receipt_no_full__istartswith=legacy_ref)
-        )
+        # Use a global sequence based on the highest existing rec_no across
+        # both CashRegister and Receipt for the payment_mode so that the
+        # next number is monotonically increasing regardless of selected date.
         if lock:
-            qs = qs.select_for_update()
-        last_no = (
-            qs.exclude(rec_no__isnull=True)
+            # acquire locks on relevant rows to avoid race conditions
+            Receipt.objects.select_for_update().filter(payment_mode=payment_mode)
+
+        # Determine the highest rec_no in Receipt table for this payment_mode
+        last_receipt = (
+            Receipt.objects.filter(payment_mode=payment_mode)
+            .exclude(rec_no__isnull=True)
             .order_by("-rec_no")
             .values_list("rec_no", flat=True)
             .first()
         )
-        if last_no is None:
-            max_from_receipts = 0
-            for receipt in qs.values_list("receipt_no_full", flat=True):
-                _, parsed = CashRegister.split_receipt(receipt)
-                if parsed and parsed > max_from_receipts:
-                    max_from_receipts = parsed
-            if max_from_receipts:
-                last_no = max_from_receipts
+        last_no = last_receipt or 0
+
+        # Fallback: if no explicit rec_no found, try parsing receipt_no_full in Receipt table
+        if not last_no:
+            max_from_full = 0
+            for val in Receipt.objects.filter(payment_mode=payment_mode).values_list("receipt_no_full", flat=True):
+                _, parsed = split_receipt(val)
+                if parsed and parsed > max_from_full:
+                    max_from_full = parsed
+            if max_from_full:
+                last_no = max_from_full
+
         seq = (last_no or 0) + 1
-        receipt_no_full = CashRegister.normalize_receipt_no(f"{rec_ref}{seq:06d}")
+        receipt_no_full = normalize_receipt_no(f"{rec_ref}{seq:06d}")
         return {
             "rec_ref": rec_ref,
             "rec_no": seq,
@@ -265,8 +239,9 @@ class ReceiptNumberService:
 
 
 class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
-    queryset = CashRegister.objects.select_related("fee_type", "created_by").all()
-    serializer_class = CashRegisterSerializer
+    # Back the legacy `cash-register` endpoint with Receipt as the canonical source.
+    queryset = Receipt.objects.select_related("created_by").prefetch_related("items__fee_type").all()
+    serializer_class = None
     permission_classes = [IsAuthenticated]
     finance_menu_name = "Cash Register"
     permission_action_map = {
@@ -274,7 +249,8 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
         "next_receipt": "can_create",
     }
 
-    def get_queryset(self) -> QuerySet[CashRegister]:  # type: ignore[override]
+    def get_queryset(self) -> QuerySet[Receipt]:  # type: ignore[override]
+        # Align behaviour with `ReceiptViewSet` — filter receipts by date, payment_mode, receipt_no_full
         qs = super().get_queryset()
         date_str = self.request.query_params.get("date")
         if date_str:
@@ -282,29 +258,63 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
         payment_mode = self.request.query_params.get("payment_mode")
         if payment_mode:
             qs = qs.filter(payment_mode=payment_mode.upper())
-        fee_type_id = self.request.query_params.get("fee_type")
-        if fee_type_id:
-            qs = qs.filter(fee_type_id=fee_type_id)
-        fee_type_code = self.request.query_params.get("fee_type_code")
-        if fee_type_code:
-            qs = qs.filter(fee_type__code__iexact=fee_type_code)
         receipt_full = self.request.query_params.get("receipt_no_full")
         if receipt_full:
-            normalized_full = CashRegister.normalize_receipt_no(receipt_full)
+            normalized_full = normalize_receipt_no(receipt_full)
             if normalized_full:
                 qs = qs.filter(receipt_no_full__iexact=normalized_full)
             else:
                 return qs.none()
-        rec_ref = self.request.query_params.get("rec_ref")
-        if rec_ref:
-            qs = qs.filter(rec_ref__iexact=rec_ref.strip())
-        rec_no = self.request.query_params.get("rec_no")
-        if rec_no:
-            try:
-                qs = qs.filter(rec_no=int(rec_no))
-            except ValueError:
-                return qs.none()
         return qs.order_by("-date", "-rec_ref", "-rec_no")
+
+    def list(self, request, *args, **kwargs):
+        # Always return receipt-backed rows for the legacy endpoint.
+        date_str = request.query_params.get("date")
+        payment_mode = request.query_params.get("payment_mode")
+        receipt_full = request.query_params.get("receipt_no_full")
+
+        rq = Receipt.objects.select_related("created_by").prefetch_related("items__fee_type").all()
+        if date_str:
+            rq = rq.filter(date=date_str)
+        if payment_mode:
+            rq = rq.filter(payment_mode=payment_mode.upper())
+        if receipt_full:
+            normalized_full = normalize_receipt_no(receipt_full)
+            if normalized_full:
+                rq = rq.filter(receipt_no_full__iexact=normalized_full)
+            else:
+                return Response([], status=200)
+
+        out = []
+        for r in rq.order_by("-date", "-rec_ref", "-rec_no"):
+            items = []
+            for it in getattr(r, "items", []).all() if hasattr(r, "items") else []:
+                items.append({
+                    "id": it.id,
+                    "fee_type": getattr(it.fee_type, "id", None),
+                    "fee_type_code": getattr(it.fee_type, "code", None),
+                    "fee_type_name": getattr(it.fee_type, "name", None),
+                    "amount": str(it.amount),
+                    "remark": it.remark,
+                    "created_at": it.created_at,
+                })
+            out.append({
+                "id": r.id,
+                "date": r.date,
+                "payment_mode": r.payment_mode,
+                "receipt_no_full": r.receipt_no_full,
+                "rec_ref": r.rec_ref,
+                "rec_no": r.rec_no,
+                "total_amount": str(r.total_amount),
+                "remark": r.remark,
+                "created_by": r.created_by.id if r.created_by else None,
+                "created_by_name": r.created_by.get_full_name().strip() if r.created_by else None,
+                "items": items,
+                "created_at": r.created_at,
+                "updated_at": r.updated_at,
+            })
+
+        return Response(out)
 
     @transaction.atomic
     def perform_create(self, serializer):
@@ -342,7 +352,9 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
 class UploadCashExcelView(APIView):
     permission_classes = [IsAuthenticated]
 
+
     def post(self, request):
+        from decimal import Decimal
         # Only allow staff or finance creators
         if not getattr(request.user, "is_staff", False) and not _user_is_admin(request.user):
             return Response({"detail": "Permission denied"}, status=403)
@@ -380,7 +392,7 @@ class UploadCashExcelView(APIView):
 
                     if receipt_col:
                         # create a normalized receipt key column for robust grouping
-                        df["_receipt_key"] = df[receipt_col].apply(lambda v: CashRegister.normalize_receipt_no(v) or "")
+                        df["_receipt_key"] = df[receipt_col].apply(lambda v: normalize_receipt_no(v) or "")
                         grouped = df.groupby("_receipt_key")
                     elif "rec_no" in lower_keys:
                         grouped = df.groupby(lower_cols.get("rec_no"))
@@ -389,24 +401,31 @@ class UploadCashExcelView(APIView):
 
                     for key, group in grouped:
                         first = group.iloc[0]
-                        date_val = first.get(lower_cols.get("date") if "date" in lower_cols else "date")
+                        date_val = parse_excel_date(first.get(lower_cols.get("date") if "date" in lower_cols else "date"))
                         payment_mode = (first.get(lower_cols.get("payment_mode")) or "CASH").upper()
                         remark = first.get(lower_cols.get("remark")) if "remark" in lower_cols else ""
 
-                        # Respect Excel-provided receipt_no_full when available
-                        receipt_full = None
-                        if receipt_col:
-                            # key is normalized receipt; prefer original first cell if available, else use normalized
-                            raw_val = first.get(receipt_col)
-                            receipt_full = CashRegister.normalize_receipt_no(raw_val) or (key if key else None)
-
-                        header_kwargs = {"date": date_val, "payment_mode": payment_mode, "remark": remark, "created_by": request.user}
-                        if receipt_full:
-                            header_kwargs["receipt_no_full"] = receipt_full
-
-                        header = Receipt(**header_kwargs)
+                        # Use ReceiptNumberService to get safe receipt numbers
+                        try:
+                            numbers = ReceiptNumberService.next_numbers(payment_mode, date_val, lock=True)
+                        except Exception as e:
+                            err_txt = str(e)
+                            if 'NaTType' in err_txt or 'utcoffset' in err_txt:
+                                # fallback: ignore problematic date and use current date
+                                numbers = ReceiptNumberService.next_numbers(payment_mode, None, lock=True)
+                            else:
+                                raise
+                        header = Receipt(
+                            date=date_val,
+                            payment_mode=payment_mode,
+                            rec_ref=numbers["rec_ref"],
+                            rec_no=numbers["rec_no"],
+                            receipt_no_full=numbers["receipt_no_full"],
+                            remark=remark,
+                            created_by=request.user,
+                        )
                         header.save()
-                        total = 0
+                        total = Decimal("0")
                         for _, row in group.iterrows():
                             ft_code = (
                                 row.get(lower_cols.get("fee_code"))
@@ -429,8 +448,9 @@ class UploadCashExcelView(APIView):
                                     fee_obj = None
                             if not fee_obj:
                                 raise ValueError(f"Fee type not found for value: {ft_code}")
-                            ReceiptItem.objects.create(receipt=header, fee_type=fee_obj, amount=float(amt), remark="")
-                            total += float(amt)
+                            amt_decimal = Decimal(str(amt))
+                            ReceiptItem.objects.create(receipt=header, fee_type=fee_obj, amount=amt_decimal, remark="")
+                            total += amt_decimal
                         header.total_amount = total
                         header.save()
                         results["created"] += 1
@@ -447,12 +467,28 @@ class UploadCashExcelView(APIView):
                     fee_cols = [c for c in orig_cols if c not in known]
 
                     for idx, row in df.iterrows():
-                        date_val = row.get(date_col) if date_col else None
+                        date_val = parse_excel_date(row.get(date_col) if date_col else None)
                         payment_mode = (row.get(payment_col) or "CASH").upper() if payment_col else "CASH"
                         remark = row.get(remark_col) if remark_col else ""
-                        header = Receipt(date=date_val, payment_mode=payment_mode, remark=remark, created_by=request.user)
+                        try:
+                            numbers = ReceiptNumberService.next_numbers(payment_mode, date_val, lock=True)
+                        except Exception as e:
+                            err_txt = str(e)
+                            if 'NaTType' in err_txt or 'utcoffset' in err_txt:
+                                numbers = ReceiptNumberService.next_numbers(payment_mode, None, lock=True)
+                            else:
+                                raise
+                        header = Receipt(
+                            date=(date_val or timezone.now().date()),
+                            payment_mode=payment_mode,
+                            rec_ref=numbers["rec_ref"],
+                            rec_no=numbers["rec_no"],
+                            receipt_no_full=numbers["receipt_no_full"],
+                            remark=remark,
+                            created_by=request.user,
+                        )
                         header.save()
-                        total = 0
+                        total = Decimal("0")
                         for col in fee_cols:
                             val = row.get(col)
                             if pd.isna(val) or val == "":
@@ -465,8 +501,9 @@ class UploadCashExcelView(APIView):
                                 fee_obj = next((v for k, v in fee_by_name.items() if col_key in k), None)
                             if not fee_obj:
                                 raise ValueError(f"Fee type column not recognized: {col}")
-                            ReceiptItem.objects.create(receipt=header, fee_type=fee_obj, amount=float(val), remark="")
-                            total += float(val)
+                            val_decimal = Decimal(str(val))
+                            ReceiptItem.objects.create(receipt=header, fee_type=fee_obj, amount=val_decimal, remark="")
+                            total += val_decimal
                         header.total_amount = total
                         header.save()
                         results["created"] += 1
@@ -514,6 +551,13 @@ class ReceiptSerializer(serializers.ModelSerializer):
         return full_name or obj.created_by.username
 
 
+# Keep the legacy `CashRegisterSerializer` name as an alias to the Receipt serializer
+CashRegisterSerializer = ReceiptSerializer
+
+# Ensure the CashRegisterViewSet uses the Receipt-backed serializer
+CashRegisterViewSet.serializer_class = CashRegisterSerializer
+
+
 class ReceiptViewSet(FinancePermissionMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     queryset = Receipt.objects.select_related("created_by").prefetch_related("items__fee_type").all()
     serializer_class = ReceiptSerializer
@@ -530,18 +574,49 @@ class ReceiptViewSet(FinancePermissionMixin, mixins.ListModelMixin, mixins.Retri
             qs = qs.filter(payment_mode=payment_mode.upper())
         receipt_full = self.request.query_params.get("receipt_no_full")
         if receipt_full:
-            normalized_full = CashRegister.normalize_receipt_no(receipt_full)
+            normalized_full = normalize_receipt_no(receipt_full)
             if normalized_full:
                 qs = qs.filter(receipt_no_full__iexact=normalized_full)
             else:
                 return qs.none()
         return qs.order_by("-date", "-rec_ref", "-rec_no")
 
+    @action(detail=False, methods=["get"], url_path="flattened")
+    def flattened(self, request):
+        """Return receipts flattened: one row per ReceiptItem with receipt header fields.
+        
+        This endpoint mimics the old cash_register table structure for backward compatibility.
+        """
+        qs = self.get_queryset()
+        
+        flat_rows = []
+        for receipt in qs:
+            for item in receipt.items.all():
+                flat_rows.append({
+                    "id": f"{receipt.id}-{item.id}",
+                    "date": receipt.date,
+                    "payment_mode": receipt.payment_mode,
+                    "receipt_no_full": receipt.receipt_no_full,
+                    "rec_ref": receipt.rec_ref,
+                    "rec_no": receipt.rec_no,
+                    "fee_type": item.fee_type.id,
+                    "fee_type_code": item.fee_type.code,
+                    "fee_type_name": item.fee_type.name,
+                    "amount": str(item.amount),
+                    "remark": item.remark or receipt.remark or "",
+                    "created_by": receipt.created_by.id,
+                    "created_by_name": receipt.created_by.get_full_name().strip() or receipt.created_by.username,
+                    "created_at": receipt.created_at,
+                    "updated_at": receipt.updated_at,
+                })
+        
+        return Response(flat_rows)
+
     @action(detail=False, methods=["post"], url_path="bulk-create")
     def bulk_create(self, request):
         """Accepts JSON payload of receipts with items and creates them atomically.
 
-        Expected payload: { "receipts": [ { "date": "YYYY-MM-DD", "payment_mode": "CASH", "items": [ { "fee_type_code": "PGREG", "amount": 1000 }, ... ] }, ... ] }
+        Expected payload: { "receipts": [ { "date": "YYYY-MM-DD", "payment_mode": "CASH", "items": [ { "fee_type": id, "amount": 1000 }, ... ] }, ... ] }
         """
         payload = request.data or {}
         receipts = payload.get("receipts")
@@ -555,20 +630,25 @@ class ReceiptViewSet(FinancePermissionMixin, mixins.ListModelMixin, mixins.Retri
                 try:
                     date_val = rec.get("date")
                     payment_mode = (rec.get("payment_mode") or "CASH").upper()
-                    if payment_mode not in dict(CashRegister.PAYMENT_MODE_CHOICES):
+                    if payment_mode not in dict(PAYMENT_MODE_CHOICES):
                         raise ValueError("Invalid payment_mode")
                     items = rec.get("items") or []
                     if not items:
                         raise ValueError("No items for receipt")
 
+                    # Get next receipt number
+                    entry_date = datetime.strptime(date_val, "%Y-%m-%d").date() if date_val else timezone.now().date()
+                    next_numbers = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=True)
+
                     # Create receipt header
                     header = Receipt(
-                        date=date_val,
+                        date=entry_date,
                         payment_mode=payment_mode,
+                        rec_ref=next_numbers["rec_ref"],
+                        rec_no=next_numbers["rec_no"],
                         remark=rec.get("remark") or "",
                         created_by=request.user,
                     )
-                    # assign rec_ref/rec_no/receipt_no_full via save hooks
                     header.save()
 
                     total = 0
@@ -597,3 +677,74 @@ class ReceiptViewSet(FinancePermissionMixin, mixins.ListModelMixin, mixins.Retri
 
         serializer = self.get_serializer(created, many=True)
         return Response({"created": serializer.data, "errors": errors})
+
+    @action(detail=False, methods=["get"], url_path="fees-aggregate")
+    def fees_aggregate(self, request):
+        # Accept either `date_from`/`date_to` or legacy `from_date`/`to_date`
+        raw_date_from = request.query_params.get("date_from") or request.query_params.get("from_date")
+        raw_date_to = request.query_params.get("date_to") or request.query_params.get("to_date")
+        payment_mode = request.query_params.get("payment_mode")
+
+        # django.utils.dateparse.parse_date expects a string; guard against
+        # non-string values.
+        def _safe_parse(val):
+            if isinstance(val, str) and val.strip():
+                return parse_date(val)
+            return None
+
+        date_from = _safe_parse(raw_date_from)
+        date_to = _safe_parse(raw_date_to)
+
+        # Build a ReceiptItem queryset filtered by receipt date and payment mode
+        item_qs = ReceiptItem.objects.select_related("fee_type", "receipt")
+        if payment_mode:
+            item_qs = item_qs.filter(receipt__payment_mode=payment_mode.upper())
+        if date_from and date_to:
+            item_qs = item_qs.filter(receipt__date__gte=date_from, receipt__date__lte=date_to)
+        elif date_from:
+            item_qs = item_qs.filter(receipt__date__gte=date_from)
+        elif date_to:
+            item_qs = item_qs.filter(receipt__date__lte=date_to)
+
+        # Group items by receipt and build output
+        receipts_map: Dict[int, Dict[str, Any]] = {}
+        total_amount = 0.0
+        for it in item_qs.order_by("receipt__date", "receipt__rec_ref", "receipt__rec_no"):
+            r = it.receipt
+            if not r:
+                continue
+            rid = r.id
+            if rid not in receipts_map:
+                receipts_map[rid] = {
+                    "id": r.id,
+                    "date": r.date,
+                    "payment_mode": r.payment_mode,
+                    "receipt_no_full": r.receipt_no_full,
+                    "rec_ref": r.rec_ref,
+                    "rec_no": r.rec_no,
+                    "items": [],
+                    "created_by_name": r.created_by.get_full_name().strip() or (r.created_by.username if r.created_by else None),
+                }
+            amt = float(it.amount or 0)
+            total_amount += amt
+            receipts_map[rid]["items"].append({
+                "fee_type": getattr(it.fee_type, "id", None),
+                "code": getattr(it.fee_type, "code", None),
+                "name": getattr(it.fee_type, "name", None),
+                "amount": str(it.amount),
+            })
+
+        receipts_out = list(receipts_map.values())
+
+        # Aggregate totals per fee type across the same filter
+        fee_totals_q = (
+            item_qs.values("fee_type__id", "fee_type__code", "fee_type__name")
+            .annotate(amount=Sum("amount"))
+            .order_by("fee_type__code")
+        )
+        fee_totals = [
+            {"fee_type": f["fee_type__id"], "code": f["fee_type__code"], "name": f["fee_type__name"], "amount": str(f["amount"]) }
+            for f in fee_totals_q
+        ]
+
+        return Response({"receipts": receipts_out, "fee_totals": fee_totals, "total_amount": f"{total_amount:.2f}"})

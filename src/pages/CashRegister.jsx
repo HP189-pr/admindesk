@@ -5,9 +5,11 @@ import {
   updateCashEntry,
   deleteCashEntry,
   fetchNextReceiptNumber,
+  createReceiptsBulk,
 } from '../services/cashRegisterService';
 import { fetchFeeTypes } from '../services/feeTypeService';
 import PageTopbar from '../components/PageTopbar';
+import PaymentReport from '../report/Paymentreport';
 
 const PAYMENT_MODES = [
   { value: 'CASH', label: 'Cash' },
@@ -101,10 +103,9 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
   const [formState, setFormState] = useState({
     date: today,
     payment_mode: 'CASH',
-    fee_type: '',
-    amount: '',
     remark: '',
   });
+  const [feeItems, setFeeItems] = useState([{ fee_type: '', amount: '' }]);
   const [receiptPreview, setReceiptPreview] = useState('--');
   const [receiptPreviewRaw, setReceiptPreviewRaw] = useState('');
   const [previewNonce, setPreviewNonce] = useState(0);
@@ -149,22 +150,79 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     return entries.filter((entry) => entry.payment_mode?.toUpperCase() === filters.payment_mode);
   }, [entries, filters.payment_mode]);
 
+  const receiptFeesMap = useMemo(() => {
+    const map = {};
+    filteredEntries.forEach((e) => {
+      const key = e.receipt_no_full || `__${e.id}`;
+      if (!map[key]) map[key] = [];
+      map[key].push(e);
+    });
+    const summary = {};
+    Object.keys(map).forEach((k) => {
+      const arr = map[k];
+      if (arr.length === 1) {
+        const single = arr[0];
+        summary[k] = single.fee_type_code ? `${single.fee_type_code} - ${single.fee_type_name}` : single.fee_type_name || '--';
+      } else {
+        summary[k] = arr
+          .map((a) => {
+            const label = a.fee_type_code || a.fee_type_name || 'UNKNOWN';
+            const amt = Number(a.amount || 0).toFixed(2);
+            return `${label}=${amt}`;
+          })
+          .join(', ');
+      }
+    });
+    return summary;
+  }, [filteredEntries]);
+
+  // Group flattened rows into one row per receipt (aggregate amount and keep header fields)
+  const displayedEntries = useMemo(() => {
+    const grouped = {};
+    filteredEntries.forEach((e) => {
+      const key = e.receipt_no_full || `__${e.id}`;
+      if (!grouped[key]) {
+        grouped[key] = {
+          id: key,
+          date: e.date,
+          payment_mode: e.payment_mode,
+          receipt_no_full: e.receipt_no_full,
+          rec_ref: e.rec_ref,
+          rec_no: e.rec_no,
+          fee_type_code: e.fee_type_code,
+          fee_type_name: e.fee_type_name,
+          amount: 0,
+          remark: e.remark || '',
+          created_by: e.created_by,
+          created_by_name: e.created_by_name,
+          created_at: e.created_at,
+          updated_at: e.updated_at,
+        };
+      }
+      grouped[key].amount = Number(grouped[key].amount || 0) + Number(e.amount || 0);
+    });
+    return Object.values(grouped).sort((a, b) => (a.receipt_no_full || '').localeCompare(b.receipt_no_full || ''));
+  }, [filteredEntries]);
+
   const totalsByMode = useMemo(() => {
+    // Sum amounts per payment mode and count distinct receipts (not items)
     const base = PAYMENT_MODES.reduce((acc, mode) => {
       acc[mode.value] = { amount: 0, count: 0 };
       return acc;
     }, {});
+    const seen = {};
     entries.forEach((entry) => {
       const key = entry.payment_mode?.toUpperCase();
-      if (!key) {
-        return;
-      }
-      if (!base[key]) {
-        base[key] = { amount: 0, count: 0 };
-      }
+      if (!key) return;
+      if (!base[key]) base[key] = { amount: 0, count: 0 };
       const amt = Number(entry.amount) || 0;
       base[key].amount += amt;
-      base[key].count += 1;
+      const receiptKey = entry.receipt_no_full || `__${entry.id}`;
+      if (!seen[key]) seen[key] = new Set();
+      if (!seen[key].has(receiptKey)) {
+        seen[key].add(receiptKey);
+        base[key].count += 1;
+      }
     });
     return base;
   }, [entries]);
@@ -180,13 +238,13 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     try {
       const data = await fetchFeeTypes({ active: true });
       setFeeTypes(Array.isArray(data) ? data : data?.results || []);
-      if (!editingEntry && data.length && !formState.fee_type) {
-        setFormState((prev) => ({ ...prev, fee_type: data[0].id?.toString() || '' }));
+      if (!editingEntry && data.length && !feeItems[0].fee_type) {
+        setFeeItems([{ fee_type: data[0].id?.toString() || '', amount: '' }]);
       }
     } catch (err) {
       setFlash('error', 'Unable to load fee types');
     }
-  }, [editingEntry, formState.fee_type, setFlash]);
+  }, [editingEntry, feeItems, setFlash]);
 
   const loadEntries = useCallback(async () => {
     if (!rights.can_view || !filters.date) {
@@ -374,18 +432,21 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     setFormState({
       date: filters.date || today,
       payment_mode: filters.payment_mode || 'CASH',
-      fee_type: feeTypes[0]?.id?.toString() || '',
-      amount: '',
       remark: '',
     });
+    setFeeItems([{ fee_type: feeTypes[0]?.id?.toString() || '', amount: '' }]);
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!formState.date || !formState.fee_type || !formState.amount) {
-      setFlash('error', 'Date, Fee Type, and Amount are required.');
+    
+    // Validate items
+    const validItems = feeItems.filter(item => item.fee_type && item.amount);
+    if (!formState.date || validItems.length === 0) {
+      setFlash('error', 'Date and at least one Fee Type with Amount are required.');
       return;
     }
+    
     if (!editingEntry && !rights.can_create) {
       setFlash('error', 'You do not have permission to add entries.');
       return;
@@ -394,26 +455,44 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
       setFlash('error', 'You do not have permission to edit entries.');
       return;
     }
-    const parsedAmount = Number(formState.amount);
-    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
-      setFlash('error', 'Amount must be greater than zero.');
-      return;
+    
+    // Validate amounts
+    for (const item of validItems) {
+      const parsedAmount = Number(item.amount);
+      if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+        setFlash('error', 'All amounts must be greater than zero.');
+        return;
+      }
     }
-    const payload = {
-      date: formState.date,
-      payment_mode: formState.payment_mode,
-      fee_type: Number(formState.fee_type),
-      amount: parsedAmount,
-      remark: formState.remark?.trim() || '',
-    };
+    
     setSaving(true);
     try {
       if (editingEntry) {
+        // For editing, use old single-entry API
+        const payload = {
+          date: formState.date,
+          payment_mode: formState.payment_mode,
+          fee_type: Number(validItems[0].fee_type),
+          amount: Number(validItems[0].amount),
+          remark: formState.remark?.trim() || '',
+        };
         await updateCashEntry(editingEntry.id, payload);
         setFlash('success', 'Entry updated successfully');
       } else {
-        await createCashEntry(payload);
-        setFlash('success', 'Entry added successfully');
+        // For new entries, use bulk-create endpoint to handle multiple items
+        const payload = {
+          receipts: [{
+            date: formState.date,
+            payment_mode: formState.payment_mode,
+            remark: formState.remark?.trim() || '',
+            items: validItems.map(item => ({
+              fee_type: Number(item.fee_type),
+              amount: Number(item.amount),
+            })),
+          }],
+        };
+        await createReceiptsBulk(payload);
+        setFlash('success', `Receipt added with ${validItems.length} item(s)`);
         setPreviewNonce((prev) => prev + 1);
       }
       resetForm();
@@ -431,10 +510,9 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     setFormState({
       date: entry.date,
       payment_mode: entry.payment_mode,
-      fee_type: entry.fee_type?.toString() || '',
-      amount: entry.amount,
       remark: entry.remark || '',
     });
+    setFeeItems([{ fee_type: entry.fee_type?.toString() || '', amount: entry.amount }]);
   };
 
   const handleDelete = async (entry) => {
@@ -461,6 +539,15 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
       <EmptyState
         title="Access Restricted"
         message={'You do not have permission to view the Cash Register.'}
+      />
+    );
+  }
+
+  // Show Payment Report when Report button is clicked
+  if (selectedTopbarMenu === '📄 Report') {
+    return (
+      <PaymentReport 
+        onBack={() => setSelectedTopbarMenu('➕ Add')}
       />
     );
   }
@@ -619,37 +706,75 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                 className="mt-1 w-full rounded border border-dashed border-gray-300 bg-gray-100 px-3 py-2 font-mono"
               />
             </label>
-              <label className="text-sm font-medium text-gray-700 flex-1 min-w-[220px] lg:flex-[1_1_260px]">
-              Fee Type
-              <select
-                value={formState.fee_type}
-                onChange={(e) => handleFormChange('fee_type', e.target.value)}
-                className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-                required
-              >
-                <option value="" disabled>
-                  Select fee type
-                </option>
-                {feeTypes.map((type) => (
-                  <option key={type.id} value={type.id}>
-                    {type.code} - {type.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-              <label className="text-sm font-medium text-gray-700 w-full sm:w-[150px] lg:w-[160px]">
-              Amount
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={formState.amount}
-                onChange={(e) => handleFormChange('amount', e.target.value)}
-                className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-                required
-              />
-            </label>
             </div>
+            
+            {/* Fee Items */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-semibold text-gray-700">Fee Type(s) & Amount(s)</label>
+                {!editingEntry && (
+                  <button
+                    type="button"
+                    onClick={() => setFeeItems([...feeItems, { fee_type: feeTypes[0]?.id?.toString() || '', amount: '' }])}
+                    className="rounded bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-700"
+                  >
+                    ➕ Add More
+                  </button>
+                )}
+              </div>
+              {feeItems.map((item, index) => (
+                <div key={index} className="flex flex-wrap items-end gap-3">
+                  <label className="text-sm font-medium text-gray-700 flex-1 min-w-[220px] lg:flex-[1_1_300px]">
+                    {index === 0 ? 'Fee Type' : ''}
+                    <select
+                      value={item.fee_type}
+                      onChange={(e) => {
+                        const updated = [...feeItems];
+                        updated[index].fee_type = e.target.value;
+                        setFeeItems(updated);
+                      }}
+                      className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                      required
+                    >
+                      <option value="" disabled>
+                        Select fee type
+                      </option>
+                      {feeTypes.map((type) => (
+                        <option key={type.id} value={type.id}>
+                          {type.code} - {type.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="text-sm font-medium text-gray-700 w-full sm:w-[160px] lg:w-[180px]">
+                    {index === 0 ? 'Amount' : ''}
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={item.amount}
+                      onChange={(e) => {
+                        const updated = [...feeItems];
+                        updated[index].amount = e.target.value;
+                        setFeeItems(updated);
+                      }}
+                      className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                      required
+                    />
+                  </label>
+                  {!editingEntry && feeItems.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setFeeItems(feeItems.filter((_, i) => i !== index))}
+                      className="rounded border border-red-300 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50"
+                    >
+                      ✖
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            
             <div className="flex flex-wrap items-end gap-4">
               <label className="text-sm font-medium text-gray-700 flex-1 min-w-[260px] lg:w-1/2">
                 Remark
@@ -688,13 +813,13 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
               <h2 className="text-lg font-semibold text-gray-800">Entries for {filters.date || 'selected date'}</h2>
               {pageError && <p className="text-sm text-red-600">{pageError}</p>}
             </div>
-            <span className="text-sm text-gray-500">{filteredEntries.length} receipt(s)</span>
+            <span className="text-sm text-gray-500">{displayedEntries.length} receipt(s)</span>
           </div>
           {loading ? (
             <div className="py-10 text-center text-gray-500">Loading...</div>
           ) : !filters.date ? (
             <EmptyState title="Select a date" message="Pick a date to see cash register rows." />
-          ) : filteredEntries.length === 0 ? (
+          ) : displayedEntries.length === 0 ? (
             <EmptyState title="No receipts" message="No rows match the selected date and filters." />
           ) : (
             <div className="overflow-x-auto">
@@ -711,7 +836,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white">
-                  {filteredEntries.map((entry) => {
+                  {displayedEntries.map((entry) => {
                     const formattedReceipt = formatReceiptDisplay(entry.receipt_no_full);
                     return (
                       <tr key={entry.id} className="hover:bg-slate-50">
@@ -719,8 +844,11 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                           <div>{formattedReceipt}</div>
                         </td>
                       <td className="px-4 py-2 capitalize text-gray-700">{entry.payment_mode.toLowerCase()}</td>
-                      <td className="px-4 py-2 text-gray-700">
-                        {entry.fee_type_code ? `${entry.fee_type_code} - ${entry.fee_type_name}` : entry.fee_type_name}
+                      <td
+                        className="px-4 py-2 text-gray-700 break-words max-w-[20rem]"
+                        title={receiptFeesMap[entry.receipt_no_full || entry.id]}
+                      >
+                        {receiptFeesMap[entry.receipt_no_full || entry.id] || (entry.fee_type_code ? `${entry.fee_type_code} - ${entry.fee_type_name}` : entry.fee_type_name || '--')}
                       </td>
                       <td className="px-4 py-2 text-right font-semibold text-gray-900">Rs. {Number(entry.amount).toFixed(2)}</td>
                       <td className="px-4 py-2 text-gray-600">{entry.remark || '--'}</td>
