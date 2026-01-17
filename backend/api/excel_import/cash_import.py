@@ -4,6 +4,7 @@ from decimal import Decimal
 from django.db import transaction
 
 from .helpers import parse_excel_date, clean_cell, row_value
+from ..domain_cash_register import PAYMENT_MODE_CHOICES
 
 
 # --------------------------------------------------
@@ -14,6 +15,13 @@ def safe_int(val, default=None):
         return int(float(val))
     except Exception:
         return default
+
+
+# Normalize fee keys to a canonical form for lookups
+def normalize_fee_key(val: str) -> str:
+    if not val:
+        return ""
+    return str(val).strip().lower().replace(" ", "").replace("_", "")
 
 
 # --------------------------------------------------
@@ -27,9 +35,8 @@ def import_cash_register(
     ReceiptItem,
     FeeType,
     ReceiptNumberService,
-    PAYMENT_MODE_CHOICES,
+    # PAYMENT_MODE_CHOICES is now imported at the module level
     normalize_receipt_no,
-    merge_reference_and_number,
     split_receipt,
 ):
     """
@@ -55,12 +62,23 @@ def import_cash_register(
     # Fee columns = everything except known system columns
     fee_cols = [c for c in raw_cols if c not in standard_keys]
 
+    # Detect ROW-WISE fee format (fee_code + amount)
+    is_row_wise = "fee_code" in raw_cols and "amount" in raw_cols
+
     # --------------------------------------------------
     # Load FeeType cache
     # --------------------------------------------------
     fee_types = list(FeeType.objects.filter(is_active=True))
-    fee_by_code = {ft.code.strip().lower(): ft for ft in fee_types}
-    fee_by_name = {ft.name.strip().lower(): ft for ft in fee_types}
+    fee_by_code = {
+        normalize_fee_key(ft.code): ft
+        for ft in fee_types
+        if getattr(ft, "code", None)
+    }
+    fee_by_name = {
+        normalize_fee_key(ft.name): ft
+        for ft in fee_types
+        if getattr(ft, "name", None)
+    }
 
     # --------------------------------------------------
     # EXCEL HEADER → DB FEE CODE MAP
@@ -94,25 +112,39 @@ def import_cash_register(
         "extension fees": "OTH_EXTENTION_FEES",
 
         "other fees": "OTHER_FEES",
+
+        # Added aliases for Excel fee codes
+        "rechking": "RECHECK",
+        "kyafes": "KYA",
+        "phd": "PHD_TUTION",  # Change to PHD_FORM if needed
+        "extentionfees": "OTH_EXTENTION_FEES",
     }
 
     # --------------------------------------------------
     # Fee resolver (STRICT)
     # --------------------------------------------------
+    # Normalize alias map keys for reliable matching
+    ALIAS_TO_CODE_NORM = {
+        normalize_fee_key(k): v for k, v in ALIAS_TO_CODE.items()
+    }
+
     def resolve_fee_by_header(header_name):
         if not header_name:
             return None
 
-        key = str(header_name).strip().lower()
+        raw = normalize_fee_key(header_name)
 
-        if key in fee_by_code:
-            return fee_by_code[key]
+        # direct code match
+        if raw in fee_by_code:
+            return fee_by_code[raw]
 
-        if key in ALIAS_TO_CODE:
-            return fee_by_code.get(ALIAS_TO_CODE[key].lower())
+        # alias -> canonical code -> fee_by_code
+        if raw in ALIAS_TO_CODE_NORM:
+            return fee_by_code.get(normalize_fee_key(ALIAS_TO_CODE_NORM[raw]))
 
-        if key in fee_by_name:
-            return fee_by_name[key]
+        # match by name
+        if raw in fee_by_name:
+            return fee_by_name[raw]
 
         return None
 
@@ -132,8 +164,8 @@ def import_cash_register(
     # --------------------------------------------------
     # MULTI-FEE COLUMN IMPORT
     # --------------------------------------------------
-    for i, (_, r) in enumerate(df.iterrows(), start=2):
 
+    for i, (_, r) in enumerate(df.iterrows(), start=2):
         payment_mode = (clean_cell(row_value(r, "payment_mode")) or "").upper()
         if payment_mode not in valid_modes:
             counts["skipped"] += 1
@@ -155,30 +187,18 @@ def import_cash_register(
             clean_cell(row_value(r, "receipt_no_full"))
         )
 
-        header = None
-        if receipt_no_full:
-            header = Receipt.objects.filter(receipt_no_full=receipt_no_full).first()
+        if not receipt_no_full:
+            counts["skipped"] += 1
+            add_log(i, "skipped", "Missing receipt_no_full")
+            continue
+
+        # Try to fetch existing receipt (dual entry allowed)
+        header = Receipt.objects.filter(receipt_no_full=receipt_no_full).first()
 
         try:
             with transaction.atomic():
-
-                # ---------------------------
-                # Create Receipt Header
-                # ---------------------------
+                # Always use Excel as source of truth for receipt numbers
                 if not header:
-
-                    if not rec_ref or rec_no is None:
-                        nums = ReceiptNumberService.next_numbers(
-                            payment_mode, entry_date, lock=True
-                        )
-                        rec_ref = nums["rec_ref"]
-                        rec_no = nums["rec_no"]
-                        receipt_no_full = nums["receipt_no_full"]
-                    else:
-                        receipt_no_full = receipt_no_full or merge_reference_and_number(
-                            rec_ref, f"{rec_no:06d}"
-                        )
-
                     header = Receipt.objects.create(
                         date=entry_date,
                         payment_mode=payment_mode,
@@ -189,12 +209,52 @@ def import_cash_register(
                         created_by=request.user,
                     )
 
-                total = Decimal("0")
-                used = False
+                # --------------------------------------------------
+                # ROW-WISE FEE IMPORT (fee_code + amount)
+                # --------------------------------------------------
+                if is_row_wise:
+                    fee_code_val = clean_cell(row_value(r, "fee_code"))
+                    amount_val = row_value(r, "amount")
+
+                    if not fee_code_val or amount_val in (None, "", 0):
+                        header.delete()
+                        counts["skipped"] += 1
+                        add_log(i, "skipped", "Missing fee_code or amount")
+                        continue
+
+                    fee_key = normalize_fee_key(fee_code_val)
+                    fee_obj = (
+                        fee_by_code.get(fee_key)
+                        or fee_by_name.get(fee_key)
+                        or fee_by_code.get(normalize_fee_key(ALIAS_TO_CODE_NORM.get(fee_key, "")))
+                    )
+
+                    if not fee_obj:
+                        header.delete()
+                        counts["skipped"] += 1
+                        add_log(i, "skipped", f"Unknown fee code: {fee_code_val}")
+                        continue
+
+                    amt = Decimal(str(amount_val))
+                    ReceiptItem.objects.create(
+                        receipt=header,
+                        fee_type=fee_obj,
+                        amount=amt,
+                        remark=""
+                    )
+
+                    header.total_amount = amt
+                    header.save(update_fields=["total_amount"])
+
+                    counts["created"] += 1
+                    add_log(i, "created", "Created", header.receipt_no_full)
+                    continue
 
                 # ---------------------------
-                # Receipt Items
+                # MULTI-FEE COLUMN IMPORT (legacy)
                 # ---------------------------
+                total = Decimal("0")
+                used = False
                 for col in fee_cols:
                     val = row_value(r, col)
                     if val in (None, "", 0):

@@ -1,12 +1,19 @@
-# Import finance/cash register models for Excel import logic
-from .domain_cash_register import Receipt, ReceiptItem, FeeType, normalize_receipt_no
+
 from django.contrib import admin
+# Import finance/cash register models for Excel import logic
+from .domain_cash_register import Receipt, ReceiptItem, FeeType, normalize_receipt_no, split_receipt
 from django.db import models as djmodels
 from .domain_emp import EmpProfile, LeaveType, LeaveEntry, LeavePeriod, LeaveAllocation
 from .domain_logs import UserActivityLog, ErrorLog
 from .domain_degree import StudentDegree, ConvocationMaster
 import csv
 import io
+
+class ReceiptItemInline(admin.TabularInline):
+    model = ReceiptItem
+    extra = 0
+    fields = ("fee_type", "amount", "remark")
+    autocomplete_fields = ("fee_type",)
 
 @admin.register(EmpProfile)
 class EmpProfileAdmin(admin.ModelAdmin):
@@ -824,7 +831,7 @@ class ExcelUploadMixin:
                                 doc_rec_id = str(r.get("doc_rec_id") or "").strip()
                                 if not (apply_for and pay_by and doc_rec_id):
                                     counts["skipped"] += 1; add_log(i, "skipped", "Missing apply_for/pay_by/doc_rec_id"); continue
-                                pay_rec_no_pre = str(r.get("pay_rec_no_pre") or "").strip()
+                                pay_rec_no_pre = str(r.get("pay_rec_no") or "").strip()
                                 pay_rec_no = str(r.get("pay_rec_no") or "").strip() or None
                                 pay_amount = None
                                 if "pay_amount" in eff:
@@ -904,9 +911,7 @@ class ExcelUploadMixin:
                                 ReceiptItem,
                                 FeeType,
                                 ReceiptNumberService,
-                                PAYMENT_MODE_CHOICES,
                                 normalize_receipt_no,
-                                merge_reference_and_number,
                                 split_receipt,
                             )
                         elif issubclass(self.model, MigrationRecord) and sheet_norm == "migration":
@@ -1590,6 +1595,7 @@ class FeeTypeAdmin(CommonAdminMixin):
 
 @admin.register(Receipt)
 class ReceiptAdmin(CommonAdminMixin):
+    inlines = [ReceiptItemInline]
     list_display = ("receipt_no_full", "rec_ref", "rec_no", "date", "payment_mode", "total_amount", "created_by", "created_at")
     search_fields = ("receipt_no_full", "rec_ref", "remark__icontains")
     list_filter = ("payment_mode", "date")

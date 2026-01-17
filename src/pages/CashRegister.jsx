@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   fetchCashEntries,
   createCashEntry,
-  updateCashEntry,
   deleteCashEntry,
   fetchNextReceiptNumber,
   createReceiptsBulk,
@@ -264,49 +263,50 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     }
   }, [rights.can_view, filters.date]);
 
+
   const computeFallbackReceipt = useCallback(
     (mode, date) => {
       if (!mode || !date) {
         return null;
       }
+
       const normalizedMode = mode.toUpperCase();
+
       const sameDayEntries = entries.filter(
         (entry) =>
-          entry.payment_mode?.toUpperCase() === normalizedMode && entry.date === date
+          entry.payment_mode?.toUpperCase() === normalizedMode &&
+          entry.date === date
       );
+
       const candidates = sameDayEntries.filter((entry) => {
         const prefix = extractReferencePrefix(entry);
         const sequence = extractSequenceNumber(entry);
         return Boolean(prefix) && sequence !== null;
       });
+
       if (!candidates.length) {
         return null;
       }
+
       let best = candidates[0];
+
       for (let idx = 1; idx < candidates.length; idx += 1) {
         const entry = candidates[idx];
         const bestSeq = extractSequenceNumber(best) || 0;
         const entrySeq = extractSequenceNumber(entry) || 0;
+
         if (entrySeq > bestSeq) {
           best = entry;
         }
       }
+
       const prefix = extractReferencePrefix(best);
       const nextSeq = (extractSequenceNumber(best) || 0) + 1;
+
       return prefix ? `${prefix}${String(nextSeq).padStart(6, '0')}` : null;
     },
     [entries]
   );
-
-  useEffect(() => {
-    loadFeeTypes();
-  }, [loadFeeTypes]);
-
-  useEffect(() => {
-    if (rights.can_view) {
-      loadEntries();
-    }
-  }, [rights.can_view, loadEntries]);
 
   useEffect(() => {
     if (!formState.date) {
@@ -713,13 +713,32 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
               <div className="flex items-center justify-between">
                 <label className="text-sm font-semibold text-gray-700">Fee Type(s) & Amount(s)</label>
                 {!editingEntry && (
-                  <button
-                    type="button"
-                    onClick={() => setFeeItems([...feeItems, { fee_type: feeTypes[0]?.id?.toString() || '', amount: '' }])}
-                    className="rounded bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-700"
-                  >
-                    ➕ Add More
-                  </button>
+                  <div className="flex flex-col items-start gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setFeeItems([...feeItems, { fee_type: feeTypes[0]?.id?.toString() || '', amount: '' }])}
+                      className="rounded bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-700"
+                    >
+                      ➕ Add More
+                    </button>
+                    <p className="text-xs text-gray-500 mt-1">
+                      All fee rows will be saved under the same receipt number
+                    </p>
+                  </div>
+                )}
+                {editingEntry && (
+                  <div className="flex flex-col items-start gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setFeeItems([...feeItems, { fee_type: feeTypes[0]?.id?.toString() || '', amount: '' }])}
+                      className="rounded bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-700"
+                    >
+                      ➕ Add More
+                    </button>
+                    <p className="text-xs text-gray-500 mt-1">
+                      All fee rows will be saved under the same receipt number
+                    </p>
+                  </div>
                 )}
               </div>
               {feeItems.map((item, index) => (
@@ -855,15 +874,15 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                       <td className="px-4 py-2 text-gray-700">{entry.created_by_name}</td>
                       <td className="px-4 py-2 text-center">
                         <div className="flex items-center justify-center gap-2">
-                          {rights.can_edit && (
-                            <button
-                              type="button"
-                              onClick={() => startEdit(entry)}
-                              className="rounded border border-blue-200 px-3 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-50"
-                            >
-                              Edit
-                            </button>
-                          )}
+                          {/* Editing disabled for cash register (audit safety) */}
+                          <button
+                            type="button"
+                            disabled
+                            className="rounded border border-gray-300 px-3 py-1 text-xs text-gray-400 cursor-not-allowed"
+                            title="Editing receipts is not allowed"
+                          >
+                            Edit
+                          </button>
                           {rights.can_delete && (
                             <button
                               type="button"

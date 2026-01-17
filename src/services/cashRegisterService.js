@@ -49,13 +49,14 @@ export const createCashEntry = async (payload) => {
   return response.data;
 };
 
-export const updateCashEntry = async (id, payload) => {
-  const response = await axiosInstance.put(
-    `${CASH_REGISTER_BASE}${id}/`,
-    payload
-  );
-  return response.data;
-};
+// ❌ Updating cash register entries is intentionally disabled for audit safety
+// export const updateCashEntry = async (id, payload) => {
+//   const response = await axiosInstance.put(
+//     `${CASH_REGISTER_BASE}${id}/`,
+//     payload
+//   );
+//   return response.data;
+// };
 
 export const deleteCashEntry = async (id) => {
   const response = await axiosInstance.delete(
@@ -75,8 +76,6 @@ export const createReceiptsBulk = async (payload) => {
   );
   return response.data;
 };
-
-
 
 /* ----------------------------------------------------
    ✅ PERIODIC FEES AGGREGATE (REPORT PAGE ONLY)
@@ -132,7 +131,6 @@ export default {
   fetchCashEntries,
   fetchNextReceiptNumber,
   createCashEntry,
-  updateCashEntry,
   deleteCashEntry,
   createReceiptsBulk,
   fetchFeesAggregate,

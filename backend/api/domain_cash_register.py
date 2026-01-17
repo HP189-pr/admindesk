@@ -1,3 +1,53 @@
+# Robust, case-insensitive fee code alias mapping for Excel uploads
+# Always use .lower() on input before lookup
+FEE_ALIAS = {
+    # --- Exam Fees ---
+    "examfees": "EXAM_FEES",
+    "examfee": "EXAM_FEES",
+    "exam fees": "EXAM_FEES",
+    "exam fee": "EXAM_FEES",
+    "exmfees": "EXAM_FEES",
+    "exmfee": "EXAM_FEES",
+
+    # --- Rechecking ---
+    "rechking": "RECHECK",
+    "rechecking": "RECHECK",
+    "rechk": "RECHECK",
+
+    # --- Provisional Degree ---
+    "pdf": "PROV_DEGREE_FEES",
+    "provisional degree": "PROV_DEGREE_FEES",
+    "prov degree": "PROV_DEGREE_FEES",
+    "prov_deg": "PROV_DEGREE_FEES",
+
+    # --- Student Verification ---
+    "svf": "STU_VER_FEES",
+    "stuverfees": "STU_VER_FEES",
+    "stu ver fees": "STU_VER_FEES",
+
+    # --- PhD Tuition / General PhD Fees ---
+    "phd": "PHD_TUTION",
+    "phdfees": "PHD_TUTION",
+    "phd fee": "PHD_TUTION",
+
+    # --- PhD Form Fees ---
+    "phdform": "PHD_FORM",
+    "phd form": "PHD_FORM",
+
+    # --- University Development ---
+    "unidev": "UNI_DEV_FEES",
+    "unidevfees": "UNI_DEV_FEES",
+    "uni dev": "UNI_DEV_FEES",
+
+    # --- KYA ---
+    "kyafes": "KYA",
+    "kya fees": "KYA",
+
+    # --- OTHER FEES (ONLY OTHER FEES) ---
+    "other fees": "OTHER_FEES",
+    "other": "OTHER_FEES",
+    "misc": "OTHER_FEES",
+}
 """Accounts & Finance cash register domain models.
 
 This module stores the FeeType master and ledger-style CashRegister entries.
@@ -48,12 +98,13 @@ class FeeType(models.Model):
         return self.name
 
 
-# payment modes (moved from CashRegister model)
-PAYMENT_MODE_CHOICES = [
+
+# PAYMENT_MODE_CHOICES must be top-level and a tuple for Django best practice
+PAYMENT_MODE_CHOICES = (
     ("CASH", "Cash"),
     ("BANK", "Bank"),
     ("UPI", "UPI"),
-]
+)
 
 
 def normalize_receipt_no(value: Optional[str]) -> Optional[str]:
@@ -83,10 +134,10 @@ def split_receipt(value: Optional[str]) -> tuple[Optional[str], Optional[int]]:
 
 class Receipt(models.Model):
     date = models.DateField()
-    payment_mode = models.CharField(max_length=8)
+    payment_mode = models.CharField(max_length=10, choices=PAYMENT_MODE_CHOICES)
     rec_ref = models.CharField(max_length=32)
     rec_no = models.PositiveIntegerField()
-    receipt_no_full = models.CharField(max_length=64, unique=True, editable=False, db_index=True)
+    receipt_no_full = models.CharField(max_length=64, editable=False, db_index=True)
     total_amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     remark = models.TextField(blank=True, null=True)
     created_by = models.ForeignKey(User, on_delete=models.PROTECT)
@@ -96,13 +147,11 @@ class Receipt(models.Model):
     class Meta:
         db_table = "receipt"
         ordering = ["-date", "-rec_ref", "-rec_no"]
-        constraints = [
-            models.UniqueConstraint(fields=["rec_ref", "rec_no"], name="uniq_receipt_series_number")
-        ]
 
     def save(self, *args, **kwargs):
         self.rec_no = int(float(self.rec_no))
-        self.receipt_no_full = f"{self.rec_ref}{format_rec_no(self.rec_no)}"
+        if not self.receipt_no_full:
+            self.receipt_no_full = f"{self.rec_ref}{format_rec_no(self.rec_no)}"
         super().save(*args, **kwargs)
 
     @property

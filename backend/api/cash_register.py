@@ -37,6 +37,7 @@ from .domain_cash_register import (
     normalize_receipt_no,
     split_receipt,
     PAYMENT_MODE_CHOICES,
+    FEE_ALIAS,
 )
 from .excel_import.helpers import parse_excel_date
 from .domain_core import Menu, Module, UserPermission
@@ -388,23 +389,22 @@ class UploadCashExcelView(APIView):
         col_map = {c: str(c).strip() for c in orig_cols}
         lower_cols = {c.lower(): c for c in orig_cols}
 
-        # Load fee types cache (by code and name)
+        # Load fee types cache (by code and name, all lowercased for case-insensitive matching)
         fee_types = list(FeeType.objects.all())
         fee_by_code = {ft.code.strip().lower(): ft for ft in fee_types if ft.code}
         fee_by_name = {ft.name.strip().lower(): ft for ft in fee_types if ft.name}
 
-        results = {"created": 0, "errors": []}
+        results = {"created": 0, "skipped": 0, "errors": []}
+        MAX_ERRORS = 200
+        error_count = 0
 
         try:
             with transaction.atomic():
-                # Decide format: rows-as-items if columns include fee_type/fee_code & amount
                 lower_keys = set(k.lower() for k in orig_cols)
                 if ("fee_type" in lower_keys or "fee_code" in lower_keys) and "amount" in lower_keys:
-                    # Prefer grouping by normalized receipt_no_full when present to ensure one header per receipt
                     receipt_col = lower_cols.get("receipt_no_full") if "receipt_no_full" in lower_keys else None
 
                     if receipt_col:
-                        # create a normalized receipt key column for robust grouping
                         df["_receipt_key"] = df[receipt_col].apply(lambda v: normalize_receipt_no(v) or "")
                         grouped = df.groupby("_receipt_key")
                     elif "rec_no" in lower_keys:
@@ -418,28 +418,46 @@ class UploadCashExcelView(APIView):
                         payment_mode = (first.get(lower_cols.get("payment_mode")) or "CASH").upper()
                         remark = first.get(lower_cols.get("remark")) if "remark" in lower_cols else ""
 
-                        # Use ReceiptNumberService to get safe receipt numbers
-                        try:
-                            numbers = ReceiptNumberService.next_numbers(payment_mode, date_val, lock=True)
-                        except Exception as e:
-                            err_txt = str(e)
-                            if 'NaTType' in err_txt or 'utcoffset' in err_txt:
-                                # fallback: ignore problematic date and use current date
-                                numbers = ReceiptNumberService.next_numbers(payment_mode, None, lock=True)
-                            else:
-                                raise
-                        header = Receipt(
+                        # Always use receipt_no_full, rec_ref, rec_no from Excel if present
+                        receipt_full = normalize_receipt_no(first.get(lower_cols.get("receipt_no_full"))) if "receipt_no_full" in lower_cols else None
+                        rec_no = None
+                        rec_ref = None
+                        if receipt_full:
+                            rec_ref, rec_no = split_receipt(receipt_full)
+                        if rec_no is None:
+                            rec_no = first.get(lower_cols.get("rec_no")) if "rec_no" in lower_cols else None
+                        if rec_ref is None:
+                            rec_ref = first.get(lower_cols.get("rec_ref")) if "rec_ref" in lower_cols else None
+                        if not receipt_full and rec_ref and rec_no:
+                            receipt_full = f"{rec_ref}{int(float(rec_no)):06d}"
+                        if not receipt_full:
+                            # fallback to auto
+                            try:
+                                numbers = ReceiptNumberService.next_numbers(payment_mode, date_val, lock=True)
+                            except Exception as e:
+                                err_txt = str(e)
+                                if 'NaTType' in err_txt or 'utcoffset' in err_txt:
+                                    numbers = ReceiptNumberService.next_numbers(payment_mode, None, lock=True)
+                                else:
+                                    raise
+                            rec_ref = numbers["rec_ref"]
+                            rec_no = numbers["rec_no"]
+                            receipt_full = numbers["receipt_no_full"]
+
+                        # Always create new Receipt, allow duplicates
+                        header = Receipt.objects.create(
                             date=date_val,
                             payment_mode=payment_mode,
-                            rec_ref=numbers["rec_ref"],
-                            rec_no=numbers["rec_no"],
-                            receipt_no_full=numbers["receipt_no_full"],
+                            rec_ref=rec_ref or "",
+                            rec_no=int(float(rec_no)) if rec_no is not None else None,
+                            receipt_no_full=receipt_full,
                             remark=remark,
                             created_by=request.user,
                         )
-                        header.save()
+
                         total = Decimal("0")
-                        for _, row in group.iterrows():
+                        item_count = 0
+                        for idx, row in group.iterrows():
                             ft_code = (
                                 row.get(lower_cols.get("fee_code"))
                                 or row.get(lower_cols.get("fee_type"))
@@ -448,36 +466,50 @@ class UploadCashExcelView(APIView):
                             if pd.isna(amt) or amt == "":
                                 continue
                             fee_obj = None
-                            if isinstance(ft_code, str) and ft_code.strip().lower() in fee_by_code:
-                                fee_obj = fee_by_code[ft_code.strip().lower()]
-                            elif isinstance(ft_code, str) and ft_code.strip().lower() in fee_by_name:
-                                fee_obj = fee_by_name[ft_code.strip().lower()]
-                            else:
-                                # try numeric id
-                                try:
-                                    fid = int(ft_code)
-                                    fee_obj = FeeType.objects.filter(id=fid).first()
-                                except Exception:
-                                    fee_obj = None
+                            if isinstance(ft_code, str):
+                                key = ft_code.strip().lower()
+                                # Always normalize using FEE_ALIAS (case-insensitive)
+                                key = FEE_ALIAS.get(key, key)
+                                fee_obj = fee_by_code.get(key) or fee_by_name.get(key)
                             if not fee_obj:
-                                raise ValueError(f"Fee type not found for value: {ft_code}")
+                                if error_count < MAX_ERRORS:
+                                    results["errors"].append({"row": int(idx) + 2, "receipt": receipt_full, "error": f"Fee type not found: {ft_code}"})
+                                error_count += 1
+                                results["skipped"] += 1
+                                continue
                             amt_decimal = Decimal(str(amt))
                             ReceiptItem.objects.create(receipt=header, fee_type=fee_obj, amount=amt_decimal, remark="")
                             total += amt_decimal
+                            item_count += 1
                         header.total_amount = total
                         header.save()
-                        results["created"] += 1
+                        if item_count > 0:
+                            results["created"] += 1
+                        else:
+                            results["skipped"] += 1
+                        # Truncate error log if too many
+                        if error_count == MAX_ERRORS:
+                            results["errors"].append({"info": "Too many errors, truncated"})
                 else:
-                    # Treat each row as a receipt header with multiple fee columns
-                    # Identify primary columns
+                    # --- FIX: Add fee_code to standard keys and support row-wise mode ---
                     date_col = lower_cols.get("date") or next((c for c in orig_cols if c.lower().startswith("date")), None)
                     receipt_col = lower_cols.get("receipt_no_full") or lower_cols.get("rec_no") or lower_cols.get("receipt_no")
                     payment_col = lower_cols.get("payment_mode")
                     remark_col = lower_cols.get("remark")
 
-                    # Fee columns are those not in known set
-                    known = {date_col, receipt_col, payment_col, remark_col, None}
-                    fee_cols = [c for c in orig_cols if c not in known]
+                    # Add fee_code to standard keys
+                    standard_keys = {
+                        "date", "payment_mode", "remark",
+                        "rec_ref", "rec_no", "receipt_no_full",
+                        "fee_type", "fee_type_code", "fee_code",  # <-- added fee_code
+                        "amount",
+                        "total", "TOTAL"
+                    }
+                    raw_cols = [str(c).strip() for c in orig_cols]
+                    fee_cols = [c for c in orig_cols if str(c).strip().lower() not in standard_keys]
+
+                    # Detect row-wise mode
+                    is_row_wise = "fee_code" in [c.lower() for c in raw_cols] and "amount" in [c.lower() for c in raw_cols]
 
                     for idx, row in df.iterrows():
                         date_val = parse_excel_date(row.get(date_col) if date_col else None)
@@ -491,35 +523,73 @@ class UploadCashExcelView(APIView):
                                 numbers = ReceiptNumberService.next_numbers(payment_mode, None, lock=True)
                             else:
                                 raise
-                        header = Receipt(
-                            date=(date_val or timezone.now().date()),
-                            payment_mode=payment_mode,
+
+                        header, created = Receipt.objects.get_or_create(
                             rec_ref=numbers["rec_ref"],
                             rec_no=numbers["rec_no"],
-                            receipt_no_full=numbers["receipt_no_full"],
-                            remark=remark,
-                            created_by=request.user,
+                            defaults={
+                                "date": (date_val or timezone.now().date()),
+                                "payment_mode": payment_mode,
+                                "remark": remark,
+                                "created_by": request.user,
+                            }
                         )
-                        header.save()
+                        if not created:
+                            results["skipped"] += 1
+                            results["errors"].append({"row": idx, "error": f"Duplicate receipt: {header.receipt_no_full}"})
+                            continue
+
                         total = Decimal("0")
-                        for col in fee_cols:
-                            val = row.get(col)
-                            if pd.isna(val) or val == "":
-                                continue
-                            # map column header to fee type by code or name
-                            col_key = str(col).strip().lower()
-                            fee_obj = fee_by_code.get(col_key) or fee_by_name.get(col_key)
-                            if not fee_obj:
-                                # try to find by partial match
-                                fee_obj = next((v for k, v in fee_by_name.items() if col_key in k), None)
-                            if not fee_obj:
-                                raise ValueError(f"Fee type column not recognized: {col}")
-                            val_decimal = Decimal(str(val))
-                            ReceiptItem.objects.create(receipt=header, fee_type=fee_obj, amount=val_decimal, remark="")
-                            total += val_decimal
-                        header.total_amount = total
-                        header.save()
-                        results["created"] += 1
+                        used = False
+                        if is_row_wise:
+                            fee_code_val = row.get(lower_cols.get("fee_code")) if lower_cols.get("fee_code") else None
+                            amount_val = row.get(lower_cols.get("amount")) if lower_cols.get("amount") else None
+                            fee_code_clean = str(fee_code_val).strip() if fee_code_val else None
+                            if fee_code_clean and amount_val not in (None, "", float('nan')):
+                                # Normalize fee code using FEE_ALIAS (case-insensitive)
+                                fee_code_norm = FEE_ALIAS.get(fee_code_clean.lower(), fee_code_clean.lower())
+                                fee_obj = fee_by_code.get(fee_code_norm) or fee_by_name.get(fee_code_norm)
+                                if not fee_obj:
+                                    results["skipped"] += 1
+                                    results["errors"].append({"row": idx, "error": f"Unknown fee code: {fee_code_clean}", "receipt": row.get(receipt_col)})
+                                    header.total_amount = total
+                                    header.save()
+                                    continue
+                                amt = Decimal(str(amount_val))
+                                ReceiptItem.objects.create(
+                                    receipt=header,
+                                    fee_type=fee_obj,
+                                    amount=amt,
+                                    remark=""
+                                )
+                                total += amt
+                                used = True
+                        else:
+                            for col in fee_cols:
+                                val = row.get(col)
+                                if pd.isna(val) or val == "":
+                                    continue
+                                col_key = str(col).strip().lower()
+                                fee_obj = fee_by_code.get(col_key) or fee_by_name.get(col_key)
+                                if not fee_obj:
+                                    fee_obj = next((v for k, v in fee_by_name.items() if col_key in k), None)
+                                if not fee_obj:
+                                    results["skipped"] += 1
+                                    results["errors"].append({"row": idx, "error": f"Fee type column not recognized: {col}"})
+                                    continue
+                                val_decimal = Decimal(str(val))
+                                ReceiptItem.objects.create(receipt=header, fee_type=fee_obj, amount=val_decimal, remark="")
+                                total += val_decimal
+                                used = True
+                        if not used:
+                            if error_count < MAX_ERRORS:
+                                results["errors"].append({"row": int(idx) + 2, "error": "No fee values", "receipt": row.get(receipt_col)})
+                            error_count += 1
+                            results["skipped"] += 1
+                        else:
+                            results["created"] += 1
+                        if error_count == MAX_ERRORS:
+                            results["errors"].append({"info": "Too many errors, truncated"})
         except Exception as exc:
             return Response({"detail": f"Upload failed: {exc}", "results": results}, status=400)
 
