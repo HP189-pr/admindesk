@@ -1,5 +1,18 @@
-"""Serializers and viewsets for the Accounts & Finance cash register."""
+
 from __future__ import annotations
+from django.utils.dateparse import parse_date
+from django.db.models import Sum, Min, Max, F, Func
+from django.db.models.functions import TruncMonth, TruncYear
+
+# --- Period grouping helpers ---
+class Quarter(Func):
+    function = 'DATE_TRUNC'
+    template = "%(function)s('quarter', %(expressions)s)"
+
+class HalfYear(Func):
+    function = 'DATE_TRUNC'
+    template = ("%(function)s('year', %(expressions)s) + interval '6 months' * ((extract(month from %(expressions)s)-1)/6)")
+"""Serializers and viewsets for the Accounts & Finance cash register."""
 
 from datetime import date, datetime
 import io
@@ -564,6 +577,97 @@ class ReceiptViewSet(FinancePermissionMixin, mixins.ListModelMixin, mixins.Retri
     permission_classes = [IsAuthenticated]
     finance_menu_name = "Cash Register"
 
+
+    # ✅ FINAL PERIODIC FEES AGGREGATE API
+    @action(detail=False, methods=["get"], url_path="fees-aggregate")
+    def fees_aggregate(self, request):
+        """
+        Returns period-based fee aggregates for report_by: Daily, Monthly, Quarterly, Half-Yearly, Yearly.
+        """
+        date_from = parse_date(request.query_params.get("date_from"))
+        date_to = parse_date(request.query_params.get("date_to"))
+        payment_mode = request.query_params.get("payment_mode")
+        report_by = request.query_params.get("report_by", "Daily")
+
+        qs = ReceiptItem.objects.select_related("receipt", "fee_type")
+        if date_from:
+            qs = qs.filter(receipt__date__gte=date_from)
+        if date_to:
+            qs = qs.filter(receipt__date__lte=date_to)
+        if payment_mode:
+            qs = qs.filter(receipt__payment_mode=payment_mode.upper())
+
+        # Grouping logic
+        if report_by == "Monthly":
+            period = TruncMonth("receipt__date")
+        elif report_by == "Quarterly":
+            period = Quarter(F("receipt__date"))
+        elif report_by == "Half-Yearly":
+            period = HalfYear(F("receipt__date"))
+        elif report_by == "Yearly":
+            period = TruncYear("receipt__date")
+        else:
+            period = F("receipt__date")
+
+        data = (
+            qs.annotate(period=period)
+            .values("period", "fee_type__code")
+            .annotate(amount=Sum("amount"))
+            .order_by("period", "fee_type__code")
+        )
+        return Response(list(data))
+
+
+    # ✅ FINAL PERIODIC RECEIPT RANGE API
+    @action(detail=False, methods=["get"], url_path="rec-range")
+    def rec_range(self, request):
+        """
+        Return min/max receipt numbers per period (Daily, Monthly, Quarterly, Half-Yearly, Yearly).
+        """
+        report_by = request.query_params.get("report_by", "Daily")
+        date_from = parse_date(request.query_params.get("date_from"))
+        date_to = parse_date(request.query_params.get("date_to"))
+
+        qs = Receipt.objects.all()
+        if date_from:
+            qs = qs.filter(date__gte=date_from)
+        if date_to:
+            qs = qs.filter(date__lte=date_to)
+
+        if report_by == "Monthly":
+            period = TruncMonth("date")
+        elif report_by == "Quarterly":
+            period = Quarter(F("date"))
+        elif report_by == "Half-Yearly":
+            period = HalfYear(F("date"))
+        elif report_by == "Yearly":
+            period = TruncYear("date")
+        else:
+            period = F("date")
+
+        data = (
+            qs.annotate(period=period)
+            .values("period")
+            .annotate(
+                min_rec_no=Min("rec_no"),
+                max_rec_no=Max("rec_no"),
+                rec_ref=Min("rec_ref"),
+            )
+            .order_by("period")
+        )
+
+        out = []
+        for r in data:
+            if r["min_rec_no"] is None:
+                continue
+            out.append({
+                "period": r["period"],
+                "rec_start": f"{r['rec_ref']}{int(r['min_rec_no']):06d}",
+                "rec_end": f"{r['rec_ref']}{int(r['max_rec_no']):06d}",
+            })
+
+        return Response(out)
+
     def get_queryset(self) -> QuerySet[Receipt]:  # type: ignore[override]
         qs = super().get_queryset()
         date_str = self.request.query_params.get("date")
@@ -678,73 +782,3 @@ class ReceiptViewSet(FinancePermissionMixin, mixins.ListModelMixin, mixins.Retri
         serializer = self.get_serializer(created, many=True)
         return Response({"created": serializer.data, "errors": errors})
 
-    @action(detail=False, methods=["get"], url_path="fees-aggregate")
-    def fees_aggregate(self, request):
-        # Accept either `date_from`/`date_to` or legacy `from_date`/`to_date`
-        raw_date_from = request.query_params.get("date_from") or request.query_params.get("from_date")
-        raw_date_to = request.query_params.get("date_to") or request.query_params.get("to_date")
-        payment_mode = request.query_params.get("payment_mode")
-
-        # django.utils.dateparse.parse_date expects a string; guard against
-        # non-string values.
-        def _safe_parse(val):
-            if isinstance(val, str) and val.strip():
-                return parse_date(val)
-            return None
-
-        date_from = _safe_parse(raw_date_from)
-        date_to = _safe_parse(raw_date_to)
-
-        # Build a ReceiptItem queryset filtered by receipt date and payment mode
-        item_qs = ReceiptItem.objects.select_related("fee_type", "receipt")
-        if payment_mode:
-            item_qs = item_qs.filter(receipt__payment_mode=payment_mode.upper())
-        if date_from and date_to:
-            item_qs = item_qs.filter(receipt__date__gte=date_from, receipt__date__lte=date_to)
-        elif date_from:
-            item_qs = item_qs.filter(receipt__date__gte=date_from)
-        elif date_to:
-            item_qs = item_qs.filter(receipt__date__lte=date_to)
-
-        # Group items by receipt and build output
-        receipts_map: Dict[int, Dict[str, Any]] = {}
-        total_amount = 0.0
-        for it in item_qs.order_by("receipt__date", "receipt__rec_ref", "receipt__rec_no"):
-            r = it.receipt
-            if not r:
-                continue
-            rid = r.id
-            if rid not in receipts_map:
-                receipts_map[rid] = {
-                    "id": r.id,
-                    "date": r.date,
-                    "payment_mode": r.payment_mode,
-                    "receipt_no_full": r.receipt_no_full,
-                    "rec_ref": r.rec_ref,
-                    "rec_no": r.rec_no,
-                    "items": [],
-                    "created_by_name": r.created_by.get_full_name().strip() or (r.created_by.username if r.created_by else None),
-                }
-            amt = float(it.amount or 0)
-            total_amount += amt
-            receipts_map[rid]["items"].append({
-                "fee_type": getattr(it.fee_type, "id", None),
-                "code": getattr(it.fee_type, "code", None),
-                "name": getattr(it.fee_type, "name", None),
-                "amount": str(it.amount),
-            })
-
-        receipts_out = list(receipts_map.values())
-
-        # Aggregate totals per fee type across the same filter
-        fee_totals_q = (
-            item_qs.values("fee_type__id", "fee_type__code", "fee_type__name")
-            .annotate(amount=Sum("amount"))
-            .order_by("fee_type__code")
-        )
-        fee_totals = [
-            {"fee_type": f["fee_type__id"], "code": f["fee_type__code"], "name": f["fee_type__name"], "amount": str(f["amount"]) }
-            for f in fee_totals_q
-        ]
-
-        return Response({"receipts": receipts_out, "fee_totals": fee_totals, "total_amount": f"{total_amount:.2f}"})
