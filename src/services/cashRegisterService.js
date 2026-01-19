@@ -6,6 +6,8 @@ import axiosInstance from '../api/axiosInstance';
 
 const RECEIPTS_BASE = '/api/receipts/';
 const CASH_REGISTER_BASE = '/api/cash-register/';
+const CASH_OUTWARD_BASE = '/api/cash-outward/';
+const CASH_ON_HAND_BASE = '/api/cash-on-hand/';
 
 /* ----------------------------------------------------
    CASH REGISTER (FLATTENED – USED BY MAIN ENTRY PAGE)
@@ -38,7 +40,7 @@ export const fetchNextReceiptNumber = async ({
 };
 
 /* ----------------------------------------------------
-   CREATE / UPDATE / DELETE
+   CREATE / UPDATE / DELETE RECEIPTS
 ---------------------------------------------------- */
 
 export const createCashEntry = async (payload) => {
@@ -49,14 +51,14 @@ export const createCashEntry = async (payload) => {
   return response.data;
 };
 
-// ❌ Updating cash register entries is intentionally disabled for audit safety
-// export const updateCashEntry = async (id, payload) => {
-//   const response = await axiosInstance.put(
-//     `${CASH_REGISTER_BASE}${id}/`,
-//     payload
-//   );
-//   return response.data;
-// };
+// ✅ Update receipt with items (multi-fee edit, audit-safe)
+export const updateReceiptWithItems = async (id, payload) => {
+  const response = await axiosInstance.put(
+    `${CASH_REGISTER_BASE}${id}/update-with-items/`,
+    payload
+  );
+  return response.data;
+};
 
 export const deleteCashEntry = async (id) => {
   const response = await axiosInstance.delete(
@@ -78,61 +80,98 @@ export const createReceiptsBulk = async (payload) => {
 };
 
 /* ----------------------------------------------------
-   ✅ PERIODIC FEES AGGREGATE (REPORT PAGE ONLY)
+   ✅ PERIODIC FEES AGGREGATE (REPORT PAGE)
 ---------------------------------------------------- */
 
 export const fetchFeesAggregate = async (params = {}) => {
-  /**
-   * params:
-   * {
-   *   date_from: 'YYYY-MM-DD',
-   *   date_to: 'YYYY-MM-DD',
-   *   payment_mode?: 'CASH' | 'BANK' | 'UPI',
-   *   report_by: 'Daily' | 'Monthly' | 'Quarterly' | 'Half-Yearly' | 'Yearly'
-   * }
-   */
-  console.log('fetchFeesAggregate params:', params);
   const response = await axiosInstance.get(
     `${RECEIPTS_BASE}fees-aggregate/`,
     { params }
   );
-  console.log('fetchFeesAggregate response:', response.data);
   return response.data;
 };
 
 /* ----------------------------------------------------
-   ✅ PERIODIC RECEIPT RANGE (REPORT PAGE ONLY)
+   ✅ PERIODIC RECEIPT RANGE (REPORT PAGE)
 ---------------------------------------------------- */
 
 export const fetchRecRange = async (params = {}) => {
-  /**
-   * params:
-   * {
-   *   date_from: 'YYYY-MM-DD',
-   *   date_to: 'YYYY-MM-DD',
-   *   payment_mode?: 'CASH' | 'BANK' | 'UPI',
-   *   report_by: 'Daily' | 'Monthly' | 'Quarterly' | 'Half-Yearly' | 'Yearly'
-   * }
-   */
-  console.log('fetchRecRange params:', params);
   const response = await axiosInstance.get(
     `${RECEIPTS_BASE}rec-range/`,
     { params }
   );
-  console.log('fetchRecRange response:', response.data);
   return response.data;
 };
 
 /* ----------------------------------------------------
-   EXPORT
+   💸 CASH OUTWARD (DEPOSIT / EXPENSE)
+---------------------------------------------------- */
+
+export const fetchCashOutward = async (params = {}) => {
+  const response = await axiosInstance.get(
+    CASH_OUTWARD_BASE,
+    { params }
+  );
+  return response.data;
+};
+
+export const createCashOutward = async (payload) => {
+  const response = await axiosInstance.post(
+    CASH_OUTWARD_BASE,
+    payload
+  );
+  return response.data;
+};
+
+/* ----------------------------------------------------
+   🧮 CASH ON HAND (DAILY CLOSING REPORT)
+---------------------------------------------------- */
+
+export const fetchCashOnHandReport = async ({ date }) => {
+  if (!date) {
+    throw new Error('date is required for cash on hand report');
+  }
+
+  const response = await axiosInstance.get(
+    '/api/cash-on-hand/report/',
+    {
+      params: { date },   // ✅ THIS WAS MISSING
+    }
+  );
+
+  return response.data;
+};
+
+export const closeCashDay = async (payload) => {
+  const response = await axiosInstance.post(
+    `${CASH_ON_HAND_BASE}close/`,
+    payload
+  );
+  return response.data;
+};
+
+/* ----------------------------------------------------
+   DEFAULT EXPORT (KEEP EVERYTHING)
 ---------------------------------------------------- */
 
 export default {
+  // Cash Register
   fetchCashEntries,
   fetchNextReceiptNumber,
   createCashEntry,
+  updateReceiptWithItems,
   deleteCashEntry,
   createReceiptsBulk,
+
+  // Reports
   fetchFeesAggregate,
   fetchRecRange,
+
+  // Cash Outward
+  fetchCashOutward,
+  createCashOutward,
+
+  // Cash On Hand
+  fetchCashOnHandReport,
+  closeCashDay,
 };

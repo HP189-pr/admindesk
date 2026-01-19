@@ -5,10 +5,12 @@ import {
   deleteCashEntry,
   fetchNextReceiptNumber,
   createReceiptsBulk,
+  updateReceiptWithItems,
 } from '../services/cashRegisterService';
 import { fetchFeeTypes } from '../services/feeTypeService';
 import PageTopbar from '../components/PageTopbar';
 import PaymentReport from '../report/Paymentreport';
+import CashReport from '../report/cash_report';
 
 const PAYMENT_MODES = [
   { value: 'CASH', label: 'Cash' },
@@ -24,7 +26,7 @@ const MODE_CARD_STYLES = {
 
 const RECEIPT_SUFFIX_REGEX = /(\d{6})$/;
 
-const TOPBAR_ACTIONS = ['➕ Add', '🔍 Search', '📄 Report'];
+const TOPBAR_ACTIONS = ['➕ Add', '🔍 Search', '📄 Report','Closed Cash'];
 const ACTION_DESCRIPTIONS = {
   '➕ Add': 'Capture new cash receipts for the selected day while seeing the live next number preview.',
   '🔍 Search': 'Filter totals by date and payment mode, then review every receipt in the ledger below.',
@@ -391,6 +393,12 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     applyPreview,
   ]);
 
+
+  // Always fetch records when date or payment mode changes
+  useEffect(() => {
+    loadEntries();
+  }, [filters.date, filters.payment_mode, loadEntries]);
+
   useEffect(() => {
     if (!editingEntry && filters.date) {
       setFormState((prev) => ({ ...prev, date: filters.date }));
@@ -468,16 +476,19 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     setSaving(true);
     try {
       if (editingEntry) {
-        // For editing, use old single-entry API
+        // Use new update-with-items endpoint for editing
         const payload = {
           date: formState.date,
           payment_mode: formState.payment_mode,
-          fee_type: Number(validItems[0].fee_type),
-          amount: Number(validItems[0].amount),
           remark: formState.remark?.trim() || '',
+          items: validItems.map(item => ({
+            fee_type: Number(item.fee_type),
+            amount: Number(item.amount),
+          })),
         };
-        await updateCashEntry(editingEntry.id, payload);
-        setFlash('success', 'Entry updated successfully');
+        // Call the new update-with-items API (assume updateReceiptWithItems is imported)
+        await updateReceiptWithItems(editingEntry.id, payload);
+        setFlash('success', 'Receipt updated successfully');
       } else {
         // For new entries, use bulk-create endpoint to handle multiple items
         const payload = {
@@ -505,14 +516,41 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     }
   };
 
-  const startEdit = (entry) => {
-    setEditingEntry(entry);
-    setFormState({
-      date: entry.date,
-      payment_mode: entry.payment_mode,
-      remark: entry.remark || '',
+  const startEdit = async (entry) => {
+    // Ensure feeTypes are loaded before setting feeItems
+    if (!feeTypes.length) {
+      await loadFeeTypes();
+    }
+    const receiptFull = entry.receipt_no_full;
+    // FETCH ALL FLATTENED ROWS FOR THIS RECEIPT
+    const receiptRows = entries.filter((r) => r.receipt_no_full === receiptFull);
+    if (!receiptRows.length) {
+      setFlash('error', 'Unable to load receipt items');
+      return;
+    }
+    const first = receiptRows[0];
+    // Always use the numeric Receipt.id (not the string id from the flattened row)
+    // If id is like "123-456", take the part before the dash
+    let numericId = first.id;
+    if (typeof numericId === 'string' && numericId.includes('-')) {
+      numericId = numericId.split('-')[0];
+    }
+    numericId = Number(numericId);
+    setEditingEntry({
+      id: numericId,
+      receipt_no_full: receiptFull,
     });
-    setFeeItems([{ fee_type: entry.fee_type?.toString() || '', amount: entry.amount }]);
+    setFormState({
+      date: first.date,
+      payment_mode: first.payment_mode,
+      remark: first.remark || '',
+    });
+    setFeeItems(
+      receiptRows.map((r) => ({
+        fee_type: String(r.fee_type), // FeeType.id (REQUIRED)
+        amount: r.amount,
+      }))
+    );
   };
 
   const handleDelete = async (entry) => {
@@ -547,6 +585,13 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
   if (selectedTopbarMenu === '📄 Report') {
     return (
       <PaymentReport 
+        onBack={() => setSelectedTopbarMenu('➕ Add')}
+      />
+    );
+  }
+  if (selectedTopbarMenu === 'Closed Cash') {
+    return (
+      <CashReport
         onBack={() => setSelectedTopbarMenu('➕ Add')}
       />
     );
@@ -759,7 +804,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                         Select fee type
                       </option>
                       {feeTypes.map((type) => (
-                        <option key={type.id} value={type.id}>
+                        <option key={type.id} value={String(type.id)}>
                           {type.code} - {type.name}
                         </option>
                       ))}
@@ -874,12 +919,10 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                       <td className="px-4 py-2 text-gray-700">{entry.created_by_name}</td>
                       <td className="px-4 py-2 text-center">
                         <div className="flex items-center justify-center gap-2">
-                          {/* Editing disabled for cash register (audit safety) */}
                           <button
                             type="button"
-                            disabled
-                            className="rounded border border-gray-300 px-3 py-1 text-xs text-gray-400 cursor-not-allowed"
-                            title="Editing receipts is not allowed"
+                            onClick={() => startEdit(entry)}
+                            className="rounded border border-blue-200 px-3 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-50"
                           >
                             Edit
                           </button>

@@ -182,7 +182,7 @@ const PaymentReport = ({ onBack }) => {
       <PageTopbar
         title={REPORT_META[reportBy].title}
         rightSlot={
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <button
               onClick={handlePdfExport}
               disabled={loading || rows.length === 0}
@@ -190,6 +190,27 @@ const PaymentReport = ({ onBack }) => {
             >
               📄 Export PDF
             </button>
+            <a
+              href="/"
+              className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow"
+            >
+              🏠 Home
+            </a>
+            {onBack ? (
+              <button
+                onClick={onBack}
+                className="inline-flex items-center gap-2 rounded-lg bg-gray-200 px-3 py-2 text-sm font-semibold text-gray-800 shadow border border-gray-300"
+              >
+                ← Back to Cash Register
+              </button>
+            ) : (
+              <a
+                href="/cash-register"
+                className="inline-flex items-center gap-2 rounded-lg bg-gray-200 px-3 py-2 text-sm font-semibold text-gray-800 shadow border border-gray-300"
+              >
+                ← Back to Cash Register
+              </a>
+            )}
             {onBack && (
               <button
                 onClick={onBack}

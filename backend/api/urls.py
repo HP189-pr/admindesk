@@ -35,7 +35,7 @@ try:
         FeeTypeViewSet,
         CashRegisterViewSet,
         ReceiptViewSet,
-        UploadCashExcelView,
+        UploadCashExcelView,CashOnHandReportView,CloseCashDayView,CashOutwardViewSet
     )
 
     from .views_admin import UploadDocRecView
@@ -102,6 +102,8 @@ try:
     router.register(r'student-profiles', StudentProfileViewSet, basename='student-profiles')
     router.register(r'mail-requests', GoogleFormSubmissionViewSet, basename='mail-requests')
     router.register(r'transcript-requests', TranscriptRequestViewSet, basename='transcript-requests')
+    router.register("cash-outward", CashOutwardViewSet, basename="cash-outward")
+
 
     # EMPLOYEE + LEAVE
     router.register(r'empprofile', EmpProfileViewSet, basename='empprofile')
@@ -167,6 +169,9 @@ try:
         # ADMIN DOCREC UPLOAD
         path("admin/upload-docrec/", UploadDocRecView.as_view(), name="admin-upload-docrec"),
         path("admin/upload-cash-excel/", UploadCashExcelView.as_view(), name="admin-upload-cash-excel"),
+        path("cash-on-hand/report/", CashOnHandReportView.as_view()),
+        path("cash-on-hand/close/", CloseCashDayView.as_view()),
+
     ] + IN_OUT_REGISTER_URLS
 
 except Exception as e:

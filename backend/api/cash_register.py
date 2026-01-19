@@ -3,6 +3,15 @@ from __future__ import annotations
 from django.utils.dateparse import parse_date
 from django.db.models import Sum, Min, Max, F, Func
 from django.db.models.functions import TruncMonth, TruncYear
+from decimal import Decimal
+from django.db.models import Sum
+from django.utils import timezone
+
+from .domain_cash_register import (
+    CashOutward,
+    CashOnHand,
+    CashOnHandItem,
+)
 
 # --- Period grouping helpers ---
 class Quarter(Func):
@@ -252,7 +261,56 @@ class ReceiptNumberService:
         }
 
 
+
 class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
+    # Back the legacy `cash-register` endpoint with Receipt as the canonical source.
+    queryset = Receipt.objects.select_related("created_by").prefetch_related("items__fee_type").all()
+    serializer_class = None
+    permission_classes = [IsAuthenticated]
+    finance_menu_name = "Cash Register"
+    permission_action_map = {
+        **FinancePermissionMixin.permission_action_map,
+        "next_receipt": "can_create",
+    }
+
+    @action(detail=True, methods=["put"], url_path="update-with-items")
+    @transaction.atomic
+    def update_with_items(self, request, pk=None):
+        receipt = self.get_object()
+
+        items = request.data.get("items", [])
+        if not items:
+            return Response({"detail": "Items are required"}, status=400)
+
+        # Update header fields
+        receipt.date = request.data.get("date", receipt.date)
+        receipt.payment_mode = request.data.get("payment_mode", receipt.payment_mode)
+        receipt.remark = request.data.get("remark", receipt.remark)
+        receipt.save()
+
+        # DELETE old items
+        receipt.items.all().delete()
+
+        total = 0
+        for it in items:
+            fee_id = it.get("fee_type")
+            amount = it.get("amount")
+
+            if not fee_id or not amount:
+                return Response({"detail": "Invalid item data"}, status=400)
+
+            fee = FeeType.objects.get(id=fee_id)
+            ReceiptItem.objects.create(
+                receipt=receipt,
+                fee_type=fee,
+                amount=amount,
+            )
+            total += float(amount)
+
+        receipt.total_amount = total
+        receipt.save()
+
+        return Response({"detail": "Receipt updated successfully"})
     # Back the legacy `cash-register` endpoint with Receipt as the canonical source.
     queryset = Receipt.objects.select_related("created_by").prefetch_related("items__fee_type").all()
     serializer_class = None
@@ -641,11 +699,70 @@ CashRegisterSerializer = ReceiptSerializer
 CashRegisterViewSet.serializer_class = CashRegisterSerializer
 
 
+
+from django.db import transaction
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
 class ReceiptViewSet(FinancePermissionMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     queryset = Receipt.objects.select_related("created_by").prefetch_related("items__fee_type").all()
     serializer_class = ReceiptSerializer
     permission_classes = [IsAuthenticated]
     finance_menu_name = "Cash Register"
+
+    @action(detail=True, methods=["put"], url_path="update-with-items")
+    @transaction.atomic
+    def update_with_items(self, request, pk=None):
+        """
+        Update an existing receipt's fee items.
+        ✔ receipt_no_full, rec_ref, rec_no NEVER change
+        ✔ multiple fee rows allowed
+        """
+        receipt = self.get_object()
+
+        items = request.data.get("items", [])
+        remark = request.data.get("remark", "")
+
+        if not items:
+            return Response(
+                {"detail": "At least one fee item is required"},
+                status=400
+            )
+
+        # 🔒 DO NOT TOUCH receipt numbers
+        receipt.remark = remark
+        receipt.save(update_fields=["remark"])
+
+        # Remove existing items
+        receipt.items.all().delete()
+
+        total = 0
+        for it in items:
+            fee_id = it.get("fee_type")
+            amount = it.get("amount")
+
+            if not fee_id or amount in (None, "", 0):
+                continue
+
+            fee = FeeType.objects.filter(id=fee_id, is_active=True).first()
+            if not fee:
+                return Response(
+                    {"detail": f"Invalid fee type: {fee_id}"},
+                    status=400
+                )
+
+            ReceiptItem.objects.create(
+                receipt=receipt,
+                fee_type=fee,
+                amount=amount,
+                remark=""
+            )
+            total += float(amount)
+
+        receipt.total_amount = total
+        receipt.save(update_fields=["total_amount"])
+
+        return Response({"detail": "Receipt updated successfully"})
 
 
     # ✅ FINAL PERIODIC FEES AGGREGATE API
@@ -768,6 +885,7 @@ class ReceiptViewSet(FinancePermissionMixin, mixins.ListModelMixin, mixins.Retri
             for item in receipt.items.all():
                 flat_rows.append({
                     "id": f"{receipt.id}-{item.id}",
+                    "receipt_id": receipt.id,  # <-- Add real DB id for frontend
                     "date": receipt.date,
                     "payment_mode": receipt.payment_mode,
                     "receipt_no_full": receipt.receipt_no_full,
@@ -783,7 +901,6 @@ class ReceiptViewSet(FinancePermissionMixin, mixins.ListModelMixin, mixins.Retri
                     "created_at": receipt.created_at,
                     "updated_at": receipt.updated_at,
                 })
-        
         return Response(flat_rows)
 
     @action(detail=False, methods=["post"], url_path="bulk-create")
@@ -852,3 +969,173 @@ class ReceiptViewSet(FinancePermissionMixin, mixins.ListModelMixin, mixins.Retri
         serializer = self.get_serializer(created, many=True)
         return Response({"created": serializer.data, "errors": errors})
 
+# ============================================================
+# CASH OUTWARD (DEPOSIT / EXPENSE)
+# ============================================================
+
+class CashOutwardSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CashOutward
+        fields = "__all__"
+        read_only_fields = ["created_by", "created_at"]
+
+
+class CashOutwardViewSet(
+    FinancePermissionMixin,
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    viewsets.GenericViewSet
+):
+    queryset = CashOutward.objects.all()
+    serializer_class = CashOutwardSerializer
+    permission_classes = [IsAuthenticated]
+    finance_menu_name = "Cash Register"
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        date_str = self.request.query_params.get("date")
+        if date_str:
+            qs = qs.filter(date=date_str)
+        return qs.order_by("-date", "-id")
+
+
+# ============================================================
+# CASH ON HAND – REPORT & CLOSE
+# ============================================================
+
+class CashOnHandItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CashOnHandItem
+        fields = ["denomination", "is_coin", "qty", "amount"]
+
+
+class CashOnHandSerializer(serializers.ModelSerializer):
+    items = CashOnHandItemSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = CashOnHand
+        fields = "__all__"
+
+
+class CashOnHandReportView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        date_str = request.query_params.get("date")
+
+        if not date_str:
+            return Response(
+                {"detail": "date query parameter is required (YYYY-MM-DD)"},
+                status=400
+            )
+
+        report_date = parse_date(date_str)
+        if not report_date:
+            return Response(
+                {"detail": "Invalid date format. Use YYYY-MM-DD"},
+                status=400
+            )
+
+        # 1️⃣ System cash
+        system_cash = (
+            Receipt.objects
+            .filter(date=report_date, payment_mode="CASH")
+            .aggregate(total=Sum("total_amount"))["total"]
+            or Decimal("0")
+        )
+
+        # 2️⃣ Deposit / Expense
+        outward = CashOutward.objects.filter(date=report_date)
+        total_deposit = outward.filter(txn_type="DEPOSIT").aggregate(s=Sum("amount"))["s"] or Decimal("0")
+        total_expense = outward.filter(txn_type="EXPENSE").aggregate(s=Sum("amount"))["s"] or Decimal("0")
+
+        expected_cash = system_cash + total_deposit - total_expense
+
+        cash_close = CashOnHand.objects.filter(date=report_date).first()
+
+        return Response({
+            "date": report_date,
+            "system_cash": system_cash,
+            "total_deposit": total_deposit,
+            "total_expense": total_expense,
+            "expected_cash": expected_cash,
+            "closed": bool(cash_close),
+            "physical_cash": cash_close.physical_cash if cash_close else None,
+            "difference": cash_close.difference if cash_close else None,
+            "items": CashOnHandItemSerializer(
+                cash_close.items.all(), many=True
+            ).data if cash_close else [],
+        })
+
+
+class CloseCashDayView(APIView):
+    """
+    Saves CashOnHand snapshot with denomination items.
+    """
+    permission_classes = [IsAuthenticated]
+
+    @transaction.atomic
+    def post(self, request):
+        data = request.data
+        report_date = parse_date(data.get("date"))
+        items = data.get("items", [])
+
+        if not report_date:
+            return Response({"detail": "date is required"}, status=400)
+
+        if CashOnHand.objects.filter(date=report_date).exists():
+            return Response({"detail": "Cash already closed for this date"}, status=400)
+
+        # Calculate system values
+        system_cash = (
+            Receipt.objects
+            .filter(date=report_date, payment_mode="CASH")
+            .aggregate(total=Sum("total_amount"))["total"]
+            or Decimal("0")
+        )
+
+        outward = CashOutward.objects.filter(date=report_date)
+        total_deposit = outward.filter(txn_type="DEPOSIT").aggregate(s=Sum("amount"))["s"] or Decimal("0")
+        total_expense = outward.filter(txn_type="EXPENSE").aggregate(s=Sum("amount"))["s"] or Decimal("0")
+
+        expected_cash = system_cash + total_deposit - total_expense
+
+        # Physical cash
+        physical_cash = Decimal("0")
+
+        cash_on_hand = CashOnHand.objects.create(
+            date=report_date,
+            system_cash=system_cash,
+            total_deposit=total_deposit,
+            total_expense=total_expense,
+            expected_cash=expected_cash,
+            physical_cash=Decimal("0"),  # temp
+            difference=Decimal("0"),     # temp
+            status="CLOSED",
+            closed_by=request.user,
+            closed_at=timezone.now(),
+        )
+
+        for row in items:
+            denom = int(row["denomination"])
+            qty = int(row["qty"])
+            is_coin = bool(row.get("is_coin", False))
+            amt = Decimal(denom) * qty
+            physical_cash += amt
+
+            CashOnHandItem.objects.create(
+                cash_on_hand=cash_on_hand,
+                denomination=denom,
+                qty=qty,
+                is_coin=is_coin,
+                amount=amt,
+            )
+
+        cash_on_hand.physical_cash = physical_cash
+        cash_on_hand.difference = physical_cash - expected_cash
+        cash_on_hand.save(update_fields=["physical_cash", "difference"])
+
+        return Response({"detail": "Cash day closed successfully"})
