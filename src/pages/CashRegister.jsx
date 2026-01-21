@@ -26,6 +26,19 @@ const MODE_CARD_STYLES = {
 
 const RECEIPT_SUFFIX_REGEX = /(\d{6})$/;
 
+const BANK_PREFIX_OPTIONS = [
+  { value: '1471', label: '1471 (Account 1)' },
+  { value: '138', label: '138 (Account 2)' },
+];
+
+const fiscalYearCode = (dateStr) => {
+  if (!dateStr) return '';
+  const dt = new Date(dateStr);
+  if (Number.isNaN(dt.getTime())) return '';
+  const year = dt.getMonth() >= 3 ? dt.getFullYear() : dt.getFullYear() - 1; // Apr=3 index
+  return String(year).slice(-2);
+};
+
 const TOPBAR_ACTIONS = ['➕ Add', '🔍 Search', '📄 Report','Closed Cash'];
 const ACTION_DESCRIPTIONS = {
   '➕ Add': 'Capture new cash receipts for the selected day while seeing the live next number preview.',
@@ -107,6 +120,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     remark: '',
   });
   const [feeItems, setFeeItems] = useState([{ fee_type: '', amount: '' }]);
+  const [bankPrefix, setBankPrefix] = useState('1471');
   const [receiptPreview, setReceiptPreview] = useState('--');
   const [receiptPreviewRaw, setReceiptPreviewRaw] = useState('');
   const [previewNonce, setPreviewNonce] = useState(0);
@@ -247,6 +261,10 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     }
   }, [editingEntry, feeItems, setFlash]);
 
+  useEffect(() => {
+    loadFeeTypes();
+  }, [loadFeeTypes]);
+
   const loadEntries = useCallback(async () => {
     if (!rights.can_view || !filters.date) {
       setEntries([]);
@@ -267,23 +285,31 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
 
 
   const computeFallbackReceipt = useCallback(
-    (mode, date) => {
+    (mode, date, bankBase) => {
       if (!mode || !date) {
         return null;
       }
 
       const normalizedMode = mode.toUpperCase();
 
-      const sameDayEntries = entries.filter(
-        (entry) =>
-          entry.payment_mode?.toUpperCase() === normalizedMode &&
-          entry.date === date
-      );
+      const sameDayEntries = entries.filter((entry) => {
+        if (entry.payment_mode?.toUpperCase() !== normalizedMode) return false;
+        if (entry.date !== date) return false;
+        if (normalizedMode === 'BANK' && bankBase) {
+          const prefix = extractReferencePrefix(entry);
+          return prefix?.startsWith(`${bankBase}/`);
+        }
+        return true;
+      });
 
       const candidates = sameDayEntries.filter((entry) => {
         const prefix = extractReferencePrefix(entry);
         const sequence = extractSequenceNumber(entry);
-        return Boolean(prefix) && sequence !== null;
+        if (!(prefix && sequence !== null)) return false;
+        if (normalizedMode === 'BANK' && bankBase) {
+          return prefix.startsWith(`${bankBase}/`);
+        }
+        return true;
       });
 
       if (!candidates.length) {
@@ -319,7 +345,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     }
     setPreviewError('');
     if (!rights.can_create) {
-      const fallbackFull = computeFallbackReceipt(formState.payment_mode, formState.date);
+      const fallbackFull = computeFallbackReceipt(formState.payment_mode, formState.date, bankPrefix);
       if (fallbackFull) {
         applyPreview(fallbackFull);
         setPreviewError('View-only mode: showing estimated next number.');
@@ -334,10 +360,10 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     let isActive = true;
     const preview = async () => {
       try {
-        const data = await fetchNextReceiptNumber({ payment_mode: formState.payment_mode, date: formState.date });
+        const data = await fetchNextReceiptNumber({ payment_mode: formState.payment_mode, date: formState.date, bank_prefix: formState.payment_mode === 'BANK' ? bankPrefix : undefined });
         if (isActive) {
           const serverFull = data?.receipt_no_full || data?.next_receipt_no;
-          const fallbackFull = computeFallbackReceipt(formState.payment_mode, formState.date);
+          const fallbackFull = computeFallbackReceipt(formState.payment_mode, formState.date, bankPrefix);
           const serverSeq = extractSequenceFromFull(serverFull);
           const fallbackSeq = extractSequenceFromFull(fallbackFull);
           let resolvedFull = serverFull;
@@ -350,7 +376,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
         if (!isActive) {
           return;
         }
-        const fallbackFull = computeFallbackReceipt(formState.payment_mode, formState.date);
+        const fallbackFull = computeFallbackReceipt(formState.payment_mode, formState.date, bankPrefix);
         if (fallbackFull) {
           applyPreview(fallbackFull);
           setPreviewError('Live preview unavailable. Showing the next estimated number.');
@@ -368,7 +394,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     return () => {
       isActive = false;
     };
-  }, [formState.date, formState.payment_mode, rights.can_create, computeFallbackReceipt, previewNonce, applyPreview]);
+  }, [formState.date, formState.payment_mode, rights.can_create, computeFallbackReceipt, previewNonce, applyPreview, bankPrefix]);
 
   useEffect(() => {
     if (!rights.can_create || editingEntry) {
@@ -391,6 +417,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     formState.date,
     receiptPreviewRaw,
     applyPreview,
+    bankPrefix,
   ]);
 
 
@@ -433,6 +460,13 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
 
   const handleFormChange = (field, value) => {
     setFormState((prev) => ({ ...prev, [field]: value }));
+    if (field === 'payment_mode') {
+      if (value === 'BANK') {
+        setBankPrefix((prev) => prev || '1471');
+      } else {
+        setBankPrefix('');
+      }
+    }
   };
 
   const resetForm = () => {
@@ -442,6 +476,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
       payment_mode: filters.payment_mode || 'CASH',
       remark: '',
     });
+    setBankPrefix((filters.payment_mode || 'CASH') === 'BANK' ? '1471' : '');
     setFeeItems([{ fee_type: feeTypes[0]?.id?.toString() || '', amount: '' }]);
   };
 
@@ -495,6 +530,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
           receipts: [{
             date: formState.date,
             payment_mode: formState.payment_mode,
+            bank_prefix: formState.payment_mode === 'BANK' ? bankPrefix : undefined,
             remark: formState.remark?.trim() || '',
             items: validItems.map(item => ({
               fee_type: Number(item.fee_type),
@@ -540,6 +576,12 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
       id: numericId,
       receipt_no_full: receiptFull,
     });
+    if (first.payment_mode === 'BANK') {
+      const base = first.rec_ref ? String(first.rec_ref).split('/')?.[0] : '';
+      setBankPrefix(base || '1471');
+    } else {
+      setBankPrefix('');
+    }
     setFormState({
       date: first.date,
       payment_mode: first.payment_mode,
@@ -732,6 +774,26 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                 ))}
               </select>
             </label>
+              {formState.payment_mode === 'BANK' && (
+                <label className="text-sm font-medium text-gray-700 w-full sm:w-[180px] lg:w-[170px]">
+                  Bank Account
+                  <select
+                    value={bankPrefix || ''}
+                    onChange={(e) => setBankPrefix(e.target.value)}
+                    className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                  >
+                    {BANK_PREFIX_OPTIONS.map((opt) => {
+                      const year = fiscalYearCode(formState.date || today);
+                      const label = `${opt.value}/${year}/R`;
+                      return (
+                        <option key={opt.value} value={opt.value}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+              )}
               <label className="text-sm font-medium text-gray-700 w-full sm:w-[150px] lg:w-[130px]">
               Rec No
               <input
@@ -826,7 +888,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                       required
                     />
                   </label>
-                  {!editingEntry && feeItems.length > 1 && (
+                  {feeItems.length > 1 && (
                     <button
                       type="button"
                       onClick={() => setFeeItems(feeItems.filter((_, i) => i !== index))}

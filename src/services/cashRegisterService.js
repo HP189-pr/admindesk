@@ -28,9 +28,11 @@ export const fetchCashEntries = async (params = {}) => {
 export const fetchNextReceiptNumber = async ({
   payment_mode = 'CASH',
   date,
+  bank_prefix,
 } = {}) => {
   const params = { payment_mode };
   if (date) params.date = date;
+  if (bank_prefix) params.bank_prefix = bank_prefix;
 
   const response = await axiosInstance.get(
     `${CASH_REGISTER_BASE}next-receipt/`,

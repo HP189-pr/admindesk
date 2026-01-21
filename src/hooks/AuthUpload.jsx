@@ -9,6 +9,7 @@ const SERVICES = [
   { key: 'MIGRATION', label: 'Migration' },
   { key: 'VERIFICATION', label: 'Verification' },
   { key: 'PROVISIONAL', label: 'Provisional' },
+  { key: 'STUDENT_FEES', label: 'Student Fees' },
   { key: 'INSTITUTIONAL_VERIFICATION', label: 'Institutional Verification' },
   { key: 'LEAVE', label: 'Leave Entry' },
   { key: 'EMP_PROFILE', label: 'EMP Profile' },

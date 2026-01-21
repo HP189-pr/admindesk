@@ -62,6 +62,7 @@ try:
 
     from .views_student_search import StudentSearchViewSet
     from .views_degree import StudentDegreeViewSet, ConvocationMasterViewSet
+    from .views_student_fees import StudentFeesViewSet
     from .views_auth import (
         HolidayViewSet, LoginView, ChangePasswordView, UserProfileView,
         VerifyPasswordView, VerifyAdminPanelPasswordView, CustomTokenObtainPairView,
@@ -76,6 +77,7 @@ try:
     # Core router registrations
     router.register(r'holidays', HolidayViewSet, basename='holidays')
     router.register(r'student-search', StudentSearchViewSet, basename='student-search')
+    router.register(r'student-fees', StudentFeesViewSet, basename='student-fees')
     router.register(r'degrees', StudentDegreeViewSet, basename='degrees')
     router.register(r'convocations', ConvocationMasterViewSet, basename='convocations')
     router.register(r'inventory-items', InventoryItemViewSet, basename='inventory-items')

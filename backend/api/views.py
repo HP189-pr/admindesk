@@ -41,6 +41,7 @@ from .serializers import (
 )
 from .search_utils import apply_fts_search
 from .domain_degree import StudentDegree, ConvocationMaster
+from .domain_fees_ledger import StudentFeesLedger
 
 # Re-export extracted auth/navigation/user classes for backward compatibility
 from .views_auth import (
@@ -813,6 +814,7 @@ class BulkService(str):
     EMP_PROFILE = 'EMP_PROFILE'
     LEAVE = 'LEAVE'
     INSTITUTIONAL_VERIFICATION = 'INSTITUTIONAL_VERIFICATION'
+    STUDENT_FEES = 'STUDENT_FEES'
 
 
 def _parse_excel_date_safe(val):
@@ -1072,6 +1074,9 @@ class BulkUploadView(APIView):
             BulkService.LEAVE: [
                 "leave_report_no","emp_id","leave_code","start_date","end_date","total_days","reason","status","created_by","approved_by","approved_at"
             ],
+            BulkService.STUDENT_FEES: [
+                "student_no","receipt_no","receipt_date","term","amount","remark"
+            ],
         }
         cols = columns_map.get(service)
         if not cols:
@@ -1086,6 +1091,18 @@ class BulkUploadView(APIView):
             today = date.today()
             for c in cols:
                 lc = c.lower()
+                if 'student_no' in lc:
+                    example[c] = 'ENR001'
+                elif 'receipt_no' in lc:
+                    example[c] = 'RCPT-001'
+                elif 'receipt_date' in lc:
+                    example[c] = today.strftime('%Y-%m-%d')
+                elif lc == 'term':
+                    example[c] = '1st Term'
+                elif lc == 'amount':
+                    example[c] = 1200.00
+                elif 'remark' in lc:
+                    example[c] = 'Initial payment'
                 if 'emp_id' in lc:
                     example[c] = 'EMP001'
                 elif 'emp_name' in lc or 'name' in lc:
@@ -2078,6 +2095,73 @@ class BulkUploadView(APIView):
                         _log(idx, row.get("leave_report_no"), str(e), False)
                     _cache_progress(idx+1)
 
+            elif service == BulkService.STUDENT_FEES:
+                from decimal import Decimal, InvalidOperation
+
+                def _normalize_amount(val):
+                    amt = _safe_num(val, None)
+                    if amt is None:
+                        return None
+                    try:
+                        return Decimal(str(amt)).quantize(Decimal('0.01'))
+                    except (InvalidOperation, ValueError):
+                        return None
+
+                for idx, row in df.iterrows():
+                    try:
+                        student_key = _clean_cell(row.get("student_no") or row.get("enrollment_no") or row.get("temp_enroll_no"))
+                        if not student_key:
+                            _log(idx, row.get("receipt_no") or f"row_{idx+1}", "Missing student_no", False); _cache_progress(idx+1); continue
+
+                        enrollment = (Enrollment.objects.filter(enrollment_no__iexact=student_key).first() or
+                                      Enrollment.objects.filter(temp_enroll_no__iexact=student_key).first())
+                        if not enrollment:
+                            _log(idx, row.get("receipt_no") or student_key, f"Enrollment not found for '{student_key}'", False); _cache_progress(idx+1); continue
+
+                        receipt_no = _clean_cell(row.get("receipt_no"))
+                        if not receipt_no:
+                            _log(idx, student_key, "Missing receipt_no", False); _cache_progress(idx+1); continue
+
+                        receipt_date = _parse_excel_date_safe(row.get("receipt_date"))
+                        if receipt_date is None:
+                            _log(idx, receipt_no, "Missing or invalid receipt_date", False); _cache_progress(idx+1); continue
+
+                        term_val = _clean_cell(row.get("term"))
+                        if not term_val:
+                            _log(idx, receipt_no, "Missing term", False); _cache_progress(idx+1); continue
+
+                        amount_val = _normalize_amount(row.get("amount"))
+                        if amount_val is None or amount_val <= 0:
+                            _log(idx, receipt_no, "Invalid amount", False); _cache_progress(idx+1); continue
+
+                        remark_val = _clean_cell(row.get("remark"))
+
+                        obj, created = StudentFeesLedger.objects.update_or_create(
+                            receipt_no=receipt_no,
+                            defaults={
+                                "enrollment": enrollment,
+                                "receipt_date": receipt_date,
+                                "term": term_val,
+                                "amount": amount_val,
+                                "remark": remark_val,
+                            }
+                        )
+                        # Only set created_by when record is first inserted or missing
+                        try:
+                            if created and getattr(obj, 'created_by', None) != user:
+                                obj.created_by = user
+                                obj.save(update_fields=["created_by"])
+                            elif not created and getattr(obj, 'created_by', None) is None and user is not None:
+                                obj.created_by = user
+                                obj.save(update_fields=["created_by"])
+                        except Exception:
+                            pass
+
+                        _log(idx, receipt_no, "Upserted", True)
+                    except Exception as e:
+                        _log(idx, row.get("receipt_no") or row.get("student_no"), str(e), False)
+                    _cache_progress(idx+1)
+
             elif service == BulkService.VERIFICATION:
                 for idx, row in df.iterrows():
                     try:
@@ -2695,6 +2779,9 @@ class BulkUploadView(APIView):
                     'institute': 'institute_id',
                     'institute id': 'institute_id',
                     'institute_id': 'institute_id',
+                    'temp enrollment': 'temp_enroll_no',
+                    'temp enrollment no': 'temp_enroll_no',
+                    'temp_enroll_no': 'temp_enroll_no',
                     'main': 'maincourse_id',
                     'maincourse': 'maincourse_id',
                     'main course': 'maincourse_id',
@@ -2715,6 +2802,18 @@ class BulkUploadView(APIView):
                     'exam_year': 'exam_year',
                     'admission year': 'admission_year',
                     'admission_year': 'admission_year',
+                    'student no': 'student_no',
+                    'student number': 'student_no',
+                    'student_no': 'student_no',
+                    'receipt no': 'receipt_no',
+                    'receipt number': 'receipt_no',
+                    'receipt_no': 'receipt_no',
+                    'receipt date': 'receipt_date',
+                    'receipt_date': 'receipt_date',
+                    'term': 'term',
+                    'amount': 'amount',
+                    'remark': 'remark',
+                    'remarks': 'remark',
                 }
                 return mapping.get(s2, None)
 
@@ -2746,7 +2845,7 @@ class BulkUploadView(APIView):
                     selected_cols = [sel]
             if selected_cols:
                 # Columns we should keep regardless if selected (useful ids used by processors)
-                force_keys = ['enrollment_no', 'doc_rec_id', 'prv_number', 'mg_number', 'final_no']
+                force_keys = ['enrollment_no', 'doc_rec_id', 'prv_number', 'mg_number', 'final_no', 'student_no']
                 # Canonicalize selected column names to match any renaming we applied to df.
                 def _canon_for_selected(name):
                     try:

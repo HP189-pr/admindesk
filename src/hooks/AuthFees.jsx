@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import CashRegister from '../pages/CashRegister';
 import FeeTypeMaster from '../pages/FeeTypeMaster';
+import StudentFees from '../pages/StudentFees';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 const DEFAULT_RIGHTS = { can_view: false, can_create: false, can_edit: false, can_delete: false };
@@ -10,6 +11,7 @@ const FULL_RIGHTS = { can_view: true, can_create: true, can_edit: true, can_dele
 const MENU_KEYWORDS = {
   'cash-register': ['cash register', 'daily register'],
   'fee-type-master': ['fee type master', 'fee type', 'fee master'],
+  'student-fees': ['student fees', 'fees ledger', 'fee ledger'],
 };
 
 const AccessDenied = ({ message }) => (
@@ -118,7 +120,13 @@ const AuthFees = ({ view = 'cash-register' }) => {
     return <AccessDenied message={error || 'You do not have permission to view this page.'} />;
   }
 
-  const PageComponent = view === 'fee-type-master' ? FeeTypeMaster : CashRegister;
+  const PageComponent =
+    view === 'fee-type-master'
+      ? FeeTypeMaster
+      : view === 'student-fees'
+        ? StudentFees
+        : CashRegister;
+
   return <PageComponent rights={rights} />;
 };
 

@@ -3,6 +3,7 @@
  * 2-Tab Layout: Inward Register | Outward Register
  */
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   getInwardRegister,
   addInwardRegister,
@@ -719,9 +720,18 @@ const InOutRegister = () => {
     </div>
   );
 
+  const navigate = useNavigate();
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Document Register (Inward/Outward)</h1>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Document Register (Inward/Outward)</h1>
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="px-4 py-2 rounded bg-gray-800 text-white"
+        >
+          🏠 Home
+        </button>
+      </div>
 
       {/* Alert */}
       {alert.show && (

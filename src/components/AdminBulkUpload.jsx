@@ -32,6 +32,7 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
   const detectServiceFromColumns = (cols = []) => {
     try {
       const norm = new Set(cols.map((c) => String(c || '').trim().toLowerCase()));
+      if (norm.has('receipt_no') && norm.has('student_no')) return 'STUDENT_FEES';
       if (norm.has('dg_sr_no')) return 'DEGREE';
       if (norm.has('prv_number')) return 'PROVISIONAL';
       if (norm.has('mg_number')) return 'MIGRATION';

@@ -1,5 +1,6 @@
 // EmpLeavePage.jsx
 import React, { useEffect, useState, Suspense, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from '../api/axiosInstance';
 import { useAuth } from '../hooks/AuthContext';
 import { FaUserTie, FaChevronUp, FaChevronDown } from 'react-icons/fa';
@@ -316,7 +317,17 @@ const EmpLeavePage = () => {
             </button>
           ))}
         </div>
-        <a href="/" className="px-4 py-2 rounded bg-gray-800 text-white">🏠 Home</a>
+        {(() => {
+          const navigate = useNavigate();
+          return (
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="px-4 py-2 rounded bg-gray-800 text-white"
+            >
+              🏠 Home
+            </button>
+          );
+        })()}
       </div>
 
       {/* panel container */}

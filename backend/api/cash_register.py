@@ -61,9 +61,23 @@ DEFAULT_RIGHTS = {
 FULL_RIGHTS = {k: True for k in DEFAULT_RIGHTS}
 _PAYMENT_PREFIX = {
     "CASH": "C01",
-    "BANK": "1471",
+    "BANK": "1471",  # default bank account prefix
     "UPI": "8785",
 }
+
+# Allowed bank prefixes (multi-account support)
+_BANK_PREFIX_CHOICES = {"1471", "138"}
+
+
+def _fiscal_year_suffix(entry_date: date) -> int:
+    """Return the two-digit start-year of the fiscal year (Apr–Mar).
+
+    Example: Jan 2026 -> fiscal start year 2025 -> returns 25
+    """
+    if not entry_date:
+        entry_date = timezone.now().date()
+    start_year = entry_date.year if entry_date.month >= 4 else entry_date.year - 1
+    return start_year % 100
 
 
 def _normalize(value: Optional[str]) -> str:
@@ -216,36 +230,36 @@ class FeeTypeViewSet(FinancePermissionMixin, mixins.ListModelMixin, mixins.Creat
 
 class ReceiptNumberService:
     @staticmethod
-    def _prefix(payment_mode: str, entry_date: date) -> str:
-        base = _PAYMENT_PREFIX[payment_mode]
-        year = (entry_date or timezone.now().date()).year % 100
+    def _prefix(payment_mode: str, entry_date: date, bank_base: Optional[str] = None) -> str:
+        # Allow overriding bank prefix when multiple bank accounts are supported
+        if payment_mode == "BANK" and bank_base:
+            base = bank_base
+        else:
+            base = _PAYMENT_PREFIX[payment_mode]
+        year = _fiscal_year_suffix(entry_date)
         return f"{base}/{year:02d}/R/"
 
     @classmethod
-    def next_numbers(cls, payment_mode: str, entry_date: date, *, lock: bool = False) -> Dict[str, Any]:
-        rec_ref = cls._prefix(payment_mode, entry_date)
+    def next_numbers(cls, payment_mode: str, entry_date: date, *, lock: bool = False, bank_base: Optional[str] = None) -> Dict[str, Any]:
+        rec_ref = cls._prefix(payment_mode, entry_date, bank_base=bank_base)
         legacy_ref = rec_ref.rstrip('/')
-        # Use a global sequence based on the highest existing rec_no across
-        # both CashRegister and Receipt for the payment_mode so that the
-        # next number is monotonically increasing regardless of selected date.
-        if lock:
-            # acquire locks on relevant rows to avoid race conditions
-            Receipt.objects.select_for_update().filter(payment_mode=payment_mode)
 
-        # Determine the highest rec_no in Receipt table for this payment_mode
+        qs = Receipt.objects.filter(payment_mode=payment_mode, rec_ref__startswith=rec_ref)
+
+        if lock:
+            qs = qs.select_for_update()
+
         last_receipt = (
-            Receipt.objects.filter(payment_mode=payment_mode)
-            .exclude(rec_no__isnull=True)
+            qs.exclude(rec_no__isnull=True)
             .order_by("-rec_no")
             .values_list("rec_no", flat=True)
             .first()
         )
         last_no = last_receipt or 0
 
-        # Fallback: if no explicit rec_no found, try parsing receipt_no_full in Receipt table
         if not last_no:
             max_from_full = 0
-            for val in Receipt.objects.filter(payment_mode=payment_mode).values_list("receipt_no_full", flat=True):
+            for val in qs.values_list("receipt_no_full", flat=True):
                 _, parsed = split_receipt(val)
                 if parsed and parsed > max_from_full:
                     max_from_full = parsed
@@ -392,7 +406,12 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
     def perform_create(self, serializer):
         payment_mode = serializer.validated_data["payment_mode"]
         entry_date = serializer.validated_data.get("date") or timezone.now().date()
-        next_numbers = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=True)
+        bank_base = None
+        if payment_mode == "BANK":
+            raw_base = (self.request.data.get("bank_prefix") or self.request.data.get("rec_ref_base") or "").strip()
+            if raw_base in _BANK_PREFIX_CHOICES:
+                bank_base = raw_base
+        next_numbers = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=True, bank_base=bank_base)
         serializer.save(
             created_by=self.request.user,
             rec_ref=next_numbers["rec_ref"],
@@ -413,7 +432,12 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
                 return Response({"detail": "Invalid date format"}, status=400)
         else:
             entry_date = timezone.now().date()
-        next_numbers = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=False)
+        bank_base = None
+        if payment_mode == "BANK":
+            raw_base = (request.query_params.get("bank_prefix") or request.query_params.get("rec_ref_base") or "").strip()
+            if raw_base in _BANK_PREFIX_CHOICES:
+                bank_base = raw_base
+        next_numbers = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=False, bank_base=bank_base)
         return Response({
             "rec_ref": next_numbers["rec_ref"],
             "rec_no": next_numbers["rec_no"],
@@ -929,7 +953,12 @@ class ReceiptViewSet(FinancePermissionMixin, mixins.ListModelMixin, mixins.Retri
 
                     # Get next receipt number
                     entry_date = datetime.strptime(date_val, "%Y-%m-%d").date() if date_val else timezone.now().date()
-                    next_numbers = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=True)
+                    bank_base = None
+                    if payment_mode == "BANK":
+                        raw_base = (rec.get("bank_prefix") or rec.get("rec_ref_base") or "").strip()
+                        if raw_base in _BANK_PREFIX_CHOICES:
+                            bank_base = raw_base
+                    next_numbers = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=True, bank_base=bank_base)
 
                     # Create receipt header
                     header = Receipt(

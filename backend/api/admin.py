@@ -6,6 +6,7 @@ from django.db import models as djmodels
 from .domain_emp import EmpProfile, LeaveType, LeaveEntry, LeavePeriod, LeaveAllocation
 from .domain_logs import UserActivityLog, ErrorLog
 from .domain_degree import StudentDegree, ConvocationMaster
+from .domain_fees_ledger import StudentFeesLedger
 import csv
 import io
 
@@ -344,6 +345,7 @@ def get_import_spec(model) -> Dict[str, Any]:
     ProvisionalRecord: {"allowed_columns": ["doc_rec_id", "enrollment_no", "student_name", "institute_id", "maincourse_id", "subcourse_id", "prv_number", "prv_date", "class_obtain", "prv_degree_name", "passing_year", "prv_status", "pay_rec_no"], "required_keys": ["doc_rec_id"], "create_requires": ["doc_rec_id"]},
     Verification: {"allowed_columns": ["doc_rec_id", "date", "enrollment_no", "second_enrollment_no", "student_name", "no_of_transcript", "no_of_marksheet", "no_of_degree", "no_of_moi", "no_of_backlog", "status", "final_no", "pay_rec_no", "vr_done_date", "mail_status", "eca_required", "eca_name", "eca_ref_no", "eca_submit_date", "eca_remark", "doc_rec_remark"], "required_keys": ["doc_rec_id"], "create_requires": ["doc_rec_id"]},
     StudentDegree: {"allowed_columns": ["dg_sr_no", "enrollment_no", "student_name_dg", "dg_address", "institute_name_dg", "degree_name", "specialisation", "seat_last_exam", "last_exam_month", "last_exam_year", "class_obtain", "course_language", "dg_rec_no", "dg_gender", "convocation_no"], "required_keys": ["enrollment_no"], "create_requires": ["enrollment_no"]},
+    StudentFeesLedger: {"allowed_columns": ["student_no", "receipt_no", "receipt_date", "term", "amount", "remark"], "required_keys": ["student_no", "receipt_no", "receipt_date", "term", "amount"], "create_requires": ["student_no", "receipt_no", "receipt_date", "term", "amount"]},
     }
     for klass, spec in specs.items():
         if issubclass(model, klass):
@@ -361,6 +363,27 @@ COLUMN_ALIAS_MAP: Dict[type, Dict[str, str]] = {
         "cashrecno": "receipt_no_full",
         "receipt_no": "receipt_no_full",
         "receipt no": "receipt_no_full",
+    },
+    StudentFeesLedger: {
+        "student": "student_no",
+        "student no": "student_no",
+        "student_number": "student_no",
+        "student number": "student_no",
+        "enrollment": "student_no",
+        "enrollment no": "student_no",
+        "enrollment_no": "student_no",
+        "temp_enroll_no": "student_no",
+        "temp enrollment": "student_no",
+        "temp enrollment no": "student_no",
+        "receipt": "receipt_no",
+        "receipt no": "receipt_no",
+        "receipt_no": "receipt_no",
+        "receipt date": "receipt_date",
+        "receipt_date": "receipt_date",
+        "amount paid": "amount",
+        "fees": "amount",
+        "fee": "amount",
+        "remarks": "remark",
     },
 }
 
@@ -1397,6 +1420,69 @@ class ExcelUploadMixin:
                                 
                                 if created: counts["created"] += 1; add_log(i, "created", "Created", dg_sr_no or en_no)
                                 else: counts["updated"] += 1; add_log(i, "updated", "Updated", dg_sr_no or en_no)
+                        elif issubclass(self.model, StudentFeesLedger) and sheet_norm in ("studentfees", "student_fees", "feesledger"):
+                            from decimal import Decimal, InvalidOperation
+
+                            def _parse_amount(val):
+                                try:
+                                    if val in (None, ""):
+                                        return None
+                                    amt = Decimal(str(val)).quantize(Decimal('0.01'))
+                                    if amt <= 0:
+                                        return None
+                                    return amt
+                                except (InvalidOperation, ValueError):
+                                    return None
+
+                            for i, (_, r) in enumerate(df.iterrows(), start=2):
+                                student_key = _clean_cell(r.get("student_no") or r.get("enrollment_no") or r.get("temp_enroll_no"))
+                                if not student_key:
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Missing student_no"); continue
+                                enrollment = (Enrollment.objects.filter(enrollment_no__iexact=student_key).first() or
+                                              Enrollment.objects.filter(temp_enroll_no__iexact=student_key).first())
+                                if not enrollment:
+                                    counts["skipped"] += 1; add_log(i, "skipped", f"Enrollment not found for '{student_key}'"); continue
+
+                                receipt_no = _clean_cell(r.get("receipt_no"))
+                                if not receipt_no:
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Missing receipt_no", student_key); continue
+
+                                receipt_date = parse_excel_date(r.get("receipt_date")) if "receipt_date" in eff else None
+                                if not receipt_date:
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Invalid receipt_date", receipt_no); continue
+
+                                term_val = _clean_cell(r.get("term"))
+                                if not term_val:
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Missing term", receipt_no); continue
+
+                                amount_val = _parse_amount(r.get("amount")) if "amount" in eff else None
+                                if amount_val is None:
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Invalid amount", receipt_no); continue
+
+                                remark_val = _clean_cell(r.get("remark")) if "remark" in eff else None
+
+                                obj, created = StudentFeesLedger.objects.update_or_create(
+                                    receipt_no=receipt_no,
+                                    defaults={
+                                        "enrollment": enrollment,
+                                        "receipt_date": receipt_date,
+                                        "term": term_val,
+                                        "amount": amount_val,
+                                        "remark": remark_val,
+                                    }
+                                )
+                                try:
+                                    if created and getattr(obj, 'created_by', None) != request.user:
+                                        _assign_user_field(obj, request.user, 'created_by')
+                                        obj.save(update_fields=['created_by'])
+                                    elif not created and getattr(obj, 'created_by', None) is None:
+                                        _assign_user_field(obj, request.user, 'created_by')
+                                        obj.save(update_fields=['created_by'])
+                                except Exception:
+                                    pass
+
+                                if created: counts["created"] += 1; add_log(i, "created", "Created", receipt_no)
+                                else: counts["updated"] += 1; add_log(i, "updated", "Updated", receipt_no)
                         else:
                             return JsonResponse({"error": "Sheet name does not match expected for this model."}, status=400)
                     except Exception as e:
@@ -1975,3 +2061,21 @@ class StudentDegreeAdmin(CommonAdminMixin):
         return response
     
     export_to_csv.short_description = "Export selected to CSV"
+
+
+# ============================================
+# Student Fees Ledger Admin (with Excel upload)
+# ============================================
+
+@admin.register(StudentFeesLedger)
+class StudentFeesLedgerAdmin(CommonAdminMixin):
+    list_display = ("receipt_no", "enrollment", "receipt_date", "term", "amount", "created_by", "created_at")
+    search_fields = ("receipt_no", "enrollment__enrollment_no", "enrollment__temp_enroll_no", "enrollment__student_name")
+    list_filter = ("receipt_date", "term")
+    readonly_fields = ("created_at", "updated_at") if hasattr(StudentFeesLedger, 'updated_at') else ("created_at",)
+    autocomplete_fields = ("enrollment",)
+
+    def save_model(self, request, obj, form, change):  # type: ignore[override]
+        if not change and not getattr(obj, "created_by", None):
+            _assign_user_field(obj, request.user, 'created_by')
+        super().save_model(request, obj, form, change)

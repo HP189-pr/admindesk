@@ -87,9 +87,9 @@ const CashReport = ({ onBack }) => {
     setReport(r);
 
     // If the report is closed and has denomination data, set denoms from it
-    if (r && r.closed && Array.isArray(r.denominations)) {
+    if (r && r.closed && Array.isArray(r.items)) {
       const denomObj = {};
-      r.denominations.forEach(item => {
+      r.items.forEach(item => {
         denomObj[item.denomination] = item.qty;
       });
       setDenoms(denomObj);

@@ -68,6 +68,7 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
   else if (l.includes("student") && l.includes("search")) key = "student_search";
   else if (l.includes("doc") && l.includes("register")) key = "doc_register";
   else if (l.includes("cash register") || l.includes("daily register")) key = "cash_register";
+  else if (l.includes("student fees") || l.includes("fees ledger")) key = "student_fees";
   else if (l.includes("fee type")) key = "fee_type_master";
   else if (l.includes("inventory")) key = "inventory";
   else if (l.includes("leave management")) key = "emp_leave";
@@ -152,6 +153,8 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
         );
       case "cash_register":
         return <AuthFees view="cash-register" />;
+      case "student_fees":
+        return <AuthFees view="student-fees" />;
       case "fee_type_master":
         return <AuthFees view="fee-type-master" />;
       case "inventory":
