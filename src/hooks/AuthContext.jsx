@@ -1,7 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import axios from "axios";
-
-const API_BASE_URL = "http://127.0.0.1:8000";
+import axios from "../api/axiosInstance";
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
@@ -18,15 +16,13 @@ export const AuthProvider = ({ children }) => {
     // 🔹 Fetch user profile
     const fetchUserProfile = async () => {
         const storedToken = localStorage.getItem("access_token");
-    
         if (!storedToken) {
             setLoading(false);
             return;
         }
-    
         // Validate token before making API request
         try {
-            await axios.post(`${API_BASE_URL}/api/token/verify/`, 
+            await axios.post(`/token/verify/`, 
                 { token: storedToken },
                 { headers: { "Content-Type": "application/json" } }
             );
@@ -39,13 +35,11 @@ export const AuthProvider = ({ children }) => {
             return;
         }
         setToken(storedToken);
-    
         // Fetch user profile
         try {
-            const { data } = await axios.get(`${API_BASE_URL}/api/profile/`, {
+            const { data } = await axios.get(`/profile/`, {
                 headers: { Authorization: `Bearer ${storedToken}` },
             });
-    
             setUser({
                 username: data.username || "",
                 first_name: data.first_name || "",
@@ -61,13 +55,12 @@ export const AuthProvider = ({ children }) => {
                 social_links: data.social_links || {},
                 is_admin: data.is_admin || false,
             });
-    
             setProfilePicture(data.profile_picture || "/profilepic/default-profile.png");
             // Initially set isAdmin from profile payload
             let adminFlag = !!(data.is_admin);
             try {
                 // Fallback/confirmation: call server to check admin access via flags/groups
-                const checkRes = await axios.get(`${API_BASE_URL}/api/check-admin-access/`, {
+                const checkRes = await axios.get(`/check-admin-access/`, {
                     headers: { Authorization: `Bearer ${storedToken}` },
                     validateStatus: () => true,
                 });
@@ -106,11 +99,10 @@ export const AuthProvider = ({ children }) => {
     const login = async (identifier, password) => {
         try {
             const { data } = await axios.post(
-                `${API_BASE_URL}/api/userlogin/`,
+                `/userlogin/`,
                 { username: identifier, password },
                 { headers: { "Content-Type": "application/json" } }
             );
-
             if (data.access) {
                 localStorage.setItem("access_token", data.access);
                 localStorage.setItem("refresh_token", data.refresh);
@@ -128,7 +120,7 @@ export const AuthProvider = ({ children }) => {
     const verifyPassword = async (password) => {
         try {
             const { status } = await axios.post(
-                `${API_BASE_URL}/api/verify-password/`,
+                `/verify-password/`,
                 { password },
                 { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }
             );
@@ -143,7 +135,7 @@ export const AuthProvider = ({ children }) => {
     const verifyAdminPanelPassword = async (password) => {
         try {
             const res = await axios.post(
-                `${API_BASE_URL}/api/verify-admin-panel-password/`,
+                `/verify-admin-panel-password/`,
                 { password },
                 {
                     headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
@@ -163,7 +155,7 @@ export const AuthProvider = ({ children }) => {
     // 🔹 Check if admin panel already verified in this session
     const isAdminPanelVerified = async () => {
         try {
-            const { data } = await axios.get(`${API_BASE_URL}/api/verify-admin-panel-password/`, {
+            const { data } = await axios.get(`/verify-admin-panel-password/`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
                 withCredentials: true,
             });
@@ -180,9 +172,8 @@ export const AuthProvider = ({ children }) => {
             logout();
             return false;
         }
-
         try {
-            const { data } = await axios.post(`${API_BASE_URL}/api/token/refresh/`, { refresh: refresh_token });
+            const { data } = await axios.post(`/token/refresh/`, { refresh: refresh_token });
             localStorage.setItem("access_token", data.access);
             setToken(data.access);
             // Don't call fetchUserProfile here to avoid loop
@@ -208,7 +199,7 @@ export const AuthProvider = ({ children }) => {
     // 🔹 Fetch all users
     const fetchUsers = async () => {
         try {
-            const { data } = await axios.get(`${API_BASE_URL}/api/users/`, {
+            const { data } = await axios.get(`/users/`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
             });
             return data;
@@ -221,7 +212,7 @@ export const AuthProvider = ({ children }) => {
     // 🔹 Create a new user (calls backend)
     const createUser = async (payload) => {
         try {
-            const { data } = await axios.post(`${API_BASE_URL}/api/users/`, payload, {
+            const { data } = await axios.post(`/users/`, payload, {
                 headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}`, 'Content-Type': 'application/json' }
             });
             return { success: true, data };
@@ -234,7 +225,7 @@ export const AuthProvider = ({ children }) => {
     // 🔹 Update existing user
     const updateUser = async (userId, payload) => {
         try {
-            const { data } = await axios.put(`${API_BASE_URL}/api/users/${userId}/`, payload, {
+            const { data } = await axios.put(`/users/${userId}/`, payload, {
                 headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}`, 'Content-Type': 'application/json' }
             });
             return { success: true, data };
@@ -247,7 +238,7 @@ export const AuthProvider = ({ children }) => {
     // 🔹 Fetch user details by ID
     const fetchUserDetail = async (userId) => {
         try {
-            const { data } = await axios.get(`${API_BASE_URL}/api/users/${userId}/`, {
+            const { data } = await axios.get(`/users/${userId}/`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
             });
             return data;

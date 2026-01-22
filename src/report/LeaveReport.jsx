@@ -16,11 +16,12 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
   const [computedReport, setComputedReport] = useState(null);
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [nameFilter, setNameFilter] = useState('');
 
   useEffect(() => {
     (async () => {
       try {
-        const r = await axios.get('/api/leave-periods/');
+        const r = await axios.get('/leave-periods/');
         const pd = normalize(r.data);
         setPeriods(pd);
         if (!selectedPeriod && pd.length > 0) {
@@ -36,7 +37,7 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
   useEffect(() => {
     (async () => {
       try {
-        const r = await axios.get('/api/empprofile/');
+        const r = await axios.get('/empprofile/');
         setProfiles(normalize(r.data));
       } catch (e) {
         setProfiles([]);
@@ -47,33 +48,33 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
   useEffect(() => {
     if (!selectedPeriod) {
       setComputedReport(null);
-      setAllocations([]);
       if (onPeriodChange) onPeriodChange(selectedPeriod);
       return;
     }
 
     const load = async () => {
       setLoading(true);
-      const params = `?period=${selectedPeriod}`;
       try {
-        const r1 = await axios.get(`/api/leave-allocations/${params}`);
-        setAllocations(normalize(r1.data));
-      } catch (_) {
-        setAllocations([]);
-      }
-
-      try {
-        const r2 = await axios.get(`/api/leave-report/${params}`);
+        const r2 = await axios.get('/leave-report/all-employees-balance/', {
+          params: { period_id: selectedPeriod }
+        });
         setComputedReport(r2.data);
-      } catch (e) {
-        try {
-          const r3 = await axios.get(`/api/reports/leave-balance${params}`);
-          setComputedReport(r3.data);
-        } catch (_) {
-          setComputedReport(null);
+      } catch (error) {
+        let errorMsg = 'Failed to load leave report data.';
+        if (error.response) {
+          if (error.response.status === 404) {
+            errorMsg = 'No data found for the selected filters.';
+          } else if (error.response.status === 403) {
+            errorMsg = 'You do not have permission to view this data.';
+          } else {
+            errorMsg = error.response.data?.detail || error.message || errorMsg;
+          }
+        } else {
+          errorMsg = error.message || errorMsg;
         }
+        setComputedReport({ error: errorMsg });
+        // console.error('[LeaveReport] Error fetching leave-report:', error);
       }
-
       setLoading(false);
       if (onPeriodChange) onPeriodChange(selectedPeriod);
     };
@@ -92,115 +93,47 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
     if (printable) printElement(printable);
   };
 
-  const convertFromCodes = (row) => {
-    if (row.alloc_cl !== undefined || row.alloc_sl !== undefined || row.alloc_el !== undefined) {
-      return {
-        ...row,
-        emp_short: row.emp_short || row.emp_id,
-        emp_name: row.emp_name || '',
-        emp_designation: row.emp_designation || row.designation || '',
-        leave_group: row.leave_group || '',
-        actual_joining: row.actual_joining || row.start_date || '',
-        left_date: row.left_date || 'Cont',
-      };
-    }
-
-    const get = (code, key) => row?.codes?.[code]?.[key] ?? 0;
-
+  // Convert Balance-style data to report rows
+  const convertFromBalance = (emp) => {
+    const types = Array.isArray(emp.leave_types) ? emp.leave_types : [];
+    const byCode = types.reduce((acc, t) => {
+      acc[t.code] = t;
+      return acc;
+    }, {});
+    const g = (code, key) => byCode[code]?.[key] ?? 0;
     return {
-      ...row,
-      emp_short: row.emp_short || row.emp_id,
-      emp_name: row.emp_name || '',
-      emp_designation: row.emp_designation || row.designation || '',
-      leave_group: row.leave_group || '',
-      actual_joining: row.actual_joining || row.start_date || '',
-      left_date: row.left_date || 'Cont',
-      start_sl: get('SL', 'starting') || get('SL', 'start') || 0,
-      start_el: get('EL', 'starting') || get('EL', 'start') || 0,
-      alloc_cl: get('CL', 'allocated'),
-      alloc_sl: get('SL', 'allocated'),
-      alloc_el: get('EL', 'allocated'),
-      alloc_vac: get('VAC', 'allocated'),
-      used_cl: get('CL', 'used'),
-      used_sl: get('SL', 'used'),
-      used_el: get('EL', 'used'),
-      used_vac: get('VAC', 'used'),
-      used_dl: get('DL', 'used'),
-      used_lwp: get('LWP', 'used'),
-      used_ml: get('ML', 'used'),
-      used_pl: get('PL', 'used'),
-      end_cl: get('CL', 'balance'),
-      end_sl: get('SL', 'balance'),
-      end_el: get('EL', 'balance'),
-      end_vac: get('VAC', 'balance'),
+      emp_short: emp.emp_short || emp.emp_id,
+      emp_id: emp.emp_id,
+      emp_name: emp.emp_name,
+      emp_designation: emp.emp_designation,
+      leave_group: emp.leave_group,
+      actual_joining: emp.actual_joining,
+      left_date: emp.left_date || 'Cont',
+      start_sl: g('SL', 'starting'),
+      start_el: g('EL', 'starting'),
+      alloc_cl: g('CL', 'allocated'),
+      alloc_sl: g('SL', 'allocated'),
+      alloc_el: g('EL', 'allocated'),
+      alloc_vac: g('VAC', 'allocated'),
+      used_cl: g('CL', 'used'),
+      used_sl: g('SL', 'used'),
+      used_el: g('EL', 'used'),
+      used_vac: g('VAC', 'used'),
+      used_dl: g('DL', 'used'),
+      used_lwp: g('LWP', 'used'),
+      used_ml: g('ML', 'used'),
+      used_pl: g('PL', 'used'),
+      end_cl: g('CL', 'balance'),
+      end_sl: g('SL', 'balance'),
+      end_el: g('EL', 'balance'),
+      end_vac: g('VAC', 'balance'),
     };
   };
 
   const rows = useMemo(() => {
-    if (computedReport && Array.isArray(computedReport.rows) && computedReport.rows.length > 0) {
-      return computedReport.rows.map(convertFromCodes);
-    }
-
-    if (profiles.length > 0) {
-      return profiles.map((p) => {
-        const empAllocs = allocations.filter(
-          (a) => String(a.emp_id) === String(p.emp_id) || String(a.profile) === String(p.id)
-        );
-        const findAlloc = (codeStarts) => {
-          const found = empAllocs.find((a) => (a.leave_code || a.leave_type || '').toString().toLowerCase().startsWith(codeStarts));
-          return found ? (found.allocated ?? 0) : 0;
-        };
-        const start_sl = Number(p.sl_balance || 0);
-        const start_el = Number(p.el_balance || 0);
-        const alloc_cl = findAlloc('cl');
-        const alloc_sl = findAlloc('sl');
-        const alloc_el = findAlloc('el');
-        const alloc_vac = findAlloc('vac');
-        const used_cl = 0;
-        const used_sl = 0;
-        const used_el = 0;
-        const used_vac = 0;
-        const used_dl = 0;
-        const used_lwp = 0;
-        const used_ml = 0;
-        const used_pl = 0;
-        const end_cl = +(start_sl + alloc_cl - used_cl).toFixed(2);
-        const end_sl = +(start_sl + alloc_sl - used_sl).toFixed(2);
-        const end_el = +(start_el + alloc_el - used_el).toFixed(2);
-        const end_vac = +(Number(p.vacation_balance || 0) + alloc_vac - used_vac).toFixed(2);
-
-        return {
-          emp_short: p.emp_short || p.emp_id || p.id,
-          emp_id: p.emp_id || p.id,
-          emp_name: p.emp_name,
-          emp_designation: p.emp_designation || '',
-          leave_group: p.leave_group || '',
-          actual_joining: p.actual_joining || p.emp_birth_date || '',
-          left_date: p.left_date || 'Cont',
-          start_sl,
-          start_el,
-          alloc_cl,
-          alloc_sl,
-          alloc_el,
-          alloc_vac,
-          used_cl,
-          used_sl,
-          used_el,
-          used_vac,
-          used_dl,
-          used_lwp,
-          used_ml,
-          used_pl,
-          end_cl,
-          end_sl,
-          end_el,
-          end_vac,
-        };
-      });
-    }
-
-    return [];
-  }, [allocations, computedReport, profiles]);
+    if (!computedReport?.employees) return [];
+    return computedReport.employees.map(convertFromBalance);
+  }, [computedReport]);
 
   const period = periods.find((p) => String(p.id) === String(selectedPeriod));
   const periodLabel = period ? `${fmtDate(period.start_date)} to ${fmtDate(period.end_date)}` : '';
@@ -209,24 +142,32 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
   const periodYearDisplay = periodYearMatch ? periodYearMatch[0] : '';
 
   const filteredRows = useMemo(() => {
-    if (!period || !period.start_date || !period.end_date) return rows;
-
-    const periodStart = parseDMY(period.start_date);
-    const periodEnd = parseDMY(period.end_date);
-    if (!periodStart || !periodEnd) return rows;
-
-    return rows.filter((r) => {
-      if (r.actual_joining) {
-        const joinDate = parseDMY(r.actual_joining);
-        if (joinDate && joinDate > periodEnd) return false;
+    let filtered = rows;
+    if (period && period.start_date && period.end_date) {
+      const periodStart = parseDMY(period.start_date);
+      const periodEnd = parseDMY(period.end_date);
+      if (periodStart && periodEnd) {
+        filtered = filtered.filter((r) => {
+          if (r.actual_joining) {
+            const joinDate = parseDMY(r.actual_joining);
+            if (joinDate && joinDate > periodEnd) return false;
+          }
+          if (r.left_date && r.left_date !== 'Cont') {
+            const leftDate = parseDMY(r.left_date);
+            if (leftDate && leftDate < periodStart) return false;
+          }
+          return true;
+        });
       }
-      if (r.left_date && r.left_date !== 'Cont') {
-        const leftDate = parseDMY(r.left_date);
-        if (leftDate && leftDate < periodStart) return false;
-      }
-      return true;
-    });
-  }, [period, rows]);
+    }
+    if (nameFilter) {
+      const nameLower = nameFilter.toLowerCase();
+      filtered = filtered.filter((r) =>
+        (r.emp_name || '').toLowerCase().includes(nameLower)
+      );
+    }
+    return filtered;
+  }, [period, rows, nameFilter]);
 
   const sorted = useMemo(() => {
     return [...filteredRows].sort((a, b) => {
@@ -264,7 +205,16 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
               </option>
             ))}
           </select>
-          {periods.length === 0 && <span className="text-xs text-gray-500">(No periods available)</span>}
+          <input
+            type="text"
+            placeholder="Filter by name"
+            value={nameFilter}
+            onChange={(e) => setNameFilter(e.target.value)}
+            className="border px-3 py-2 rounded text-sm min-w-[160px]"
+            disabled={loading}
+            style={{ marginLeft: 8 }}
+          />
+          {periods.length === 0 && <span className="text-xs text-yellow-700 bg-yellow-100 px-2 py-1 rounded">No leave periods available. Please create a period.</span>}
           <button onClick={handlePrintClick} className="px-4 py-2 bg-blue-600 text-white rounded text-sm no-print">
             Generate PDF
           </button>
@@ -272,8 +222,12 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
       </div>
 
       <div id="leave-report-print">
-        {!selectedPeriod ? (
+        {loading ? (
+          <div className="text-center py-8 text-blue-600">Loading data...</div>
+        ) : !selectedPeriod ? (
           <div className="text-center py-8 text-gray-500">Please select a period to view report</div>
+        ) : computedReport && computedReport.error ? (
+          <div className="text-center py-8 text-red-600">{computedReport.error}</div>
         ) : (
           <>
             <div className="flex flex-col items-center mb-4">
@@ -282,15 +236,15 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
             </div>
 
             <div className="overflow-auto border rounded" data-print-expand>
-              <table className="min-w-full text-xs table-auto border-collapse">
+              <table className="min-w-full text-xs table-auto border-collapse all-employees-report">
                 <thead>
                   <tr className="bg-yellow-50">
                     <th rowSpan={2} className="p-2 border font-semibold">Emp ID</th>
-                    <th rowSpan={2} className="p-2 border font-semibold">Emp Name</th>
+                    <th rowSpan={2} className="p-2 border font-semibold name-col">Emp Name</th>
                     <th rowSpan={2} className="p-2 border font-semibold">Position</th>
-                    <th rowSpan={2} className="p-2 border font-semibold">Leave Group</th>
+                    <th rowSpan={2} className="p-2 border font-semibold print-hide">Leave Group</th>
                     <th rowSpan={2} className="p-2 border font-semibold">Joining Date</th>
-                    <th rowSpan={2} className="p-2 border font-semibold">Leaving Date</th>
+                    <th rowSpan={2} className="p-2 border font-semibold print-hide">Leaving Date</th>
                     <th colSpan={2} className="p-2 border text-center font-semibold bg-blue-50">Balance: Start (Allocated)</th>
                     <th colSpan={4} className="p-2 border text-center font-semibold bg-green-50">Leave Allocation</th>
                     <th colSpan={8} className="p-2 border text-center font-semibold bg-orange-50">Used Leave</th>
@@ -325,40 +279,50 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
                       </td>
                     </tr>
                   ) : (
-                    sorted.map((r, idx) => (
-                      <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                        <td className="p-2 border text-center">{r.emp_short || r.emp_id}</td>
-                        <td className="p-2 border">{r.emp_name}</td>
-                        <td className="p-2 border">{r.emp_designation || ''}</td>
-                        <td className="p-2 border text-center">{r.leave_group || ''}</td>
-                        <td className="p-2 border text-center">{fmtDate(r.actual_joining) || ''}</td>
-                        <td className="p-2 border text-center">{r.left_date || 'Cont'}</td>
-                        <td className="p-2 border text-right">
-                          {roundLeave(r.start_sl, 'SL')}{' '}
-                          {r.alloc_sl ? <span className="text-xs text-gray-600">({roundLeave(r.alloc_sl, 'SL')})</span> : null}
-                        </td>
-                        <td className="p-2 border text-right">
-                          {roundLeave(r.start_el, 'EL')}{' '}
-                          {r.alloc_el ? <span className="text-xs text-gray-600">({roundLeave(r.alloc_el, 'EL')})</span> : null}
-                        </td>
-                        <td className="p-2 border text-right">{roundLeave(r.alloc_cl, 'CL')}</td>
-                        <td className="p-2 border text-right">{roundLeave(r.alloc_sl, 'SL')}</td>
-                        <td className="p-2 border text-right">{roundLeave(r.alloc_el, 'EL')}</td>
-                        <td className="p-2 border text-right">{roundLeave(r.alloc_vac, 'VC')}</td>
-                        <td className="p-2 border text-right">{roundLeave(r.used_cl, 'CL')}</td>
-                        <td className="p-2 border text-right">{roundLeave(r.used_sl, 'SL')}</td>
-                        <td className="p-2 border text-right">{roundLeave(r.used_el, 'EL')}</td>
-                        <td className="p-2 border text-right">{roundLeave(r.used_vac, 'VC')}</td>
-                        <td className="p-2 border text-right">{roundLeave(r.used_dl, 'DL')}</td>
-                        <td className="p-2 border text-right">{roundLeave(r.used_lwp, 'LWP')}</td>
-                        <td className="p-2 border text-right">{roundLeave(r.used_ml, 'ML')}</td>
-                        <td className="p-2 border text-right">{roundLeave(r.used_pl, 'PL')}</td>
-                        <td className="p-2 border text-right">{roundLeave(r.end_cl, 'CL')}</td>
-                        <td className="p-2 border text-right">{roundLeave(r.end_sl, 'SL')}</td>
-                        <td className="p-2 border text-right">{roundLeave(r.end_el, 'EL')}</td>
-                        <td className="p-2 border text-right">{roundLeave(r.end_vac, 'VC')}</td>
-                      </tr>
-                    ))
+                    <>
+                      {/* Check if all allocation and used leave columns are zero for all rows */}
+                      {sorted.every(r =>
+                        [r.alloc_cl, r.alloc_sl, r.alloc_el, r.alloc_vac, r.used_cl, r.used_sl, r.used_el, r.used_vac, r.used_dl, r.used_lwp, r.used_ml, r.used_pl].every(v => !v || Number(v) === 0)
+                      ) && (
+                        <tr>
+                          <td colSpan={24} className="text-center p-2 text-yellow-700 bg-yellow-100">
+                            No leave allocation or used leave data available for this period. Please check backend data.
+                          </td>
+                        </tr>
+                      )}
+                      {sorted.map((r, idx) => (
+                        <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className="p-2 border text-center">{r.emp_short || r.emp_id}</td>
+                          <td className="p-2 border">{r.emp_name}</td>
+                          <td className="p-2 border">{r.emp_designation || ''}</td>
+                          <td className="p-2 border text-center print-hide">{r.leave_group || ''}</td>
+                          <td className="p-2 border text-center">{fmtDate(r.actual_joining) || ''}</td>
+                          <td className="p-2 border text-center print-hide">{r.left_date || 'Cont'}</td>
+                          <td className="p-2 border text-right">
+                            {roundLeave(r.start_sl, 'SL')}
+                          </td>
+                          <td className="p-2 border text-right">
+                            {roundLeave(r.start_el, 'EL')}
+                          </td>
+                          <td className="p-2 border text-right">{roundLeave(r.alloc_cl, 'CL')}</td>
+                          <td className="p-2 border text-right">{roundLeave(r.alloc_sl, 'SL')}</td>
+                          <td className="p-2 border text-right">{roundLeave(r.alloc_el, 'EL')}</td>
+                          <td className="p-2 border text-right">{roundLeave(r.alloc_vac, 'VC')}</td>
+                          <td className="p-2 border text-right">{roundLeave(r.used_cl, 'CL')}</td>
+                          <td className="p-2 border text-right">{roundLeave(r.used_sl, 'SL')}</td>
+                          <td className="p-2 border text-right">{roundLeave(r.used_el, 'EL')}</td>
+                          <td className="p-2 border text-right">{roundLeave(r.used_vac, 'VC')}</td>
+                          <td className="p-2 border text-right">{roundLeave(r.used_dl, 'DL')}</td>
+                          <td className="p-2 border text-right">{roundLeave(r.used_lwp, 'LWP')}</td>
+                          <td className="p-2 border text-right">{roundLeave(r.used_ml, 'ML')}</td>
+                          <td className="p-2 border text-right">{roundLeave(r.used_pl, 'PL')}</td>
+                          <td className="p-2 border text-right">{roundLeave(r.end_cl, 'CL')}</td>
+                          <td className="p-2 border text-right">{roundLeave(r.end_sl, 'SL')}</td>
+                          <td className="p-2 border text-right">{roundLeave(r.end_el, 'EL')}</td>
+                          <td className="p-2 border text-right">{roundLeave(r.end_vac, 'VC')}</td>
+                        </tr>
+                      ))}
+                    </>
                   )}
                 </tbody>
               </table>

@@ -76,6 +76,7 @@ const LeaveCalendar = ({ user }) => {
 
   const [profiles, setProfiles] = useState([]);
   const [selectedEmpId, setSelectedEmpId] = useState('');
+  const [nameFilter, setNameFilter] = useState('');
   const [selectedYear, setSelectedYear] = useState(initialYear);
   const [calendarData, setCalendarData] = useState({});
   const [summary, setSummary] = useState(() => getEmptySummary());
@@ -142,7 +143,7 @@ const LeaveCalendar = ({ user }) => {
         return;
       }
       try {
-        const response = await axios.get('/api/empprofile/');
+        const response = await axios.get('/empprofile/');
         if (!cancelled) {
           setProfiles(normalize(response.data));
           setError('');
@@ -185,6 +186,13 @@ const LeaveCalendar = ({ user }) => {
     }
   }, [profiles, currentUser, selectedEmpId]);
 
+  // Filtered profiles by name
+  const filteredProfiles = useMemo(() => {
+    if (!nameFilter) return profiles;
+    const nameLower = nameFilter.toLowerCase();
+    return profiles.filter((p) => (p.emp_name || '').toLowerCase().includes(nameLower));
+  }, [profiles, nameFilter]);
+
   const loadCalendar = useCallback(
     async (empId, year) => {
       if (!empId || !year) return;
@@ -192,7 +200,7 @@ const LeaveCalendar = ({ user }) => {
       setError('');
       setSelectedDate('');
       try {
-        const response = await axios.get('/api/reports/leave-calendar/', {
+        const response = await axios.get('/reports/leave-calendar/', {
           params: { emp_id: empId, year },
         });
         setCalendarData(response.data.calendar || {});
@@ -261,13 +269,22 @@ const LeaveCalendar = ({ user }) => {
             )}
           </div>
           <div className="flex flex-wrap gap-3">
+            <input
+              type="text"
+              placeholder="Filter by name"
+              value={nameFilter}
+              onChange={(e) => setNameFilter(e.target.value)}
+              className="rounded-full border border-white/40 bg-white/10 px-4 py-2 text-sm font-semibold text-white backdrop-blur min-w-[160px]"
+              style={{ color: 'white', background: 'rgba(255,255,255,0.1)', marginRight: 8 }}
+              disabled={loading}
+            />
             <select
               value={selectedEmpId}
               onChange={(e) => setSelectedEmpId(e.target.value)}
               className="rounded-full border border-white/40 bg-white/10 px-4 py-2 text-sm font-semibold text-white backdrop-blur"
             >
               <option value="" className="text-slate-900">Select Employee</option>
-              {profiles.map((p) => (
+              {filteredProfiles.map((p) => (
                 <option key={p.id} value={p.emp_id} className="text-slate-900">
                   {p.emp_id} — {p.emp_name}
                 </option>

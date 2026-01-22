@@ -1,3 +1,57 @@
+# --- LeaveReportView: returns flat rows for frontend ---
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import permissions, status
+from .leave_engine import compute_leave_balances
+
+class LeaveReportView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        period_id = request.query_params.get("period")
+        if not period_id:
+            return Response({"rows": [], "metadata": {}}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            period_id = int(period_id)
+        except Exception:
+            return Response({"rows": [], "metadata": {}}, status=status.HTTP_400_BAD_REQUEST)
+
+        payload = compute_leave_balances()
+        # DEBUG: Print full payload and selected period_id
+        print("[DEBUG] Selected period_id:", period_id)
+        print("[DEBUG] Payload:", payload)
+        rows = []
+        for emp in payload.get("employees", []):
+            for p in emp.get("periods", []):
+                if p.get("period_id") == period_id:
+                    rows.append({
+                        "emp_id": emp.get("emp_id"),
+                        "emp_name": emp.get("emp_name", ""),
+                        "emp_short": emp.get("emp_short", ""),
+                        "emp_designation": emp.get("designation", ""),
+                        "leave_group": emp.get("leave_group", ""),
+                        "actual_joining": emp.get("actual_joining", ""),
+                        "left_date": emp.get("left_date", ""),
+                        "start_sl": p["starting"].get("SL", 0),
+                        "start_el": p["starting"].get("EL", 0),
+                        "alloc_cl": p["allocation"].get("CL", 0),
+                        "alloc_sl": p["allocation"].get("SL", 0),
+                        "alloc_el": p["allocation"].get("EL", 0),
+                        "alloc_vac": p["allocation"].get("VAC", 0),
+                        "used_cl": p["used"].get("CL", 0),
+                        "used_sl": p["used"].get("SL", 0),
+                        "used_el": p["used"].get("EL", 0),
+                        "used_vac": p["used"].get("VAC", 0),
+                        "used_dl": p["used"].get("DL", 0),
+                        "used_lwp": p["used"].get("LWP", 0),
+                        "used_ml": p["used"].get("ML", 0),
+                        "used_pl": p["used"].get("PL", 0),
+                        "end_cl": p["ending"].get("CL", 0),
+                        "end_sl": p["ending"].get("SL", 0),
+                        "end_el": p["ending"].get("EL", 0),
+                        "end_vac": p["ending"].get("VAC", 0),
+                    })
+        return Response({"rows": rows, "metadata": payload.get("metadata", {})})
 # views_leave_reports.py
 """
 Manager-facing leave reports (employee-summary, employee-range, multi-year, all-employees)
@@ -50,7 +104,7 @@ class EmployeeSummaryView(APIView):
         except Exception:
             return Response({"detail": "invalid period_id"}, status=status.HTTP_400_BAD_REQUEST)
 
-        payload = computeLeaveBalances(selectedPeriodId=period_id)
+        payload = compute_leave_balances()
         emp = next((e for e in payload.get("employees", []) if str(e.get("emp_id")) == str(emp_id)), None)
         if not emp:
             return Response({"detail": "No data"}, status=status.HTTP_404_NOT_FOUND)
@@ -94,7 +148,7 @@ class EmployeeDateRangeView(APIView):
             return Response({"detail": "from must be before to"}, status=status.HTTP_400_BAD_REQUEST)
 
         # compute whole engine and then derive for custom range using same logic as previous compute wrapper
-        payload = computeLeaveBalances(employee_ids=[str(emp_id)])
+        payload = compute_leave_balances(employee_ids=[str(emp_id)])
         emp = next((e for e in payload.get("employees", []) if str(e.get("emp_id")) == str(emp_id)), None)
         if not emp:
             return Response({"detail": "No data"}, status=status.HTTP_404_NOT_FOUND)
@@ -154,7 +208,7 @@ class EmployeeMultiYearView(APIView):
         emp_id = request.query_params.get("emp_id")
         if not emp_id:
             return Response({"detail": "emp_id required"}, status=status.HTTP_400_BAD_REQUEST)
-        payload = computeLeaveBalances(employee_ids=[str(emp_id)])
+        payload = compute_leave_balances(employee_ids=[str(emp_id)])
         emp = next((e for e in payload.get("employees", []) if str(e.get("emp_id")) == str(emp_id)), None)
         if not emp:
             return Response({"detail": "No data"}, status=status.HTTP_404_NOT_FOUND)
@@ -185,7 +239,7 @@ class AllEmployeesBalanceView(APIView):
         except Exception:
             return Response({"detail": "Invalid period_id"}, status=status.HTTP_400_BAD_REQUEST)
 
-        payload = computeLeaveBalances()
+        payload = compute_leave_balances()
         employees_out = []
         for emp in payload.get("employees", []):
             rec = next((p for p in emp.get("periods", []) if p.get("period_id") == period_id), None)

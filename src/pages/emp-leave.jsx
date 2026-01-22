@@ -24,18 +24,34 @@ const normalize = (data) => {
 
 
 function EmpLeavePage() {
-    // Field classnames for consistent styling
-    const baseFieldClass = "border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400";
-    const readOnlyFieldClass = "border rounded px-2 py-1 text-sm bg-gray-100 text-gray-500 cursor-not-allowed";
+    // Panel names for topbar navigation
+    const PANELS = ['Entry Leave', 'Leave Report', 'Balance Certificate', 'Calander View'];
+    const [selectedPanel, setSelectedPanel] = useState('Entry Leave');
+    const [panelOpen, setPanelOpen] = useState(true);
+  // Field classnames for consistent styling
+  const baseFieldClass = "border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400";
+  const readOnlyFieldClass = "border rounded px-2 py-1 text-sm bg-gray-100 text-gray-500 cursor-not-allowed";
   // parseDMY, fmtDate, toISO are now imported from '../report/utils'
   const { user } = useAuth();
+  const navigate = useNavigate();
+
+  // FILTER STATES (must be top-level)
+  const [yearFilter, setYearFilter] = useState('');
+  const [monthFilter, setMonthFilter] = useState('');
+  const [recordSearch, setRecordSearch] = useState('');
+  const [filterEmp, setFilterEmp] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  // DATA STATES
   const [leaveEntries, setLeaveEntries] = useState([]);
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [profiles, setProfiles] = useState([]);
   const [periods, setPeriods] = useState([]);
   const [selectedPeriod, setSelectedPeriod] = useState('');
   const [profile, setProfile] = useState(null);
-  const navigate = useNavigate();
+
+  // FORM STATE ONLY HOLDS FORM DATA
   const [form, setForm] = useState({
     report_no: '',
     emp_id: '',
@@ -48,95 +64,51 @@ function EmpLeavePage() {
     status: '',
     sandwich_leave: ''
   });
-  const [filterEmp, setFilterEmp] = useState('');
-  const [yearFilter, setYearFilter] = useState('');
-  const [monthFilter, setMonthFilter] = useState('');
-  const [editingId, setEditingId] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [recordSearch, setRecordSearch] = useState('');
 
-  // No need for availableYears, will use periods for dropdown
-
-  // Auto-select current calendar year if not set
+  // Auto-select latest available year if not set
   useEffect(() => {
-    if (yearFilter) return;
-    const thisYear = new Date().getFullYear();
-    setYearFilter(String(thisYear));
-  }, [yearFilter]);
-
-  const PANELS = ['Entry Leave', 'Leave Report', 'Balance Certificate', 'Calander View'];
-  const [selectedPanel, setSelectedPanel] = useState('Entry Leave');
-  const [panelOpen, setPanelOpen] = useState(true);
-
-  // load leave types
-  useEffect(() => {
-    (async () => {
-      try {
-        const r = await axios.get('/api/leavetype/');
-        setLeaveTypes(normalize(r.data));
-      } catch (e) {
-        try {
-          const r2 = await axios.get('/api/leavetype-compat/');
-          setLeaveTypes(normalize(r2.data));
-        } catch (_) {
-          setLeaveTypes([]);
-        }
+    if (leaveEntries.length && !yearFilter) {
+      const years = leaveEntries
+        .map(le => parseDMY(le.start_date))
+        .filter(Boolean)
+        .map(d => d.getFullYear());
+      if (years.length) {
+        setYearFilter(String(Math.max(...years)));
       }
-    })();
+    }
+  }, [leaveEntries, yearFilter]);
+
+  // Load leave types
+  useEffect(() => {
+    axios.get('/leavetype/')
+      .then(r => setLeaveTypes(normalize(r.data)))
+      .catch(() => setLeaveTypes([]));
   }, []);
 
-  // periods (auto-select active if present)
+  // Load periods (auto-select active if present)
   useEffect(() => {
-    (async () => {
-      try {
-        const r = await axios.get('/api/leave-periods/');
+    axios.get('/leave-periods/')
+      .then(r => {
         const pd = normalize(r.data);
         setPeriods(pd);
-        // Auto-select first period
         if (pd.length) setSelectedPeriod(String(pd[0].id));
-      } catch (e) {
-        console.error('Failed to load periods:', e);
-        setPeriods([]);
-      }
-    })();
+      })
+      .catch(() => setPeriods([]));
   }, []);
 
-  // profiles
+  // Load employee profiles
   useEffect(() => {
-    axios.get('/api/empprofile/').then(r => {
-      const arr = normalize(r.data);
-      setProfiles(arr);
-      const me = arr.find(
-        (p) => String(p.username) === String(user?.username) ||
-               String(p.usercode) === String(user?.username) ||
-               String(p.emp_id) === String(user?.username)
-      );
-      setProfile(me || null);
-    }).catch(() => setProfiles([]));
-  }, [user]);
-
-  // leave entries
-  useEffect(() => {
-    (async () => {
-      try {
-        const r = await axios.get('/api/leaveentry/');
-        setLeaveEntries(normalize(r.data));
-      } catch (e) {
-        try {
-          const r2 = await axios.get('/api/leave_entry/');
-          setLeaveEntries(normalize(r2.data));
-        } catch (_) {
-          setLeaveEntries([]);
-        }
-      }
-    })();
+    axios.get('/empprofile/')
+      .then(r => setProfiles(normalize(r.data)))
+      .catch(() => setProfiles([]));
   }, []);
 
-  // form helpers
-  const computeDays = (s, e) => {
-    // TODO: Implement actual days calculation if needed
-    return 0;
-  };
+  // Load leave entries
+  useEffect(() => {
+    axios.get('/leaveentry/')
+      .then(r => setLeaveEntries(normalize(r.data)))
+      .catch(() => setLeaveEntries([]));
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -166,14 +138,14 @@ function EmpLeavePage() {
             ? true
             : form.sandwich_leave === 'no'
               ? false
-              : null
+              : null,
       };
       if (editingId) {
-        await axios.patch(`/api/leaveentry/${editingId}/`, payload);
+        await axios.patch(`/leaveentry/${editingId}/`, payload);
       } else {
-        await axios.post('/api/leaveentry/', payload);
+        await axios.post('/leaveentry/', payload);
       }
-      const r = await axios.get('/api/leaveentry/');
+      const r = await axios.get('/leaveentry/');
       setLeaveEntries(normalize(r.data));
       setForm({
         report_no: '',
@@ -451,7 +423,7 @@ function EmpLeavePage() {
             <div className="border rounded-xl overflow-hidden mt-4">
               <div className="p-3 border-b bg-gray-50 flex justify-between">
                 <div className="font-semibold">Last Leave Records</div>
-                <button onClick={() => axios.get('/api/leaveentry/').then(r => setLeaveEntries(normalize(r.data)))} className="text-sm px-3 py-1 bg-blue-600 text-white rounded">Refresh</button>
+                <button onClick={() => axios.get('/leaveentry/').then(r => setLeaveEntries(normalize(r.data)))} className="text-sm px-3 py-1 bg-blue-600 text-white rounded">Refresh</button>
               </div>
 
               <div className="p-3 bg-white border-b flex flex-col gap-3 md:flex-row md:items-center">

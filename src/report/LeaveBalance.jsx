@@ -5,27 +5,32 @@ import { useAuth } from '../hooks/AuthContext';
 import { printElement } from '../utils/print';
 import { normalize, fmtDate, roundLeave } from './utils';
 
-const LeaveBalance = ({ user, defaultPeriod = '', onPeriodChange }) => {
+const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPeriod: setControlledPeriod }) => {
   const { user: authUser } = useAuth() || {};
   const currentUser = user || authUser;
   const hasMgmt = currentUser?.is_admin || currentUser?.is_staff || currentUser?.is_superuser;
 
   const [periods, setPeriods] = useState([]);
-  const [selectedPeriod, setSelectedPeriod] = useState(defaultPeriod || '');
+  const [internalPeriod, setInternalPeriod] = useState('');
   const [balanceMode, setBalanceMode] = useState('all-employees');
   const [selectedEmpId, setSelectedEmpId] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [leaveGroupFilter, setLeaveGroupFilter] = useState('all');
+  const [nameFilter, setNameFilter] = useState('');
   const [balanceData, setBalanceData] = useState(null);
   const [balanceError, setBalanceError] = useState(null);
   const [myBalances, setMyBalances] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // Use controlled period if provided, else fallback to internal state
+  const selectedPeriod = controlledPeriod !== undefined ? controlledPeriod : internalPeriod;
+  const setSelectedPeriod = setControlledPeriod !== undefined ? setControlledPeriod : setInternalPeriod;
+
   useEffect(() => {
     (async () => {
       try {
-        const r = await axios.get('/api/leave-periods/');
+        const r = await axios.get('/leave-periods/');
         const pd = normalize(r.data);
         setPeriods(pd);
         if (!selectedPeriod && pd.length > 0) {
@@ -36,26 +41,21 @@ const LeaveBalance = ({ user, defaultPeriod = '', onPeriodChange }) => {
         setPeriods([]);
       }
     })();
-  }, []);
+  }, [selectedPeriod, setSelectedPeriod]);
 
-  useEffect(() => {
-    if (defaultPeriod && defaultPeriod !== selectedPeriod) {
-      setSelectedPeriod(defaultPeriod);
-    }
-  }, [defaultPeriod, selectedPeriod]);
+  // Removed defaultPeriod effect, now controlled by parent
 
   useEffect(() => {
     if (!hasMgmt) {
       axios
-        .get('/api/my-leave-balance/')
+        .get('/my-leave-balance/')
         .then((r) => setMyBalances(Array.isArray(r.data) ? r.data : []))
         .catch(() => setMyBalances([]));
     }
   }, [hasMgmt]);
 
-  useEffect(() => {
-    if (onPeriodChange) onPeriodChange(selectedPeriod);
-  }, [selectedPeriod, onPeriodChange]);
+  // Prevent infinite loop: only call onPeriodChange if provided and value is different
+  // Removed useEffect that calls onPeriodChange to prevent infinite loop.
 
   const handlePrintClick = (selector) => {
     const printable = document.querySelector(selector);
@@ -82,7 +82,7 @@ const LeaveBalance = ({ user, defaultPeriod = '', onPeriodChange }) => {
             setLoading(false);
             return;
           }
-          url = '/api/leave-report/employee-summary/';
+          url = '/leave-report/employee-summary/';
           params = { emp_id: selectedEmpId, period_id: selectedPeriod };
           break;
         case 'employee-range':
@@ -92,7 +92,7 @@ const LeaveBalance = ({ user, defaultPeriod = '', onPeriodChange }) => {
             setLoading(false);
             return;
           }
-          url = '/api/leave-report/employee-range/';
+          url = '/leave-report/employee-range/';
           params = { emp_id: selectedEmpId, from: fromDate, to: toDate };
           break;
         case 'multi-year':
@@ -101,7 +101,7 @@ const LeaveBalance = ({ user, defaultPeriod = '', onPeriodChange }) => {
             setLoading(false);
             return;
           }
-          url = '/api/leave-report/multi-year/';
+          url = '/leave-report/multi-year/';
           params = { emp_id: selectedEmpId };
           break;
         case 'all-employees':
@@ -110,7 +110,7 @@ const LeaveBalance = ({ user, defaultPeriod = '', onPeriodChange }) => {
             setLoading(false);
             return;
           }
-          url = '/api/leave-report/all-employees-balance/';
+          url = '/leave-report/all-employees-balance/';
           params = { period_id: selectedPeriod };
           break;
         default:
@@ -118,13 +118,28 @@ const LeaveBalance = ({ user, defaultPeriod = '', onPeriodChange }) => {
           return;
       }
 
-      const response = await axios.get(url, { params });
-      setBalanceData(response.data);
-      setBalanceError(null);
+      try {
+        const response = await axios.get(url, { params });
+        setBalanceData(response.data);
+        setBalanceError(null);
+      } catch (error) {
+        let errorMsg = 'Failed to load balance data';
+        if (error.response) {
+          if (error.response.status === 404) {
+            errorMsg = 'No data found for the selected employee or period.';
+          } else if (error.response.status === 403) {
+            errorMsg = 'You do not have permission to view this data.';
+          } else {
+            errorMsg = error.response.data?.detail || error.message || errorMsg;
+          }
+        } else {
+          errorMsg = error.message || errorMsg;
+        }
+        setBalanceError(errorMsg);
+        setBalanceData(null);
+      }
     } catch (error) {
-      console.error('Failed to load balance data:', error);
-      const errorMsg = error.response?.data?.detail || error.message || 'Failed to load balance data';
-      setBalanceError(errorMsg);
+      setBalanceError('Unexpected error occurred.');
       setBalanceData(null);
     }
 
@@ -139,15 +154,22 @@ const LeaveBalance = ({ user, defaultPeriod = '', onPeriodChange }) => {
   const employeesArr = Array.isArray(balanceData?.employees) ? balanceData.employees : [];
 
   const filteredEmployees = useMemo(() => {
-    if (!leaveGroupFilter || leaveGroupFilter === 'all') return employeesArr;
-    return employeesArr.filter((emp) => {
-      const raw = emp?.leave_group || emp?.emp_leave_group || '';
-      const normalized = raw.toString().toLowerCase();
-      if (leaveGroupFilter === 'vc') return normalized.includes('vc');
-      if (leaveGroupFilter === 'el') return normalized.includes('el');
-      return true;
-    });
-  }, [employeesArr, leaveGroupFilter]);
+    let filtered = employeesArr;
+    if (leaveGroupFilter && leaveGroupFilter !== 'all') {
+      filtered = filtered.filter((emp) => {
+        const raw = emp?.leave_group || emp?.emp_leave_group || '';
+        const normalized = raw.toString().toLowerCase();
+        if (leaveGroupFilter === 'vc') return normalized.includes('vc');
+        if (leaveGroupFilter === 'el') return normalized.includes('el');
+        return true;
+      });
+    }
+    if (nameFilter) {
+      const nameLower = nameFilter.toLowerCase();
+      filtered = filtered.filter((emp) => (emp.emp_name || '').toLowerCase().includes(nameLower));
+    }
+    return filtered;
+  }, [employeesArr, leaveGroupFilter, nameFilter]);
 
   if (!hasMgmt) {
     return (
@@ -253,7 +275,7 @@ const LeaveBalance = ({ user, defaultPeriod = '', onPeriodChange }) => {
         )}
 
         {balanceMode === 'all-employees' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">Period *</label>
               <select value={selectedPeriod} onChange={(e) => setSelectedPeriod(e.target.value)} className="w-full p-2 border rounded">
@@ -272,6 +294,17 @@ const LeaveBalance = ({ user, defaultPeriod = '', onPeriodChange }) => {
                 <option value="vc">Vacation (VC) only</option>
                 <option value="el">EL only</option>
               </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Filter by Name</label>
+              <input
+                type="text"
+                placeholder="Employee name"
+                value={nameFilter}
+                onChange={(e) => setNameFilter(e.target.value)}
+                className="w-full p-2 border rounded"
+                disabled={loading}
+              />
             </div>
           </div>
         )}

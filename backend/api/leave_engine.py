@@ -55,9 +55,6 @@ def _day_value_for(lt: Optional[LeaveType]) -> Decimal:
 def _group_code(lt: Optional[LeaveType]) -> Optional[str]:
     if lt is None:
         return None
-    parent = getattr(lt, "main_type", None) or getattr(lt, "parent_leave", None)
-    if parent and str(parent).strip():
-        return str(parent).upper()
     code = getattr(lt, "leave_code", None)
     return str(code).upper() if code else None
 
@@ -93,7 +90,7 @@ class PeriodWindow:
 
 
 class LeaveEngine:
-    def __init__(self, tracked: Sequence[str] = ("EL", "CL", "SL", "VAC")):
+    def __init__(self, tracked: Sequence[str] = ("EL", "CL", "SL", "VAC", "DL", "LWP", "ML", "PL")):
         self.tracked = tuple(x.upper() for x in tracked)
 
     # -------------------------
@@ -291,8 +288,8 @@ class LeaveEngine:
                 "periods": []
             }
 
-            # consider periods that end >= calc_date
-            relevant_periods = [p for p in periods if p.end >= calc_date]
+            # IMPORTANT: include ALL periods (reports are historical)
+            relevant_periods = periods
             for idx, p in enumerate(relevant_periods):
                 start_snap = {}
                 alloc_snap = {}

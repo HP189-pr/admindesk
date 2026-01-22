@@ -48,12 +48,11 @@ export const printElement = (element) => {
   document.body.appendChild(host);
 
   // Detect orientation automatically
-  const isLandscape =
-    clone.classList.contains("all-employees-report") ||
-    clone.classList.contains("report-wide");
-  const pageWidthMm = isLandscape ? 297 : 210;
+  // Always use landscape for report print
+  const isLandscape = true;
+  const pageWidthMm = 297;
   const innerWidth = `${pageWidthMm - 20}mm`;
-  const pageOrientation = isLandscape ? "landscape" : "portrait";
+  const pageOrientation = "landscape";
 
   let style = document.getElementById(PRINT_STYLE_ID);
   if (!style) {
@@ -126,15 +125,21 @@ export const printElement = (element) => {
         width: ${innerWidth} !important;
       }
 
-      /* Name column width */
+      /* Name column width (wider for print) */
       #${PRINT_HOST_ID} .name-col {
-        width: 40mm !important;
-        max-width: 40mm !important;
+        width: 60mm !important;
+        max-width: 60mm !important;
+        min-width: 40mm !important;
         white-space: normal !important;
         word-break: break-word !important;
       }
 
       .no-print {
+        display: none !important;
+      }
+
+      /* Hide columns with print-hide class in print/PDF */
+      .print-hide {
         display: none !important;
       }
     }

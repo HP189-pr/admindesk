@@ -76,7 +76,7 @@ export default function AuthLeave() {
   // ----------------------------
   async function loadTypes() {
     try {
-      const res = await axios.get('/api/leavetype/');
+      const res = await axios.get('/leavetype/');
       
       // DRF ViewSet returns array directly for list endpoint
       let data = [];
@@ -101,7 +101,7 @@ export default function AuthLeave() {
   // ----------------------------
   async function loadPeriods() {
     try {
-      const res = await axios.get('/api/leave-periods/');
+      const res = await axios.get('/leave-periods/');
       const data = Array.isArray(res.data) ? res.data : res.data.results || res.data || [];
       // sort newest first by start_date
       const sorted = data.slice().sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
@@ -123,7 +123,7 @@ export default function AuthLeave() {
     setLoading(true);
     setError(null);
     try {
-      let url = '/api/leave-allocations/';
+      let url = '/leave-allocations/';
       if (periodId) {
         url += `?period=${encodeURIComponent(periodId)}`;
       }
@@ -187,7 +187,7 @@ export default function AuthLeave() {
     if (payload.allocated_start_date) body.allocated_start_date = payload.allocated_start_date;
     if (payload.allocated_end_date) body.allocated_end_date = payload.allocated_end_date;
 
-    const res = await axios.post('/api/leave-allocations/', body);
+    const res = await axios.post('/leave-allocations/', body);
     return res.data;
   }
 
@@ -200,7 +200,7 @@ export default function AuthLeave() {
     if ('allocated_start_date' in payload) body.allocated_start_date = payload.allocated_start_date || null;
     if ('allocated_end_date' in payload) body.allocated_end_date = payload.allocated_end_date || null;
     // patch
-    const res = await axios.patch(`/api/leave-allocations/${id}/`, body);
+    const res = await axios.patch(`/leave-allocations/${id}/`, body);
     return res.data;
   }
 
@@ -208,7 +208,7 @@ export default function AuthLeave() {
   // Delete Allocation
   // ----------------------------
   async function deleteAllocationRequest(id) {
-    const res = await axios.delete(`/api/leave-allocations/${id}/`);
+    const res = await axios.delete(`/leave-allocations/${id}/`);
     return res.status === 204 || res.status === 200;
   }
 
@@ -339,9 +339,9 @@ export default function AuthLeave() {
     };
     try {
       if (editingTypeId) {
-        await axios.put(`/api/leavetype/${editingTypeId}/`, payload);
+        await axios.put(`/leavetype/${editingTypeId}/`, payload);
       } else {
-        await axios.post('/api/leavetype/', payload);
+        await axios.post('/leavetype/', payload);
       }
       setTypeForm({ leave_code: '', leave_name: '', main_type: '', day_value: '1', session: '', annual_allocation: '', is_half: false });
       setEditingTypeId(null);
@@ -365,9 +365,9 @@ export default function AuthLeave() {
     };
     try {
       if (editingPeriodId) {
-        await axios.put(`/api/leave-periods/${editingPeriodId}/`, payload);
+        await axios.put(`/leave-periods/${editingPeriodId}/`, payload);
       } else {
-        await axios.post('/api/leave-periods/', payload);
+        await axios.post('/leave-periods/', payload);
       }
       setPeriodForm({ period_name: '', start_date: '', end_date: '' });
       setEditingPeriodId(null);
