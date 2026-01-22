@@ -78,6 +78,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
     eca_resubmit_date: "",
     eca_remark: "",
     remark: "",
+    doc_rec_remark: "",
     pay_rec_no: "",
     doc_rec_id: "",
     doc_rec_key: "",
@@ -95,6 +96,58 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
   const authHeaders = () => {
     const token = localStorage.getItem("access_token");
     return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
+  // Resolve a user-provided DocRec value (key or numeric id) to the canonical doc_rec_id string
+  const resolveDocRecIdentifier = async () => {
+    const key = (form.doc_rec_key || "").toString().trim();
+    if (key) return key;
+
+    const idVal = (form.doc_rec_id || "").toString().trim();
+    if (!idVal) return null;
+    // if user typed full doc_rec_id like vr_26_0001
+    if (/^(vr_|iv_|pr_|mg_|gt_)/i.test(idVal)) return idVal;
+
+    // if numeric pk, look up doc_rec_id via detail endpoint
+    if (/^\d+$/.test(idVal)) {
+      try {
+        const res = await fetch(`/api/docrec/${idVal}/`, { headers: { ...authHeaders() } });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.doc_rec_id) return data.doc_rec_id;
+        }
+      } catch (e) {
+        console.warn("DocRec id resolve failed", e);
+      }
+    }
+
+    // fallback to raw value
+    return idVal || null;
+  };
+
+  // Keep doc_rec_remark in sync on both DocRec and Verification
+  const syncDocRecRemark = async (remarkValue) => {
+    const docRecId = await resolveDocRecIdentifier();
+    if (!docRecId) return;
+
+    try {
+      const payload = {
+        doc_rec_id: docRecId,
+        doc_rec_data: { doc_rec_remark: remarkValue || null },
+        verification_data: { doc_rec_remark: remarkValue || null },
+      };
+      const res = await fetch('/api/docrec/update-with-verification/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '');
+        console.warn('DocRec remark sync failed', res.status, txt);
+      }
+    } catch (e) {
+      console.warn('DocRec remark sync error', e);
+    }
   };
 
   const loadRecords = async () => {
@@ -152,7 +205,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
         final_no: r.final_no || '',
         mail_status: r.mail_send_status || r.mail_status || '',
         pay_rec_no: r.pay_rec_no || '',
-        doc_rec_remark: r.doc_rec_remark || r.vr_remark || '',
+        doc_rec_remark: r.doc_rec_remark || r.vr_remark || (r.doc_rec && r.doc_rec.doc_rec_remark) || '',
         // expose doc_rec identifier so UI can show DocRec ID instead of numeric sequence
         doc_rec_key: r.doc_rec_key || (r.doc_rec && r.doc_rec.doc_rec_id) || r.sequence || r.doc_rec_id || '',
         doc_rec_id: r.doc_rec_id || (r.doc_rec && (r.doc_rec.doc_rec_id || r.doc_rec.id)) || '',
@@ -274,6 +327,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
       const t = await res.text();
       throw new Error(t || "Create failed");
     }
+    await syncDocRecRemark(form.doc_rec_remark || form.remark);
     await loadRecords();
   };
 
@@ -315,6 +369,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
     // Debug: log what we sent
     console.debug('updateRecord payload', { id, body });
     if (!res.ok) throw new Error(await res.text());
+    await syncDocRecRemark(form.doc_rec_remark || form.remark);
   };
 
   const [currentRow, setCurrentRow] = useState(null);
@@ -573,6 +628,13 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                 )}
 
                 <div className="md:col-span-2">
+                  <label className="text-sm">Doc Rec Remark</label>
+                  <input className="w-full border rounded-lg p-2"
+                    value={form.doc_rec_remark}
+                    onChange={(e) => handleChange("doc_rec_remark", e.target.value)} />
+                </div>
+
+                <div className="md:col-span-2">
                   <label className="text-sm">Remark</label>
                   <input className="w-full border rounded-lg p-2"
                     value={form.remark}
@@ -712,6 +774,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                       eca_status: r.eca?.eca_status || r.eca_status || "",
                       eca_resubmit_date: r.eca?.eca_resubmit_date || r.eca_resubmit_date || "",
                       eca_remark: r.eca?.eca_remark || r.eca_remark || "",
+                      doc_rec_remark: r.doc_rec_remark || r.remark || r.doc_rec?.doc_rec_remark || "",
                       remark: r.remark || "",
                       pay_rec_no: r.pay_rec_no || "",
                       // Prefer explicit doc_rec_id, then numeric id, then the human DocRec key

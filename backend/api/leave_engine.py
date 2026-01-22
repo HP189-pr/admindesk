@@ -16,6 +16,7 @@ from typing import Dict, List, Optional, Sequence, Tuple, Any
 from collections import defaultdict
 
 from django.db.models import QuerySet
+from django.db.models import Q
 
 from .domain_emp import EmpProfile, LeaveAllocation, LeaveEntry, LeavePeriod, LeaveType
 from .domain_core import Holiday
@@ -114,7 +115,10 @@ class LeaveEngine:
     def load_entries(self, employee_ids: Optional[Sequence[str]] = None) -> QuerySet:
         qs = LeaveEntry.objects.select_related("leave_type").filter(status__iexact=LeaveEntry.STATUS_APPROVED)
         if self.tracked:
-            qs = qs.filter(leave_type_id__in=[c.upper() for c in self.tracked])
+            qs = qs.filter(
+                Q(leave_type__leave_code__in=[c.upper() for c in self.tracked]) |
+                Q(leave_type__main_type__in=[c.upper() for c in self.tracked])
+            )
         if employee_ids:
             qs = qs.filter(emp_id__in=list(employee_ids))
         return qs

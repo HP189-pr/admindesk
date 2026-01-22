@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
 from datetime import date
-from decimal import Decimal
+
 
 from .leave_engine import engine
 from .domain_emp import EmpProfile, LeavePeriod, LeaveType
@@ -61,30 +61,40 @@ class CurrentLeaveBalanceView(APIView):
         else:
             as_of_date = date.today()
 
+        # Cache leave type names (N+1 fix)
+        leave_type_map = {lt.leave_code.upper(): lt.leave_name for lt in LeaveType.objects.all()}
+
         # compute entire payload for employee
         payload = engine.compute(employee_ids=[str(profile.emp_id)], leave_calculation_date=as_of_date)
         emp = next((e for e in payload.get("employees", []) if str(e.get("emp_id")) == str(profile.emp_id)), None)
         if not emp:
             return Response({"balances": []})
 
-        # prefer latest period that ended <= as_of_date, else last period
+        # Correct current period selection logic
         periods = emp.get("periods", [])
         target_period = None
-        for p in reversed(periods):
+        for p in periods:
+            ps_start = p.get("period_start")
             ps_end = p.get("period_end")
-            if isinstance(ps_end, date) and ps_end <= as_of_date:
+            if ps_start and ps_end and ps_start <= as_of_date <= ps_end:
                 target_period = p
                 break
+        # fallback: latest past period
+        if not target_period:
+            for p in reversed(periods):
+                ps_end = p.get("period_end")
+                if ps_end and ps_end < as_of_date:
+                    target_period = p
+                    break
         if not target_period and periods:
             target_period = periods[-1]
 
         balances = []
-        # leave codes known from engine metadata
         codes = payload.get("metadata", {}).get("tracked_leave_codes", ["CL","SL","EL","VAC"])
         for code in codes:
             balances.append({
                 "leave_code": code,
-                "leave_name": (LeaveType.objects.filter(leave_code__iexact=code).first().leave_name if LeaveType.objects.filter(leave_code__iexact=code).exists() else code),
+                "leave_name": leave_type_map.get(code.upper(), code),
                 "current_balance": target_period.get("ending", {}).get(code, 0) if target_period else 0,
                 "unit": "days"
             })
@@ -110,7 +120,17 @@ class PeriodLeaveBalanceView(APIView):
 
         leave_code = request.query_params.get("leave_code")
 
-        payload = engine.compute(employee_ids=[str(profile.emp_id)])
+        as_of = request.query_params.get("as_of_date")
+        if as_of:
+            try:
+                as_of_date = date.fromisoformat(as_of)
+            except Exception:
+                return Response({"detail": "Invalid date format (YYYY-MM-DD)"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            as_of_date = date.today()
+
+        leave_type_map = {lt.leave_code.upper(): lt.leave_name for lt in LeaveType.objects.all()}
+        payload = engine.compute(employee_ids=[str(profile.emp_id)], leave_calculation_date=as_of_date)
         emp = next((e for e in payload.get("employees", []) if str(e.get("emp_id")) == str(profile.emp_id)), None)
         if not emp:
             return Response({"detail": "No data"}, status=status.HTTP_404_NOT_FOUND)
@@ -123,7 +143,7 @@ class PeriodLeaveBalanceView(APIView):
         for code in codes:
             balances.append({
                 "leave_code": code,
-                "leave_name": (LeaveType.objects.filter(leave_code__iexact=code).first().leave_name if LeaveType.objects.filter(leave_code__iexact=code).exists() else code),
+                "leave_name": leave_type_map.get(code.upper(), code),
                 "opening_balance": rec.get("starting", {}).get(code, 0),
                 "allocated_in_period": rec.get("allocation", {}).get(code, 0),
                 "used_in_period": rec.get("used", {}).get(code, 0),
@@ -149,7 +169,15 @@ class LeaveHistoryView(APIView):
             return Response({"detail": "Profile not found"}, status=status.HTTP_404_NOT_FOUND)
 
         leave_code = request.query_params.get("leave_code")
-        payload = engine.compute(employee_ids=[str(profile.emp_id)])
+        as_of = request.query_params.get("as_of_date")
+        if as_of:
+            try:
+                as_of_date = date.fromisoformat(as_of)
+            except Exception:
+                return Response({"detail": "Invalid date format (YYYY-MM-DD)"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            as_of_date = date.today()
+        payload = engine.compute(employee_ids=[str(profile.emp_id)], leave_calculation_date=as_of_date)
         emp = next((e for e in payload.get("employees", []) if str(e.get("emp_id")) == str(profile.emp_id)), None)
         if not emp:
             return Response({"emp_id": profile.emp_id, "emp_name": profile.emp_name, "history": []})
@@ -194,7 +222,16 @@ class LeaveBalanceReportView(APIView):
 
         leave_code = request.query_params.get("leave_code")
         # compute for all employees (engine will load employees itself)
-        payload = engine.compute()
+        as_of = request.query_params.get("as_of_date")
+        if as_of:
+            try:
+                as_of_date = date.fromisoformat(as_of)
+            except Exception:
+                return Response({"detail": "Invalid date format (YYYY-MM-DD)"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            as_of_date = date.today()
+        leave_type_map = {lt.leave_code.upper(): lt.leave_name for lt in LeaveType.objects.all()}
+        payload = engine.compute(leave_calculation_date=as_of_date)
         employees_out = []
         for emp in payload.get("employees", []):
             rec = next((p for p in emp.get("periods", []) if p.get("period_id") == period.id), None)
@@ -214,6 +251,7 @@ class LeaveBalanceReportView(APIView):
                 for c in payload.get("metadata", {}).get("tracked_leave_codes", ["CL","SL","EL","VAC"]):
                     lt_list.append({
                         "code": c,
+                        "name": leave_type_map.get(c.upper(), c),
                         "allocated": rec.get("allocation", {}).get(c, 0),
                         "used": rec.get("used", {}).get(c, 0),
                         "balance": rec.get("ending", {}).get(c, 0)

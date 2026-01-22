@@ -124,17 +124,57 @@ class LeaveTypeSerializer(serializers.ModelSerializer):
 # ============================================================
 
 class LeaveEntrySerializer(serializers.ModelSerializer):
+
     emp_name = serializers.CharField(source="emp.emp_name", read_only=True)
     leave_type_name = serializers.CharField(source="leave_type.leave_name", read_only=True)
+    period_id = serializers.SerializerMethodField()
+    period_name = serializers.SerializerMethodField()
+
+    def get_period_id(self, obj):
+        # Use cached periods from context to avoid N+1 queries
+        cached_periods = self.context.get('cached_periods', [])
+        if cached_periods:
+            for p in cached_periods:
+                if p['start'] <= obj.start_date <= p['end']:
+                    return p['id']
+        # Fallback: query database (slow but safe)
+        p = LeavePeriod.objects.filter(
+            start_date__lte=obj.start_date,
+            end_date__gte=obj.start_date
+        ).only('id').first()
+        return p.id if p else None
+
+    def get_period_name(self, obj):
+        # Use cached periods from context
+        cached_periods = self.context.get('cached_periods', [])
+        if cached_periods:
+            for p in cached_periods:
+                if p['start'] <= obj.start_date <= p['end']:
+                    return p['name']
+        # Fallback: query database
+        p = LeavePeriod.objects.filter(
+            start_date__lte=obj.start_date,
+            end_date__gte=obj.start_date
+        ).only('period_name').first()
+        return p.period_name if p else None
 
     class Meta:
         model = LeaveEntry
         fields = "__all__"
+        # Add period_id and period_name to output fields
+        extra_fields = ['period_id', 'period_name']
+        if fields == '__all__':
+            # DRF will include all model fields, so we append extra fields
+            pass
+        else:
+            fields = tuple(list(fields) + extra_fields)
         read_only_fields = (
             "leave_report_no",
             "total_days",
             "emp_name",
             "leave_type_name",
+            "period_id",
+            "period_name",
         )
 
 

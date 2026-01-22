@@ -234,6 +234,16 @@ class LeaveEntryViewSet(viewsets.ModelViewSet):
     serializer_class = LeaveEntrySerializer
     permission_classes = [IsOwnerOrHR]
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        # Cache all periods once per request to avoid N+1 queries in get_period_id/get_period_name
+        cached_periods = [
+            {'id': p.id, 'name': p.period_name, 'start': p.start_date, 'end': p.end_date}
+            for p in LeavePeriod.objects.all().order_by('start_date')
+        ]
+        context['cached_periods'] = cached_periods
+        return context
+
     def get_queryset(self):
         user = self.request.user
         qs = super().get_queryset()

@@ -108,6 +108,29 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     }catch(e){ console.warn('fetchRelatedForDocRec error', e); }
   };
 
+  // When a doc_rec_id is present, load its detail to keep doc_rec_remark in sync with Verification edits
+  const fetchDocRecDetail = async (docRecId) => {
+    if (!docRecId) return;
+    try {
+      const token = localStorage.getItem('access_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      // Accept both string key and numeric id
+      const url = /^\d+$/.test(String(docRecId)) ? `/api/docrec/${docRecId}/` : `/api/docrec/?doc_rec_id=${encodeURIComponent(docRecId)}`;
+      const res = await fetch(url, { headers });
+      if (!res.ok) return;
+      const data = await res.json();
+      const row = Array.isArray(data) ? (data[0] || null) : (data.results ? (data.results[0] || null) : data);
+      if (row && typeof row === 'object') {
+        setForm((f) => ({
+          ...f,
+          doc_rec_remark: row.doc_rec_remark || row.remark || f.doc_rec_remark || '',
+        }));
+      }
+    } catch (e) {
+      console.warn('fetchDocRecDetail error', e);
+    }
+  };
+
   // Resolve an enrollment number to enrollment object (try retrieve by enrollment_no, fall back to search)
   const resolveEnrollment = async (en_no) => {
     if (!en_no) return null;
@@ -236,7 +259,10 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
 
   // When doc_rec_id changes (e.g., after creating a DocRec), fetch related records
   useEffect(()=>{
-    if (form.doc_rec_id) fetchRelatedForDocRec(form.doc_rec_id);
+    if (form.doc_rec_id) {
+      fetchRelatedForDocRec(form.doc_rec_id);
+      fetchDocRecDetail(form.doc_rec_id);
+    }
   }, [form.doc_rec_id]);
 
   // Recent Receipts: search/filter and display
