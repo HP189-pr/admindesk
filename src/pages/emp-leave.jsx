@@ -57,24 +57,12 @@ function EmpLeavePage() {
 
   // No need for availableYears, will use periods for dropdown
 
-  // Improved: Auto-select active or current period
+  // Auto-select current calendar year if not set
   useEffect(() => {
-    if (yearFilter || !periods.length) return;
-    // Prefer active period if available
-    const active = periods.find(p => p.is_active);
-    if (active) {
-      setYearFilter(String(active.id));
-      return;
-    }
-    // Otherwise, select period containing today
-    const today = new Date();
-    const current = periods.find(p => {
-      const s = parseDMY(p.start_date);
-      const e = parseDMY(p.end_date);
-      return s && e && today >= s && today <= e;
-    });
-    setYearFilter(String((current || periods[0]).id));
-  }, [periods, yearFilter]);
+    if (yearFilter) return;
+    const thisYear = new Date().getFullYear();
+    setYearFilter(String(thisYear));
+  }, [yearFilter]);
 
   const PANELS = ['Entry Leave', 'Leave Report', 'Balance Certificate', 'Calander View'];
   const [selectedPanel, setSelectedPanel] = useState('Entry Leave');
@@ -225,22 +213,17 @@ function EmpLeavePage() {
     }
   };
   // ...existing return statement and JSX...
+  // Filter by calendar year (not period)
   const filteredEntries = useMemo(() => {
     return (leaveEntries || [])
       .filter(le => {
         if (filterEmp && String(le.emp) !== String(filterEmp)) return false;
 
-        // PERIOD FILTER
+        // YEAR FILTER (calendar year)
         if (yearFilter) {
-          const period = periods.find(p => String(p.id) === String(yearFilter));
-          if (!period) return false;
-
-          const leaveDate = parseDMY(le.start_date);
-          const pStart = parseDMY(period.start_date);
-          const pEnd   = parseDMY(period.end_date);
-
-          if (!leaveDate || !pStart || !pEnd) return false;
-          if (leaveDate < pStart || leaveDate > pEnd) return false;
+          const d = parseDMY(le.start_date);
+          if (!d) return false;
+          if (String(d.getFullYear()) !== String(yearFilter)) return false;
         }
 
         // MONTH FILTER
@@ -271,7 +254,7 @@ function EmpLeavePage() {
         const startB = parseDMY(b.start_date)?.getTime() || 0;
         return startB - startA;
       });
-  }, [leaveEntries, filterEmp, yearFilter, monthFilter, recordSearch, periods]);
+  }, [leaveEntries, filterEmp, yearFilter, monthFilter, recordSearch]);
 
   return (
     <div className="p-4">
@@ -473,9 +456,16 @@ function EmpLeavePage() {
 
               <div className="p-3 bg-white border-b flex flex-col gap-3 md:flex-row md:items-center">
                 <select value={yearFilter} onChange={e => setYearFilter(e.target.value)} className="border p-1 rounded text-sm">
-                  <option value="">All Periods</option>
-                  {periods.map((p) => (
-                    <option key={p.id} value={p.id}>{p.period_name}</option>
+                  <option value="">All Years</option>
+                  {/* Dynamically generate year options from leaveEntries */}
+                  {Array.from(new Set((leaveEntries || [])
+                    .map(le => {
+                      const d = parseDMY(le.start_date);
+                      return d ? d.getFullYear() : null;
+                    })
+                    .filter(y => y != null)
+                  )).sort((a, b) => b - a).map(y => (
+                    <option key={y} value={y}>{y}</option>
                   ))}
                 </select>
 

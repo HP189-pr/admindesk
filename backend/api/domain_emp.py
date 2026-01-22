@@ -281,44 +281,16 @@ class LeaveAllocation(models.Model):
             return None
 
     def used_days(self, emp_profile=None):
-        from .domain_emp import LeaveEntry
-
-        # Since apply_to is commented out, assume if emp is set it's PARTICULAR, else ALL
-        if self.emp:
-            target = self.emp
-        else:
-            if not emp_profile:
-                return 0.0
-            target = emp_profile
-
-        lt = self.get_leave_type()
-        if not target or not lt:
-            return 0.0
-
-        entries = LeaveEntry.objects.filter(
-            emp=target,
-            leave_type=lt,
-            status__iexact="Approved",
-            end_date__gte=self.period.start_date,
-            start_date__lte=self.period.end_date,
-        )
-
-        total = 0.0
-        for e in entries:
-            start = max(e.start_date, self.period.start_date)
-            end = min(e.end_date, self.period.end_date)
-            if end >= start:
-                days = (end - start).days + 1
-                try:
-                    dv = Decimal(str(e.leave_type.day_value))
-                except:
-                    dv = Decimal("1")
-                total += float(days * dv)
-
-        return float(total)
+        """
+        Deprecated. Use leave_engine instead.
+        """
+        return 0.0
 
     def balance(self, emp_profile=None):
-        return float(self.allocated) - self.used_days(emp_profile)
+        """
+        Deprecated. Use leave_engine instead.
+        """
+        return 0.0
 
     def __str__(self):
         target = "ALL" if self.emp is None else self.emp

@@ -39,15 +39,7 @@ def _format_decimal_for_json(value):
 
 class EmpProfileSerializer(serializers.ModelSerializer):
     # Format numeric fields
-    el_balance = serializers.SerializerMethodField()
-    sl_balance = serializers.SerializerMethodField()
-    cl_balance = serializers.SerializerMethodField()
-    vacation_balance = serializers.SerializerMethodField()
-
-    joining_year_allocation_el = serializers.SerializerMethodField()
-    joining_year_allocation_cl = serializers.SerializerMethodField()
-    joining_year_allocation_sl = serializers.SerializerMethodField()
-    joining_year_allocation_vac = serializers.SerializerMethodField()
+    # Removed legacy balance and allocation fields. Use leave_engine for all calculations.
 
     # Dates formatted for UI (output) but accept ISO format (input from HTML date inputs)
     actual_joining = serializers.DateField(
@@ -85,15 +77,7 @@ class EmpProfileSerializer(serializers.ModelSerializer):
         model = EmpProfile
         fields = "__all__"
 
-    def get_el_balance(self, obj): return _format_decimal_for_json(obj.el_balance)
-    def get_sl_balance(self, obj): return _format_decimal_for_json(obj.sl_balance)
-    def get_cl_balance(self, obj): return _format_decimal_for_json(obj.cl_balance)
-    def get_vacation_balance(self, obj): return _format_decimal_for_json(obj.vacation_balance)
-
-    def get_joining_year_allocation_el(self, obj): return _format_decimal_for_json(obj.joining_year_allocation_el)
-    def get_joining_year_allocation_cl(self, obj): return _format_decimal_for_json(obj.joining_year_allocation_cl)
-    def get_joining_year_allocation_sl(self, obj): return _format_decimal_for_json(obj.joining_year_allocation_sl)
-    def get_joining_year_allocation_vac(self, obj): return _format_decimal_for_json(obj.joining_year_allocation_vac)
+    # Removed legacy balance and allocation methods. Use leave_engine for all calculations.
 
 
 
@@ -124,57 +108,17 @@ class LeaveTypeSerializer(serializers.ModelSerializer):
 # ============================================================
 
 class LeaveEntrySerializer(serializers.ModelSerializer):
-
     emp_name = serializers.CharField(source="emp.emp_name", read_only=True)
     leave_type_name = serializers.CharField(source="leave_type.leave_name", read_only=True)
-    period_id = serializers.SerializerMethodField()
-    period_name = serializers.SerializerMethodField()
-
-    def get_period_id(self, obj):
-        # Use cached periods from context to avoid N+1 queries
-        cached_periods = self.context.get('cached_periods', [])
-        if cached_periods:
-            for p in cached_periods:
-                if p['start'] <= obj.start_date <= p['end']:
-                    return p['id']
-        # Fallback: query database (slow but safe)
-        p = LeavePeriod.objects.filter(
-            start_date__lte=obj.start_date,
-            end_date__gte=obj.start_date
-        ).only('id').first()
-        return p.id if p else None
-
-    def get_period_name(self, obj):
-        # Use cached periods from context
-        cached_periods = self.context.get('cached_periods', [])
-        if cached_periods:
-            for p in cached_periods:
-                if p['start'] <= obj.start_date <= p['end']:
-                    return p['name']
-        # Fallback: query database
-        p = LeavePeriod.objects.filter(
-            start_date__lte=obj.start_date,
-            end_date__gte=obj.start_date
-        ).only('period_name').first()
-        return p.period_name if p else None
 
     class Meta:
         model = LeaveEntry
         fields = "__all__"
-        # Add period_id and period_name to output fields
-        extra_fields = ['period_id', 'period_name']
-        if fields == '__all__':
-            # DRF will include all model fields, so we append extra fields
-            pass
-        else:
-            fields = tuple(list(fields) + extra_fields)
         read_only_fields = (
             "leave_report_no",
             "total_days",
             "emp_name",
             "leave_type_name",
-            "period_id",
-            "period_name",
         )
 
 
@@ -201,8 +145,6 @@ class LeaveAllocationSerializer(serializers.ModelSerializer):
     profile_name = serializers.SerializerMethodField()
 
     emp_id = serializers.SerializerMethodField()
-    period_id = serializers.SerializerMethodField()
-
     allocated_start_date = serializers.SerializerMethodField()
     allocated_end_date = serializers.SerializerMethodField()
 
@@ -221,7 +163,6 @@ class LeaveAllocationSerializer(serializers.ModelSerializer):
             "emp_id",
             "profile_name",
             "period",
-            "period_id",
             "allocated",
             "allocated_start_date",
             "allocated_end_date",
@@ -252,9 +193,6 @@ class LeaveAllocationSerializer(serializers.ModelSerializer):
     # -------------------------------------------------------
     def get_emp_id(self, obj):
         return getattr(obj, "emp_id", None)
-
-    def get_period_id(self, obj):
-        return getattr(obj, "period_id", None)
 
     def get_leave_type_name(self, obj):
         lt = obj.get_leave_type()
