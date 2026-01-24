@@ -141,7 +141,7 @@ class LeaveAllocationInline(admin.TabularInline):
     model = LeaveAllocation
     extra = 0
     fields = (
-        'leave_type', 'period', 'allocated',
+        'leave_code', 'period', 'allocated',
         'allocated_start_date', 'allocated_end_date'
     )
     readonly_fields = ()

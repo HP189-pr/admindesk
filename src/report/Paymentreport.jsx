@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
+import { useNavigate } from 'react-router-dom';
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import PageTopbar from "../components/PageTopbar";
@@ -19,6 +20,7 @@ const REPORT_META = {
 };
 
 const PaymentReport = ({ onBack }) => {
+  const navigate = useNavigate();
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const thirtyDaysAgo = useMemo(() => {
     const d = new Date();
@@ -190,12 +192,6 @@ const PaymentReport = ({ onBack }) => {
             >
               📄 Export PDF
             </button>
-            <a
-              href="/"
-              className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow"
-            >
-              🏠 Home
-            </a>
             {onBack ? (
               <button
                 onClick={onBack}

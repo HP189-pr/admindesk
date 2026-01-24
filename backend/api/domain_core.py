@@ -6,7 +6,8 @@ from django.contrib.auth.models import User
 from django.db import models
 
 __all__ = [
-    'Holiday', 'UserProfile', 'Module', 'Menu', 'UserPermission'
+    'Holiday', 'UserProfile', 'Module', 'Menu', 'UserPermission',
+    'DashboardPreference',
 ]
 
 class Holiday(models.Model):
@@ -93,3 +94,28 @@ class UserPermission(models.Model):
         if self.menu:
             return f"{self.user.username} - {self.module.name} - {self.menu.name}"
         return f"{self.user.username} - {self.module.name} (Full Module Access)"
+
+
+class DashboardPreference(models.Model):
+    """Per-user dashboard module selection.
+
+    Stores which quick-status modules the user has chosen to see on the
+    main dashboard. This is kept intentionally small and simple: just a
+    JSON list of module keys like ["verification", "migration"].
+    """
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="dashboard_preference",
+        db_column="userid",
+    )
+    selected_modules = models.JSONField(default=list, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "dashboard_preferences"
+
+    def __str__(self):  # pragma: no cover - simple representation
+        return f"DashboardPreference({self.user.username})"
+

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { isoToDMY, dmyToISO } from "../utils/date";
 import { FaChevronDown, FaChevronUp } from "react-icons/fa";
+import { useNavigate } from 'react-router-dom';
 import PageTopbar from "../components/PageTopbar";
 
 /**
@@ -20,6 +21,7 @@ const Badge = ({ text }) => {
     text === "CORRECTION" ? "yellow" :
     text === "PENDING" ? "orange" :
     text === "CANCEL" ? "rose" : "slate";
+
   return (
     <span className={`inline-block px-2 py-0.5 text-xs rounded-full bg-${color}-100 text-${color}-800`}>
       {text || "-"}
@@ -39,6 +41,7 @@ const MailBadge = ({ text }) => {
 };
 
 export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar, onToggleChatbox }) {
+  const navigate = useNavigate();
   // Topbar actions and collapsible panel
   const [panelOpen, setPanelOpen] = useState(false);
   const [localSelected, setLocalSelected] = useState(null);
@@ -406,6 +409,16 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
         
         return { ...f, [field]: val, final_no: generatedNo };
       });
+    } else if (field === "eca_required") {
+      // Toggle ECA fields; default status to NOT_SENT when ECA is required
+      setForm((f) => {
+        const required = !!val;
+        return {
+          ...f,
+          eca_required: required,
+          eca_status: required ? (f.eca_status || "NOT_SENT") : "",
+        };
+      });
     } else {
       setForm((f) => ({ ...f, [field]: val }));
     }
@@ -414,8 +427,8 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
   // Formatters for table display
   const formatEcaStatus = (row) => {
     const s = (row && row.eca && row.eca.eca_status) || row?.eca_status || '';
-    // Hide explicit NOT_SENT values; show only real status text
-    return s && String(s).toUpperCase() !== 'NOT_SENT' ? s : '';
+    // Always show the stored status (including NOT_SENT)
+    return s || '';
   };
 
   // Table columns (ordered as requested)
@@ -458,11 +471,6 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
           <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-indigo-600 text-white text-xl">
             🔎
           </div>
-        }
-        rightSlot={
-          <a href="/" className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 text-white ml-2">
-            🏠 Home
-          </a>
         }
       />
 
@@ -618,6 +626,18 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                         value={form.eca_send_date}
                         onChange={(e) => handleChange("eca_send_date", e.target.value)} />
                     </div>
+                    <div>
+                      <label className="text-sm">ECA Status</label>
+                      <select
+                        className="w-full border rounded-lg p-2"
+                        value={form.eca_status || "NOT_SENT"}
+                        onChange={(e) => handleChange("eca_status", e.target.value)}
+                      >
+                        <option value="NOT_SENT">NOT_SENT</option>
+                        <option value="SENT">SENT</option>
+                        <option value="ACCEPTED">ACCEPTED</option>
+                      </select>
+                    </div>
                     <div className="md:col-span-2">
                       <label className="text-sm">ECA Remark</label>
                       <input className="w-full border rounded-lg p-2"
@@ -676,6 +696,8 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                         if (getSelected() === "✏️ Edit" && currentRow?.id) {
                           await updateRecord(currentRow.id);
                           alert("Updated!");
+                          // Clear the eca_send_date field after successful update
+                          setForm(prev => ({ ...prev, eca_send_date: "" }));
                         } else {
                           await createRecord();
                           alert("Created!");
@@ -802,7 +824,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                     <td className="py-2 px-3">{(r.eca_required === true || (r.eca && r.eca.eca_required === true)) ? 'Y' : ''}</td>
                     <td className="py-2 px-3">{r.eca?.eca_name || r.eca_name || "-"}</td>
                     <td className="py-2 px-3">{r.eca?.eca_ref_no || r.eca_ref_no || "-"}</td>
-                    <td className="py-2 px-3">{r.eca?.eca_send_date || r.eca_submit_date || "-"}</td>
+                    <td className="py-2 px-3">{isoToDMY(r.eca_send_date || r.eca?.eca_send_date || r.eca_submit_date) || "-"}</td>
                     <td className="py-2 px-3">{formatEcaStatus(r) || ""}</td>
                     <td className="py-2 px-3">{r.eca?.eca_resubmit_date || r.eca_resubmit_date || "-"}</td>
                   </tr>

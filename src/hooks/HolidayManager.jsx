@@ -18,7 +18,7 @@ export default function HolidayManager() {
     setLoading(true);
     try {
       // Request all holidays (server supports ?all=1)
-      const res = await axios.get('/api/holidays/?all=1');
+      const res = await axios.get('/holidays/?all=1');
       // Handle both array and object responses
       const data = res.data;
       if (Array.isArray(data)) {
@@ -47,7 +47,7 @@ export default function HolidayManager() {
       return;
     }
     try {
-      await axios.post('/api/holidays/', { 
+      await axios.post('/holidays/', { 
         holiday_date: date, 
         holiday_name: name, 
         holiday_day: new Date(date).toLocaleDateString('en-US', { weekday: 'long' }) 
@@ -63,7 +63,7 @@ export default function HolidayManager() {
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this holiday?')) return;
     try {
-      await axios.delete(`/api/holidays/${id}/`);
+      await axios.delete(`/holidays/${id}/`);
       fetchHolidays();
     } catch (e) {
       console.error(e);
@@ -165,7 +165,7 @@ export default function HolidayManager() {
     
     for (const record of uploadedData) {
       try {
-        await axios.post('/api/holidays/', {
+        await axios.post('/holidays/', {
           holiday_date: record.holiday_date,
           holiday_name: record.holiday_name,
           holiday_day: record.holiday_day
@@ -211,7 +211,7 @@ export default function HolidayManager() {
       const updatedDate = editValues.holiday_date;
       const updatedName = editValues.holiday_name;
       
-      await axios.put(`/api/holidays/${id}/`, {
+      await axios.put(`/holidays/${id}/`, {
         holiday_date: updatedDate,
         holiday_name: updatedName,
         holiday_day: new Date(updatedDate).toLocaleDateString('en-US', { weekday: 'long' })

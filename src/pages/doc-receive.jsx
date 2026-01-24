@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { dmyToISO, isoToDMY, pad2 } from "../utils/date";
 import PageTopbar from "../components/PageTopbar";
 
@@ -642,8 +641,6 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
   const leftSlot = (
     <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-sky-600 text-white text-xl">📥</div>       
   );
-
-  const navigate = useNavigate();
   return (
     <div className="p-4 md:p-6 space-y-4 h-full">
       <PageTopbar
@@ -655,7 +652,6 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
         onToggleChatbox={onToggleChatbox}
         actionsOnLeft
         leftSlot={leftSlot}
-        rightSlot={<button onClick={() => navigate('/dashboard')} className="px-3 py-2 rounded-lg bg-slate-800 text-white">🏠 Home</button>}
       />
 
       {/* Collapsible Action Box */}

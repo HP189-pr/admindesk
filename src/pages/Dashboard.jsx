@@ -7,9 +7,10 @@ import { useAuth } from "../hooks/AuthContext";
 
 const Dashboard = () => {
   const { verifyPassword } = useAuth();
-    const [isSidebarOpen, setSidebarOpen] = useState(true);
-    const [isChatboxOpen, setChatboxOpen] = useState(false);
-    const [selectedMenuItem, setSelectedMenuItem] = useState(null);
+        const [isSidebarOpen, setSidebarOpen] = useState(true);
+        const [isChatboxOpen, setChatboxOpen] = useState(false);
+        // Default to Dashboard so that, after login, the Quick Status dashboard is shown first
+        const [selectedMenuItem, setSelectedMenuItem] = useState('Dashboard');
     const [selectedSubmenu, setSelectedSubmenu] = useState(null);
     const [chatNotificationCount, setChatNotificationCount] = useState(0);
 

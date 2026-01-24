@@ -3,6 +3,7 @@
  * 4-Tab Layout: Stock Summary | Inward Entry | Outward Entry | Item Master
  */
 import React, { useState, useEffect } from 'react';
+import PageTopbar from "../components/PageTopbar";
 import {
   getItems,
   addItem,
@@ -691,8 +692,31 @@ const Inventory = () => {
   );
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Inventory Management</h1>
+    <div className="p-6 space-y-4">
+      <PageTopbar
+        title="Inventory Management"
+        actions={[
+          'Stock Summary',
+          'Inward Entry',
+          'Outward Entry',
+          'Item Master',
+        ]}
+        selected={
+          activeTab === 'stock'
+            ? 'Stock Summary'
+            : activeTab === 'inward'
+              ? 'Inward Entry'
+              : activeTab === 'outward'
+                ? 'Outward Entry'
+                : 'Item Master'
+        }
+        onSelect={(action) => {
+          if (action === 'Stock Summary') setActiveTab('stock');
+          else if (action === 'Inward Entry') setActiveTab('inward');
+          else if (action === 'Outward Entry') setActiveTab('outward');
+          else if (action === 'Item Master') setActiveTab('item');
+        }}
+      />
 
       {/* Alert */}
       {alert.show && (
@@ -704,9 +728,6 @@ const Inventory = () => {
           {alert.message}
         </div>
       )}
-
-      {/* Tabs */}
-      {renderTabs()}
 
       {/* Loading */}
       {loading && (

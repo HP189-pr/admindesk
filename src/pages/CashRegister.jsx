@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   fetchCashEntries,
   createCashEntry,
@@ -639,6 +640,8 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     );
   }
 
+  const navigate = useNavigate();
+
   return (
     <div className="p-4 md:p-6 space-y-4 h-full bg-slate-100">
       <PageTopbar
@@ -649,14 +652,6 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
         onToggleSidebar={onToggleSidebar}
         onToggleChatbox={onToggleChatbox}
         actionsOnLeft
-        rightSlot={(
-          <a
-            href="/"
-            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow"
-          >
-            🏠 Home
-          </a>
-        )}
       />
       <div className="w-full space-y-5">
         {status && (

@@ -30,6 +30,27 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
     setSelectedTopbarMenu(null);
   }, [selectedSubmenu]);
 
+  // Listen for global "go home" events from the topbar Home button
+  useEffect(() => {
+    const handleGoHome = () => {
+      if (typeof setSelectedMenuItem === 'function') {
+        setSelectedMenuItem('Dashboard');
+      }
+    };
+
+    try {
+      window.addEventListener('admindesk_go_home', handleGoHome);
+    } catch (e) {
+      // ignore if window is not available
+    }
+
+    return () => {
+      try {
+        window.removeEventListener('admindesk_go_home', handleGoHome);
+      } catch (e) {}
+    };
+  }, [setSelectedMenuItem]);
+
   // Small navigation handoff: if other pages set admindesk_navigate and admindesk_docrec in localStorage,
   // consume them to switch to the appropriate page and clear the keys.
   useEffect(() => {

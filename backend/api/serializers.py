@@ -22,7 +22,7 @@ from django.contrib.auth.hashers import check_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.utils import timezone
 from django.db import transaction
-from .models import Holiday, UserProfile, User, Module, Menu, UserPermission,Enrollment, Institute, MainBranch, SubBranch, InstituteCourseOffering, Verification, VerificationStatus, DocRec, MigrationRecord, ProvisionalRecord, InstVerificationMain, InstVerificationStudent, Eca, StudentProfile, ProvisionalStatus
+from .models import Holiday, UserProfile, User, Module, Menu, UserPermission, DashboardPreference, Enrollment, Institute, MainBranch, SubBranch, InstituteCourseOffering, Verification, VerificationStatus, DocRec, MigrationRecord, ProvisionalRecord, InstVerificationMain, InstVerificationStudent, Eca, StudentProfile, ProvisionalStatus
 from django.conf import settings
 
 # --- Holiday Serializer ---
@@ -170,6 +170,19 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         data = super().validate(attrs)
         data['user_id'] = self.user.id  # Use `id` (not `userid`) for the user ID
         return data
+
+
+class DashboardPreferenceSerializer(serializers.ModelSerializer):
+    """Serialize per-user dashboard module selections.
+
+    Only exposes the list of selected module keys; user is always the
+    authenticated request.user and is not writable from the client.
+    """
+
+    class Meta:
+        model = DashboardPreference
+        fields = ["selected_modules"]
+
 # ✅ Module Serializer
 class ModuleSerializer(serializers.ModelSerializer):
     class Meta:

@@ -1,10 +1,12 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { dmyToISO, isoToDMY } from "../utils/date";
+import { useNavigate } from 'react-router-dom';
 import PageTopbar from "../components/PageTopbar";
 
 const ACTIONS = ["➕", "✏️ Edit", "🔍", "📄 Report"];
 
 const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
+  const navigate = useNavigate();
   const [selectedTopbarMenu, setSelectedTopbarMenu] = useState("🔍");
   const [panelOpen, setPanelOpen] = useState(true);
   const [list, setList] = useState([]);
@@ -166,7 +168,6 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
         selected={selectedTopbarMenu}
         onSelect={(action)=>{ setSelectedTopbarMenu(action); setPanelOpen(true);} }
         actionsOnLeft
-        rightSlot={<a href="/" className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 text-white ml-2">🏠 Home</a>}
       />
 
       {/* Collapsible Action Box */}

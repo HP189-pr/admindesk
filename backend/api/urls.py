@@ -67,6 +67,7 @@ try:
         HolidayViewSet, LoginView, ChangePasswordView, UserProfileView,
         VerifyPasswordView, VerifyAdminPanelPasswordView, CustomTokenObtainPairView,
         ProfilePictureView, CheckAdminAccessView, MyNavigationView,
+        DashboardPreferenceView,
         UserAPIView, UserDetailAPIView, AdminChangePasswordView
     )
 
@@ -156,6 +157,7 @@ try:
         # USER MANAGEMENT
         path("users/", UserAPIView.as_view(), name="user-list-create"),
         path("users/<int:user_id>/", UserDetailAPIView.as_view(), name="user-detail"),
+        path("dashboard-preferences/", DashboardPreferenceView.as_view(), name="dashboard-preferences"),
         path("my-navigation/", MyNavigationView.as_view(), name="my-navigation"),
 
         # MENUS BY MODULE

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { fetchFeeTypes, createFeeType, updateFeeType } from '../services/feeTypeService';
+import PageTopbar from '../components/PageTopbar';
 
 const DEFAULT_RIGHTS = { can_view: true, can_create: true, can_edit: true, can_delete: true };
 
@@ -118,13 +119,18 @@ const FeeTypeMaster = ({ rights = DEFAULT_RIGHTS }) => {
   }
 
   return (
-    <div className="min-h-full bg-slate-50 p-6">
+    <div className="min-h-full bg-slate-50 p-4 space-y-4">
+      <PageTopbar
+        title="Fee Type Master"
+        rightSlot={
+          <div className="text-right text-xs sm:text-sm text-blue-900">
+            <div className="font-semibold uppercase tracking-wide">Accounts &amp; Finance</div>
+            <div className="text-gray-600 normal-case">Control the ledger heads referenced by the cash register.</div>
+          </div>
+        }
+      />
+
       <div className="mx-auto max-w-5xl space-y-6">
-        <header>
-          <p className="text-sm uppercase tracking-wide text-blue-700">Accounts &amp; Finance</p>
-          <h1 className="text-3xl font-semibold text-gray-900">Fee Type Master</h1>
-          <p className="text-sm text-gray-600">Control the ledger heads referenced by the cash register.</p>
-        </header>
 
         {status && (
           <div

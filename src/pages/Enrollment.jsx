@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { isoToDMY, dmyToISO } from "../utils/date";
 import { FaChevronDown, FaChevronUp } from "react-icons/fa";
+import { useNavigate } from 'react-router-dom';
 import PageTopbar from "../components/PageTopbar";
 import { 
   getEnrollments, 
@@ -20,6 +21,7 @@ import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar, onToggleChatbox }) => {
+  const navigate = useNavigate();
   const { auth } = useAuth();
   const [state, setState] = useState({
     enrollments: [],
@@ -437,11 +439,6 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
           <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-indigo-600 text-white text-xl">
             🧾
           </div>
-        }
-        rightSlot={
-          <a href="/" className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 text-white ml-2">
-            🏠 Home
-          </a>
         }
       />
 

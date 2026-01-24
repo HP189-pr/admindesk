@@ -139,12 +139,6 @@ const CashReport = ({ onBack }) => {
         actionsOnLeft={true}
         rightSlot={
           <div className="flex gap-2">
-            <a
-              href="/"
-              className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow"
-            >
-              🏠 Home
-            </a>
             <button
               onClick={() => {
                 if (typeof onBack === 'function') {

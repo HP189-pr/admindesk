@@ -1,10 +1,10 @@
 // EmpLeavePage.jsx
 import React, { useEffect, useState, Suspense, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import axios from '../api/axiosInstance';
 import { useAuth } from '../hooks/AuthContext';
 import { FaUserTie, FaChevronUp, FaChevronDown } from 'react-icons/fa';
 import { parseDMY, fmtDate, toISO } from '../report/utils';
+import PageTopbar from "../components/PageTopbar";
 
 // Lazy load the report page (keeps main bundle smaller)
 const LeaveReport = React.lazy(() => import('../report/LeaveReport'));
@@ -33,7 +33,6 @@ function EmpLeavePage() {
   const readOnlyFieldClass = "border rounded px-2 py-1 text-sm bg-gray-100 text-gray-500 cursor-not-allowed";
   // parseDMY, fmtDate, toISO are now imported from '../report/utils'
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   // FILTER STATES (must be top-level)
   const [yearFilter, setYearFilter] = useState('');
@@ -228,36 +227,34 @@ function EmpLeavePage() {
       });
   }, [leaveEntries, filterEmp, yearFilter, monthFilter, recordSearch]);
 
+  const PANEL_LABELS = {
+    'Entry Leave': 'Add',
+    'Leave Report': 'Report',
+    'Balance Certificate': 'Balance',
+    'Calander View': 'Calendar',
+  };
+
+  const ACTION_TO_PANEL = Object.entries(PANEL_LABELS).reduce((acc, [panel, label]) => {
+    acc[label] = panel;
+    return acc;
+  }, {});
+
+  const topbarActions = Object.values(PANEL_LABELS);
+
   return (
-    <div className="p-4">
-      {/* topbar */}
-      <div className="sticky top-0 bg-white border-b z-30 flex justify-between items-center py-2 px-3">
-        <div className="flex gap-2 items-center">
-          <FaUserTie className="text-indigo-700 text-2xl" />
-          <span className="font-bold text-lg">Leave Management</span>
-          {PANELS.map((p) => (
-            <button
-              key={p}
-              onClick={() => handleTopbar(p)}
-              className={`px-3 py-1.5 rounded border text-sm ${selectedPanel === p ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white border-gray-300 hover:bg-gray-50'}`}
-            >
-              {p === 'Entry Leave'
-                ? 'Add'
-                : p === 'Leave Report'
-                  ? 'Report'
-                  : p === 'Calander View'
-                    ? 'Calendar'
-                    : 'Balance'}
-            </button>
-          ))}
-        </div>
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="px-4 py-2 rounded bg-gray-800 text-white"
-        >
-          🏠 Home
-        </button>
-      </div>
+    <div className="p-4 space-y-4">
+      <PageTopbar
+        title="Leave Management"
+        leftSlot={<FaUserTie className="text-indigo-700 text-2xl" />}
+        actions={topbarActions}
+        selected={PANEL_LABELS[selectedPanel]}
+        onSelect={(action) => {
+          const panel = ACTION_TO_PANEL[action];
+          if (panel) {
+            handleTopbar(panel);
+          }
+        }}
+      />
 
       {/* panel container */}
       <div className="mt-4 border rounded-xl shadow-sm">

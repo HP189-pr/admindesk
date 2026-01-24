@@ -3,6 +3,7 @@
  * Main degree management component with CRUD operations
  */
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PageTopbar from '../components/PageTopbar';
 import { FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import {
@@ -24,6 +25,7 @@ import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
+    const navigate = useNavigate();
     const [degrees, setDegrees] = useState([]);
     const [convocations, setConvocations] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -528,11 +530,6 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
                         🎓
                     
                     </div>
-                }
-                rightSlot={
-                    <a href="/" className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 text-white ml-2">
-                        🏠 Home
-                    </a>
                 }
             />
 

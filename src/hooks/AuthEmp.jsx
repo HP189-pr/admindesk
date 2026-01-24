@@ -58,6 +58,24 @@ export default function AuthEmp() {
 
   useEffect(() => { load(); }, []);
 
+  // Open a profile in view or edit mode. We fetch the
+  // full detail record to ensure all fields (like left_date)
+  // are present and up to date.
+  const openProfile = async (profile, editable) => {
+    try {
+      if (profile?.id) {
+        const resp = await axios.get(`/empprofile/${profile.id}/`);
+        setEditing(resp.data);
+      } else {
+        setEditing(profile || {});
+      }
+    } catch (e) {
+      // Fallback: at least show whatever we already have
+      setEditing(profile || {});
+    }
+    setReadOnly(!editable);
+  };
+
   return (
     <div>
       <h3 className="text-lg font-semibold mb-3">Employee Profiles</h3>
@@ -65,7 +83,7 @@ export default function AuthEmp() {
       <div className="mb-3">
         <button onClick={load} className="px-3 py-1 bg-blue-600 text-white rounded">Refresh</button>
         <button
-          onClick={() => { setEditing({}); setReadOnly(false); }}
+            onClick={() => { openProfile({}, true); }}
           className="ml-2 px-3 py-1 bg-green-600 text-white rounded"
         >
           Add
@@ -73,12 +91,13 @@ export default function AuthEmp() {
       </div>
 
       {editing && (
-        <div className="mb-4 bg-white p-4 rounded shadow max-h-[70vh] overflow-y-auto">
-          <h4 className="font-semibold mb-2">
+        <div className="mb-4 bg-white p-6 rounded shadow max-h-[80vh] overflow-y-auto">
+          <h4 className="text-xl font-semibold mb-4 pb-2 border-b">
             {editing.id ? (readOnly ? 'View Employee' : 'Edit Employee') : 'Add Employee'}
           </h4>
 
           <form
+            key={editing?.id || 'new'}
             onSubmit={async (e) => {
               e.preventDefault();
               const fd = new FormData(e.target);
@@ -133,305 +152,323 @@ export default function AuthEmp() {
           >
           <fieldset disabled={readOnly}>
 
-            {/* ================= ROW 1 – IDENTITY ================= */}
-            <div className="grid grid-cols-12 gap-4 mb-4">
-              <div className="col-span-2">
-                <label className="text-xs text-gray-500">Emp ID *</label>
-                <input
-                  name="emp_id"
-                  maxLength={7}
-                  style={{ width: '7ch' }}
-                  defaultValue={cleanValue(editing.emp_id)}
-                  className="p-2 border rounded"
-                  required
-                />
+            {/* ================= BASIC EMPLOYEE INFORMATION ================= */}
+            <div className="mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
+              <h5 className="text-sm font-semibold text-gray-700 mb-3">Basic Employee Information</h5>
+              
+              {/* Row 1: Emp ID, Employee Name (wide center), Designation */}
+              <div className="grid grid-cols-6 gap-4 items-end mb-3">
+                <div className="flex flex-col col-span-1">
+                  <label className="text-xs text-gray-600 mb-1">Emp ID</label>
+                  <input
+                    name="emp_id"
+                    maxLength={15}
+                    defaultValue={cleanValue(editing.emp_id)}
+                    className="h-10 w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <div className="flex flex-col col-span-3">
+                  <label className="text-xs text-gray-600 mb-1">Employee Name</label>
+                  <input
+                    name="emp_name"
+                    defaultValue={cleanValue(editing.emp_name)}
+                    className="h-10 w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="flex flex-col col-span-2">
+                  <label className="text-xs text-gray-600 mb-1">Designation</label>
+                  <input
+                    name="emp_designation"
+                    defaultValue={cleanValue(editing.emp_designation)}
+                    className="h-10 w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
-              <div className="col-span-2">
-                <label className="text-xs text-gray-500">Emp Short</label>
-                <input
-                  name="emp_short"
-                  maxLength={7}
-                  style={{ width: '7ch' }}
-                  defaultValue={cleanValue(editing.emp_short)}
-                  className="p-2 border rounded"
-                />
-              </div>
-              <div className="col-span-4">
-                <label className="text-xs text-gray-500">Employee Name</label>
-                <input
-                  name="emp_name"
-                  defaultValue={cleanValue(editing.emp_name)}
-                  className="w-full p-2 border rounded font-semibold"
-                />
-              </div>
-              <div className="col-span-3">
-                <label className="text-xs text-gray-500">Designation</label>
-                <input
-                  name="emp_designation"
-                  defaultValue={cleanValue(editing.emp_designation)}
-                  className="w-full p-2 border rounded"
-                />
-              </div>
-              <div className="col-span-1">
-                <label className="text-xs text-gray-500">Status</label>
-                <select
-                  name="status"
-                  defaultValue={editing.status || 'Cont'}
-                  className="w-full p-2 border rounded"
-                >
-                  <option value="Cont">Cont</option>
-                  <option value="Active">Active</option>
-                  <option value="Left">Left</option>
-                </select>
+
+              {/* Row 2: Status, Leave Group, Institute ID, Emp Short, Username, Usercode */}
+              <div className="grid grid-cols-6 gap-4 items-end">
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-600 mb-1">Status</label>
+                  <select
+                    name="status"
+                    defaultValue={editing.status || 'Cont'}
+                    className="h-10 w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  >
+                    <option value="Cont">Cont</option>
+                    <option value="Active">Active</option>
+                    <option value="Left">Left</option>
+                  </select>
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-600 mb-1">Leave Group</label>
+                  <input
+                    name="leave_group"
+                    defaultValue={cleanValue(editing.leave_group)}
+                    className="h-10 w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-600 mb-1">Institute ID</label>
+                  <input
+                    name="institute_id"
+                    maxLength={10}
+                    defaultValue={cleanValue(editing.institute_id)}
+                    className="h-10 w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-600 mb-1">Emp Short</label>
+                  <input
+                    name="emp_short"
+                    maxLength={10}
+                    defaultValue={cleanValue(editing.emp_short)}
+                    className="h-10 w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-600 mb-1">Username</label>
+                  <input
+                    name="username"
+                    defaultValue={cleanValue(editing.username)}
+                    className="h-10 w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-600 mb-1">Usercode</label>
+                  <input
+                    name="usercode"
+                    maxLength={10}
+                    defaultValue={cleanValue(editing.usercode)}
+                    className="h-10 w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* ================= ROW 2 – EMPLOYMENT DETAILS ================= */}
-            <div className="grid grid-cols-12 gap-4 mb-4">
-              <div className="col-span-2">
-                <label className="text-xs text-gray-500">Leave Group</label>
-                <input
-                  name="leave_group"
-                  defaultValue={cleanValue(editing.leave_group)}
-                  className="w-full p-2 border rounded"
-                />
-              </div>
-              <div className="col-span-2">
-                <label className="text-xs text-gray-500">Actual Joining</label>
-                {readOnly ? (
-                  <div className="p-2 border rounded bg-gray-50 text-sm">
-                    {toDisplayDate(editing.actual_joining)}
-                  </div>
-                ) : (
-                  <input
-                    type="date"
-                    name="actual_joining"
-                    defaultValue={toISODate(editing.actual_joining)}
-                    className="p-2 border rounded"
-                    style={{ width: '12ch' }}
-                  />
-                )}
-              </div>
-              <div className="col-span-2">
-                <label className="text-xs text-gray-500">Department Joining</label>
-                {readOnly ? (
-                  <div className="p-2 border rounded bg-gray-50 text-sm">
-                    {toDisplayDate(editing.department_joining)}
-                  </div>
-                ) : (
-                  <input
-                    type="date"
-                    name="department_joining"
-                    defaultValue={toISODate(editing.department_joining)}
-                    className="p-2 border rounded"
-                    style={{ width: '12ch' }}
-                  />
-                )}
-              </div>
-              <div className="col-span-2">
-                <label className="text-xs text-gray-500">Leave Calc Date</label>
-                {readOnly ? (
-                  <div className="p-2 border rounded bg-gray-50 text-sm">
-                    {toDisplayDate(editing.leave_calculation_date)}
-                  </div>
-                ) : (
-                  <input
-                    type="date"
-                    name="leave_calculation_date"
-                    defaultValue={toISODate(editing.leave_calculation_date)}
-                    className="p-2 border rounded"
-                    style={{ width: '12ch' }}
-                  />
-                )}
-              </div>
-              <div className="col-span-2">
-                <label className="text-xs text-gray-500">Left Date</label>
-                {readOnly ? (
-                  <div className="p-2 border rounded bg-gray-50 text-sm">
-                    {toDisplayDate(editing.left_date)}
-                  </div>
-                ) : (
-                  <input
-                    type="date"
-                    name="left_date"
-                    defaultValue={toISODate(editing.left_date)}
-                    className="p-2 border rounded"
-                    style={{ width: '12ch' }}
-                  />
-                )}
-              </div>
-              <div className="col-span-2">
-                <label className="text-xs text-gray-500">Emp Birth Date</label>
-                {readOnly ? (
-                  <div className="p-2 border rounded bg-gray-50 text-sm">
-                    {toDisplayDate(editing.emp_birth_date)}
-                  </div>
-                ) : (
-                  <input
-                    type="date"
-                    name="emp_birth_date"
-                    defaultValue={toISODate(editing.emp_birth_date)}
-                    className="p-2 border rounded"
-                    style={{ width: '12ch' }}
-                  />
-                )}
-              </div>
-            </div>
+            {/* ================= EMPLOYMENT & DATES + LEAVE INFO (SIDE BY SIDE) ================= */}
+            <div className="mb-6 grid grid-cols-2 gap-6 items-stretch">
 
-            {/* Extra identifiers row (username / codes / institute / user DOB) */}
-            <div className="grid grid-cols-12 gap-4 mb-4">
-              <div className="col-span-2">
-                <label className="text-xs text-gray-500">Institute ID</label>
-                <input
-                  name="institute_id"
-                  maxLength={7}
-                  style={{ width: '7ch' }}
-                  defaultValue={cleanValue(editing.institute_id)}
-                  className="p-2 border rounded"
-                />
-              </div>
-              <div className="col-span-4">
-                <label className="text-xs text-gray-500">Username</label>
-                <input
-                  name="username"
-                  defaultValue={cleanValue(editing.username)}
-                  className="w-full p-2 border rounded"
-                />
-              </div>
-              <div className="col-span-2">
-                <label className="text-xs text-gray-500">Usercode</label>
-                <input
-                  name="usercode"
-                  maxLength={7}
-                  style={{ width: '7ch' }}
-                  defaultValue={cleanValue(editing.usercode)}
-                  className="p-2 border rounded"
-                />
-              </div>
-              <div className="col-span-2">
-                <label className="text-xs text-gray-500">User Birth Date</label>
-                {readOnly ? (
-                  <div className="p-2 border rounded bg-gray-50 text-sm">
-                    {toDisplayDate(editing.usr_birth_date)}
+              {/* EMPLOYMENT & DATES */}
+              <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 h-full flex flex-col">
+                <h5 className="text-sm font-semibold text-gray-700 mb-3">Employment & Dates</h5>
+                
+                <div className="grid grid-cols-3 gap-4 items-end mb-3">
+                  <div className="flex flex-col">
+                    <label className="text-xs text-gray-600 mb-1">Actual Joining</label>
+                    {readOnly ? (
+                      <input
+                        type="text"
+                        disabled
+                        defaultValue={toDisplayDate(editing.actual_joining)}
+                        className="h-10 w-full px-3 py-2 border border-gray-300 rounded bg-gray-100"
+                      />
+                    ) : (
+                      <input
+                        type="date"
+                        name="actual_joining"
+                        defaultValue={toISODate(editing.actual_joining)}
+                        className="h-10 w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    )}
                   </div>
-                ) : (
-                  <input
-                    type="date"
-                    name="usr_birth_date"
-                    defaultValue={toISODate(editing.usr_birth_date)}
-                    className="p-2 border rounded"
-                    style={{ width: '12ch' }}
-                  />
-                )}
-              </div>
-            </div>
-
-            {/* ================= ROW 3 – BALANCES & ALLOCATIONS ================= */}
-            <div className="grid grid-cols-12 gap-6 mt-2">
-
-                {/* LEAVE BALANCES */}
-                <div className="col-span-6">
-                  <div className="text-sm font-semibold text-gray-600 mb-2">
-                    Leave Balances
+                  <div className="flex flex-col">
+                    <label className="text-xs text-gray-600 mb-1">Department Joining</label>
+                    {readOnly ? (
+                      <input
+                        type="text"
+                        disabled
+                        defaultValue={toDisplayDate(editing.department_joining)}
+                        className="h-10 w-full px-3 py-2 border border-gray-300 rounded bg-gray-100"
+                      />
+                    ) : (
+                      <input
+                        type="date"
+                        name="department_joining"
+                        defaultValue={toISODate(editing.department_joining)}
+                        className="h-10 w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    )}
                   </div>
-
-                  <div className="grid grid-cols-4 gap-3">
-                    <div>
-                      <label className="text-xs text-gray-500">EL Balance</label>
-                      <input name="el_balance" type="number" maxLength={7} style={{width:'7ch'}}
-                        defaultValue={editing.el_balance || 0}
-                        className="p-2 border rounded" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500">SL Balance</label>
-                      <input name="sl_balance" type="number" maxLength={7} style={{width:'7ch'}}
-                        defaultValue={editing.sl_balance || 0}
-                        className="p-2 border rounded" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500">CL Balance</label>
-                      <input name="cl_balance" type="number" maxLength={7} style={{width:'7ch'}}
-                        defaultValue={editing.cl_balance || 0}
-                        className="p-2 border rounded" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500">VAC Balance</label>
-                      <input name="vacation_balance" type="number" maxLength={7} style={{width:'7ch'}}
-                        defaultValue={editing.vacation_balance || 0}
-                        className="p-2 border rounded" />
-                    </div>
+                  <div className="flex flex-col">
+                    <label className="text-xs text-gray-600 mb-1">Leave Calculation Start Date</label>
+                    {readOnly ? (
+                      <input
+                        type="text"
+                        disabled
+                        defaultValue={toDisplayDate(editing.leave_calculation_date)}
+                        className="h-10 w-full px-3 py-2 border border-gray-300 rounded bg-gray-100"
+                      />
+                    ) : (
+                      <input
+                        type="date"
+                        name="leave_calculation_date"
+                        defaultValue={toISODate(editing.leave_calculation_date)}
+                        className="h-10 w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    )}
                   </div>
                 </div>
 
-                {/* JOINING YEAR ALLOCATION */}
-                <div className="col-span-6">
-                  <div className="text-sm font-semibold text-gray-600 mb-2">
-                    Joining Year Allocation
+                <div className="grid grid-cols-2 gap-4 items-end mt-auto">
+                  <div className="flex flex-col">
+                    <label className="text-xs text-gray-600 mb-1">Left Date</label>
+                    {readOnly ? (
+                      <input
+                        type="text"
+                        disabled
+                        defaultValue={toDisplayDate(editing.left_date)}
+                        className="h-10 w-full px-3 py-2 border border-gray-300 rounded bg-gray-100"
+                      />
+                    ) : (
+                      <input
+                        type="date"
+                        name="left_date"
+                        defaultValue={toISODate(editing.left_date)}
+                        className="h-10 w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    )}
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-xs text-gray-600 mb-1">Emp Birth Date</label>
+                    {readOnly ? (
+                      <input
+                        type="text"
+                        disabled
+                        defaultValue={toDisplayDate(editing.emp_birth_date)}
+                        className="h-10 w-full px-3 py-2 border border-gray-300 rounded bg-gray-100"
+                      />
+                    ) : (
+                      <input
+                        type="date"
+                        name="emp_birth_date"
+                        defaultValue={toISODate(editing.emp_birth_date)}
+                        className="h-10 w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* LEAVE INFORMATION */}
+              <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 h-full flex flex-col">
+                <h5 className="text-sm font-semibold text-gray-700 mb-3">Leave Information</h5>
+                
+                <div className="grid grid-cols-2 gap-6 flex-grow">
+                  {/* LEAVE BALANCES */}
+                  <div>
+                    <div className="text-xs font-semibold text-gray-600 mb-2">Leave Balances</div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col">
+                        <label className="text-xs text-gray-600 mb-1">EL Balance</label>
+                        <input 
+                          name="el_balance" 
+                          type="number" 
+                          step="0.01"
+                          defaultValue={editing.el_balance || 0}
+                          className="h-10 w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                        />
+                      </div>
+                      <div className="flex flex-col">
+                        <label className="text-xs text-gray-600 mb-1">SL Balance</label>
+                        <input 
+                          name="sl_balance" 
+                          type="number" 
+                          step="0.01"
+                          defaultValue={editing.sl_balance || 0}
+                          className="h-10 w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                        />
+                      </div>
+                      <div className="flex flex-col">
+                        <label className="text-xs text-gray-600 mb-1">CL Balance</label>
+                        <input 
+                          name="cl_balance" 
+                          type="number" 
+                          step="0.01"
+                          defaultValue={editing.cl_balance || 0}
+                          className="h-10 w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                        />
+                      </div>
+                      <div className="flex flex-col">
+                        <label className="text-xs text-gray-600 mb-1">VAC Balance</label>
+                        <input 
+                          name="vacation_balance" 
+                          type="number" 
+                          step="0.01"
+                          defaultValue={editing.vacation_balance || 0}
+                          className="h-10 w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                        />
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-4 gap-3">
-                    <div>
-                      <label className="text-xs text-gray-500">EL Allocation</label>
-                      <input name="joining_year_allocation_el" type="number" maxLength={7} style={{width:'7ch'}}
-                        defaultValue={editing.joining_year_allocation_el || 0}
-                        className="p-2 border rounded" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500">SL Allocation</label>
-                      <input name="joining_year_allocation_sl" type="number" maxLength={7} style={{width:'7ch'}}
-                        defaultValue={editing.joining_year_allocation_sl || 0}
-                        className="p-2 border rounded" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500">CL Allocation</label>
-                      <input name="joining_year_allocation_cl" type="number" maxLength={7} style={{width:'7ch'}}
-                        defaultValue={editing.joining_year_allocation_cl || 0}
-                        className="p-2 border rounded" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500">VAC Allocation</label>
-                      <input name="joining_year_allocation_vac" type="number" maxLength={7} style={{width:'7ch'}}
-                        defaultValue={editing.joining_year_allocation_vac || 0}
-                        className="p-2 border rounded" />
+                  {/* JOINING YEAR ALLOCATION */}
+                  <div>
+                    <div className="text-xs font-semibold text-gray-600 mb-2">Joining Year Allocation</div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col">
+                        <label className="text-xs text-gray-600 mb-1">EL Allocation</label>
+                        <input 
+                          name="joining_year_allocation_el" 
+                          type="number" 
+                          step="0.01"
+                          defaultValue={editing.joining_year_allocation_el || 0}
+                          className="h-10 w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                        />
+                      </div>
+                      <div className="flex flex-col">
+                        <label className="text-xs text-gray-600 mb-1">SL Allocation</label>
+                        <input 
+                          name="joining_year_allocation_sl" 
+                          type="number" 
+                          step="0.01"
+                          defaultValue={editing.joining_year_allocation_sl || 0}
+                          className="h-10 w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                        />
+                      </div>
+                      <div className="flex flex-col">
+                        <label className="text-xs text-gray-600 mb-1">CL Allocation</label>
+                        <input 
+                          name="joining_year_allocation_cl" 
+                          type="number" 
+                          step="0.01"
+                          defaultValue={editing.joining_year_allocation_cl || 0}
+                          className="h-10 w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                        />
+                      </div>
+                      <div className="flex flex-col">
+                        <label className="text-xs text-gray-600 mb-1">VAC Allocation</label>
+                        <input 
+                          name="joining_year_allocation_vac" 
+                          type="number" 
+                          step="0.01"
+                          defaultValue={editing.joining_year_allocation_vac || 0}
+                          className="h-10 w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
-
               </div>
+
+            </div>
 
           </fieldset>
 
-            <div className="flex gap-2 mt-4">
-              {readOnly ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setReadOnly(false)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setEditing(null); setReadOnly(false); }}
-                    className="px-4 py-2 bg-gray-300 rounded"
-                  >
-                    Close
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
-                  <button
-                    type="button"
-                    onClick={() => { setEditing(null); setReadOnly(false); }}
-                    className="px-4 py-2 bg-gray-300 rounded"
-                  >
-                    Cancel
-                  </button>
-                </>
-              )}
-            </div>
+            {/* Bottom actions: only show when in edit mode.
+                View mode is controlled by clicking rows / table Edit button. */}
+            {!readOnly && (
+              <div className="flex gap-2 mt-4">
+                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
+                <button
+                  type="button"
+                  onClick={() => { setEditing(null); setReadOnly(false); }}
+                  className="px-4 py-2 bg-gray-300 rounded"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
 
           </form>
         </div>
@@ -458,7 +495,7 @@ export default function AuthEmp() {
               <tr
                 key={p.id}
                 className="border-b hover:bg-gray-50 cursor-pointer"
-                onClick={() => { setEditing(p); setReadOnly(true); }}
+                onClick={() => { openProfile(p, false); }}
               >
                 <td className="py-2 px-3">{p.emp_id}</td>
                 <td className="py-2 px-3">{p.emp_name}</td>
@@ -467,7 +504,7 @@ export default function AuthEmp() {
                 <td className="py-2 px-3">{p.institute_id}</td>
                 <td className="py-2 px-3">
                   <button
-                    onClick={(e) => { e.stopPropagation(); setEditing(p); setReadOnly(false); }}
+                    onClick={(e) => { e.stopPropagation(); openProfile(p, true); }}
                     className="px-2 py-1 bg-yellow-500 text-white rounded"
                   >
                     Edit

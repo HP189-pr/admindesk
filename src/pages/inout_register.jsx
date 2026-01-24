@@ -3,7 +3,7 @@
  * 2-Tab Layout: Inward Register | Outward Register
  */
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import PageTopbar from "../components/PageTopbar";
 import {
   getInwardRegister,
   addInwardRegister,
@@ -720,18 +720,27 @@ const InOutRegister = () => {
     </div>
   );
 
-  const navigate = useNavigate();
+  const TAB_LABELS = {
+    inward: 'Inward Register',
+    outward: 'Outward Register',
+  };
+
+  const topbarActions = Object.values(TAB_LABELS);
+  const selectedAction = TAB_LABELS[activeTab];
+
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Document Register (Inward/Outward)</h1>
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="px-4 py-2 rounded bg-gray-800 text-white"
-        >
-          🏠 Home
-        </button>
-      </div>
+    <div className="p-6 space-y-4">
+      <PageTopbar
+        title="Document Register (Inward/Outward)"
+        actions={topbarActions}
+        selected={selectedAction}
+        onSelect={(action) => {
+          const entry = Object.entries(TAB_LABELS).find(([, label]) => label === action);
+          if (entry) {
+            setActiveTab(entry[0]);
+          }
+        }}
+      />
 
       {/* Alert */}
       {alert.show && (
@@ -743,9 +752,6 @@ const InOutRegister = () => {
           {alert.message}
         </div>
       )}
-
-      {/* Tabs */}
-      {renderTabs()}
 
       {/* Loading */}
       {loading && (

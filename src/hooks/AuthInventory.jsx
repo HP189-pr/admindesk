@@ -26,6 +26,7 @@ const AuthInventory = () => {
 
             // Check if user has inventory module access
             const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+            // Backend exposes this endpoint under /api/userpermissions/
             const response = await axios.get(`${API_BASE_URL}/api/userpermissions/`, {
                 headers: {
                     'Authorization': `Bearer ${token}`

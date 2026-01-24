@@ -50,6 +50,7 @@ from .models import (
     Module,
     Menu,
     User,
+    DashboardPreference,
 )
 from .serializers import (
     HolidaySerializer,
@@ -59,6 +60,7 @@ from .serializers import (
     UserProfileSerializer,
     VerifyPasswordSerializer,
     CustomTokenObtainPairSerializer,
+    DashboardPreferenceSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -343,6 +345,56 @@ class CheckAdminAccessView(APIView):
             )
             return Response({"is_admin": is_admin}, status=200 if is_admin else 403)
         except Exception as e:  # pragma: no cover
+            return Response({"error": "Internal Server Error", "details": str(e)}, status=500)
+
+
+class DashboardPreferenceView(APIView):
+    """Get or update the current user's dashboard module selection.
+
+    - GET: returns {"selected_modules": ["verification", ...]}
+    - PUT/PATCH: accepts same payload and persists it for this user.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, user):
+        pref, _ = DashboardPreference.objects.get_or_create(user=user)
+        return pref
+
+    def get(self, request):
+        try:
+            pref = self.get_object(request.user)
+            serializer = DashboardPreferenceSerializer(pref)
+            return Response(serializer.data, status=200)
+        except Exception as e:  # pragma: no cover
+            logger.exception("DashboardPreferenceView.get failed")
+            return Response({"error": "Internal Server Error", "details": str(e)}, status=500)
+
+    def put(self, request):
+        return self._update(request)
+
+    def patch(self, request):
+        return self._update(request)
+
+    def _update(self, request):
+        try:
+            pref = self.get_object(request.user)
+            data = request.data or {}
+            selected = data.get("selected_modules", [])
+            if not isinstance(selected, list):
+                return Response({"selected_modules": ["Must be a list of module keys."]}, status=400)
+            # Normalise to a de-duplicated list of strings
+            normalised = []
+            for k in selected:
+                s = str(k).strip()
+                if s and s not in normalised:
+                    normalised.append(s)
+            pref.selected_modules = normalised
+            pref.save()
+            serializer = DashboardPreferenceSerializer(pref)
+            return Response(serializer.data, status=200)
+        except Exception as e:  # pragma: no cover
+            logger.exception("DashboardPreferenceView.update failed")
             return Response({"error": "Internal Server Error", "details": str(e)}, status=500)
 
 

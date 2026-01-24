@@ -183,6 +183,15 @@ export default function CustomDashboardClean({ selectedMenuItem, setSelectedMenu
   const STORAGE_KEY = 'selected_dashboard_modules';
   const DEFAULT_SELECTED = ['verification', 'migration', 'provisional', 'institutional', 'mailrequests', 'transcript_pdf'];
 
+  // simple authFetch using fetch + bearer token
+  const authFetch = async (url, opts = {}) => {
+    const token = localStorage.getItem('access_token');
+    const headers = Object.assign({}, opts.headers || {}, {
+      Authorization: token ? `Bearer ${token}` : '',
+    });
+    return fetch(url, Object.assign({}, opts, { headers }));
+  };
+
   const [selectedModuleKeys, setSelectedModuleKeys] = useState(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -208,12 +217,50 @@ export default function CustomDashboardClean({ selectedMenuItem, setSelectedMenu
     }
   }, [selectedModuleKeys]);
 
-  // simple authFetch using fetch + bearer token
-  const authFetch = async (url, opts = {}) => {
-    const token = localStorage.getItem('access_token');
-    const headers = Object.assign({}, opts.headers || {}, { Authorization: token ? `Bearer ${token}` : '' });
-    return fetch(url, Object.assign({}, opts, { headers }));
-  };
+  // Load per-user dashboard preferences from backend (if available)
+  useEffect(() => {
+    let cancelled = false;
+    const loadPrefs = async () => {
+      try {
+        const res = await authFetch('/api/dashboard-preferences/');
+        if (!res || !res.ok) return;
+        const data = await res.json().catch(() => null);
+        if (!data || !Array.isArray(data.selected_modules)) return;
+        if (cancelled) return;
+        const merged = Array.from(
+          new Set([
+            ...data.selected_modules,
+            ...DEFAULT_SELECTED,
+          ])
+        );
+        setSelectedModuleKeys(merged.slice(0, 4));
+      } catch (e) {
+        // Silently ignore; dashboard will fall back to local/default
+      }
+    };
+    loadPrefs();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Persist selection to backend whenever it changes (best-effort)
+  useEffect(() => {
+    const savePrefs = async () => {
+      try {
+        await authFetch('/api/dashboard-preferences/', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ selected_modules: selectedModuleKeys }),
+        });
+      } catch (e) {
+        // Ignore errors; localStorage still keeps last choice
+      }
+    };
+    if (selectedModuleKeys && selectedModuleKeys.length) {
+      savePrefs();
+    }
+  }, [selectedModuleKeys]);
 
   const handleOpenModule = (openMenuLabel) => {
     console.log('Opening module:', openMenuLabel);

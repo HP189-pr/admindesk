@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from 'react-router-dom';
 
 const PageTopbar = ({
   title,
@@ -12,7 +13,11 @@ const PageTopbar = ({
   onToggleSidebar,
   onToggleChatbox,
   actionsOnLeft = true,
+  showHomeButton = true,
+  homePath = '/dashboard',
 }) => {
+  const navigate = useNavigate();
+
   return (
     <div className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 flex items-center justify-between sticky top-0 z-20">
       <div className="flex items-center gap-2">
@@ -68,6 +73,22 @@ const PageTopbar = ({
             {action}
           </button>
         ))}
+        {showHomeButton && (
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                window.dispatchEvent(new CustomEvent('admindesk_go_home'));
+              } catch (e) {
+                // ignore if window/custom events unavailable
+              }
+              navigate(homePath);
+            }}
+            className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-2 text-sm font-semibold text-white shadow"
+          >
+            🏠 Home
+          </button>
+        )}
         {onToggleChatbox && (
           <button
             onClick={() => onToggleChatbox()}

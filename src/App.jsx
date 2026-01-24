@@ -16,7 +16,8 @@ const ProtectedRoute = ({ children }) => {
 
 // ✅ Layout component with Sidebar & WorkArea
 const Layout = () => {
-    const [selectedMenuItem, setSelectedMenuItem] = useState(null);
+    // Default to Dashboard so that, after login, the main dashboard page opens first
+    const [selectedMenuItem, setSelectedMenuItem] = useState('Dashboard');
     const [isSidebarOpen, setSidebarOpen] = useState(true);
     const [isChatboxOpen, setChatboxOpen] = useState(false);
 

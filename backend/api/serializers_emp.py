@@ -42,35 +42,38 @@ class EmpProfileSerializer(serializers.ModelSerializer):
     # Removed legacy balance and allocation fields. Use leave_engine for all calculations.
 
     # Dates formatted for UI (output) but accept ISO format (input from HTML date inputs)
+    # Use ISO (YYYY-MM-DD) for API output so frontend date inputs
+    # and JS Date can parse values reliably. Still accept both
+    # ISO and dd-mm-YYYY as input for backward compatibility.
     actual_joining = serializers.DateField(
-        format='%d-%m-%Y', 
-        input_formats=['%Y-%m-%d', '%d-%m-%Y', 'iso-8601'], 
-        allow_null=True, 
-        required=False
+        format=None,
+        input_formats=['%Y-%m-%d', '%d-%m-%Y', 'iso-8601'],
+        allow_null=True,
+        required=False,
     )
     emp_birth_date = serializers.DateField(
-        format='%d-%m-%Y', 
-        input_formats=['%Y-%m-%d', '%d-%m-%Y', 'iso-8601'], 
-        allow_null=True, 
-        required=False
+        format=None,
+        input_formats=['%Y-%m-%d', '%d-%m-%Y', 'iso-8601'],
+        allow_null=True,
+        required=False,
     )
     usr_birth_date = serializers.DateField(
-        format='%d-%m-%Y', 
-        input_formats=['%Y-%m-%d', '%d-%m-%Y', 'iso-8601'], 
-        allow_null=True, 
-        required=False
+        format=None,
+        input_formats=['%Y-%m-%d', '%d-%m-%Y', 'iso-8601'],
+        allow_null=True,
+        required=False,
     )
     leave_calculation_date = serializers.DateField(
-        format='%d-%m-%Y', 
-        input_formats=['%Y-%m-%d', '%d-%m-%Y', 'iso-8601'], 
-        allow_null=True, 
-        required=False
+        format=None,
+        input_formats=['%Y-%m-%d', '%d-%m-%Y', 'iso-8601'],
+        allow_null=True,
+        required=False,
     )
     left_date = serializers.DateField(
-        format='%d-%m-%Y', 
-        input_formats=['%Y-%m-%d', '%d-%m-%Y', 'iso-8601'], 
-        allow_null=True, 
-        required=False
+        format=None,
+        input_formats=['%Y-%m-%d', '%d-%m-%Y', 'iso-8601'],
+        allow_null=True,
+        required=False,
     )
 
     class Meta:

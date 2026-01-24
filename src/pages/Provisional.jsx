@@ -1,10 +1,12 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { isoToDMY, dmyToISO } from "../utils/date";
+import { useNavigate } from 'react-router-dom';
 import PageTopbar from "../components/PageTopbar";
 
 const ACTIONS = ["➕", "✏️ Edit", "🔍", "📄 Report"];
 
 const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
+  const navigate = useNavigate();
   const [selectedTopbarMenu, setSelectedTopbarMenu] = useState("🔍");
   const [panelOpen, setPanelOpen] = useState(true);
   const [list, setList] = useState([]);
@@ -162,7 +164,6 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
         selected={selectedTopbarMenu}
         onSelect={(action)=>{ setSelectedTopbarMenu(action); setPanelOpen(true);} }
         actionsOnLeft
-        rightSlot={<a href="/" className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 text-white ml-2">🏠 Home</a>}
       />
 
       {/* Collapsible Action Box */}
@@ -176,7 +177,7 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
           <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
             <div>
               <label className="text-sm">Doc Rec</label>
-              <input className="w-full border rounded-lg p-2" placeholder="pr_25_0001" value={form.doc_rec} onChange={(e)=>setF('doc_rec', e.target.value)} />
+              <input className="w-full border rounded-lg p-2" placeholder="pr_2011_0000001" value={form.doc_rec} onChange={(e)=>setF('doc_rec', e.target.value)} />
             </div>
             <div>
               <label className="text-sm">Enrollment</label>

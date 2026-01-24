@@ -19,6 +19,7 @@ class MailStatus(models.TextChoices):
     NOT_SENT = 'NOT_SENT', 'Not Sent'
     SENT = 'SENT', 'Sent'
     FAILED = 'FAILED', 'Failed'
+    ACCEPTED = 'ACCEPTED', 'Accepted'
 
 class VerificationStatus(models.TextChoices):
     IN_PROGRESS = 'IN_PROGRESS', 'In Progress'
