@@ -114,9 +114,13 @@ class Verification(models.Model):
             self.eca_resubmit_date, eca_status_present
         ]):
             raise ValidationError('ECA details present but eca_required=False.')
-    def save(self,*a,**kw):
+    def save(self, *a, **kw):
+        # Auto-update ECA status: if eca_send_date is set, force SENT; if blank, allow either value
+        if self.eca_send_date:
+            if self.eca_status != MailStatus.SENT:
+                self.eca_status = MailStatus.SENT
         # enrollment_no is now a CharField, no FK relationship to resolve student_name
-        super().save(*a,**kw)
+        super().save(*a, **kw)
         # Sync doc_rec_remark to the parent DocRec if provided
         try:
             if self.doc_rec and getattr(self, 'doc_rec_remark', None) is not None:

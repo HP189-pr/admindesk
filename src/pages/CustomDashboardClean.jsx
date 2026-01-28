@@ -16,8 +16,15 @@ const MODULES = [
     label: '📜 Verification',
     openMenuLabel: 'Verification',
     endpoint: '/api/verification/',
-    statuses: ['pending', 'done', 'cancel'],
-    fields: (row) => `${row.student_name || '-'} - ${row.verification_no || '—'} - ${row.status || row.verification_status || ''}`,
+    statuses: ['All', 'IN_PROGRESS', 'PENDING', 'CORRECTION', 'CANCEL', 'DONE', 'DONE_WITH_REMARKS'],
+    // Only show Doc Date, Rec ID, Enroll No, Name
+    fields: (row) => {
+      const docDate = row.doc_rec_date || row.date || '-';
+      const recId = row.doc_rec_key || row.doc_rec_id || (row.doc_rec && row.doc_rec.doc_rec_id) || '-';
+      const enrollNo = row.enrollment_no || (row.enrollment && row.enrollment.enrollment_no) || '-';
+      const name = row.student_name || '-';
+      return `${docDate} | ${recId} | ${enrollNo} | ${name}`;
+    },
   },
   {
     key: 'migration',
@@ -71,7 +78,10 @@ const MODULES = [
 ];
 
 function ModuleCard({ mod, authFetch, onOpen }) {
+  // Add extra filters for Verification
   const [statusFilter, setStatusFilter] = useState(mod.statuses[0]);
+  const [mailFilter, setMailFilter] = useState('');
+  const [ecaStatusFilter, setEcaStatusFilter] = useState('');
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -98,8 +108,12 @@ function ModuleCard({ mod, authFetch, onOpen }) {
     setError('');
     try {
       const params = new URLSearchParams();
-      if (statusFilter) params.set('status', statusFilter);
-      params.set('limit', '5');
+      if (statusFilter && statusFilter !== 'All') params.set('status', statusFilter);
+      if (mod.key === 'verification') {
+        if (mailFilter) params.set('mail_status', mailFilter);
+        if (ecaStatusFilter) params.set('eca_status', ecaStatusFilter);
+      }
+      params.set('limit', mod.key === 'verification' ? '25' : '5');
       const url = `${mod.endpoint}?${params.toString()}`;
       const res = await authFetch(url);
       if (!res.ok) {
@@ -109,8 +123,17 @@ function ModuleCard({ mod, authFetch, onOpen }) {
         throw new Error(msg);
       }
       const data = await res.json();
-      const arr = data.items || data.rows || data || [];
-      setItems(Array.isArray(arr) ? arr.slice(0, 5) : []);
+      // Debug log
+      if (mod.key === 'verification') {
+        console.log('Verification API data:', data, 'URL:', url);
+      }
+      // Accept results, items, rows, or data as array
+      let arr = [];
+      if (Array.isArray(data)) arr = data;
+      else if (Array.isArray(data.results)) arr = data.results;
+      else if (Array.isArray(data.items)) arr = data.items;
+      else if (Array.isArray(data.rows)) arr = data.rows;
+      setItems(arr.slice(0, mod.key === 'verification' ? 25 : 5));
     } catch (e) {
       console.error('Module load exception:', e, { mod });
       setError(typeof e === 'string' ? e : (e.message || 'Could not load'));
@@ -120,29 +143,64 @@ function ModuleCard({ mod, authFetch, onOpen }) {
     }
   };
 
-  useEffect(() => { load(); }, [statusFilter]);
+  useEffect(() => { load(); }, [statusFilter, mailFilter, ecaStatusFilter]);
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-lg font-semibold">{mod.label}</h3>
         <div className="flex items-center gap-2">
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="border rounded px-2 py-1 text-sm">
-            {mod.statuses.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
+          {/* Filters for Verification only */}
+          {mod.key === 'verification' && (
+            <>
+              <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="border rounded px-2 py-1 text-sm">
+                {mod.statuses.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <select value={mailFilter} onChange={e => setMailFilter(e.target.value)} className="border rounded px-2 py-1 text-sm">
+                <option value="">All Mail</option>
+                <option value="NOT_SENT">NOT_SENT</option>
+                <option value="SENT">SENT</option>
+                <option value="FAILED">FAILED</option>
+              </select>
+              <select value={ecaStatusFilter} onChange={e => setEcaStatusFilter(e.target.value)} className="border rounded px-2 py-1 text-sm">
+                <option value="">All ECA</option>
+                <option value="SENT">SENT</option>
+                <option value="NOT_SENT">NOT_SENT</option>
+              </select>
+            </>
+          )}
+          {/* Status filter for other modules */}
+          {mod.key !== 'verification' && (
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="border rounded px-2 py-1 text-sm">
+              {mod.statuses.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          )}
           <button onClick={onOpen} className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm">Open</button>
         </div>
       </div>
       <div className="text-sm text-gray-600 mb-2">Recent ({statusFilter})</div>
       {loading ? <div className="text-gray-500 text-sm">Loading…</div> : error ? <div className="text-red-500 text-sm">{error}</div> : (
         <ul className="space-y-2">
-          {items.map((row) => (
-            <li key={row.id || row.pk || JSON.stringify(row)} className="flex items-center justify-between border rounded px-2 py-1">
+          {(mod.key === 'verification'
+            ? items.filter(row => {
+                const statusOk = statusFilter === 'All' || (row.status || row.verification_status) === statusFilter;
+                const mailOk = !mailFilter || (row.mail_status === mailFilter);
+                const ecaOk = !ecaStatusFilter || (row.eca_status === ecaStatusFilter);
+                return statusOk && mailOk && ecaOk;
+              })
+            : items
+          ).map((row) => (
+            <li key={row.id || row.pk || JSON.stringify(row)} className="flex items-center justify-between border rounded px-2 py-1 text-xs">
               <span className="truncate mr-2">{mod.fields(row)}</span>
               <span className="text-xs px-2 py-0.5 rounded bg-gray-100 border capitalize">{(row.status || row.verification_status || row.mail_status || '').toString()}</span>
             </li>
           ))}
-          {!items.length && <li className="text-gray-500 text-sm">No items</li>}
+          {(!items.length || (mod.key === 'verification' && !items.filter(row => {
+            const statusOk = statusFilter === 'All' || (row.status || row.verification_status) === statusFilter;
+            const mailOk = !mailFilter || (row.mail_status === mailFilter);
+            const ecaOk = !ecaStatusFilter || (row.eca_status === ecaStatusFilter);
+            return statusOk && mailOk && ecaOk;
+          }).length)) && <li className="text-gray-500 text-xs">No items</li>}
         </ul>
       )}
     </div>

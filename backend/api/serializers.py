@@ -389,6 +389,9 @@ class VerificationSerializer(serializers.ModelSerializer):
             for ef in eca_fields:
                 if attrs.get(ef) is not None:
                     raise serializers.ValidationError("ECA details present but eca_required=False.")
+            # Enforce ECA status blank/null if not required
+            if attrs.get("eca_status") not in (None, ""):
+                attrs["eca_status"] = ""
 
         return attrs
 

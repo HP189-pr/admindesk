@@ -181,7 +181,7 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
           <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
             <div>
               <label className="text-sm">Doc Rec</label>
-              <input className="w-full border rounded-lg p-2" placeholder="mg_25_0001" value={form.doc_rec} onChange={(e)=>setF('doc_rec', e.target.value)} />
+              <input className="w-full border rounded-lg p-2" placeholder="mg25000001" value={form.doc_rec} onChange={(e)=>setF('doc_rec', e.target.value)} />
             </div>
             <div>
               <label className="text-sm">Enrollment</label>

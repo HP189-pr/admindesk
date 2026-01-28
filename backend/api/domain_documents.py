@@ -68,8 +68,8 @@ class DocRec(models.Model):
     def __str__(self):
         # Prefer showing the raw identifier in lists and related displays.
         # Previously this returned extra metadata (apply_for, pay_by) which
-        # caused admin lists to show values like "iv_25_021 - IV - NA".
-        # The user prefers the raw doc_rec_id (e.g. "iv_25_021").
+        # caused admin lists to show values like "iv25000021 - IV - NA".
+        # The user prefers the raw doc_rec_id (e.g. "iv25000021").
         return f"{self.doc_rec_id}"
     def _prefix_for_apply(self) -> str:
         return {
@@ -118,16 +118,16 @@ class DocRec(models.Model):
             if not self.pay_rec_no_pre:
                 self.pay_rec_no_pre = self._pay_prefix_for_payby(yy)
         if not self.doc_rec_id:
-            prefix = self._prefix_for_apply(); year_str = f"{yy:02d}"; base = f"{prefix}_{year_str}_"
+            prefix = self._prefix_for_apply(); year_str = f"{yy:02d}"; base = f"{prefix}{year_str}"
             with transaction.atomic():
                 last = (DocRec.objects.select_for_update(skip_locked=True)
                         .filter(doc_rec_id__startswith=base)
                         .order_by('-doc_rec_id').first())
                 next_num = 1
                 if last and last.doc_rec_id:
-                    try: next_num = int(last.doc_rec_id.split('_')[-1]) + 1
+                    try: next_num = int(last.doc_rec_id[len(base):]) + 1
                     except Exception: next_num = 1
-                self.doc_rec_id = f"{prefix}_{year_str}_{next_num:04d}"
+                self.doc_rec_id = f"{prefix}{year_str}{next_num:06d}"
         if not self.doc_rec_date:
             self.doc_rec_date = timezone.now().date()
         super().save(*args, **kwargs)

@@ -225,6 +225,7 @@ class DocRecViewSet(viewsets.ModelViewSet):
     def next_id(self, request):
         """Return the next doc_rec_id that would be assigned for a given apply_for.
         Example: /api/docrec/next-id/?apply_for=VR
+        Format: pr25000001 (prefix + 2-digit year + 6-digit sequence)
         """
         apply_for = (request.query_params.get('apply_for') or '').strip().upper()
         if not apply_for:
@@ -241,7 +242,7 @@ class DocRecViewSet(viewsets.ModelViewSet):
             yy = now.year % 100
             prefix = tmp._prefix_for_apply()
             year_str = f"{yy:02d}"
-            base = f"{prefix}_{year_str}_"
+            base = f"{prefix}{year_str}"
             last = (
                 DocRec.objects
                 .filter(doc_rec_id__startswith=base)
@@ -251,10 +252,10 @@ class DocRecViewSet(viewsets.ModelViewSet):
             next_num = 1
             if last and last.doc_rec_id:
                 try:
-                    next_num = int(last.doc_rec_id.split("_")[-1]) + 1
+                    next_num = int(last.doc_rec_id[len(base):]) + 1
                 except Exception:
                     next_num = 1
-            return Response({"next_id": f"{base}{next_num:04d}"})
+            return Response({"next_id": f"{base}{next_num:06d}"})
         except Exception as e:
             import traceback
             traceback.print_exc()

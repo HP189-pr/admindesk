@@ -20,7 +20,7 @@ from .serializers import InstVerificationMainSerializer, InstVerificationStudent
 class GenerateInstVerificationPDF(APIView):
     """Generate PDF for one or more inst verification records.
 
-    Accepts POST JSON body: { "doc_recs": ["iv_25_001", ...] } or { "doc_rec": "iv_25_001" }
+    Accepts POST JSON body: { "doc_recs": ["iv25000001", ...] } or { "doc_rec": "iv25000001" }
     Returns: application/pdf attachment with deterministic filename.
     """
     permission_classes = [IsAuthenticated]

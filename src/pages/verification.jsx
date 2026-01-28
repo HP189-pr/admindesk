@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { isoToDMY, dmyToISO } from "../utils/date";
+import { syncDocRecRemark, loadRecords as loadRecordsService, createRecord as createRecordService, updateRecord as updateRecordService } from "../services/verificationservice";
 import { FaChevronDown, FaChevronUp } from "react-icons/fa";
 import { useNavigate } from 'react-router-dom';
 import PageTopbar from "../components/PageTopbar";
@@ -92,287 +93,25 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [q, setQ] = useState(""); // search query
+  const [statusFilter, setStatusFilter] = useState("");
+  const [mailFilter, setMailFilter] = useState("");
+  const [ecaStatusFilter, setEcaStatusFilter] = useState("");
 
-  // no-op: toggling is handled by handleTopbarSelect
-
-  // === API hooks (replace with your endpoints) ===
-  const authHeaders = () => {
-    const token = localStorage.getItem("access_token");
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
-
-  // Resolve a user-provided DocRec value (key or numeric id) to the canonical doc_rec_id string
-  const resolveDocRecIdentifier = async () => {
-    const key = (form.doc_rec_key || "").toString().trim();
-    if (key) return key;
-
-    const idVal = (form.doc_rec_id || "").toString().trim();
-    if (!idVal) return null;
-    // if user typed full doc_rec_id like vr_26_0001
-    if (/^(vr_|iv_|pr_|mg_|gt_)/i.test(idVal)) return idVal;
-
-    // if numeric pk, look up doc_rec_id via detail endpoint
-    if (/^\d+$/.test(idVal)) {
-      try {
-        const res = await fetch(`/api/docrec/${idVal}/`, { headers: { ...authHeaders() } });
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.doc_rec_id) return data.doc_rec_id;
-        }
-      } catch (e) {
-        console.warn("DocRec id resolve failed", e);
-      }
-    }
-
-    // fallback to raw value
-    return idVal || null;
-  };
-
-  // Keep doc_rec_remark in sync on both DocRec and Verification
-  const syncDocRecRemark = async (remarkValue) => {
-    const docRecId = await resolveDocRecIdentifier();
-    if (!docRecId) return;
-
-    try {
-      const payload = {
-        doc_rec_id: docRecId,
-        doc_rec_data: { doc_rec_remark: remarkValue || null },
-        verification_data: { doc_rec_remark: remarkValue || null },
-      };
-      const res = await fetch('/api/docrec/update-with-verification/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const txt = await res.text().catch(() => '');
-        console.warn('DocRec remark sync failed', res.status, txt);
-      }
-    } catch (e) {
-      console.warn('DocRec remark sync error', e);
-    }
-  };
-
+  // Use service for doc_rec_remark sync
+  // Use service for loading records
   const loadRecords = async () => {
     setLoading(true);
-    try {
-      // GET /api/verification/ (use trailing slash and limit param)
-      // If the query looks like a DocRec identifier (vr_xxx or iv_xxx etc.), use the dedicated doc_rec filter
-      let url;
-      const qtrim = (q || '').toString().trim();
-      if (qtrim && (/^(vr_|iv_|pr_|mg_|gt_)/i).test(qtrim)) {
-        url = `/api/verification/?doc_rec=${encodeURIComponent(qtrim)}&limit=50`;
-      } else if (q) {
-        // User searched something - use search with limit 50
-        url = `/api/verification/?search=${encodeURIComponent(q)}&limit=50`;
-      } else {
-        // Initial load: get last 200 records (by ID desc) + all PENDING + all IN_PROGRESS
-        // This loads faster and shows the most important records
-        url = `/api/verification/?limit=200&include_pending=true`;
-      }
-      const res = await fetch(url, { headers: { ...authHeaders() } });
-      // If not OK, surface the status/text to help debug why no records appear (401/403 etc)
-      if (!res.ok) {
-        let txt = '';
-        try { txt = await res.text(); } catch (e) { txt = res.statusText || String(res.status); }
-        console.error('Verification load error', res.status, txt);
-        setErrorMsg(`Failed to load records: ${res.status} ${res.statusText}` + (txt ? ` - ${txt}` : ''));
-        setRecords([]);
-        return;
-      }
-      const data = await res.json();
-      // Accept either raw array or DRF paginated response { results: [...] }
-      const rows = Array.isArray(data) ? data : (data && Array.isArray(data.results) ? data.results : []);
-
-      // Map backend verification table fields to UI-friendly keys expected by the component
-      const mapped = rows.map((r) => ({
-        id: r.id,
-        // Prefer verification's own `doc_rec_date`, then legacy `date`, then nested doc_rec date, then createdat
-        date: isoToDMY(
-          r.doc_rec_date || r.date || (r.doc_rec && r.doc_rec.doc_rec_date) || r.createdat || ''
-        ),
-        enrollment_no: r.enrollment_no || (r.enrollment && r.enrollment.enrollment_no) || '',
-        enrollment: r.enrollment || null,
-        second_enrollment_no: r.second_enrollment_no || (r.second_enrollment && r.second_enrollment.enrollment_no) || '',
-        student_name: r.student_name || '',
-        tr_count: r.tr_count ?? 0,
-        ms_count: r.ms_count ?? 0,
-        dg_count: r.dg_count ?? 0,
-        moi_count: r.moi_count ?? 0,
-        backlog_count: r.backlog_count ?? 0,
-        status: r.status || '',
-        // Prefer the verification done date; if absent, fall back to verification.date, doc_rec date, then createdat
-        vr_done_date: isoToDMY(
-          r.vr_done_date || r.last_resubmit_date || r.doc_rec_date || r.date || (r.doc_rec && r.doc_rec.doc_rec_date) || r.createdat || ''
-        ),
-        final_no: r.final_no || '',
-        mail_status: r.mail_send_status || r.mail_status || '',
-        pay_rec_no: r.pay_rec_no || '',
-        doc_rec_remark: r.doc_rec_remark || r.vr_remark || (r.doc_rec && r.doc_rec.doc_rec_remark) || '',
-        // expose doc_rec identifier so UI can show DocRec ID instead of numeric sequence
-        doc_rec_key: r.doc_rec_key || (r.doc_rec && r.doc_rec.doc_rec_id) || r.sequence || r.doc_rec_id || '',
-        doc_rec_id: r.doc_rec_id || (r.doc_rec && (r.doc_rec.doc_rec_id || r.doc_rec.id)) || '',
-        eca_required: !!r.eca_required,
-        eca_name: r.eca_name || '',
-        eca_ref_no: r.eca_ref_no || '',
-        eca_send_date: r.eca_send_date || '',
-        eca_status: r.eca_status || '',
-        eca_resubmit_date: r.eca_resubmit_date || '',
-      }));
-
-      // Sort: IN_PROGRESS and PENDING first, then by final_no descending
-      const extractDigits = (s) => {
-        if (!s) return NaN;
-        const d = String(s).replace(/\D+/g, "");
-        return d ? parseInt(d, 10) : NaN;
-      };
-
-      const cmpFinalNo = (a, b) => {
-        // Priority 1: IN_PROGRESS and PENDING always on top
-        const aIsPriority = a.status === 'IN_PROGRESS' || a.status === 'PENDING';
-        const bIsPriority = b.status === 'IN_PROGRESS' || b.status === 'PENDING';
-        
-        if (aIsPriority && !bIsPriority) return -1; // a comes first
-        if (bIsPriority && !aIsPriority) return 1;  // b comes first
-        
-        // If both are priority status (or both are not), sort by final_no
-        const fa = (a.final_no || '').toString().trim();
-        const fb = (b.final_no || '').toString().trim();
-        const aBlank = !fa;
-        const bBlank = !fb;
-        
-        if (aBlank && !bBlank) return -1; // blank comes first
-        if (bBlank && !aBlank) return 1;  // blank comes first
-        if (aBlank && bBlank) return 0;
-        
-        const na = extractDigits(fa);
-        const nb = extractDigits(fb);
-        if (!Number.isNaN(na) && !Number.isNaN(nb)) return nb - na; // descending numeric
-        if (!Number.isNaN(na) && Number.isNaN(nb)) return -1; // numeric before non-numeric
-        if (Number.isNaN(na) && !Number.isNaN(nb)) return 1;
-        
-        // fallback: lexicographic descending
-        return fb.localeCompare(fa);
-      };
-
-      mapped.sort(cmpFinalNo);
-
-      setRecords(mapped);
-      setErrorMsg("");
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+    await loadRecordsService(q, setLoading, setErrorMsg, setRecords);
   };
 
+  // Use service for creating a record
   const createRecord = async () => {
-    // POST /api/verification
-    // Ensure we send the numeric DocRec PK when possible. If `form.doc_rec_id` is not numeric
-    // but `form.doc_rec_key` is present, try resolving the DocRec PK from the server.
-    const resolveDocRecPk = async (key) => {
-      if (!key) return null;
-      try {
-        const res = await fetch(`/api/docrec/?doc_rec_id=${encodeURIComponent(key)}`, { headers: { ...authHeaders() } });
-        if (!res.ok) return null;
-        const data = await res.json();
-        const rows = Array.isArray(data) ? data : (data && Array.isArray(data.results) ? data.results : []);
-        if (rows.length > 0) return rows[0].id || null;
-      } catch (e) {
-        console.warn('DocRec lookup failed', e);
-      }
-      return null;
-    };
-
-    let docRecPk = null;
-    if (form.doc_rec_id && String(form.doc_rec_id).trim() !== "") {
-      // if numeric, use numeric; if string contains digits only, parse
-      if (!Number.isNaN(Number(form.doc_rec_id)) && String(form.doc_rec_id).trim() !== '') docRecPk = Number(form.doc_rec_id);
-    }
-    if (!docRecPk && form.doc_rec_key && String(form.doc_rec_key).trim() !== "") {
-      docRecPk = await resolveDocRecPk(form.doc_rec_key);
-    }
-
-    const body = {
-  doc_rec_date: (function(s){ if(!s) return null; if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return s; const x = dmyToISO(s); return x || null; })(form.date),
-      // Send the numeric DocRec PK where the API expects a PK value. If unresolved, send null
-      doc_rec_id: docRecPk || null,
-      enrollment_no: form.enrollment_id || null,
-      second_enrollment_id: form.second_enrollment_id || null,
-      student_name: form.name, // server can overwrite from Enrollment
-      tr_count: +form.tr || 0,
-      ms_count: +form.ms || 0,
-      dg_count: +form.dg || 0,
-      moi_count: +form.moi || 0,
-      backlog_count: +form.backlog || 0,
-      status: form.status,
-      final_no: form.final_no || null,
-      mail_status: form.mail_status,
-      eca_required: !!form.eca_required,
-      eca_name: form.eca_required ? (form.eca_name || null) : null,
-      eca_ref_no: form.eca_required ? (form.eca_ref_no || null) : null,
-      eca_send_date: form.eca_required ? (function(s){ if(!s) return null; if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return s; const x = dmyToISO(s); return x || null; })(form.eca_send_date) : null,
-      eca_status: form.eca_required ? (form.eca_status || null) : null,
-      eca_resubmit_date: form.eca_required ? (form.eca_resubmit_date || null) : null,
-      eca_remark: form.eca_required ? (form.eca_remark || null) : null,
-      doc_rec_remark: form.doc_rec_remark || null,
-      remark: form.remark || null,
-      pay_rec_no: form.pay_rec_no || null,
-    };
-    const res = await fetch(`/api/verification`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify(body),
-    });
-    // Debug: log what we sent
-    console.debug('createRecord payload', { docRecPk, body });
-    if (!res.ok) {
-      const t = await res.text();
-      throw new Error(t || "Create failed");
-    }
-    await syncDocRecRemark(form.doc_rec_remark || form.remark);
-    await loadRecords();
+    await createRecordService(form, syncDocRecRemark, loadRecords);
   };
 
+  // Use service for updating a record
   const updateRecord = async (id) => {
-    // When updating, DON'T change the doc_rec relationship - it should stay the same
-    // Only include doc_rec_id if explicitly creating a new verification
-    const body = {
-      doc_rec_date: (function(s){ if(!s) return null; if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return s; const x = dmyToISO(s); return x || null; })(form.date),
-      vr_done_date: (function(s){ if(!s) return null; if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return s; const x = dmyToISO(s); return x || null; })(form.vr_done_date),
-      // DO NOT send doc_rec_id on update - it would change the linked DocRec!
-      // doc_rec_id should remain unchanged when editing
-      enrollment_no: form.enrollment_id || null,
-      second_enrollment_id: form.second_enrollment_id || null,
-      student_name: form.name || null,
-      tr_count: +form.tr || null,
-      ms_count: +form.ms || null,
-      dg_count: +form.dg || null,
-      moi_count: +form.moi || null,
-      backlog_count: +form.backlog || null,
-      status: form.status,
-      final_no: form.final_no || null,
-      mail_status: form.mail_status,
-      remark: form.remark || null,
-      eca_required: !!form.eca_required,
-      eca_name: form.eca_required ? (form.eca_name || null) : null,
-      eca_ref_no: form.eca_required ? (form.eca_ref_no || null) : null,
-      eca_send_date: form.eca_required ? (function(s){ if(!s) return null; if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return s; const x = dmyToISO(s); return x || null; })(form.eca_send_date) : null,
-      eca_status: form.eca_required ? (form.eca_status || null) : null,
-      eca_resubmit_date: form.eca_required ? (form.eca_resubmit_date || null) : null,
-      eca_remark: form.eca_required ? (form.eca_remark || null) : null,
-      doc_rec_remark: form.doc_rec_remark || null,
-      pay_rec_no: form.pay_rec_no || null,
-    };
-    const res = await fetch(`/api/verification/${id}/`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify(body),
-    });
-    // Debug: log what we sent
-    console.debug('updateRecord payload', { id, body });
-    if (!res.ok) throw new Error(await res.text());
-    await syncDocRecRemark(form.doc_rec_remark || form.remark);
+    await updateRecordService(id, form, syncDocRecRemark);
   };
 
   const [currentRow, setCurrentRow] = useState(null);
@@ -391,33 +130,47 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
     if (["tr","ms","dg","moi","backlog"].includes(field)) {
       setForm((f) => ({ ...f, [field]: clamp3(val) }));
     } else if (field === "status" && val === "DONE") {
-      // Auto-generate final_no from doc_rec_key when status changes to DONE
       setForm((f) => {
         let generatedNo = f.final_no || '';
-        
-        // Only auto-generate if final_no is empty and doc_rec_key exists
         if (!generatedNo && f.doc_rec_key) {
           const docRecKey = String(f.doc_rec_key).trim();
-          // Match pattern like vr_25_0945 or vr_26_0105
           const match = docRecKey.match(/vr_(\d+)_(\d+)/i);
           if (match) {
-            const yearPart = match[1]; // e.g., "25"
-            const seqPart = match[2];  // e.g., "0945"
-            generatedNo = yearPart + seqPart; // e.g., "250945"
+            const yearPart = match[1];
+            const seqPart = match[2];
+            generatedNo = yearPart + seqPart;
           }
         }
-        
         return { ...f, [field]: val, final_no: generatedNo };
       });
     } else if (field === "eca_required") {
-      // Toggle ECA fields; default status to NOT_SENT when ECA is required
       setForm((f) => {
-        const required = !!val;
+        const required = Boolean(val);
         return {
           ...f,
           eca_required: required,
-          eca_status: required ? (f.eca_status || "NOT_SENT") : "",
+          eca_status: required
+            ? (f.eca_status && f.eca_status !== "" ? f.eca_status : "NOT_SENT")
+            : "",
+          eca_name: required ? f.eca_name : "",
+          eca_ref_no: required ? f.eca_ref_no : "",
+          eca_send_date: required ? f.eca_send_date : "",
+          eca_resubmit_date: required ? f.eca_resubmit_date : "",
+          eca_remark: required ? f.eca_remark : "",
         };
+      });
+    } else if (field === "eca_send_date") {
+      setForm((f) => {
+        // If ECA is required, auto-set status based on send date
+        if (f.eca_required) {
+          return {
+            ...f,
+            eca_send_date: val,
+            eca_status: val ? "SENT" : "NOT_SENT",
+          };
+        } else {
+          return { ...f, eca_send_date: val };
+        }
       });
     } else {
       setForm((f) => ({ ...f, [field]: val }));
@@ -456,8 +209,26 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
     { key: "eca_resubmit_date", label: "ECA Resubmit Date" },
   ]), []);
 
+  const filteredRecords = useMemo(() => {
+    return records.filter(r => {
+      const statusMatch = !statusFilter || r.status === statusFilter;
+      const mailMatch = !mailFilter || (r.mail_status === mailFilter || r.mail_send_status === mailFilter);
+      const ecaStatus = r.eca_required ? (r.eca_status || (r.eca && r.eca.eca_status) || "NOT_SENT") : "";
+      const ecaMatch = !ecaStatusFilter || ecaStatus === ecaStatusFilter;
+      return statusMatch && mailMatch && ecaMatch;
+    });
+  }, [records, statusFilter, mailFilter, ecaStatusFilter]);
+
+  // Limit filteredRecords to 25 if any filter is active
+  const limitedRecords = useMemo(() => {
+    if (statusFilter || mailFilter || ecaStatusFilter) {
+      return filteredRecords.slice(0, 25);
+    }
+    return filteredRecords;
+  }, [filteredRecords, statusFilter, mailFilter, ecaStatusFilter]);
+
   return (
-    <div className="p-4 md:p-6 space-y-4 h-full bg-slate-100">
+    <div className="p-4 md:p-6 space-y-4 h-full bg-slate-100 flex flex-col" style={{ minHeight: '100vh' }}>
       {/* Top bar via shared component */}
       <PageTopbar
         title="Verification"
@@ -628,15 +399,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                     </div>
                     <div>
                       <label className="text-sm">ECA Status</label>
-                      <select
-                        className="w-full border rounded-lg p-2"
-                        value={form.eca_status || "NOT_SENT"}
-                        onChange={(e) => handleChange("eca_status", e.target.value)}
-                      >
-                        <option value="NOT_SENT">NOT_SENT</option>
-                        <option value="SENT">SENT</option>
-                        <option value="ACCEPTED">ACCEPTED</option>
-                      </select>
+                      <input className="w-full border rounded-lg p-2 bg-gray-100" value={form.eca_send_date ? "SENT" : "NOT_SENT"} disabled />
                     </div>
                     <div className="md:col-span-2">
                       <label className="text-sm">ECA Remark</label>
@@ -745,7 +508,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
 
       {/* Records table (hidden when adding) */}
       {getSelected() !== "➕" && (
-        <div className="border rounded-2xl overflow-hidden h-[calc(100vh-260px)] flex flex-col">
+        <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm flex-1 flex flex-col min-h-0">
           <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
             <div className="font-semibold">Last Verification Records</div>
             <div className="text-sm text-gray-500">
@@ -753,25 +516,72 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
             </div>
           </div>
 
+          {/* Filter Row */}
+          <div className="flex gap-4 p-3 bg-gray-50 border-b items-center">
+            <div>
+              <label className="text-xs font-semibold mr-1">Status:</label>
+              <select className="border rounded p-1 text-black" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+                <option value="">All</option>
+                <option value="IN_PROGRESS">IN_PROGRESS</option>
+                <option value="PENDING">PENDING</option>
+                <option value="CORRECTION">CORRECTION</option>
+                <option value="CANCEL">CANCEL</option>
+                <option value="DONE">DONE</option>
+                <option value="DONE_WITH_REMARKS">DONE_WITH_REMARKS</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold mr-1">Mail:</label>
+              <select className="border rounded p-1 text-black" value={mailFilter} onChange={e => setMailFilter(e.target.value)}>
+                <option value="">All</option>
+                <option value="SENT">SENT</option>
+                <option value="NOT_SENT">NOT_SENT</option>
+                <option value="FAILED">FAILED</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold mr-1">ECA Status:</label>
+              <select className="border rounded p-1 text-black" value={ecaStatusFilter} onChange={e => setEcaStatusFilter(e.target.value)}>
+                <option value="">All</option>
+                <option value="SENT">SENT</option>
+                <option value="NOT_SENT">NOT_SENT</option>
+              </select>
+            </div>
+          </div>
+
           {errorMsg && (
             <div className="p-3 text-sm text-red-600">{errorMsg}</div>
           )}
 
-          <div className="overflow-auto flex-1">
-            <table className="min-w-[1200px] w-full text-sm">
+          <div className="overflow-auto flex-1 min-h-0">
+            <table className="min-w-full text-xs">
               <thead className="bg-gray-50 border-b">
                 <tr>
                   {columns.map(col => (
-                    <th key={col.key} className="text-left py-2 px-3 font-medium">{col.label}</th>
+                    <th
+                      key={col.key}
+                      className={
+                        col.key === "date" || col.key === "vr_done_date"
+                          ? "text-left py-2 px-3 font-medium whitespace-nowrap text-xs w-28"
+                          : "text-left py-2 px-3 font-medium"
+                      }
+                      style={
+                        col.key === "date" || col.key === "vr_done_date"
+                          ? { minWidth: 90, maxWidth: 120 }
+                          : undefined
+                      }
+                    >
+                      {col.label}
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {records.length === 0 && !loading && (
+                {limitedRecords.length === 0 && !loading && (
                   <tr><td colSpan={columns.length} className="py-6 text-center text-gray-500">No records</td></tr>
                 )}
 
-                {records.map((r, idx) => (
+                {limitedRecords.map((r, idx) => (
                   <tr key={r.id || idx} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => {
                     setCurrentRow(r);
                     setForm({
@@ -806,7 +616,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                     setSelected("✏️ Edit");
                     setPanelOpen(true);
                   }}>
-                    <td className="py-2 px-3">{r.date || "-"}</td>
+                    <td className="py-2 px-3 whitespace-nowrap text-xs w-28" style={{ minWidth: 90, maxWidth: 120 }}>{r.date || "-"}</td>
                     <td className="py-2 px-3">{r.enrollment_no || r.enrollment?.enrollment_no || "-"}</td>
                     <td className="py-2 px-3">{r.second_enrollment_no || r.second_enrollment?.enrollment_no || "-"}</td>
                     <td className="py-2 px-3">{r.student_name || "-"}</td>
@@ -815,8 +625,13 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                     <td className="py-2 px-3">{r.dg_count ?? "-"}</td>
                     <td className="py-2 px-3">{r.moi_count ?? "-"}</td>
                     <td className="py-2 px-3">{r.backlog_count ?? "-"}</td>
-                    <td className="py-2 px-3"><Badge text={r.status} /></td>
-                    <td className="py-2 px-3">{r.vr_done_date || "-"}</td>
+                     <td
+                       className="py-2 px-3"
+                       style={{ backgroundColor: r.status === "IN_PROGRESS" ? "#FFEBEE" : undefined }}
+                     >
+                       <Badge text={r.status} />
+                     </td>
+                    <td className="py-2 px-3 whitespace-nowrap text-xs w-28" style={{ minWidth: 90, maxWidth: 120 }}>{r.vr_done_date || "-"}</td>
                     <td className="py-2 px-3">{r.final_no || "-"}</td>
                     <td className="py-2 px-3"><MailBadge text={r.mail_status} /></td>
                     <td className="py-2 px-3">{r.doc_rec_key || r.doc_rec_id || (r.doc_rec && r.doc_rec.doc_rec_id) || '-'}</td>
@@ -825,18 +640,23 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                     <td className="py-2 px-3">{r.eca?.eca_name || r.eca_name || "-"}</td>
                     <td className="py-2 px-3">{r.eca?.eca_ref_no || r.eca_ref_no || "-"}</td>
                     <td className="py-2 px-3">{isoToDMY(r.eca_send_date || r.eca?.eca_send_date || r.eca_submit_date) || "-"}</td>
-                    <td className="py-2 px-3">{formatEcaStatus(r) || ""}</td>
+                   <td
+                     className={`py-2 px-3 font-semibold ${
+                       r.eca_required && formatEcaStatus(r) === "NOT_SENT"
+                         ? "text-red-600"
+                         : r.eca_required && formatEcaStatus(r) === "SENT"
+                         ? "text-emerald-600"
+                         : ""
+                     }`}
+                     style={{ backgroundColor: r.eca_required && formatEcaStatus(r) === "NOT_SENT" ? "#FFF9C4" : undefined }}
+                   >
+                     {r.eca_required ? formatEcaStatus(r) : ""}
+                   </td>
                     <td className="py-2 px-3">{r.eca?.eca_resubmit_date || r.eca_resubmit_date || "-"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
-
-          {/* Footer (optional paging) */}
-          <div className="p-3 bg-gray-50 flex items-center justify-between">
-            <div className="text-xs text-gray-500">Tip: Use SEARCH to filter quickly.</div>
-            <div className="text-xs text-gray-500">Showing latest records first.</div>
           </div>
         </div>
       )}
