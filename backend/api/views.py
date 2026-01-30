@@ -997,6 +997,8 @@ class _CsrfExemptSessionAuthentication(SessionAuthentication):
 
 
 class BulkUploadView(APIView):
+    import logging
+    logger = logging.getLogger("bulk_upload")
     """Handle bulk Excel/CSV upload with preview and confirm actions.
 
     Improvements:
@@ -1157,6 +1159,7 @@ class BulkUploadView(APIView):
         return resp
 
     def _process_confirm(self, service, df, user, track_id=None, auto_create_docrec=False, selected_cols=None):  # noqa: C901
+            # --- BEGIN: DETAILED LOGGING FOR PROVISIONAL ---
         """Internal processor for confirm action. Optionally updates cache for progress."""
         # Normalize pandas NaN/NaT values to Python None to avoid passing numpy.nan into ORM filters
         try:
@@ -1776,15 +1779,37 @@ class BulkUploadView(APIView):
                     _cache_progress(idx+1)
 
             elif service == BulkService.PROVISIONAL:
+
                 for idx, row in df.iterrows():
-                    try:
-                        doc_rec_id_raw = _clean_cell(row.get("doc_rec_id"))
-                        doc_rec = None
+                    # --- PROVISIONAL doc_rec aliasing ---
+                    doc_rec_id_raw = _clean_cell(row.get("doc_rec_id"))
+                    doc_rec_key_raw = _clean_cell(row.get("doc_rec_key"))
+                    if not row.get("doc_rec"):
                         if doc_rec_id_raw:
+                            row["doc_rec"] = doc_rec_id_raw
+                            logger.error("✅ Aliased doc_rec_id → doc_rec (%s)", doc_rec_id_raw)
+                        elif doc_rec_key_raw:
+                            row["doc_rec"] = doc_rec_key_raw
+                            logger.error("✅ Aliased doc_rec_key → doc_rec (%s)", doc_rec_key_raw)
+
+                    try:
+                        # DETAILED LOGGING BLOCK
+                        logger.error("========== BULK UPLOAD ROW DEBUG ==========")
+                        logger.error("Service        : %s", service)
+                        logger.error("Row index      : %s", idx)
+                        logger.error("Row data keys  : %s", list(row.keys()))
+                        logger.error("doc_rec        : %r", row.get("doc_rec"))
+                        logger.error("doc_rec_id     : %r", row.get("doc_rec_id"))
+                        logger.error("doc_rec_key    : %r", row.get("doc_rec_key"))
+                        logger.error("Raw row data   : %s", row)
+                        logger.error("==========================================")
+
+                        # Now proceed with original lookup logic
+                        if row.get("doc_rec"):
                             try:
-                                key = str(doc_rec_id_raw).strip()
+                                key = str(row.get("doc_rec")).strip()
                             except Exception:
-                                key = str(doc_rec_id_raw)
+                                key = str(row.get("doc_rec"))
                             doc_rec = DocRec.objects.filter(doc_rec_id=key).first()
                             if not doc_rec:
                                 try:
@@ -1812,9 +1837,8 @@ class BulkUploadView(APIView):
                         # If doc_rec is missing and the caller asked for auto-creation, try to create it
                         if not doc_rec and auto_create_docrec:
                             try:
-                                create_key = str(doc_rec_id_raw).strip() if doc_rec_id_raw else None
+                                create_key = str(row.get("doc_rec")).strip() if row.get("doc_rec") else None
                                 if create_key:
-                                    # preserve apply_for as PROVISIONAL (PRV)
                                     doc_rec = DocRec.objects.create(doc_rec_id=create_key, apply_for='PRV', created_by=user)
                                 else:
                                     doc_rec = DocRec.objects.create(apply_for='PRV', created_by=user)

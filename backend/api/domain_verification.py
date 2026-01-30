@@ -59,9 +59,8 @@ class Verification(models.Model):
     eca_resubmit_date = models.DateField(null=True, blank=True, db_column='eca_resubmit_date')
     eca_status = models.CharField(max_length=255, choices=MailStatus.choices, null=True, blank=True, default='NOT_SENT', db_column='eca_status')
     
-    # Remarks and dates - text/date NULL
-    doc_rec_remark = models.TextField(null=True, blank=True, db_column='doc_rec_remark')
-    remark = models.TextField(null=True, blank=True, db_column='vr_remark')
+    # Unified remark field for all services
+    doc_remark = models.TextField(null=True, blank=True, db_column='doc_remark')
     vr_done_date = models.DateField(null=True, blank=True, db_column='vr_done_date')
     last_resubmit_date = models.DateField(null=True, blank=True, db_column='last_resubmit_date')
     last_resubmit_status = models.CharField(max_length=255, null=True, blank=True, db_column='last_resubmit_status')
@@ -115,20 +114,18 @@ class Verification(models.Model):
         ]):
             raise ValidationError('ECA details present but eca_required=False.')
     def save(self, *a, **kw):
-        # Auto-update ECA status: if eca_send_date is set, force SENT; if blank, allow either value
+        # Only auto-set to SENT if eca_send_date is set and eca_status is empty or NOT_SENT
         if self.eca_send_date:
-            if self.eca_status != MailStatus.SENT:
+            if self.eca_status in (None, '', MailStatus.NOT_SENT):
                 self.eca_status = MailStatus.SENT
-        # enrollment_no is now a CharField, no FK relationship to resolve student_name
         super().save(*a, **kw)
-        # Sync doc_rec_remark to the parent DocRec if provided
+        # Sync doc_remark to the parent DocRec if provided
         try:
-            if self.doc_rec and getattr(self, 'doc_rec_remark', None) is not None:
-                if getattr(self.doc_rec, 'doc_rec_remark', None) != self.doc_rec_remark:
-                    self.doc_rec.doc_rec_remark = self.doc_rec_remark
-                    self.doc_rec.save(update_fields=['doc_rec_remark'])
+            if self.doc_rec and getattr(self, 'doc_remark', None) is not None:
+                if getattr(self.doc_rec, 'doc_remark', None) != self.doc_remark:
+                    self.doc_rec.doc_remark = self.doc_remark
+                    self.doc_rec.save(update_fields=['doc_remark'])
         except Exception:
-            # best-effort sync; do not break primary save
             pass
     def __str__(self):
         return f"Verification #{self.id} - {self.student_name} - {self.status}"
@@ -136,10 +133,10 @@ class Verification(models.Model):
         self.last_resubmit_date = timezone.now().date()
         self.last_resubmit_status = VerificationStatus.CORRECTION
         if status_note:
-            self.remark = (self.remark + '\n' if self.remark else '') + f"[Resubmit] {status_note}"
+            self.doc_remark = (self.doc_remark + '\n' if self.doc_remark else '') + f"[Resubmit] {status_note}"
         self.status = VerificationStatus.IN_PROGRESS
         self.full_clean()
-        self.save(update_fields=['last_resubmit_date','last_resubmit_status','remark','status','updatedat'])
+        self.save(update_fields=['last_resubmit_date','last_resubmit_status','doc_remark','status','updatedat'])
     def eca_push_history(self, action: str, to_email: str | None = None, notes: str | None = None, mark_sent: bool = True):
         """
         Record a high-level ECA action. Since we keep only summary fields on Verification,
@@ -306,8 +303,8 @@ class MigrationRecord(models.Model):
     # pay_rec_no is nullable in the DB schema; keep nullable here and avoid
     # enforcing presence at model-clean time (caller may choose to copy from DocRec).
     pay_rec_no = models.CharField(max_length=50, db_column='pay_rec_no', null=True, blank=True)
-    # Free-text remark associated with the related DocRec (kept as a short varchar per schema)
-    doc_rec_remark = models.CharField(max_length=255, null=True, blank=True, db_column='doc_rec_remark')
+    # Unified remark field for all services
+    doc_remark = models.CharField(max_length=255, null=True, blank=True, db_column='doc_remark')
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='createdby', related_name='migration_created')
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     updated_at = models.DateTimeField(auto_now=True, db_column='updated_at')
@@ -330,7 +327,6 @@ class MigrationRecord(models.Model):
         except Exception:
             pass
     def save(self,*a,**kw):
-        # If enrollment provided, try to copy institute/main/subcourse from it when missing
         try:
             if getattr(self, 'enrollment', None) and not getattr(self, 'institute', None):
                 try:
@@ -355,13 +351,13 @@ class MigrationRecord(models.Model):
             pass
         self.full_clean()
         result = super().save(*a,**kw)
-        # propagate doc_rec_remark to DocRec when present
+        # propagate doc_remark to DocRec when present
         try:
-            if self.doc_rec and getattr(self, 'doc_rec_remark', None) is not None:
+            if self.doc_rec and getattr(self, 'doc_remark', None) is not None:
                 dr = DocRec.objects.filter(doc_rec_id=self.doc_rec).first()
-                if dr and getattr(dr, 'doc_rec_remark', None) != self.doc_rec_remark:
-                    dr.doc_rec_remark = self.doc_rec_remark
-                    dr.save(update_fields=['doc_rec_remark'])
+                if dr and getattr(dr, 'doc_remark', None) != self.doc_remark:
+                    dr.doc_remark = self.doc_remark
+                    dr.save(update_fields=['doc_remark'])
         except Exception:
             pass
         return result
@@ -397,8 +393,8 @@ class ProvisionalRecord(models.Model):
     # Allow NULL/blank for status and pay_rec_no. If status is blank/NULL we treat it as ISSUED in save().
     prv_status = models.CharField(max_length=20, choices=ProvisionalStatus.choices, null=True, blank=True, db_column='prv_status')
     pay_rec_no = models.CharField(max_length=50, db_column='pay_rec_no', null=True, blank=True)
-    # short remark synced to DocRec
-    doc_rec_remark = models.CharField(max_length=255, null=True, blank=True, db_column='doc_rec_remark') 
+    # Unified remark field for all services
+    doc_remark = models.CharField(max_length=255, null=True, blank=True, db_column='doc_remark')
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='createdby', related_name='provisional_created')
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     updated_at = models.DateTimeField(auto_now=True, db_column='updated_at')
@@ -423,7 +419,6 @@ class ProvisionalRecord(models.Model):
         except Exception:
             pass
     def save(self,*a,**kw):
-        # Try to default institute/main/subcourse from linked enrollment when missing
         try:
             if getattr(self, 'enrollment', None) and not getattr(self, 'institute', None):
                 try:
@@ -439,7 +434,6 @@ class ProvisionalRecord(models.Model):
         except Exception:
             pass
 
-        # default pay_rec_no from DocRec (doc_rec stored as string)
         try:
             if not self.pay_rec_no and self.doc_rec:
                 dr = DocRec.objects.filter(doc_rec_id=self.doc_rec).first()
@@ -447,7 +441,6 @@ class ProvisionalRecord(models.Model):
                     self.pay_rec_no = dr.pay_rec_no
         except Exception:
             pass
-        # Treat NULL/blank status as ISSUED by default to match requested behavior
         if not getattr(self, 'prv_status', None):
             try:
                 self.prv_status = ProvisionalStatus.ISSUED
@@ -455,13 +448,13 @@ class ProvisionalRecord(models.Model):
                 self.prv_status = 'Issued'
         self.full_clean()
         res = super().save(*a,**kw)
-        # propagate doc_rec_remark to the referenced DocRec when possible
+        # propagate doc_remark to the referenced DocRec when possible
         try:
-            if self.doc_rec and getattr(self, 'doc_rec_remark', None) is not None:
+            if self.doc_rec and getattr(self, 'doc_remark', None) is not None:
                 dr = DocRec.objects.filter(doc_rec_id=self.doc_rec).first()
-                if dr and getattr(dr, 'doc_rec_remark', None) != self.doc_rec_remark:
-                    dr.doc_rec_remark = self.doc_rec_remark
-                    dr.save(update_fields=['doc_rec_remark'])
+                if dr and getattr(dr, 'doc_remark', None) != self.doc_remark:
+                    dr.doc_remark = self.doc_remark
+                    dr.save(update_fields=['doc_remark'])
         except Exception:
             pass
         return res

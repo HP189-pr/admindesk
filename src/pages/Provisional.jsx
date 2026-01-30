@@ -1,5 +1,11 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { isoToDMY, dmyToISO } from "../utils/date";
+import { isoToDMY } from "../utils/date";
+import {
+  fetchProvisionals,
+  fetchProvisionalsByDocRec,
+  saveProvisional,
+  addProvisionalEntry
+} from '../services/provisionalservice';
 import { useNavigate } from 'react-router-dom';
 import PageTopbar from "../components/PageTopbar";
 
@@ -25,10 +31,11 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
     maincourse: "",
     class_obtain: "",
     prv_number: "",
-  prv_date: "",
+    prv_date: "",
     passing_year: "",
     prv_status: "Pending",
     pay_rec_no: "",
+    doc_remark: "",
   });
 
   // Support initial navigation from doc-receive via window var
@@ -43,18 +50,12 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
     } catch (e) {}
   }, []);
 
-  const authHeaders = () => {
-    const token = localStorage.getItem("access_token");
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
 
   const loadList = async () => {
     setLoading(true);
     try {
-      const url = q ? `/api/provisional/?search=${encodeURIComponent(q)}` : `/api/provisional/`;
-      const res = await fetch(url, { headers: { ...authHeaders() } });
-      const data = await res.json();
-      setList(Array.isArray(data) ? data : data.results || []);
+      const data = await fetchProvisionals(q);
+      setList(data);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -63,10 +64,12 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
 
   const setF = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
+
+  // (Optional) You can keep fetchEnrollment here if not moving to service
   const fetchEnrollment = async (enrollNo) => {
     if (!enrollNo || String(enrollNo).trim().length < 2) return;
     try {
-      const res = await fetch(`/api/enrollments/?search=${encodeURIComponent(enrollNo)}&limit=1&page=1`, { headers: { ...authHeaders() } });
+      const res = await fetch(`/api/enrollments/?search=${encodeURIComponent(enrollNo)}&limit=1&page=1`, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } });
       const data = await res.json();
       const item = data?.items?.[0];
       if (item) {
@@ -83,27 +86,7 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
   };
 
   const save = async () => {
-    const payload = {
-      doc_rec_key: form.doc_rec || form.doc_rec_key || undefined,
-      enrollment: form.enrollment || null,
-      student_name: form.student_name || null,
-      institute: form.institute || null,
-      subcourse: form.subcourse || null,
-      maincourse: form.maincourse || null,
-      class_obtain: form.class_obtain || null,
-      prv_number: form.prv_number || null,
-  prv_date: dmyToISO(form.prv_date) || null,
-      passing_year: form.passing_year || null,
-      prv_status: form.prv_status || "Pending",
-      pay_rec_no: form.pay_rec_no || null,
-    };
-    if (form.id) {
-      const res = await fetch(`/api/provisional/${form.id}/`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(payload) });
-      if (!res.ok) throw new Error(await res.text());
-    } else {
-      const res = await fetch(`/api/provisional/`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(payload) });
-      if (!res.ok) throw new Error(await res.text());
-    }
+    await saveProvisional(form);
     await loadList();
   };
 
@@ -111,49 +94,19 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
   const loadByDocRec = async (docRecKey) => {
     if (!docRecKey) return;
     try {
-      const res = await fetch(`/api/provisional/?doc_rec=${encodeURIComponent(docRecKey)}`, { headers: { ...authHeaders() } });
-      const data = await res.json();
-      setList(Array.isArray(data) ? data : data.results || []);
+      const data = await fetchProvisionalsByDocRec(docRecKey);
+      setList(data);
     } catch (e) { console.error(e); }
   };
 
   // Add entry client-side: ensures duplicate prv_number and status rules per doc_rec
   const addEntry = async (entry) => {
-    // validation: prv_number unique per doc_rec
-    const sibling = list.find((r) => (r.prv_number || '').trim() === (entry.prv_number || '').trim());
-    if (sibling) {
-      if ((entry.prv_status || '').toLowerCase() !== 'cancelled') {
-        alert('Duplicate PRV number for this document is not allowed unless status is Cancelled.');
-        return;
-      }
+    try {
+      await addProvisionalEntry(entry, list, form);
+      await loadByDocRec(form.doc_rec || form.doc_rec_key);
+    } catch (e) {
+      alert(e.message || 'Failed');
     }
-    // status rule: only one 'Issued' or one 'Pending' (null) per doc_rec
-    const statusNonCancel = list.filter(r => (r.prv_status||'').toLowerCase() !== 'cancelled');
-    if ((entry.prv_status||'').toLowerCase() !== 'cancelled') {
-      const hasDoneOrNull = statusNonCancel.find(r => !r.prv_status || ['issued','pending','done'].includes((r.prv_status||'').toLowerCase()));
-      if (hasDoneOrNull) {
-        alert('Only one non-cancelled provisional entry allowed per document.');
-        return;
-      }
-    }
-    // create via API
-    const payload = {
-      doc_rec_key: form.doc_rec || form.doc_rec_key || undefined,
-      enrollment: entry.enrollment || null,
-      student_name: entry.student_name || null,
-      institute: entry.institute || null,
-      subcourse: entry.subcourse || null,
-      maincourse: entry.maincourse || null,
-      class_obtain: entry.class_obtain || null,
-      prv_number: entry.prv_number || null,
-      prv_date: entry.prv_date || null,
-      passing_year: entry.passing_year || null,
-      prv_status: entry.prv_status || 'Pending',
-      pay_rec_no: entry.pay_rec_no || null,
-    };
-    const res = await fetch(`/api/provisional/`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(payload) });
-    if (!res.ok) throw new Error(await res.text());
-    await loadByDocRec(form.doc_rec || form.doc_rec_key);
   };
 
   return (
@@ -165,7 +118,6 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
         onSelect={(action)=>{ setSelectedTopbarMenu(action); setPanelOpen(true);} }
         actionsOnLeft
       />
-
       {/* Collapsible Action Box */}
       <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
         <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
@@ -227,6 +179,10 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
               <label className="text-sm">Pay Rec No</label>
               <input className="w-full border rounded-lg p-2" value={form.pay_rec_no} onChange={(e)=>setF('pay_rec_no', e.target.value)} />
             </div>
+            <div>
+              <label className="text-sm">Doc Remark</label>
+              <input className="w-full border rounded-lg p-2" value={form.doc_remark} onChange={(e)=>setF('doc_remark', e.target.value)} />
+            </div>
             <div className="md:col-span-4 flex justify-end">
               <button className="px-4 py-2 rounded-lg bg-emerald-600 text-white" onClick={async()=>{ try{ await save(); alert('Saved'); setSelectedTopbarMenu('🔍'); setPanelOpen(false);}catch(e){ alert(e.message||'Failed'); } }}>Save</button>
             </div>
@@ -284,6 +240,7 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
                     passing_year: r.passing_year || '',
                     prv_status: r.prv_status || 'Pending',
                     pay_rec_no: r.pay_rec_no || '',
+                    doc_remark: r.doc_remark || '',
                   });
                 }}>
                   <td className="py-2 px-3">{r.doc_rec || r.doc_rec_id || '-'}</td>

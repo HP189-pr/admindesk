@@ -27,13 +27,14 @@ class VerificationSerializer(serializers.ModelSerializer):
     # so the UI shows the `doc_rec_id` in place of the old sequence value.
     sequence = serializers.SerializerMethodField()
     eca = serializers.SerializerMethodField()
+    doc_remark = serializers.CharField(source='doc_remark', required=False, allow_blank=True)
     class Meta:
         model = Verification
         fields = [
             "id","doc_rec_date","vr_done_date","enrollment_no","second_enrollment_id",
             "student_name","tr_count","ms_count","dg_count","moi_count","backlog_count","pay_rec_no","status",
             "final_no","mail_status","eca_required","eca_name","eca_ref_no","eca_send_date","eca_status",
-            "eca_resubmit_date","replaces_verification","remark","doc_rec_remark","last_resubmit_date","last_resubmit_status",
+            "eca_resubmit_date","replaces_verification","doc_remark","last_resubmit_date","last_resubmit_status",
             "createdat","updatedat","updatedby","doc_rec_id","doc_rec_key","sequence","eca"
         ]
         read_only_fields = ["id","createdat","updatedat","updatedby","last_resubmit_date","last_resubmit_status"]
@@ -63,47 +64,17 @@ class VerificationSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError("ECA details present but eca_required=False.")
         return attrs
     def create(self, validated):
-        # No enrollment FK to populate student_name from anymore
         req = self.context.get("request")
         if req and req.user and req.user.is_authenticated:
             validated["updatedby"] = req.user
-        resp = super().create(validated)
-        # Sync doc_rec_remark if provided in request data
-        try:
-            req = self.context.get("request")
-            remark = None
-            if req:
-                remark = req.data.get('doc_rec_remark')
-            if remark is not None and getattr(resp, 'doc_rec', None):
-                dr = resp.doc_rec
-                dr.doc_rec_remark = remark
-                dr.save(update_fields=['doc_rec_remark'])
-        except Exception:
-            pass
-        return resp
+        return super().create(validated)
     def update(self, instance, validated):
         req = self.context.get("request")
         if req and req.user and req.user.is_authenticated:
             validated["updatedby"] = req.user
-        new_name = validated.get("student_name")
-        resp = super().update(instance, validated)
-        # Sync doc_rec_remark from request data if provided
-        try:
-            req = self.context.get("request")
-            remark = None
-            if req:
-                remark = req.data.get('doc_rec_remark')
-            if remark is not None and getattr(resp, 'doc_rec', None):
-                dr = resp.doc_rec
-                dr.doc_rec_remark = remark
-                dr.save(update_fields=['doc_rec_remark'])
-        except Exception:
-            pass
-        # enrollment_no is now a CharField, not FK - no need to sync student_name
-        return resp
+        return super().update(instance, validated)
     def get_eca(self, obj):
         try:
-            # Return ECA info from verification's own denormalized fields
             if not obj: return None
             return {
                 "id": None,
@@ -111,7 +82,7 @@ class VerificationSerializer(serializers.ModelSerializer):
                 "eca_name": getattr(obj, 'eca_name', None),
                 "eca_ref_no": getattr(obj, 'eca_ref_no', None),
                 "eca_send_date": getattr(obj, 'eca_submit_date', None),
-                "eca_remark": None
+                "doc_remark": getattr(obj, 'doc_remark', None)
             }
         except Exception:
             return None
@@ -143,9 +114,7 @@ class ResubmitSerializer(serializers.Serializer):
 class DocRecSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocRec
-        # include doc_rec_remark so remark can be stored and displayed across pages
-        # Field order adjusted to: doc_rec_date, apply_for, doc_rec_id(auto-gen), pay_by, pay_rec_no_pre, pay_rec_no, pay_amount, doc_rec_remark
-        fields = ['id','doc_rec_date','apply_for','doc_rec_id','pay_by','pay_rec_no_pre','pay_rec_no','pay_amount','doc_rec_remark','created_by','createdat','updatedat']
+        fields = ['id','doc_rec_date','apply_for','doc_rec_id','pay_by','pay_rec_no_pre','pay_rec_no','pay_amount','doc_remark','created_by','createdat','updatedat']
         read_only_fields = ['id','doc_rec_id','created_by','createdat','updatedat']
     def create(self, validated):
         req = self.context.get('request')
@@ -156,7 +125,7 @@ class DocRecSerializer(serializers.ModelSerializer):
 class MigrationRecordSerializer(serializers.ModelSerializer):
     doc_rec_key = serializers.SlugRelatedField(slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False)
     doc_rec = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
-    doc_rec_remark = serializers.SerializerMethodField()
+    doc_remark = serializers.CharField(source='doc_remark', required=False, allow_blank=True)
     class Meta:
         model = MigrationRecord
         fields = '__all__'
@@ -171,20 +140,7 @@ class MigrationRecordSerializer(serializers.ModelSerializer):
             validated.setdefault('institute', enr.institute)
             validated.setdefault('subcourse', enr.subcourse)
             validated.setdefault('maincourse', enr.maincourse)
-        obj = super().create(validated)
-        # Sync doc_rec_remark if provided in request
-        try:
-            req = self.context.get('request')
-            remark = None
-            if req:
-                remark = req.data.get('doc_rec_remark')
-            if remark is not None and getattr(obj, 'doc_rec', None):
-                dr = obj.doc_rec
-                dr.doc_rec_remark = remark
-                dr.save(update_fields=['doc_rec_remark'])
-        except Exception:
-            pass
-        return obj
+        return super().create(validated)
 
     def get_doc_rec_remark(self, obj):
         try:
@@ -195,7 +151,7 @@ class MigrationRecordSerializer(serializers.ModelSerializer):
 class ProvisionalRecordSerializer(serializers.ModelSerializer):
     doc_rec_key = serializers.SlugRelatedField(slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False)
     doc_rec = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
-    doc_rec_remark = serializers.SerializerMethodField()
+    doc_remark = serializers.CharField(source='doc_remark', required=False, allow_blank=True)
     class Meta:
         model = ProvisionalRecord
         fields = '__all__'
@@ -210,20 +166,7 @@ class ProvisionalRecordSerializer(serializers.ModelSerializer):
             validated.setdefault('institute', enr.institute)
             validated.setdefault('subcourse', enr.subcourse)
             validated.setdefault('maincourse', enr.maincourse)
-        obj = super().create(validated)
-        # Sync doc_rec_remark if provided in request
-        try:
-            req = self.context.get('request')
-            remark = None
-            if req:
-                remark = req.data.get('doc_rec_remark')
-            if remark is not None and getattr(obj, 'doc_rec', None):
-                dr = obj.doc_rec
-                dr.doc_rec_remark = remark
-                dr.save(update_fields=['doc_rec_remark'])
-        except Exception:
-            pass
-        return obj
+        return super().create(validated)
 
     def get_doc_rec_remark(self, obj):
         try:
@@ -235,7 +178,7 @@ class InstVerificationMainSerializer(serializers.ModelSerializer):
     doc_rec_id = serializers.PrimaryKeyRelatedField(queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False)
     doc_rec_key = serializers.SlugRelatedField(slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False)
     doc_rec = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
-    doc_rec_remark = serializers.SerializerMethodField()
+    doc_remark = serializers.CharField(source='doc_remark', required=False, allow_blank=True)
     class Meta:
         model = InstVerificationMain
         fields = '__all__'
@@ -311,6 +254,7 @@ class InstVerificationStudentSerializer(serializers.ModelSerializer):
     enrollment_no = serializers.CharField(source='enrollment.enrollment_no', read_only=True)
     doc_rec_key = serializers.SlugRelatedField(slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False)
     doc_rec = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
+    doc_remark = serializers.CharField(source='doc_remark', required=False, allow_blank=True)
     class Meta:
         model = InstVerificationStudent
         fields = '__all__'
@@ -318,7 +262,8 @@ class InstVerificationStudentSerializer(serializers.ModelSerializer):
 class EcaSerializer(serializers.ModelSerializer):
     doc_rec_key = serializers.SlugRelatedField(slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False)
     doc_rec_id = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
+    doc_remark = serializers.CharField(source='doc_remark', required=False, allow_blank=True)
     class Meta:
         model = Eca
-        fields = ['id','doc_rec_id','doc_rec_key','eca_name','eca_ref_no','eca_send_date','eca_remark','createdat','updatedat']
+        fields = ['id','doc_rec_id','doc_rec_key','eca_name','eca_ref_no','eca_send_date','doc_remark','createdat','updatedat']
         read_only_fields = ['id','doc_rec_id','createdat','updatedat']

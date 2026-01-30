@@ -124,7 +124,7 @@ class GoogleFormSubmissionViewSet(viewsets.ModelViewSet):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         original_status = instance.mail_status
-        original_remark = instance.remark
+        original_remark = instance.remark  # remains as 'remark' for mail requests
 
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
@@ -135,7 +135,7 @@ class GoogleFormSubmissionViewSet(viewsets.ModelViewSet):
         if instance.mail_status != original_status:
             changed['mail_status'] = instance.mail_status
         if (instance.remark or '') != (original_remark or ''):
-            changed['remark'] = instance.remark
+            changed['remark'] = instance.remark  # remains as 'remark' for mail requests
 
         if changed:
             try:

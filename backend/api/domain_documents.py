@@ -53,8 +53,8 @@ class DocRec(models.Model):
     createdat = models.DateTimeField(auto_now_add=True, db_column='createdat')
     updatedat = models.DateTimeField(auto_now=True, db_column='updatedat')
     doc_rec_date = models.DateField(null=True, blank=True, db_column='doc_rec_date')
-    # short remark stored on DocRec (varchar in DB)
-    doc_rec_remark = models.CharField(max_length=255, null=True, blank=True, db_column='doc_rec_remark')
+    # Unified remark field for all services
+    doc_remark = models.CharField(max_length=255, null=True, blank=True, db_column='doc_remark')
     
     # Full-Text Search vector - tsvector NULL
     search_vector = SearchVectorField(null=True, blank=True)  # PostgreSQL FTS
@@ -138,7 +138,8 @@ class Eca(models.Model):
     eca_name = models.CharField(max_length=255, null=True, blank=True, db_column='eca_name')
     eca_ref_no = models.CharField(max_length=100, null=True, blank=True, db_column='eca_ref_no')
     eca_send_date = models.DateField(null=True, blank=True, db_column='eca_send_date')
-    eca_remark = models.TextField(null=True, blank=True, db_column='eca_remark')
+    # Use doc_remark for all remarks (sync with DocRec)
+    doc_remark = models.TextField(null=True, blank=True, db_column='doc_remark')
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='createdby', related_name='eca_created')
     createdat = models.DateTimeField(auto_now_add=True, db_column='createdat')
     updatedat = models.DateTimeField(auto_now=True, db_column='updatedat')

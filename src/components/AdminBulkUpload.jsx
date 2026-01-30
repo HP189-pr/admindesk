@@ -38,6 +38,8 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
       if (norm.has('mg_number')) return 'MIGRATION';
       if (norm.has('doc_rec_id') && norm.has('apply_for')) return 'DOCREC';
       if (norm.has('enrollment_no') && norm.has('institute_id')) return 'ENROLLMENT';
+      // Add detection for Student Profile
+      if (norm.has('enrollment_no') && (norm.has('gender') || norm.has('abc_id') || norm.has('aadhar_no') || norm.has('photo_uploaded'))) return 'STUDENT_PROFILE';
       return null;
     } catch (err) {
       console.warn('Service detection failed', err);

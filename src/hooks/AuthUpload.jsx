@@ -10,6 +10,7 @@ const SERVICES = [
   { key: 'VERIFICATION', label: 'Verification' },
   { key: 'PROVISIONAL', label: 'Provisional' },
   { key: 'STUDENT_FEES', label: 'Student Fees' },
+  { key: 'STUDENT_PROFILE', label: 'Student Profile' },
   { key: 'INSTITUTIONAL_VERIFICATION', label: 'Institutional Verification' },
   { key: 'LEAVE', label: 'Leave Entry' },
   { key: 'EMP_PROFILE', label: 'EMP Profile' },
@@ -96,9 +97,12 @@ export default function AuthUpload() {
     try {
       const fd = new FormData();
       fd.append('service', service);
-        if (sheetName) fd.append('sheet_name', sheetName);
+      if (sheetName) fd.append('sheet_name', sheetName);
       fd.append('file', file);
-      if (service === 'VERIFICATION' && autoCreateDocRec) fd.append('auto_create_docrec', '1');
+      // Enable auto-create for both VERIFICATION and PROVISIONAL
+      if ((service === 'VERIFICATION' || service === 'PROVISIONAL') && autoCreateDocRec) {
+        fd.append('auto_create_docrec', '1');
+      }
       const res = await fetch(`${apiBase}/bulk-upload/?action=confirm`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },

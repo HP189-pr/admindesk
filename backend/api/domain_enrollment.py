@@ -22,6 +22,7 @@ class Enrollment(models.Model):
     enrollment_no = models.CharField(max_length=50, unique=True, null=True, blank=True, db_column='enrollment_no')
     temp_enroll_no = models.CharField(max_length=50, null=True, blank=True, db_column='temp_enroll_no')
     search_vector = SearchVectorField(null=True, blank=True)  # PostgreSQL FTS
+    cancel = models.BooleanField(null=True, blank=True, db_column='cancel', default=None, help_text='If true, admission is cancelled. If null or false, active.')
     created_at = models.DateTimeField(db_column='created_at', auto_now_add=True)
     updated_at = models.DateTimeField(db_column='updated_at', auto_now=True)
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='updated_by', related_name='updated_enrollments')
@@ -32,6 +33,13 @@ class Enrollment(models.Model):
         ]
     def __str__(self):
         return f"{self.student_name or 'Unknown'} - {self.enrollment_no or self.temp_enroll_no or 'No Number'}"
+
+    @property
+    def status(self):
+        """Return 'Active' if not cancelled, else 'Cancelled'"""
+        if self.cancel:
+            return 'Cancelled'
+        return 'Active'
 
 class StudentProfile(models.Model):
     id = models.BigAutoField(primary_key=True)

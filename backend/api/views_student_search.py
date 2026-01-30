@@ -144,7 +144,7 @@ class StudentSearchViewSet(viewsets.ViewSet):
                 'vr_done_date': vr.vr_done_date.strftime('%Y-%m-%d') if vr.vr_done_date else '',
                 'mail_status': vr.mail_status or '',
                 'pay_rec_no': vr.pay_rec_no or '',
-                'remark': vr.remark or '',
+                'remark': getattr(vr, 'doc_remark', '') or '',
             })
         
         # Provisional records - use enrollment ForeignKey
@@ -160,7 +160,7 @@ class StudentSearchViewSet(viewsets.ViewSet):
                 'date': pr.prv_date.strftime('%Y-%m-%d') if pr.prv_date else '',
                 'status': pr.prv_status or '',
                 'final_no': pr.prv_number or '',
-                'remark': pr.doc_rec_remark or '',
+                'remark': getattr(pr, 'doc_remark', '') or '',
             })
         
         # Migration records - use enrollment ForeignKey
@@ -176,7 +176,7 @@ class StudentSearchViewSet(viewsets.ViewSet):
                 'date': mg.mg_date.strftime('%Y-%m-%d') if mg.mg_date else '',
                 'status': mg.mg_status or '',
                 'final_no': mg.mg_number or '',
-                'remark': mg.doc_rec_remark or '',
+                'remark': getattr(mg, 'doc_remark', '') or '',
             })
         
         # Institutional Verification records

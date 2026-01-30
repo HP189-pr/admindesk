@@ -44,7 +44,7 @@ const createMainForm = () => ({
   inst_ref_no: "",
   ref_date: "",
   study_mode: "",
-  doc_rec_remark: "",
+  doc_remark: "",
 });
 
 const createStudentForm = () => ({
@@ -113,7 +113,7 @@ const formatMainRecord = (record) => {
     inst_ref_no: record.inst_ref_no || "",
     ref_date: record.ref_date ? isoToDMY(record.ref_date) : "",
     study_mode: record.study_mode || "",
-    doc_rec_remark: record.doc_rec_remark || "",
+    doc_remark: record.doc_remark || "",
   };
 };
 
@@ -137,7 +137,7 @@ const buildMainPayload = (form) => ({
   inst_ref_no: form.inst_ref_no?.trim() || "",
   ref_date: form.ref_date ? dmyToISO(form.ref_date) : null,
   study_mode: form.study_mode?.trim() || "",
-  doc_rec_remark: form.doc_rec_remark?.trim() || "",
+  doc_remark: form.doc_remark?.trim() || "",
 });
 
 const buildStudentPayload = (form, docRec) => ({
@@ -813,11 +813,11 @@ const InstitutionalVerification = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, o
             <input className="input" value={mform.rec_inst_email} onChange={(e) => setMForm((prev) => ({ ...prev, rec_inst_email: e.target.value }))} />
           </div>
           <div className="md:col-span-6">
-            <label className="label">Doc Rec Remark</label>
+            <label className="label">Doc Remark</label>
             <textarea
               className="input min-h-[38px]"
-              value={mform.doc_rec_remark}
-              onChange={(e) => setMForm((prev) => ({ ...prev, doc_rec_remark: e.target.value }))}
+              value={mform.doc_remark}
+              onChange={(e) => setMForm((prev) => ({ ...prev, doc_remark: e.target.value }))}
             />
           </div>
         </fieldset>

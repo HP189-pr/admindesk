@@ -29,7 +29,7 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
     admission_year: "",
     exam_details: "",
     mg_status: "Pending",
-    doc_rec_remark: "",
+    doc_remark: "",
     pay_rec_no: "",
   });
 
@@ -100,7 +100,7 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
       exam_details: form.exam_details || null,
       mg_status: (String(form.mg_status || 'Pending')).toUpperCase().includes('CANCEL') ? 'CANCEL' : (form.mg_status || 'Pending'),
       pay_rec_no: form.pay_rec_no || null,
-      doc_rec_remark: form.doc_rec_remark || null,
+      doc_remark: form.doc_remark || null,
     };
     if (form.id) {
       const res = await fetch(`/api/migration/${form.id}/`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(payload) });
@@ -153,7 +153,7 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
       exam_details: entry.exam_details || null,
       mg_status: (String(entry.mg_status || 'Pending')).toUpperCase().includes('CANCEL') ? 'CANCEL' : (entry.mg_status || 'Pending'),
       pay_rec_no: entry.pay_rec_no || null,
-      doc_rec_remark: entry.doc_rec_remark || form.doc_rec_remark || null,
+      doc_remark: entry.doc_remark || form.doc_remark || null,
     };
     const res = await fetch(`/api/migration/`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(payload) });
     if (!res.ok) throw new Error(await res.text());
@@ -238,7 +238,7 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
             </div>
             <div>
               <label className="text-sm">Doc Rec Remark</label>
-              <input className="w-full border rounded-lg p-2" value={form.doc_rec_remark} onChange={(e)=>setF('doc_rec_remark', e.target.value)} />
+              <input className="w-full border rounded-lg p-2" value={form.doc_remark} onChange={(e)=>setF('doc_remark', e.target.value)} />
             </div>
 
             <div className="md:col-span-4 flex justify-end">
@@ -314,7 +314,7 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
                   <td className="py-2 px-3">{r.admission_year || '-'}</td>
                   <td className="py-2 px-3">{r.mg_status || '-'}</td>
                   <td className="py-2 px-3">{r.pay_rec_no || '-'}</td>
-                  <td className="py-2 px-3">{r.doc_rec_remark || '-'}</td>
+                  <td className="py-2 px-3">{r.doc_remark || '-'}</td>
                 </tr>
               ))}
             </tbody>

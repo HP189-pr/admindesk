@@ -20,6 +20,12 @@ const PAY_BY = [
 ];
 
 export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
+  // Flash message state
+  const [flashMsg, setFlashMsg] = useState("");
+  const showFlash = (msg) => {
+    setFlashMsg(msg);
+    setTimeout(() => setFlashMsg(""), 2000);
+  };
   const [panelOpen, setPanelOpen] = useState(true);
   const [selected, setSelected] = useState("➕");
 
@@ -28,19 +34,15 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     return `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}-${d.getFullYear()}`;
   };
 
-  const [form, setForm] = useState({
+  const initialForm = {
     apply_for: "VR",
     pay_by: "NA",
     pay_amount: 0,
-    doc_rec_date: todayDMY(), // dd-mm-yyyy UI
-
-    // derived/readonly from server after create
+    doc_rec_date: todayDMY(),
     doc_rec_id: "",
-  pay_rec_no_pre: "",
-  pay_rec_no: "",
-  doc_rec_remark: "",
-
-    // verification specific
+    pay_rec_no_pre: "",
+    pay_rec_no: "",
+    doc_remark: "",
     enrollment: "",
     enrollment_id: null,
     second_enrollment: "",
@@ -50,22 +52,19 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     main_course: "",
     tr: 0, ms: 0, dg: 0, moi: 0, backlog: 0,
     eca_required: false,
-
-    // inst-verify fields
     rec_by: "",
     rec_inst_name: "",
-  rec_inst_suggestions: [],
-  rec_inst_loading: false,
-
-    // provisional / migration
+    rec_inst_suggestions: [],
+    rec_inst_loading: false,
     prv_number: "",
-    prv_date: "", // Change type to text for dd-mm-yyyy format
+    prv_date: "",
     passing_year: "",
     mg_number: "",
-    mg_date: "", // Change type to text for dd-mm-yyyy format
+    mg_date: "",
     exam_year: "",
     admission_year: "",
-  });
+  };
+  const [form, setForm] = useState(initialForm);
   const [related, setRelated] = useState({ migration: [], provisional: [], verification: [], inst_verification_main: [], inst_verification_students: [] });
 
   const fetchRelatedForDocRec = async (docRecId) => {
@@ -122,7 +121,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
       if (row && typeof row === 'object') {
         setForm((f) => ({
           ...f,
-          doc_rec_remark: row.doc_rec_remark || row.remark || f.doc_rec_remark || '',
+          doc_remark: row.doc_remark || f.doc_remark || '',
         }));
       }
     } catch (e) {
@@ -338,7 +337,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
       doc_rec_id: docRecId,
       pay_rec_no_pre: r.pay_rec_no_pre || r.pay_rec_pre || form.pay_rec_no_pre || '',
       pay_rec_no: r.pay_rec_no || r.pay_receipt_no || form.pay_rec_no || '',
-      doc_rec_remark: r.doc_rec_remark || r.remark || form.doc_rec_remark || '',
+      doc_remark: r.doc_remark || form.doc_remark || '',
       // verification specific
       enrollment: enrollmentNo,
       enrollment_id: enrollmentId,
@@ -395,7 +394,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
       pay_rec_no: form.pay_by === 'NA' ? null : (form.pay_rec_no || null),
       // send ISO date if provided
       doc_rec_date: form.doc_rec_date ? dmyToISO(form.doc_rec_date) : undefined,
-      doc_rec_remark: form.doc_rec_remark || null,
+      doc_remark: form.doc_remark || null,
     };
     const res = await fetch("/api/docrec/", {
       method: "POST",
@@ -560,7 +559,8 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
       });
     }
 
-    alert("Saved");
+    // Reset form for new entry after save
+    setForm({ ...initialForm, doc_rec_date: todayDMY() });
   };
 
   // Update an existing DocRec and related Verification atomically
@@ -643,6 +643,12 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
   );
   return (
     <div className="p-4 md:p-6 space-y-4 h-full">
+      {/* Flash message popup */}
+      {flashMsg && (
+        <div className="fixed top-4 right-4 z-50 bg-green-600 text-white px-4 py-2 rounded shadow-lg animate-fade-in-out">
+          {flashMsg}
+        </div>
+      )}
       <PageTopbar
         title="Doc Receive"
         actions={ACTIONS}
@@ -718,10 +724,10 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
               </div>
             ) : null}
 
-            {/* doc_rec_remark */}
+            {/* doc_remark */}
             <div className="md:col-span-4">
-              <label className="text-sm">Doc Rec Remark</label>
-              <input className="w-full border rounded-lg p-2" value={form.doc_rec_remark} onChange={(e)=>handleChange("doc_rec_remark", e.target.value)} />
+              <label className="text-sm">Doc Remark</label>
+              <input className="w-full border rounded-lg p-2" value={form.doc_remark} onChange={(e)=>handleChange("doc_remark", e.target.value)} />
             </div>
 
             {/* If VR show verification options (simplified UI as placeholder) */}
@@ -844,7 +850,7 @@ v.trim())}`, { headers: { ...authHeaders() } });                                
                 <button className="px-4 py-2 rounded-lg bg-emerald-600 text-white" onClick={async()=>{
                   try { 
                     await submit(); 
-                    alert('Saved!'); 
+                    showFlash('Saved!');
                     // Reset form for new entry
                     setForm({
                       apply_for: "VR",
@@ -885,7 +891,11 @@ v.trim())}`, { headers: { ...authHeaders() } });                                
               {selectedRec && (
                 <>
                   <button className="px-4 py-2 rounded-lg bg-yellow-600 text-white" onClick={async()=>{
-                    try { await updateDocRec(); alert('Updated'); setSelectedRec(null); } catch(e){ alert(e.message || 'Update failed'); }
+                    try {
+                      await updateDocRec();
+                      setSelectedRec(null);
+                      showFlash('Updated successfully!');
+                    } catch(e){ alert(e.message || 'Update failed'); }
                   }}>Update</button>
                   <button className="px-4 py-2 rounded-lg bg-red-600 text-white" onClick={async()=>{
                     if (!confirm('Delete this DocRec? This will also remove related rows where cascade applies.')) return;

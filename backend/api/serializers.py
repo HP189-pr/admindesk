@@ -353,7 +353,7 @@ class VerificationSerializer(serializers.ModelSerializer):
             "eca_required", "eca_name", "eca_ref_no", "eca_send_date",
             "eca_status", "eca_resubmit_date",
             "replaces_verification",
-            "remark",
+            "doc_remark",
             "last_resubmit_date", "last_resubmit_status",
             "createdat", "updatedat", "updatedby",
             "doc_rec_id", "doc_rec_key",
@@ -493,6 +493,7 @@ class MigrationRecordSerializer(serializers.ModelSerializer):
 class ProvisionalRecordSerializer(serializers.ModelSerializer):
     # Accept a raw doc_rec_id string on write (uploads or API clients may send the public key)
     doc_rec_key = serializers.CharField(write_only=True, required=False, allow_null=True, allow_blank=True)
+    doc_rec_id = serializers.CharField(write_only=True, required=False, allow_null=True, allow_blank=True)
     # Expose the stored doc_rec_id (string) on read
     doc_rec = serializers.CharField(read_only=True)
     # Allow blank/nullable student_name from uploads
@@ -511,12 +512,19 @@ class ProvisionalRecordSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and request.user and request.user.is_authenticated:
             validated['created_by'] = request.user
-        # If the client supplied a doc_rec_key (string), store it into doc_rec (raw string)
+
+        # 🔑 Normalize doc_rec from either key
+        doc_rec_val = None
         if 'doc_rec_key' in validated:
-            val = validated.pop('doc_rec_key')
-            # allow None/blank
-            validated['doc_rec'] = val if val not in (None, '') else None
-        # Auto-populate from enrollment when provided
+            doc_rec_val = validated.pop('doc_rec_key')
+        elif 'doc_rec_id' in validated:
+            doc_rec_val = validated.pop('doc_rec_id')
+        if doc_rec_val not in (None, ''):
+            validated['doc_rec'] = doc_rec_val
+        else:
+            validated['doc_rec'] = None
+
+        # Auto-populate from enrollment
         enr = validated.get('enrollment')
         if enr:
             if not validated.get('student_name'):
@@ -527,13 +535,25 @@ class ProvisionalRecordSerializer(serializers.ModelSerializer):
                 validated['subcourse'] = enr.subcourse
             if not validated.get('maincourse'):
                 validated['maincourse'] = enr.maincourse
-        # Treat blank/NULL status as ISSUED by default
+
+        # Default status
         if not validated.get('prv_status'):
             try:
                 validated['prv_status'] = ProvisionalStatus.ISSUED
             except Exception:
                 validated['prv_status'] = 'Issued'
+
         return super().create(validated)
+
+    def update(self, instance, validated):
+        doc_rec_val = None
+        if 'doc_rec_key' in validated:
+            doc_rec_val = validated.pop('doc_rec_key')
+        elif 'doc_rec_id' in validated:
+            doc_rec_val = validated.pop('doc_rec_id')
+        if doc_rec_val not in (None, ''):
+            instance.doc_rec = doc_rec_val
+        return super().update(instance, validated)
 
 
 class InstVerificationMainSerializer(serializers.ModelSerializer):

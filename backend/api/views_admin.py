@@ -12,7 +12,7 @@ from .models import DocRec, Verification, MigrationRecord, ProvisionalRecord, In
 class UploadDocRecView(View):
     """
     Accepts JSON array POST of rows to create/sync DocRec and optional related service records.
-    Expected JSON: { rows: [ { doc_rec_date, apply_for, pay_by, pay_rec_no_pre, pay_rec_no, pay_amount, doc_rec_remark, service_type, service_fields... }, ... ] }
+    Expected JSON: { rows: [ { doc_rec_date, apply_for, pay_by, pay_rec_no_pre, pay_rec_no, pay_amount, doc_remark, service_type, service_fields... }, ... ] }
     service_type may be one of: docrec, verification, provisional, migration, inst_verification
     """
     def post(self, request):
@@ -36,7 +36,7 @@ class UploadDocRecView(View):
                     pay_rec_no_pre = r.get('pay_rec_no_pre') or None
                     pay_rec_no = r.get('pay_rec_no') or None
                     pay_amount = r.get('pay_amount')
-                    remark = r.get('doc_rec_remark') or None
+                    remark = r.get('doc_remark') or None
 
                     # find existing docrec by doc_rec_id if provided, else create
                     doc_rec_id_key = r.get('doc_rec_id')
@@ -52,7 +52,7 @@ class UploadDocRecView(View):
                             pay_rec_no_pre=pay_rec_no_pre,
                             pay_rec_no=pay_rec_no,
                             pay_amount=pay_amount or 0,
-                            doc_rec_remark=remark,
+                            doc_remark=remark,
                         )
                     else:
                         # update mutable fields
@@ -61,7 +61,7 @@ class UploadDocRecView(View):
                         docrec.pay_rec_no = pay_rec_no
                         docrec.pay_amount = pay_amount or 0
                         if remark is not None:
-                            docrec.doc_rec_remark = remark
+                            docrec.doc_remark = remark
                         docrec.save()
 
                     # Optionally create service record

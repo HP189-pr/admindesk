@@ -347,11 +347,15 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
     return copy;
   }, [rows]);
 
-  const formatDateTime = (value) => {
+  const formatDate = (value) => {
     if (!value) return 'N/A';
     const dt = new Date(value);
-    if (Number.isNaN(dt.getTime())) return value;
-    return `${dt.toLocaleDateString()} ${dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    if (Number.isNaN(dt.getTime())) {
+      // If incoming string has time (e.g., "25-01-2026 09:09:50"), return the date part only
+      const parts = String(value).split(/\s+/);
+      return parts[0] || value;
+    }
+    return dt.toLocaleDateString('en-GB'); // dd/mm/yyyy
   };
 
   return (
@@ -485,7 +489,7 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                     <div>
                       <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Submitted At</label>
                       <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
-                        {formatDateTime(activeRow.submitted_at)}
+                        {formatDate(activeRow.submitted_at)}
                       </div>
                     </div>
                     <div>
@@ -609,22 +613,6 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead className="bg-white">
-                  <tr>
-                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm"> </th>
-                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">mail_req_no</th>
-                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">enrollment_no</th>
-                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">student_name</th>
-                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">rec_institute_name</th>
-                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">rec_official_mail</th>
-                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">rec_ref_id</th>
-                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">send_doc_type</th>
-                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">mail_status</th>
-                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">remark</th>
-                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">submitted_at</th>
-                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">form_submit_mail</th>
-                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">verification</th>
-                    <th className="px-3 py-1 text-left text-red-600 font-semibold text-sm">actions</th>
-                  </tr>
                   <tr className="bg-gray-100 text-gray-700 uppercase text-xs">
                     <th className="px-3 py-2 text-left">
                       <input
@@ -733,7 +721,7 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                             onClick={(e) => e.stopPropagation()}
                           />
                         </td>
-                        <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{formatDateTime(row.submitted_at)}</td>
+                        <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{formatDate(row.submitted_at)}</td>
                         <td className="px-3 py-2 break-all text-gray-700">{row.form_submit_mail || 'N/A'}</td>
                         <td className="px-3 py-2 text-sm text-gray-600 align-middle">
                           {row.student_verification || 'N/A'}

@@ -1,76 +1,68 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { isoToDMY, dmyToISO } from "../utils/date";
 import { syncDocRecRemark, loadRecords as loadRecordsService, createRecord as createRecordService, updateRecord as updateRecordService } from "../services/verificationservice";
 import { FaChevronDown, FaChevronUp } from "react-icons/fa";
 import { useNavigate } from 'react-router-dom';
 import PageTopbar from "../components/PageTopbar";
 
-/**
- * Verification.jsx
- * - Header: logo + name + actions + Home button (right)
- * - Collapsible action box that toggles open/close when clicking the action buttons
- * - Records table showing latest verification rows with all requested columns
- *
- * Tailwind required. Replace fetch URLs with your Django endpoints.
- */
+// Topbar actions available on this page
+const ACTIONS = ["➕", "✏️ Edit", "🔍", "📄 Report"];
 
-const ACTIONS = ["➕", "✏️ Edit", "🔍", "📄 Report", "📊 Excel Upload"];
+// Simple badge pills for status/mail columns
+const Badge = ({ text }) => (
+  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-xs font-semibold text-slate-700">
+    {text || "-"}
+  </span>
+);
 
-const Badge = ({ text }) => {
-  const color =
-    text === "DONE" ? "emerald" :
-    text === "CORRECTION" ? "yellow" :
-    text === "PENDING" ? "orange" :
-    text === "CANCEL" ? "rose" : "slate";
+const MailBadge = ({ text }) => (
+  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-indigo-50 text-xs font-semibold text-indigo-700">
+    {text || "-"}
+  </span>
+);
 
-  return (
-    <span className={`inline-block px-2 py-0.5 text-xs rounded-full bg-${color}-100 text-${color}-800`}>
-      {text || "-"}
-    </span>
-  );
-};
-
-const MailBadge = ({ text }) => {
-  const color =
-    text === "SENT" ? "emerald" :
-    text === "FAILED" ? "rose" : "slate";
-  return (
-    <span className={`inline-block px-2 py-0.5 text-xs rounded-full bg-${color}-100 text-${color}-800`}>
-      {text || "-"}
-    </span>
-  );
-};
-
+// Utility to fetch enrollment details by enrollment_no or id
+async function resolveEnrollment(en_no) {
+  if (!en_no) return null;
+  try {
+    const token = localStorage.getItem('access_token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    let res = await fetch(`/api/enrollments/?search=${encodeURIComponent(en_no)}&limit=1`, { headers });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const items = data && data.results ? data.results : (Array.isArray(data) ? data : (data && data.items ? data.items : []));
+    return items && items.length ? items[0] : null;
+  } catch (e) {
+    console.warn('resolveEnrollment error', e);
+    return null;
+  }
+}
 export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar, onToggleChatbox }) {
-  const navigate = useNavigate();
-  // Topbar actions and collapsible panel
-  const [panelOpen, setPanelOpen] = useState(false);
-  const [localSelected, setLocalSelected] = useState(null);
-  const getSelected = () => (typeof selectedTopbarMenu !== 'undefined' ? selectedTopbarMenu : localSelected);
-  const setSelected = (val) => {
-    if (typeof setSelectedTopbarMenu === 'function') setSelectedTopbarMenu(val);
-    else setLocalSelected(val);
-  };
-  const handleTopbarSelect = (action) => {
-    const current = getSelected();
-    if (current === action) {
-      const nextOpen = !panelOpen;
-      setPanelOpen(nextOpen);
-      if (!nextOpen) setSelected(null);
-    } else {
-      setSelected(action);
-      if (!panelOpen) setPanelOpen(true);
-    }
+  // Wrapper for service: always passes correct state setters
+  const loadRecords = async () => {
+    await loadRecordsService(q, setLoading, setErrorMsg, setRecords);
   };
 
-  // Form/search state (simplified placeholders; wire these to your serializers/views)
+  // Search/filter state variables
+  const [q, setQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [mailFilter, setMailFilter] = useState("");
+  const [ecaStatusFilter, setEcaStatusFilter] = useState("");
+  const [searchDate, setSearchDate] = useState("");
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
   const [form, setForm] = useState({
-  date: isoToDMY(new Date().toISOString().slice(0, 10)),
-  vr_done_date: "",
+    date: "",
+    vr_done_date: "",
     enrollment_id: "",
     second_enrollment_id: "",
     name: "",
-    tr: 0, ms: 0, dg: 0, moi: 0, backlog: 0,
+    tr: 0,
+    ms: 0,
+    dg: 0,
+    moi: 0,
+    backlog: 0,
     status: "IN_PROGRESS",
     final_no: "",
     mail_status: "NOT_SENT",
@@ -80,31 +72,26 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
     eca_send_date: "",
     eca_status: "",
     eca_resubmit_date: "",
-    eca_remark: "",
-    remark: "",
-    doc_rec_remark: "",
+    doc_remark: "",
     pay_rec_no: "",
     doc_rec_id: "",
     doc_rec_key: "",
+    eca_remark: ""
   });
-
-  // Records list (latest first)
-  const [records, setRecords] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
-  const [q, setQ] = useState(""); // search query
-  const [statusFilter, setStatusFilter] = useState("");
-  const [mailFilter, setMailFilter] = useState("");
-  const [ecaStatusFilter, setEcaStatusFilter] = useState("");
-
-  // Use service for doc_rec_remark sync
-  // Use service for loading records
-  const loadRecords = async () => {
-    setLoading(true);
-    await loadRecordsService(q, setLoading, setErrorMsg, setRecords);
+  const navigate = useNavigate();
+  const formRef = useRef(null);
+  const [flashMsg, setFlashMsg] = useState("");
+  // Topbar actions and collapsible panel
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [localSelected, setLocalSelected] = useState(null);
+  const getSelected = () => (typeof selectedTopbarMenu !== 'undefined' ? selectedTopbarMenu : localSelected);
+  const setSelected = (val) => {
+    if (typeof setSelectedTopbarMenu === 'function') {
+      setSelectedTopbarMenu(val);
+    } else {
+      setLocalSelected(val);
+    }
   };
-
-  // Use service for creating a record
   const createRecord = async () => {
     await createRecordService(form, syncDocRecRemark, loadRecords);
   };
@@ -116,10 +103,60 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
 
   const [currentRow, setCurrentRow] = useState(null);
 
+  // Topbar action handler
+  const handleTopbarSelect = (action) => {
+    const current = getSelected();
+    if (current === action) {
+      const nextOpen = !panelOpen;
+      setPanelOpen(nextOpen);
+      if (!nextOpen) setSelected(null);
+    } else {
+      setSelected(action);
+      if (!panelOpen) setPanelOpen(true);
+    }
+    // If new record, reset form
+    if (action === "➕") {
+      setForm({
+        date: "",
+        vr_done_date: "",
+        enrollment_id: "",
+        second_enrollment_id: "",
+        name: "",
+        tr: 0,
+        ms: 0,
+        dg: 0,
+        moi: 0,
+        backlog: 0,
+        status: "IN_PROGRESS",
+        final_no: "",
+        mail_status: "NOT_SENT",
+        eca_required: false,
+        eca_name: "",
+        eca_ref_no: "",
+        eca_send_date: "",
+        eca_status: "",
+        eca_resubmit_date: "",
+        doc_remark: "",
+        pay_rec_no: "",
+        doc_rec_id: "",
+        doc_rec_key: "",
+        eca_remark: ""
+      });
+    }
+  };
+
   // Initial load
   useEffect(() => {
     loadRecords();
   }, []);
+
+  // Live search debounce
+  useEffect(() => {
+    const t = setTimeout(() => {
+      loadRecords();
+    }, 250);
+    return () => clearTimeout(t);
+  }, [q]);
   // Keep numeric inputs within 0..999
   const clamp3 = (n) => {
     const x = Math.max(0, Math.min(999, Number.isNaN(+n) ? 0 : +n));
@@ -127,7 +164,10 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
   };
 
   const handleChange = (field, val) => {
-    if (["tr","ms","dg","moi","backlog"].includes(field)) {
+    if (field === "enrollment_id") {
+      setForm((f) => ({ ...f, [field]: val }));
+      setQ((val || "").toString());
+    } else if (["tr","ms","dg","moi","backlog"].includes(field)) {
       setForm((f) => ({ ...f, [field]: clamp3(val) }));
     } else if (field === "status" && val === "DONE") {
       setForm((f) => {
@@ -210,22 +250,83 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
   ]), []);
 
   const filteredRecords = useMemo(() => {
+    const normQ = (q || "").trim().toLowerCase();
     return records.filter(r => {
       const statusMatch = !statusFilter || r.status === statusFilter;
       const mailMatch = !mailFilter || (r.mail_status === mailFilter || r.mail_send_status === mailFilter);
       const ecaStatus = r.eca_required ? (r.eca_status || (r.eca && r.eca.eca_status) || "NOT_SENT") : "";
       const ecaMatch = !ecaStatusFilter || ecaStatus === ecaStatusFilter;
-      return statusMatch && mailMatch && ecaMatch;
+      const dateMatch = !searchDate || (() => {
+        const iso = dmyToISO(r.date) || r.date || "";
+        return iso.startsWith(searchDate);
+      })();
+      const searchMatch = !normQ || (() => {
+        const candidates = [
+          r.enrollment_no,
+          r.enrollment?.enrollment_no,
+          r.second_enrollment_no,
+          r.second_enrollment?.enrollment_no,
+          r.temp_enroll_no,
+          r.temp_enrollment_no,
+          r.student_name,
+          r.final_no,
+          r.doc_rec_key,
+          r.doc_rec_id,
+          r.doc_rec?.doc_rec_id,
+          r.date,
+        ];
+        return candidates.some((v) => (v || "").toString().toLowerCase().includes(normQ));
+      })();
+      return statusMatch && mailMatch && ecaMatch && dateMatch && searchMatch;
     });
-  }, [records, statusFilter, mailFilter, ecaStatusFilter]);
+  }, [records, statusFilter, mailFilter, ecaStatusFilter, q, searchDate]);
+
+  // Sort: status priority (IN_PROGRESS > CORRECTION > PENDING > others), then ECA NOT_SENT first, then Doc Rec (desc)
+  const sortedRecords = useMemo(() => {
+    const statusOrder = {
+      IN_PROGRESS: 0,
+      CORRECTION: 1,
+      PENDING: 2,
+      DONE: 3,
+      DONE_WITH_REMARKS: 4,
+      CANCEL: 5,
+      undefined: 6,
+      null: 6,
+    };
+    const getEcaNotSent = (r) => {
+      const ecaStatus = r.eca_status || (r.eca && r.eca.eca_status) || "";
+      return ecaStatus === "NOT_SENT" ? 0 : 1;
+    };
+    const docRecValue = (r) => {
+      const raw = r.doc_rec_key || r.doc_rec_id || (r.doc_rec && (r.doc_rec.doc_rec_id || r.doc_rec.id)) || "";
+      const digits = String(raw).match(/\d+/g);
+      if (!digits || !digits.length) return 0;
+      // Use last numeric group as descending sequence
+      return parseInt(digits[digits.length - 1], 10) || 0;
+    };
+
+    return [...filteredRecords].sort((a, b) => {
+      const statusA = statusOrder[a.status] ?? 6;
+      const statusB = statusOrder[b.status] ?? 6;
+      if (statusA !== statusB) return statusA - statusB;
+
+      const ecaA = getEcaNotSent(a);
+      const ecaB = getEcaNotSent(b);
+      if (ecaA !== ecaB) return ecaA - ecaB;
+
+      const docA = docRecValue(a);
+      const docB = docRecValue(b);
+      return docB - docA; // latest (bigger number) on top
+    });
+  }, [filteredRecords]);
 
   // Limit filteredRecords to 25 if any filter is active
   const limitedRecords = useMemo(() => {
     if (statusFilter || mailFilter || ecaStatusFilter) {
-      return filteredRecords.slice(0, 25);
+      return sortedRecords.slice(0, 25);
     }
-    return filteredRecords;
-  }, [filteredRecords, statusFilter, mailFilter, ecaStatusFilter]);
+    return sortedRecords;
+  }, [sortedRecords, statusFilter, mailFilter, ecaStatusFilter]);
 
   return (
     <div className="p-4 md:p-6 space-y-4 h-full bg-slate-100 flex flex-col" style={{ minHeight: '100vh' }}>
@@ -258,219 +359,254 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
           </button>
         </div>
 
-        {panelOpen && getSelected() && (
-          <div className="p-4">
-            {/* Switch content by action */}
-            {(getSelected() === "➕" || getSelected() === "✏️ Edit") && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        {panelOpen && (
+          <>
+            {/* Edit / Add form */}
+            <div ref={formRef} className="p-3 space-y-2">
+              {/* Row 1 */}
+              <div className="grid gap-3 md:grid-cols-[16ch_0.6fr_0.6fr_1.6fr] items-end">
+                {/* ...existing code... */}
                 <div>
-                  <label className="text-sm">Date</label>
-                  <input type="date" className="w-full border rounded-lg p-2"
-                    placeholder="dd-mm-yyyy"
+                  <label className="block text-sm mb-1">Date</label>
+                  <input
+                    type="date"
+                    className="w-full border rounded-lg p-2"
                     value={form.date}
-                    onChange={(e) => handleChange("date", e.target.value)} />
+                    onChange={(e) => handleChange("date", e.target.value)}
+                  />
                 </div>
                 <div>
-                  <label className="text-sm">Done Date</label>
-                  <input type="date" className="w-full border rounded-lg p-2"
-                    placeholder="dd-mm-yyyy"
-                    value={form.vr_done_date}
-                    onChange={(e) => handleChange("vr_done_date", e.target.value)} />
-                </div>
-
-                <div>
-                  <label className="text-sm">Enrollment ID</label>
-                  <input className="w-full border rounded-lg p-2"
-                    placeholder="Pick from Enrollment table (autocomplete later)"
+                  <label className="block text-sm mb-1">Enrollment ID</label>
+                  <input
+                    className="w-full border rounded-lg p-2"
+                    placeholder="Pick from Enrollment table"
                     value={form.enrollment_id}
-                    onChange={(e) => handleChange("enrollment_id", e.target.value)} />
+                    onChange={(e) => handleChange("enrollment_id", e.target.value)}
+                  />
                 </div>
-
                 <div>
-                  <label className="text-sm">Second Enrollment ID</label>
-                  <input className="w-full border rounded-lg p-2"
+                  <label className="block text-sm mb-1">Second Enrollment ID</label>
+                  <input
+                    className="w-full border rounded-lg p-2"
                     value={form.second_enrollment_id}
-                    onChange={(e) => handleChange("second_enrollment_id", e.target.value)} />
+                    onChange={(e) => handleChange("second_enrollment_id", e.target.value)}
+                  />
                 </div>
-
                 <div>
-                  <label className="text-sm">Name</label>
-                  <input className="w-full border rounded-lg p-2"
+                  <label className="block text-sm mb-1">Name</label>
+                  <input
+                    className="w-full border rounded-lg p-2"
                     value={form.name}
-                    onChange={(e) => handleChange("name", e.target.value)} />
+                    onChange={(e) => handleChange("name", e.target.value)}
+                  />
                 </div>
+              </div>
 
+              {/* Row 2 */}
+              <div className="grid gap-2 md:grid-cols-[repeat(5,7ch)_0.4fr_15ch_0.4fr_0.45fr_0.45fr] items-end">
+                {/* ...existing code... */}
+                {[
+                  { label: "TR", key: "tr" },
+                  { label: "MS", key: "ms" },
+                  { label: "DG", key: "dg" },
+                  { label: "MOI", key: "moi" },
+                  { label: "Backlog", key: "backlog" },
+                ].map(({ label, key }) => (
+                  <div key={key}>
+                    <label className="block text-sm mb-1">{label}</label>
+                    <input
+                      className="w-full border rounded-lg p-2 text-center"
+                      value={form[key]}
+                      onChange={(e) => handleChange(key, e.target.value)}
+                    />
+                  </div>
+                ))}
                 <div>
-                  <label className="text-sm">TR</label>
-                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2"
-                    value={form.tr}
-                    onChange={(e) => handleChange("tr", e.target.value)} />
-                </div>
-
-                <div>
-                  <label className="text-sm">MS</label>
-                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2"
-                    value={form.ms}
-                    onChange={(e) => handleChange("ms", e.target.value)} />
-                </div>
-
-                <div>
-                  <label className="text-sm">DG</label>
-                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2"
-                    value={form.dg}
-                    onChange={(e) => handleChange("dg", e.target.value)} />
-                </div>
-
-                <div>
-                  <label className="text-sm">MOI</label>
-                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2"
-                    value={form.moi}
-                    onChange={(e) => handleChange("moi", e.target.value)} />
-                </div>
-
-                <div>
-                  <label className="text-sm">Backlog</label>
-                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2"
-                    value={form.backlog}
-                    onChange={(e) => handleChange("backlog", e.target.value)} />
-                </div>
-
-                <div>
-                  <label className="text-sm">Status</label>
-                  <select className="w-full border rounded-lg p-2"
+                  <label className="block text-sm mb-1">Status</label>
+                  <select
+                    className="w-full border rounded-lg p-2"
                     value={form.status}
-                    onChange={(e) => handleChange("status", e.target.value)}>
-                    <option>IN_PROGRESS</option>
-                    <option>PENDING</option>
-                    <option>CORRECTION</option>
-                    <option>CANCEL</option>
-                    <option>DONE</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-sm">File No(only if DONE)</label>
-                  <input className="w-full border rounded-lg p-2"
-                    placeholder="TR-2025-000123"
-                    value={form.final_no}
-                    onChange={(e) => handleChange("final_no", e.target.value)} />
-                </div>
-
-                <div>
-                  <label className="text-sm">Mail</label>
-                  <select className="w-full border rounded-lg p-2"
-                    value={form.mail_status}
-                    onChange={(e) => handleChange("mail_status", e.target.value)}>
-                    <option>NOT_SENT</option>
-                    <option>SENT</option>
-                    <option>FAILED</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-sm">ECA?</label>
-                  <select className="w-full border rounded-lg p-2"
-                    value={form.eca_required ? "Yes" : "No"}
-                    onChange={(e) => handleChange("eca_required", e.target.value === "Yes")}
+                    onChange={(e) => handleChange("status", e.target.value)}
                   >
-                    <option>No</option>
-                    <option>Yes</option>
+                    <option value="IN_PROGRESS">IN_PROGRESS</option>
+                    <option value="PENDING">PENDING</option>
+                    <option value="CORRECTION">CORRECTION</option>
+                    <option value="CANCEL">CANCEL</option>
+                    <option value="DONE">DONE</option>
+                    <option value="DONE_WITH_REMARKS">DONE_WITH_REMARKS</option>
                   </select>
                 </div>
+                <div>
+                  <label className="block text-sm mb-1">Done Date</label>
+                  <input
+                    type="date"
+                    className="w-full border rounded-lg p-2"
+                    value={form.vr_done_date}
+                    onChange={(e) => handleChange("vr_done_date", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Final No (File No)</label>
+                  <input
+                    className="w-full border rounded-lg p-2"
+                    value={form.final_no}
+                    onChange={(e) => handleChange("final_no", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Mail</label>
+                  <select
+                    className="w-full border rounded-lg p-2"
+                    value={form.mail_status}
+                    onChange={(e) => handleChange("mail_status", e.target.value)}
+                  >
+                    <option value="NOT_SENT">NOT_SENT</option>
+                    <option value="SENT">SENT</option>
+                    <option value="FAILED">FAILED</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Doc Rec ID</label>
+                  <input className="w-full border rounded-lg p-2" value={form.doc_rec_id} onChange={(e) => handleChange("doc_rec_id", e.target.value)} />
+                </div>
+              </div>
 
+              {/* Row 3: ECA and conditional doc_remark/button */}
+              {/* Row 3 : ECA row (always exists) */}
+              <div className="grid gap-3 md:grid-cols-6 items-end">
+                <div>
+                  <label className="block text-sm mb-1">ECA?</label>
+                  <select
+                    className="w-full border rounded-lg p-2"
+                    value={form.eca_required ? "yes" : "no"}
+                    onChange={(e) => handleChange("eca_required", e.target.value === "yes")}
+                  >
+                    <option value="no">No</option>
+                    <option value="yes">Yes</option>
+                  </select>
+                </div>
                 {form.eca_required && (
                   <>
                     <div>
-                      <label className="text-sm">ECA Name</label>
-                      <input className="w-full border rounded-lg p-2"
+                      <label className="block text-sm mb-1">ECA Name</label>
+                      <select
+                        className="w-full border rounded-lg p-2"
                         value={form.eca_name}
-                        onChange={(e) => handleChange("eca_name", e.target.value)} />
+                        onChange={(e) => handleChange("eca_name", e.target.value)}
+                      >
+                        <option value="">Select</option>
+                        <option value="WES">WES</option>
+                        <option value="IQAS">IQAS</option>
+                        <option value="ICES">ICES</option>
+                        <option value="CES">CES</option>
+                        <option value="ICAS">ICAS</option>
+                        <option value="ECE">ECE</option>
+                        <option value="CAPR">CAPR</option>
+                      </select>
                     </div>
                     <div>
-                      <label className="text-sm">Ref-No</label>
-                      <input className="w-full border rounded-lg p-2"
+                      <label className="block text-sm mb-1">ECA Ref No</label>
+                      <input
+                        className="w-full border rounded-lg p-2"
                         value={form.eca_ref_no}
-                        onChange={(e) => handleChange("eca_ref_no", e.target.value)} />
+                        onChange={(e) => handleChange("eca_ref_no", e.target.value)}
+                      />
                     </div>
                     <div>
-                      <label className="text-sm">Send-Date</label>
-                      <input type="date" className="w-full border rounded-lg p-2"
+                      <label className="block text-sm mb-1">ECA Send Date</label>
+                      <input
+                        type="date"
+                        className="w-full border rounded-lg p-2"
                         value={form.eca_send_date}
-                        onChange={(e) => handleChange("eca_send_date", e.target.value)} />
+                        onChange={(e) => handleChange("eca_send_date", e.target.value)}
+                      />
                     </div>
                     <div>
-                      <label className="text-sm">ECA Status</label>
-                      <input className="w-full border rounded-lg p-2 bg-gray-100" value={form.eca_send_date ? "SENT" : "NOT_SENT"} disabled />
+                      <label className="block text-sm mb-1">ECA Status</label>
+                      <select
+                        className="w-full border rounded-lg p-2"
+                        value={form.eca_status}
+                        onChange={(e) => handleChange("eca_status", e.target.value)}
+                      >
+                        <option value="">Select</option>
+                        <option value="NOT_SENT">NOT_SENT</option>
+                        <option value="SENT">SENT</option>
+                        <option value="RECEIVED">RECEIVED</option>
+                        <option value="REJECTED">REJECTED</option>
+                      </select>
                     </div>
-                    <div className="md:col-span-2">
-                      <label className="text-sm">ECA Remark</label>
-                      <input className="w-full border rounded-lg p-2"
-                        value={form.eca_remark}
-                        onChange={(e) => handleChange("eca_remark", e.target.value)} />
+                    <div>
+                      <label className="block text-sm mb-1">ECA Resubmit Date</label>
+                      <input
+                        type="date"
+                        className="w-full border rounded-lg p-2"
+                        value={form.eca_resubmit_date}
+                        onChange={(e) => handleChange("eca_resubmit_date", e.target.value)}
+                      />
                     </div>
                   </>
                 )}
+                {/* ECA = NO → Doc Remark + Button stay in Row 3 */}
+                {!form.eca_required && (
+                  <>
+                    <div className="md:col-span-3">
+                      <label className="block text-sm mb-1">Doc Remark</label>
+                      <input
+                        className="w-full border rounded-lg p-2"
+                        value={form.doc_remark}
+                        onChange={(e) => handleChange("doc_remark", e.target.value)}
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <button
+                        onClick={async () => {
+                          try {
+                            if (getSelected() === "✏️ Edit") {
+                              await updateRecord(currentRow?.id);
+                            } else {
+                              await createRecord();
+                            }
+                            setFlashMsg("Saved successfully!");
+                            setTimeout(() => setFlashMsg(""), 2000);
+                          } catch (e) {
+                            setFlashMsg(e.message || "Failed");
+                            setTimeout(() => setFlashMsg(""), 2500);
+                          }
+                        }}
+                        className="px-4 py-2 rounded-lg bg-emerald-600 text-white"
+                      >
+                        {getSelected() === "✏️ Edit" ? "Update" : "Save"}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
 
-                <div className="md:col-span-2">
-                  <label className="text-sm">Doc Rec Remark</label>
-                  <input className="w-full border rounded-lg p-2"
-                    value={form.doc_rec_remark}
-                    onChange={(e) => handleChange("doc_rec_remark", e.target.value)} />
-                </div>
+              {/* Row 4 : Doc Remark + Button (only when ECA = YES) */}
+              {form.eca_required && (
+                <div className="grid gap-3 md:grid-cols-[1fr_auto] items-end">
+                  <div>
+                    <label className="block text-sm mb-1">Doc Remark</label>
+                    <input
+                      className="w-full border rounded-lg p-2"
+                      value={form.doc_remark}
+                      onChange={(e) => handleChange("doc_remark", e.target.value)}
+                    />
+                  </div>
 
-                <div className="md:col-span-2">
-                  <label className="text-sm">Remark</label>
-                  <input className="w-full border rounded-lg p-2"
-                    value={form.remark}
-                    onChange={(e) => handleChange("remark", e.target.value)} />
-                </div>
-
-                <div>
-                  <label className="text-sm">Pay Receipt No</label>
-                  <input className="w-full border rounded-lg p-2"
-                    placeholder="REC-2025-0001"
-                    value={form.pay_rec_no}
-                    onChange={(e) => handleChange("pay_rec_no", e.target.value)} />
-                </div>
-
-                {/* Doc Rec fields: show/editable Doc Rec ID and display Doc Rec Key */}
-                <div>
-                  <label className="text-sm">Doc Rec ID</label>
-                  <input className="w-full border rounded-lg p-2"
-                    placeholder="e.g. vr_25_0932 or numeric id"
-                    value={form.doc_rec_id}
-                    onChange={(e) => handleChange("doc_rec_id", e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-sm">Doc Rec Key</label>
-                  <input className="w-full border rounded-lg p-2" disabled value={form.doc_rec_key || "-"} />
-                </div>
-
-                <div className="md:col-span-4 flex justify-end">
                   <button
                     onClick={async () => {
                       try {
-                        // Basic client-side validation: backend requires a Doc Rec identifier.
-                        // Accept either `doc_rec_id` or the human `doc_rec_key` as a valid value.
-                        const hasDocRec = (form.doc_rec_id && String(form.doc_rec_id).trim() !== "") || (form.doc_rec_key && String(form.doc_rec_key).trim() !== "");
-                        if (!hasDocRec) {
-                          alert("Please provide Doc Rec ID before saving (field 'Doc Rec ID' or Doc Rec Key cannot be empty).");
-                          return;
-                        }
-                        if (getSelected() === "✏️ Edit" && currentRow?.id) {
-                          await updateRecord(currentRow.id);
-                          alert("Updated!");
-                          // Clear the eca_send_date field after successful update
-                          setForm(prev => ({ ...prev, eca_send_date: "" }));
+                        if (getSelected() === "✏️ Edit") {
+                          await updateRecord(currentRow?.id);
                         } else {
                           await createRecord();
-                          alert("Created!");
                         }
-                        setCurrentRow(null);
-                        setSelected(null);
-                        setPanelOpen(false);
-                        await loadRecords();
+                        setFlashMsg("Saved successfully!");
+                        setTimeout(() => setFlashMsg(""), 2000);
                       } catch (e) {
-                        alert(e.message || "Create failed");
+                        setFlashMsg(e.message || "Failed");
+                        setTimeout(() => setFlashMsg(""), 2500);
                       }
                     }}
                     className="px-4 py-2 rounded-lg bg-emerald-600 text-white"
@@ -478,30 +614,15 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                     {getSelected() === "✏️ Edit" ? "Update" : "Save"}
                   </button>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
+          </>
+        )}
 
-            {getSelected() === "🔍" && (
-              <div className="flex gap-2">
-                <input
-                  className="flex-1 border rounded-lg p-2"
-                  placeholder="Search by Enrollment / Final No / Receipt / Name…"
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                />
-                <button onClick={loadRecords} className="px-3 py-2 rounded-lg bg-blue-600 text-white">Search</button>
-              </div>
-            )}
-
-            {getSelected() === "📄 Report" && (
-              <div className="text-sm text-gray-600">
-                <p>Report filters go here (date range, status, ECA yes/no, counts…).</p>
-              </div>
-            )}
-
-            {getSelected() === "📊 Excel Upload" && (
-              <div className="text-sm text-gray-600">Excel import coming soon…</div>
-            )}
+        {/* Flash message popup */}
+        {flashMsg && (
+          <div className="fixed top-4 right-4 z-50 bg-green-600 text-white px-4 py-2 rounded shadow-lg animate-fade-in-out">
+            {flashMsg}
           </div>
         )}
       </div>
@@ -515,7 +636,6 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
               {loading ? "Loading…" : `${records.length} record(s)`}
             </div>
           </div>
-
           {/* Filter Row */}
           <div className="flex gap-4 p-3 bg-gray-50 border-b items-center">
             <div>
@@ -547,15 +667,33 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                 <option value="NOT_SENT">NOT_SENT</option>
               </select>
             </div>
+            <div>
+              <label className="text-xs font-semibold mr-1">Date:</label>
+              <input
+                type="date"
+                className="border rounded p-1 text-sm"
+                value={searchDate}
+                onChange={(e) => setSearchDate(e.target.value)}
+              />
+            </div>
+            {!(getSelected() === "✏️ Edit" || getSelected() === "➕") && (
+              <div className="ml-auto flex items-center gap-2">
+                <label className="text-xs font-semibold">Search:</label>
+                <input
+                  className="border rounded p-1 text-sm w-56"
+                  placeholder="Enroll / Temp / Name / Final / DocRec / Date"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                />
+              </div>
+            )}
           </div>
-
           {errorMsg && (
             <div className="p-3 text-sm text-red-600">{errorMsg}</div>
           )}
-
           <div className="overflow-auto flex-1 min-h-0">
             <table className="min-w-full text-xs">
-              <thead className="bg-gray-50 border-b">
+              <thead className="bg-gray-50 border-b sticky top-0 z-10">
                 <tr>
                   {columns.map(col => (
                     <th
@@ -580,81 +718,85 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                 {limitedRecords.length === 0 && !loading && (
                   <tr><td colSpan={columns.length} className="py-6 text-center text-gray-500">No records</td></tr>
                 )}
-
-                {limitedRecords.map((r, idx) => (
-                  <tr key={r.id || idx} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => {
-                    setCurrentRow(r);
-                    setForm({
-                      // ensure date inputs use ISO (yyyy-mm-dd) for <input type="date">
-                      date: (dmyToISO(r.date) || r.date) || "",
-                      vr_done_date: (dmyToISO(r.vr_done_date) || r.vr_done_date) || "",
-                      enrollment_id: r.enrollment?.id || r.enrollment_id || r.enrollment_no || "",
-                      second_enrollment_id: r.second_enrollment?.id || r.second_enrollment_id || r.second_enrollment_no || "",
-                      name: r.student_name || "",
-                      tr: r.tr_count || 0,
-                      ms: r.ms_count || 0,
-                      dg: r.dg_count || 0,
-                      moi: r.moi_count || 0,
-                      backlog: r.backlog_count || 0,
-                      status: r.status || "IN_PROGRESS",
-                      final_no: r.final_no || "",
-                      mail_status: r.mail_status || "NOT_SENT",
-                      eca_required: (r.eca_required === true) || (r.eca && r.eca.eca_required === true) || !!r.eca_name,
-                      eca_name: r.eca?.eca_name || r.eca_name || "",
-                      eca_ref_no: r.eca?.eca_ref_no || r.eca_ref_no || "",
-                      eca_send_date: isoToDMY(r.eca?.eca_send_date || r.eca_send_date || r.eca_submit_date) || "",
-                      eca_status: r.eca?.eca_status || r.eca_status || "",
-                      eca_resubmit_date: r.eca?.eca_resubmit_date || r.eca_resubmit_date || "",
-                      eca_remark: r.eca?.eca_remark || r.eca_remark || "",
-                      doc_rec_remark: r.doc_rec_remark || r.remark || r.doc_rec?.doc_rec_remark || "",
-                      remark: r.remark || "",
-                      pay_rec_no: r.pay_rec_no || "",
-                      // Prefer explicit doc_rec_id, then numeric id, then the human DocRec key
-                      doc_rec_id: r.doc_rec_id || r.doc_rec?.id || r.doc_rec_key || (r.doc_rec && (r.doc_rec.doc_rec_id || r.doc_rec.id)) || "",
-                      doc_rec_key: r.doc_rec_key || r.doc_rec?.doc_rec_id || "",
-                    });
-                    setSelected("✏️ Edit");
-                    setPanelOpen(true);
-                  }}>
-                    <td className="py-2 px-3 whitespace-nowrap text-xs w-28" style={{ minWidth: 90, maxWidth: 120 }}>{r.date || "-"}</td>
-                    <td className="py-2 px-3">{r.enrollment_no || r.enrollment?.enrollment_no || "-"}</td>
-                    <td className="py-2 px-3">{r.second_enrollment_no || r.second_enrollment?.enrollment_no || "-"}</td>
-                    <td className="py-2 px-3">{r.student_name || "-"}</td>
-                    <td className="py-2 px-3">{r.tr_count ?? "-"}</td>
-                    <td className="py-2 px-3">{r.ms_count ?? "-"}</td>
-                    <td className="py-2 px-3">{r.dg_count ?? "-"}</td>
-                    <td className="py-2 px-3">{r.moi_count ?? "-"}</td>
-                    <td className="py-2 px-3">{r.backlog_count ?? "-"}</td>
-                     <td
-                       className="py-2 px-3"
-                       style={{ backgroundColor: r.status === "IN_PROGRESS" ? "#FFEBEE" : undefined }}
-                     >
-                       <Badge text={r.status} />
-                     </td>
-                    <td className="py-2 px-3 whitespace-nowrap text-xs w-28" style={{ minWidth: 90, maxWidth: 120 }}>{r.vr_done_date || "-"}</td>
-                    <td className="py-2 px-3">{r.final_no || "-"}</td>
-                    <td className="py-2 px-3"><MailBadge text={r.mail_status} /></td>
-                    <td className="py-2 px-3">{r.doc_rec_key || r.doc_rec_id || (r.doc_rec && r.doc_rec.doc_rec_id) || '-'}</td>
-                    <td className="py-2 px-3">{r.doc_rec_remark || r.remark || r.doc_rec?.doc_rec_remark || "-"}</td>
-                    <td className="py-2 px-3">{(r.eca_required === true || (r.eca && r.eca.eca_required === true)) ? 'Y' : ''}</td>
-                    <td className="py-2 px-3">{r.eca?.eca_name || r.eca_name || "-"}</td>
-                    <td className="py-2 px-3">{r.eca?.eca_ref_no || r.eca_ref_no || "-"}</td>
-                    <td className="py-2 px-3">{isoToDMY(r.eca_send_date || r.eca?.eca_send_date || r.eca_submit_date) || "-"}</td>
-                   <td
-                     className={`py-2 px-3 font-semibold ${
-                       r.eca_required && formatEcaStatus(r) === "NOT_SENT"
-                         ? "text-red-600"
-                         : r.eca_required && formatEcaStatus(r) === "SENT"
-                         ? "text-emerald-600"
-                         : ""
-                     }`}
-                     style={{ backgroundColor: r.eca_required && formatEcaStatus(r) === "NOT_SENT" ? "#FFF9C4" : undefined }}
-                   >
-                     {r.eca_required ? formatEcaStatus(r) : ""}
-                   </td>
-                    <td className="py-2 px-3">{r.eca?.eca_resubmit_date || r.eca_resubmit_date || "-"}</td>
-                  </tr>
-                ))}
+                {limitedRecords.map((r, idx) => {
+                  // Highlight mail column only if status is DONE and mail is NOT_SENT
+                  const highlightMail = r.status === "DONE" && r.mail_status === "NOT_SENT";
+                  return (
+                    <tr key={r.id || idx} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => {
+                      setCurrentRow(r);
+                      setForm({
+                        // ensure date inputs use ISO (yyyy-mm-dd) for <input type="date">
+                        date: (dmyToISO(r.date) || r.date) || "",
+                        vr_done_date: (dmyToISO(r.vr_done_date) || r.vr_done_date) || "",
+                        enrollment_id: r.enrollment?.id || r.enrollment_id || r.enrollment_no || "",
+                        second_enrollment_id: r.second_enrollment?.id || r.second_enrollment_id || r.second_enrollment_no || "",
+                        name: r.student_name || "",
+                        tr: r.tr_count || 0,
+                        ms: r.ms_count || 0,
+                        dg: r.dg_count || 0,
+                        moi: r.moi_count || 0,
+                        backlog: r.backlog_count || 0,
+                        status: r.status || "IN_PROGRESS",
+                        final_no: r.final_no || "",
+                        mail_status: r.mail_status || "NOT_SENT",
+                        eca_required: (r.eca_required === true) || (r.eca && r.eca.eca_required === true) || !!r.eca_name,
+                        eca_name: r.eca?.eca_name || r.eca_name || "",
+                        eca_ref_no: r.eca?.eca_ref_no || r.eca_ref_no || "",
+                        eca_send_date: isoToDMY(r.eca?.eca_send_date || r.eca_send_date || r.eca_submit_date) || "",
+                        eca_status: r.eca?.eca_status || r.eca_status || "",
+                        eca_resubmit_date: r.eca?.eca_resubmit_date || r.eca_resubmit_date || "",
+                        doc_remark: r.doc_remark || r.doc_rec?.doc_remark || "",
+                        pay_rec_no: r.pay_rec_no || "",
+                        // Prefer explicit doc_rec_id, then numeric id, then the human DocRec key
+                        doc_rec_id: r.doc_rec_id || r.doc_rec?.id || r.doc_rec_key || (r.doc_rec && (r.doc_rec.doc_rec_id || r.doc_rec.id)) || "",
+                        doc_rec_key: r.doc_rec_key || r.doc_rec?.doc_rec_id || "",
+                      });
+                      setSelected("✏️ Edit");
+                      setPanelOpen(true);
+                      if (formRef.current) {
+                        formRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }
+                    }}>
+                      <td className="py-2 px-3 whitespace-nowrap text-xs w-28" style={{ minWidth: 90, maxWidth: 120 }}>{r.date || "-"}</td>
+                      <td className="py-2 px-3">{r.enrollment_no || r.enrollment?.enrollment_no || "-"}</td>
+                      <td className="py-2 px-3">{r.second_enrollment_no || r.second_enrollment?.enrollment_no || "-"}</td>
+                      <td className="py-2 px-3">{r.student_name || "-"}</td>
+                      <td className="py-2 px-3">{r.tr_count ?? "-"}</td>
+                      <td className="py-2 px-3">{r.ms_count ?? "-"}</td>
+                      <td className="py-2 px-3">{r.dg_count ?? "-"}</td>
+                      <td className="py-2 px-3">{r.moi_count ?? "-"}</td>
+                      <td className="py-2 px-3">{r.backlog_count ?? "-"}</td>
+                      <td
+                        className="py-2 px-3"
+                        style={{ backgroundColor: r.status === "IN_PROGRESS" ? "#FFEBEE" : undefined }}
+                      >
+                        <Badge text={r.status} />
+                      </td>
+                      <td className="py-2 px-3 whitespace-nowrap text-xs w-28" style={{ minWidth: 90, maxWidth: 120 }}>{r.vr_done_date || "-"}</td>
+                      <td className="py-2 px-3">{r.final_no || "-"}</td>
+                      <td className={highlightMail ? "py-2 px-3 bg-orange-50" : "py-2 px-3"}><MailBadge text={r.mail_status} /></td>
+                      <td className="py-2 px-3">{r.doc_rec_key || r.doc_rec_id || (r.doc_rec && r.doc_rec.doc_rec_id) || '-'}</td>
+                      <td className="py-2 px-3">{r.doc_remark || r.doc_rec?.doc_remark || "-"}</td>
+                      <td className="py-2 px-3">{(r.eca_required === true || (r.eca && r.eca.eca_required === true)) ? 'Y' : ''}</td>
+                      <td className="py-2 px-3">{r.eca?.eca_name || r.eca_name || "-"}</td>
+                      <td className="py-2 px-3">{r.eca?.eca_ref_no || r.eca_ref_no || "-"}</td>
+                      <td className="py-2 px-3">{isoToDMY(r.eca_send_date || r.eca?.eca_send_date || r.eca_submit_date) || "-"}</td>
+                      <td
+                        className={`py-2 px-3 font-semibold ${
+                          r.eca_required && formatEcaStatus(r) === "NOT_SENT"
+                            ? "text-red-600"
+                            : r.eca_required && formatEcaStatus(r) === "SENT"
+                            ? "text-emerald-600"
+                            : ""
+                        }`}
+                        style={{ backgroundColor: r.eca_required && formatEcaStatus(r) === "NOT_SENT" ? "#FFF9C4" : undefined }}
+                      >
+                        {r.eca_required ? formatEcaStatus(r) : ""}
+                      </td>
+                      <td className="py-2 px-3">{r.eca?.eca_resubmit_date || r.eca_resubmit_date || "-"}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -662,4 +804,4 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
       )}
     </div>
   );
-}
+}                       

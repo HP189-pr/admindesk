@@ -125,7 +125,6 @@ function ModuleCard({ mod, authFetch, onOpen }) {
       const data = await res.json();
       // Debug log
       if (mod.key === 'verification') {
-        console.log('Verification API data:', data, 'URL:', url);
       }
       // Accept results, items, rows, or data as array
       let arr = [];

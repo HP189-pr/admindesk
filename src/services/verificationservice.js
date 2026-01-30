@@ -3,6 +3,25 @@
 
 import { isoToDMY, dmyToISO } from "../utils/date";
 
+// Resolve enrollment number to enrollment object (for auto name fetch)
+export const resolveEnrollment = async (enrollmentNo) => {
+  if (!enrollmentNo) return null;
+  try {
+    const res = await fetch(
+      `/api/enrollments/?search=${encodeURIComponent(enrollmentNo)}&limit=1`,
+      { headers: { ...authHeaders() } }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const rows = data?.results || [];
+    return rows.length ? rows[0] : null;
+  } catch (e) {
+    console.warn("resolveEnrollment failed", e);
+    return null;
+  }
+};
+
+
 export const authHeaders = () => {
   const token = typeof window !== 'undefined' ? localStorage.getItem("access_token") : null;
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -34,8 +53,8 @@ export const syncDocRecRemark = async (form, remarkValue) => {
   try {
     const payload = {
       doc_rec_id: docRecId,
-      doc_rec_data: { doc_rec_remark: remarkValue || null },
-      verification_data: { doc_rec_remark: remarkValue || null },
+      doc_rec_data: { doc_remark: remarkValue || null },
+      verification_data: { doc_remark: remarkValue || null },
     };
     const res = await fetch('/api/docrec/update-with-verification/', {
       method: 'POST',
@@ -95,7 +114,7 @@ export const loadRecords = async (q, setLoading, setErrorMsg, setRecords) => {
       final_no: r.final_no || '',
       mail_status: r.mail_send_status || r.mail_status || '',
       pay_rec_no: r.pay_rec_no || '',
-      doc_rec_remark: r.doc_rec_remark || r.vr_remark || (r.doc_rec && r.doc_rec.doc_rec_remark) || '',
+      doc_remark: r.doc_remark || r.vr_remark || (r.doc_rec && r.doc_rec.doc_remark) || '',
       doc_rec_key: r.doc_rec_key || (r.doc_rec && r.doc_rec.doc_rec_id) || r.sequence || r.doc_rec_id || '',
       doc_rec_id: r.doc_rec_id || (r.doc_rec && (r.doc_rec.doc_rec_id || r.doc_rec.id)) || '',
       eca_required: !!r.eca_required,
@@ -107,32 +126,34 @@ export const loadRecords = async (q, setLoading, setErrorMsg, setRecords) => {
         : "",
       eca_resubmit_date: r.eca_resubmit_date || '',
     }));
-    const extractDigits = (s) => {
-      if (!s) return NaN;
-      const d = String(s).replace(/\D+/g, "");
-      return d ? parseInt(d, 10) : NaN;
-    };
-    const cmpFinalNo = (a, b) => {
-      const fa = (a.final_no || '').toString().trim();
-      const fb = (b.final_no || '').toString().trim();
-      const aBlank = !fa;
-      const bBlank = !fb;
-      if (aBlank && !bBlank) return -1;
-      if (bBlank && !aBlank) return 1;
-      if (aBlank && bBlank) return 0;
-      const na = extractDigits(fa);
-      const nb = extractDigits(fb);
-      if (!Number.isNaN(na) && !Number.isNaN(nb)) return nb - na;
-      if (!Number.isNaN(na) && Number.isNaN(nb)) return -1;
-      if (Number.isNaN(na) && !Number.isNaN(nb)) return 1;
-      return fb.localeCompare(fa);
-    };
+    // Custom sort: status, then ECA status, then Doc Rec ID
+    const statusOrder = { IN_PROGRESS: 1, PENDING: 2, CORRECTION: 3 };
     mapped.sort((a, b) => {
-      const aEcaActive = a.eca_required === true && a.eca_status === "NOT_SENT";
-      const bEcaActive = b.eca_required === true && b.eca_status === "NOT_SENT";
-      if (aEcaActive && !bEcaActive) return -1;
-      if (bEcaActive && !aEcaActive) return 1;
-      return cmpFinalNo(a, b);
+      // 1. Status order
+      const aStatusRank = statusOrder[a.status] || 99;
+      const bStatusRank = statusOrder[b.status] || 99;
+      if (aStatusRank !== bStatusRank) return aStatusRank - bStatusRank;
+      // 2. ECA Required + ECA Status (NOT_SENT on top)
+      if (a.eca_required && b.eca_required) {
+        if (a.eca_status === "NOT_SENT" && b.eca_status !== "NOT_SENT") return -1;
+        if (b.eca_status === "NOT_SENT" && a.eca_status !== "NOT_SENT") return 1;
+      } else if (a.eca_required && !b.eca_required) {
+        return -1;
+      } else if (!a.eca_required && b.eca_required) {
+        return 1;
+      }
+      // 3. Doc Rec ID (descending numeric if possible)
+      const extractDigits = (s) => {
+        if (!s) return NaN;
+        const d = String(s).replace(/\D+/g, "");
+        return d ? parseInt(d, 10) : NaN;
+      };
+      const aDoc = extractDigits(a.doc_rec_key || a.doc_rec_id);
+      const bDoc = extractDigits(b.doc_rec_key || b.doc_rec_id);
+      if (!Number.isNaN(aDoc) && !Number.isNaN(bDoc)) return bDoc - aDoc;
+      if (!Number.isNaN(aDoc) && Number.isNaN(bDoc)) return -1;
+      if (Number.isNaN(aDoc) && !Number.isNaN(bDoc)) return 1;
+      return (b.doc_rec_key || b.doc_rec_id || '').localeCompare(a.doc_rec_key || a.doc_rec_id || '');
     });
     setRecords(mapped);
     setErrorMsg("");
@@ -192,9 +213,7 @@ export const createRecord = async (form, syncDocRecRemark, loadRecords) => {
     eca_send_date: form.eca_required ? (function(s){ if(!s) return null; if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return s; const x = dmyToISO(s); return x || null; })(form.eca_send_date) : null,
     eca_status: form.eca_required ? (form.eca_send_date ? "SENT" : "NOT_SENT") : null,
     eca_resubmit_date: form.eca_required ? (form.eca_resubmit_date || null) : null,
-    eca_remark: form.eca_required ? (form.eca_remark || null) : null,
-    doc_rec_remark: form.doc_rec_remark || null,
-    remark: form.remark || null,
+    doc_remark: form.doc_remark || null,
     pay_rec_no: form.pay_rec_no || null,
   };
   const res = await fetch(`/api/verification`, {
@@ -208,7 +227,7 @@ export const createRecord = async (form, syncDocRecRemark, loadRecords) => {
     const t = await res.text();
     throw new Error(t || "Create failed");
   }
-  await syncDocRecRemark(form, form.doc_rec_remark || form.remark);
+  await syncDocRecRemark(form, form.doc_remark);
   await loadRecords();
 };
 
@@ -231,15 +250,13 @@ export const updateRecord = async (id, form, syncDocRecRemark) => {
     status: form.status,
     final_no: form.final_no || null,
     mail_status: form.mail_status,
-    remark: form.remark || null,
     eca_required: !!form.eca_required,
     eca_name: form.eca_required ? (form.eca_name || null) : null,
     eca_ref_no: form.eca_required ? (form.eca_ref_no || null) : null,
     eca_send_date: form.eca_required ? (function(s){ if(!s) return null; if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return s; const x = dmyToISO(s); return x || null; })(form.eca_send_date) : null,
-    eca_status: form.eca_required ? (form.eca_send_date ? "SENT" : "NOT_SENT") : null,
+    eca_status: form.eca_required ? form.eca_status : null,
     eca_resubmit_date: form.eca_required ? (form.eca_resubmit_date || null) : null,
-    eca_remark: form.eca_required ? (form.eca_remark || null) : null,
-    doc_rec_remark: form.doc_rec_remark || null,
+    doc_remark: form.doc_remark || null,
     pay_rec_no: form.pay_rec_no || null,
   };
   const res = await fetch(`/api/verification/${id}/`, {
@@ -252,5 +269,5 @@ export const updateRecord = async (id, form, syncDocRecRemark) => {
   // console.debug('updateRecord payload', { id, body });
   // console.debug('updateRecord response', { status: res.status, responseText });
   if (!res.ok) throw new Error(responseText || "Update failed");
-  await syncDocRecRemark(form, form.doc_rec_remark || form.remark);
+  await syncDocRecRemark(form, form.doc_remark);
 };
