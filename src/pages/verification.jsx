@@ -531,7 +531,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                         <option value="">Select</option>
                         <option value="NOT_SENT">NOT_SENT</option>
                         <option value="SENT">SENT</option>
-                        <option value="RECEIVED">RECEIVED</option>
+                        <option value="ACCEPTED">ACCEPTED</option>
                         <option value="REJECTED">REJECTED</option>
                       </select>
                     </div>

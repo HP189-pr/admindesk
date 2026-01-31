@@ -133,13 +133,17 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset().order_by("-created_at")
         search = self.request.query_params.get("search", "").strip()
         if search:
-            # Use PostgreSQL Full-Text Search (FTS) for 100× faster search
-            # Falls back to normalized search if FTS not available
-            qs = apply_fts_search(
-                queryset=qs,
-                search_query=search,
-                search_fields=['search_vector'],  # FTS field
-                fallback_fields=['enrollment_no', 'temp_enroll_no', 'student_name']
+            norm_q = ''.join(search.split()).lower()
+            # Normalize enrollment/temp_enroll (remove spaces, dots, hyphens) so queries like "bscphy" match "B.Sc-Phy"
+            qs = qs.annotate(
+                norm_en=Replace(Replace(Replace(Lower(models.F('enrollment_no')), Value(' '), Value('')), Value('.'), Value('')), Value('-'), Value('')),
+                norm_temp=Replace(Replace(Replace(Lower(models.F('temp_enroll_no')), Value(' '), Value('')), Value('.'), Value('')), Value('-'), Value('')),
+            ).filter(
+                Q(norm_en__contains=norm_q) |
+                Q(norm_temp__contains=norm_q) |
+                Q(enrollment_no__icontains=search) |
+                Q(temp_enroll_no__icontains=search) |
+                Q(student_name__icontains=search)
             )
         return qs
 

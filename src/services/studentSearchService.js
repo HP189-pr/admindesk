@@ -12,7 +12,10 @@ const api = axios.create({
 
 // Request interceptor to add authentication token
 api.interceptors.request.use((config) => {
-    const token = localStorage.getItem('access_token');
+    // Try multiple common keys in case the app stored the token differently
+    const token = localStorage.getItem('access_token')
+        || localStorage.getItem('accessToken')
+        || localStorage.getItem('token');
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }

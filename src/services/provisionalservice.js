@@ -4,20 +4,40 @@
 import { dmyToISO } from '../utils/date';
 
 const API_BASE = '/api/provisional/';
+const INST_API = '/api/institute/';
+const MAIN_API = '/api/mainbranch/';
+const SUB_API = '/api/subbranch/';
 
-export async function fetchProvisionals(query = '') {
-  const url = query ? `${API_BASE}?search=${encodeURIComponent(query)}` : API_BASE;
+async function fetchJson(url) {
   const res = await fetch(url, { headers: authHeaders() });
   const data = await res.json();
   return Array.isArray(data) ? data : data.results || [];
 }
 
+export async function fetchProvisionals(query = '') {
+  const url = query ? `${API_BASE}?search=${encodeURIComponent(query)}` : API_BASE;
+  return fetchJson(url);
+}
+
 export async function fetchProvisionalsByDocRec(docRecKey) {
   if (!docRecKey) return [];
   const url = `${API_BASE}?doc_rec=${encodeURIComponent(docRecKey)}`;
-  const res = await fetch(url, { headers: authHeaders() });
-  const data = await res.json();
-  return Array.isArray(data) ? data : data.results || [];
+  return fetchJson(url);
+}
+
+export async function fetchInstituteCodes(search = '') {
+  const url = search ? `${INST_API}?search=${encodeURIComponent(search)}` : INST_API;
+  return fetchJson(url);
+}
+
+export async function fetchCourseCodes(search = '') {
+  const url = search ? `${MAIN_API}?search=${encodeURIComponent(search)}` : MAIN_API;
+  return fetchJson(url);
+}
+
+export async function fetchSubcourseNames(search = '') {
+  const url = search ? `${SUB_API}?search=${encodeURIComponent(search)}` : SUB_API;
+  return fetchJson(url);
 }
 
 export async function saveProvisional(form) {
@@ -68,12 +88,14 @@ export async function addProvisionalEntry(entry, list, form) {
 function mapFormToPayload(form) {
   return {
     doc_rec_key: form.doc_rec || form.doc_rec_key || undefined,
-    enrollment: form.enrollment || null,
+    // Serializer expects enrollment_no (slug) for binding; send that explicitly
+    enrollment_no: form.enrollment || null,
     student_name: form.student_name || null,
     institute: form.institute || null,
     subcourse: form.subcourse || null,
     maincourse: form.maincourse || null,
     class_obtain: form.class_obtain || null,
+    prv_degree_name: form.prv_degree_name || null,
     prv_number: form.prv_number || null,
     prv_date: dmyToISO(form.prv_date) || null,
     passing_year: form.passing_year || null,

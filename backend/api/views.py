@@ -22,7 +22,8 @@ from django.db.models.functions import Lower, Replace
 from django.http import HttpResponse
 from rest_framework.parsers import MultiPartParser, FormParser
 from io import BytesIO
-import os, datetime, logging, uuid, threading, traceback
+from decimal import Decimal
+import os, datetime, logging, uuid, threading, traceback, re
 from django.conf import settings
 from django.core.cache import cache
 
@@ -61,6 +62,82 @@ class DocRecViewSet(viewsets.ModelViewSet):
     queryset = DocRec.objects.all().order_by('-id')
     serializer_class = DocRecSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        params = getattr(self.request, 'query_params', {}) if hasattr(self, 'request') else {}
+
+        # Optional: filter DocRec by student number (enrollment_no or temp_enroll_no) via linked services
+        student_no = None
+        try:
+            student_no = params.get('student_no') or params.get('enrollment_no') or params.get('temp_enroll_no')
+        except Exception:
+            student_no = None
+
+        if student_no:
+            norm = re.sub(r'[^0-9a-z]+', '', str(student_no).lower())
+            docrec_ids = set()
+
+            # Verification links DocRec as FK; Migration/Provisional store doc_rec_id as varchar
+            try:
+                ver_ids = (
+                    Verification.objects.annotate(
+                        norm_en=Replace(Replace(Replace(Lower(models.F('enrollment_no')), models.Value(' '), models.Value('')), models.Value('.'), models.Value('')), models.Value('-'), models.Value('')),
+                        norm_second=Replace(Replace(Replace(Lower(models.F('second_enrollment_id')), models.Value(' '), models.Value('')), models.Value('.'), models.Value('')), models.Value('-'), models.Value('')),
+                    )
+                    .filter(models.Q(norm_en__contains=norm) | models.Q(norm_second__contains=norm))
+                    .values_list('doc_rec__doc_rec_id', flat=True)
+                )
+                docrec_ids.update([x for x in ver_ids if x])
+            except Exception:
+                pass
+
+            try:
+                mg_ids = (
+                    MigrationRecord.objects.annotate(
+                        norm_en=Replace(Replace(Replace(Lower(models.F('enrollment__enrollment_no')), models.Value(' '), models.Value('')), models.Value('.'), models.Value('')), models.Value('-'), models.Value('')),
+                        norm_temp=Replace(Replace(Replace(Lower(models.F('enrollment__temp_enroll_no')), models.Value(' '), models.Value('')), models.Value('.'), models.Value('')), models.Value('-'), models.Value('')),
+                    )
+                    .filter(models.Q(norm_en__contains=norm) | models.Q(norm_temp__contains=norm))
+                    .values_list('doc_rec', flat=True)
+                )
+                docrec_ids.update([x for x in mg_ids if x])
+            except Exception:
+                pass
+
+            try:
+                prv_ids = (
+                    ProvisionalRecord.objects.annotate(
+                        norm_en=Replace(Replace(Replace(Lower(models.F('enrollment__enrollment_no')), models.Value(' '), models.Value('')), models.Value('.'), models.Value('')), models.Value('-'), models.Value('')),
+                        norm_temp=Replace(Replace(Replace(Lower(models.F('enrollment__temp_enroll_no')), models.Value(' '), models.Value('')), models.Value('.'), models.Value('')), models.Value('-'), models.Value('')),
+                    )
+                    .filter(models.Q(norm_en__contains=norm) | models.Q(norm_temp__contains=norm))
+                    .values_list('doc_rec', flat=True)
+                )
+                docrec_ids.update([x for x in prv_ids if x])
+            except Exception:
+                pass
+
+            if docrec_ids:
+                qs = qs.filter(doc_rec_id__in=docrec_ids)
+            else:
+                return qs.none()
+
+        search = ''
+        try:
+            search = params.get('search', '').strip()
+        except Exception:
+            search = ''
+
+        if search:
+            qs = apply_fts_search(
+                queryset=qs,
+                search_query=search,
+                search_fields=['search_vector'],
+                fallback_fields=['doc_rec_id', 'pay_rec_no', 'pay_rec_no_pre']
+            )
+
+        return qs
 
     def perform_create(self, serializer):
         """Create DocRec and, when apply_for=VR and enrollment info supplied,
@@ -549,14 +626,30 @@ class MigrationRecordViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        search = self.request.query_params.get('search', '').strip()
-        if search:
-            norm_q = ''.join(search.split()).lower()
+        params = getattr(self.request, 'query_params', {})
+        search = params.get('search', '').strip() if hasattr(params, 'get') else ''
+        student_no = None
+        if hasattr(params, 'get'):
+            student_no = params.get('student_no') or params.get('enrollment_no') or params.get('temp_enroll_no')
+
+        norm_search = re.sub(r'[^0-9a-z]+', '', search.lower()) if search else ''
+        norm_student = re.sub(r'[^0-9a-z]+', '', str(student_no).lower()) if student_no else ''
+
+        if norm_search or norm_student:
             qs = qs.annotate(
-                n_en=Replace(Lower(models.F('enrollment__enrollment_no')), Value(' '), Value('')),
-                n_name=Replace(Lower(models.F('student_name')), Value(' '), Value('')),
-                n_mg=Replace(Lower(models.F('mg_number')), Value(' '), Value('')),
-            ).filter(Q(n_en__contains=norm_q) | Q(n_name__contains=norm_q) | Q(n_mg__contains=norm_q))
+                n_en=Replace(Replace(Replace(Lower(models.F('enrollment__enrollment_no')), Value(' '), Value('')), Value('.'), Value('')), Value('-'), Value('')),
+                n_temp=Replace(Replace(Replace(Lower(models.F('enrollment__temp_enroll_no')), Value(' '), Value('')), Value('.'), Value('')), Value('-'), Value('')),
+                n_name=Replace(Replace(Replace(Lower(models.F('student_name')), Value(' '), Value('')), Value('.'), Value('')), Value('-'), Value('')),
+                n_mg=Replace(Replace(Replace(Lower(models.F('mg_number')), Value(' '), Value('')), Value('.'), Value('')), Value('-'), Value('')),
+            )
+            filters = Q()
+            token = norm_student or norm_search
+            if token:
+                filters |= Q(n_en__contains=token) | Q(n_temp__contains=token)
+            if norm_search:
+                filters |= Q(n_name__contains=norm_search) | Q(n_mg__contains=norm_search)
+            qs = qs.filter(filters)
+        return qs
         return qs
 
     @action(detail=False, methods=["post"], url_path="update-service-only")
@@ -594,16 +687,114 @@ class ProvisionalRecordViewSet(viewsets.ModelViewSet):
     serializer_class = ProvisionalRecordSerializer
     permission_classes = [IsAuthenticated]
 
+    @staticmethod
+    def _sanitize_fk_payload(data):
+        """Drop/clear invalid FK ids so updates don't fail when the referenced course rows are absent."""
+        cleaned = data.copy()
+
+        def _safe_fk(model_cls, key, canonical_key, alt_fields=None, to_field_attr=None):
+            if key not in cleaned:
+                return
+            val = cleaned.get(key)
+            if val in (None, '', 'null', 'None'):
+                cleaned.pop(key, None)
+                return
+            alt_fields = alt_fields or []
+            obj = None
+            try:
+                obj = model_cls.objects.filter(pk=val).first()
+                if not obj:
+                    for alt in alt_fields:
+                        obj = model_cls.objects.filter(**{alt: val}).first()
+                        if obj:
+                            break
+                if obj:
+                    # Use specified to_field attribute if provided; else default to pk
+                    cleaned[canonical_key] = getattr(obj, to_field_attr, None) if to_field_attr else obj.pk
+                else:
+                    cleaned.pop(key, None)
+            except Exception:
+                cleaned.pop(key, None)
+            if key != canonical_key and key in cleaned:
+                # remove duplicate key to avoid serializer confusion
+                cleaned.pop(key, None)
+
+        # Institute can be referenced by id or code
+        _safe_fk(Institute, 'institute', 'institute', ['institute_code'], to_field_attr='institute_id')
+        _safe_fk(Institute, 'institute_id', 'institute', ['institute_code'], to_field_attr='institute_id')
+        _safe_fk(Institute, 'institute_code', 'institute', ['institute_code'], to_field_attr='institute_id')
+
+        # Main course can be referenced by id or course_code
+        _safe_fk(MainBranch, 'maincourse', 'maincourse', ['maincourse_id', 'course_code'], to_field_attr='maincourse_id')
+        _safe_fk(MainBranch, 'maincourse_id', 'maincourse', ['maincourse_id', 'course_code'], to_field_attr='maincourse_id')
+        _safe_fk(MainBranch, 'maincourse_code', 'maincourse', ['maincourse_id', 'course_code'], to_field_attr='maincourse_id')
+
+        # Sub course can be referenced by id or subcourse name/id
+        _safe_fk(SubBranch, 'subcourse', 'subcourse', ['subcourse_id', 'subcourse_name'], to_field_attr='subcourse_id')
+        _safe_fk(SubBranch, 'subcourse_id', 'subcourse', ['subcourse_id', 'subcourse_name'], to_field_attr='subcourse_id')
+        _safe_fk(SubBranch, 'subcourse_name', 'subcourse', ['subcourse_id', 'subcourse_name'], to_field_attr='subcourse_id')
+
+        return cleaned
+
     def get_queryset(self):
         qs = super().get_queryset()
-        search = self.request.query_params.get('search', '').strip()
-        if search:
-            norm_q = ''.join(search.split()).lower()
+
+        # Search on enrollment (incl. temp), student name, or provisional number (punctuation-insensitive)
+        params = getattr(self.request, 'query_params', {})
+        search = params.get('search', '').strip() if hasattr(params, 'get') else ''
+        student_no = None
+        if hasattr(params, 'get'):
+            student_no = params.get('student_no') or params.get('enrollment_no') or params.get('temp_enroll_no')
+
+        norm_search = re.sub(r'[^0-9a-z]+', '', search.lower()) if search else ''
+        norm_student = re.sub(r'[^0-9a-z]+', '', str(student_no).lower()) if student_no else ''
+
+        if norm_search or norm_student:
             qs = qs.annotate(
-                n_en=Replace(Lower(models.F('enrollment__enrollment_no')), Value(' '), Value('')),
-                n_name=Replace(Lower(models.F('student_name')), Value(' '), Value('')),
-                n_prv=Replace(Lower(models.F('prv_number')), Value(' '), Value('')),
-            ).filter(Q(n_en__contains=norm_q) | Q(n_name__contains=norm_q) | Q(n_prv__contains=norm_q))
+                n_en=Replace(Replace(Replace(Lower(models.F('enrollment__enrollment_no')), Value(' '), Value('')), Value('.'), Value('')), Value('-'), Value('')),
+                n_temp=Replace(Replace(Replace(Lower(models.F('enrollment__temp_enroll_no')), Value(' '), Value('')), Value('.'), Value('')), Value('-'), Value('')),
+                n_name=Replace(Replace(Replace(Lower(models.F('student_name')), Value(' '), Value('')), Value('.'), Value('')), Value('-'), Value('')),
+                n_prv=Replace(Replace(Replace(Lower(models.F('prv_number')), Value(' '), Value('')), Value('.'), Value('')), Value('-'), Value('')),
+            )
+            filters = Q()
+            token = norm_student or norm_search
+            if token:
+                filters |= Q(n_en__contains=token) | Q(n_temp__contains=token)
+            if norm_search:
+                filters |= Q(n_name__contains=norm_search) | Q(n_prv__contains=norm_search)
+            qs = qs.filter(filters)
+
+        # Optional filters: exact prv_number and date range on prv_date
+        prv_number = (self.request.query_params.get('prv_number') or '').strip()
+        if prv_number:
+            qs = qs.filter(prv_number__icontains=prv_number)
+
+        def _parse_date(val):
+            try:
+                return datetime.datetime.strptime(val, "%Y-%m-%d").date()
+            except Exception:
+                return None
+
+        date_from = _parse_date(self.request.query_params.get('prv_date_from') or '')
+        date_to = _parse_date(self.request.query_params.get('prv_date_to') or '')
+        if date_from:
+            qs = qs.filter(prv_date__gte=date_from)
+        if date_to:
+            qs = qs.filter(prv_date__lte=date_to)
+
+        # Order: non-cancelled first, then newest/highest id
+        qs = qs.annotate(
+            _is_cancel=models.Case(
+                models.When(prv_status__iexact=ProvisionalStatus.CANCELLED, then=models.Value(1)),
+                default=models.Value(0),
+                output_field=models.IntegerField(),
+            )
+        ).order_by('_is_cancel', '-id')
+
+        # Limit listing to latest 500, but allow full queryset for detail/update routes
+        action = getattr(self, 'action', None)
+        if action in (None, 'list'):
+            return qs[:500]
         return qs
 
     @action(detail=False, methods=["post"], url_path="update-service-only")
@@ -615,16 +806,26 @@ class ProvisionalRecordViewSet(viewsets.ModelViewSet):
         Payload: { "id": 123, "enrollment": ..., "student_name": "...", ... }
         """
         provisional_id = request.data.get("id")
-        if not provisional_id:
-            return Response({"error": "Provisional record id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        provisional = None
+        if provisional_id:
+            provisional = ProvisionalRecord.objects.filter(id=provisional_id).first()
 
-        try:
-            provisional = ProvisionalRecord.objects.get(id=provisional_id)
-        except ProvisionalRecord.DoesNotExist:
+        # Fallback lookup: use prv_number + doc_rec to find the record when id is missing or not found
+        if provisional is None:
+            prv_num = request.data.get("prv_number") or request.data.get("prv_no")
+            doc_rec_val = request.data.get("doc_rec") or request.data.get("doc_rec_key") or request.data.get("doc_rec_id")
+            if prv_num:
+                qs = ProvisionalRecord.objects.filter(prv_number=str(prv_num).strip())
+                if doc_rec_val:
+                    qs = qs.filter(doc_rec=str(doc_rec_val).strip())
+                provisional = qs.first()
+
+        if provisional is None:
             return Response({"error": "Provisional record not found"}, status=status.HTTP_404_NOT_FOUND)
 
         # Update with provided data
-        serializer = ProvisionalRecordSerializer(provisional, data=request.data, partial=True)
+        payload = self._sanitize_fk_payload(request.data)
+        serializer = ProvisionalRecordSerializer(provisional, data=payload, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response({
@@ -633,6 +834,20 @@ class ProvisionalRecordViewSet(viewsets.ModelViewSet):
                 "doc_rec_id": provisional.doc_rec
             }, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def update(self, request, *args, **kwargs):
+        # Sanitize FK ids before standard update
+        data = request.data
+        try:
+            data = data.copy() if hasattr(data, 'copy') else dict(data)
+        except Exception:
+            data = dict(data)
+        payload = self._sanitize_fk_payload(data)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=payload, partial=kwargs.get('partial', False))
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
 
 
 class InstVerificationMainViewSet(viewsets.ModelViewSet):
@@ -816,6 +1031,7 @@ class BulkService(str):
     LEAVE = 'LEAVE'
     INSTITUTIONAL_VERIFICATION = 'INSTITUTIONAL_VERIFICATION'
     STUDENT_FEES = 'STUDENT_FEES'
+    STUDENT_PROFILE = 'STUDENT_PROFILE'
 
 
 def _parse_excel_date_safe(val):
@@ -1079,6 +1295,9 @@ class BulkUploadView(APIView):
             ],
             BulkService.STUDENT_FEES: [
                 "student_no","receipt_no","receipt_date","term","amount","remark"
+            ],
+            BulkService.STUDENT_PROFILE: [
+                "enrollment_no","gender","birth_date","address1","address2","city1","city2","contact_no","email","fees","hostel_required","aadhar_no","abc_id","mobile_adhar","name_adhar","mother_name","category","photo_uploaded","is_d2d","program_medium"
             ],
         }
         cols = columns_map.get(service)
@@ -1449,6 +1668,79 @@ class BulkUploadView(APIView):
                         _log(idx, row.get("enrollment_no"), str(e), False)
                     _cache_progress(idx+1)
 
+            elif service == BulkService.STUDENT_PROFILE:
+                def _to_bool(val):
+                    if isinstance(val, bool):
+                        return val
+                    try:
+                        s = str(val).strip().lower()
+                    except Exception:
+                        return False
+                    return s in ('1', 'true', 'yes', 'y', 't')
+
+                for idx, row in df.iterrows():
+                    try:
+                        enr_key = _clean_cell(row.get("enrollment_no")) or _clean_cell(row.get("enrollment"))
+                        if not enr_key:
+                            _log(idx, None, "Missing enrollment_no", False); _cache_progress(idx+1); continue
+
+                        enr = Enrollment.objects.filter(enrollment_no=enr_key).first()
+                        if not enr:
+                            try:
+                                enr = Enrollment.objects.filter(enrollment_no__iexact=enr_key).first()
+                            except Exception:
+                                enr = None
+                        if not enr:
+                            try:
+                                norm = ''.join(str(enr_key).split()).lower()
+                                enr = (Enrollment.objects
+                                       .annotate(_norm=Replace(Lower(models.F('enrollment_no')), Value(' '), Value('')))
+                                       .filter(_norm=norm)
+                                       .first())
+                            except Exception:
+                                enr = None
+
+                        if not enr:
+                            _log(idx, enr_key, "Enrollment not found", False); _cache_progress(idx+1); continue
+
+                        fees_val = row.get("fees")
+                        try:
+                            fees = Decimal(str(fees_val)) if fees_val not in (None, "") else None
+                        except Exception:
+                            fees = None
+
+                        defaults = {
+                            "gender": _clean_cell(row.get("gender")),
+                            "birth_date": _parse_excel_date_safe(row.get("birth_date")),
+                            "address1": _clean_cell(row.get("address1")),
+                            "address2": _clean_cell(row.get("address2")),
+                            "city1": _clean_cell(row.get("city1")),
+                            "city2": _clean_cell(row.get("city2")),
+                            "contact_no": _clean_cell(row.get("contact_no")),
+                            "email": _clean_cell(row.get("email")),
+                            "fees": fees,
+                            "hostel_required": _to_bool(row.get("hostel_required")),
+                            "aadhar_no": _clean_cell(row.get("aadhar_no")),
+                            "abc_id": _clean_cell(row.get("abc_id")),
+                            "mobile_adhar": _clean_cell(row.get("mobile_adhar")),
+                            "name_adhar": _clean_cell(row.get("name_adhar")),
+                            "mother_name": _clean_cell(row.get("mother_name")),
+                            "category": _clean_cell(row.get("category")),
+                            "photo_uploaded": _to_bool(row.get("photo_uploaded")),
+                            "is_d2d": _to_bool(row.get("is_d2d")),
+                            "program_medium": _clean_cell(row.get("program_medium")),
+                            "updated_by": user,
+                        }
+
+                        obj, created = StudentProfile.objects.update_or_create(
+                            enrollment=enr,
+                            defaults=defaults,
+                        )
+                        _log(idx, getattr(enr, 'enrollment_no', None), "Created" if created else "Updated", True)
+                    except Exception as e:
+                        _log(idx, row.get("enrollment_no"), str(e), False)
+                    _cache_progress(idx+1)
+
             elif service == BulkService.INSTITUTE:
                 for idx, row in df.iterrows():
                     try:
@@ -1787,22 +2079,23 @@ class BulkUploadView(APIView):
                     if not row.get("doc_rec"):
                         if doc_rec_id_raw:
                             row["doc_rec"] = doc_rec_id_raw
-                            logger.error("✅ Aliased doc_rec_id → doc_rec (%s)", doc_rec_id_raw)
+                            self.logger.error("✅ Aliased doc_rec_id → doc_rec (%s)", doc_rec_id_raw)
                         elif doc_rec_key_raw:
                             row["doc_rec"] = doc_rec_key_raw
-                            logger.error("✅ Aliased doc_rec_key → doc_rec (%s)", doc_rec_key_raw)
+                            self.logger.error("✅ Aliased doc_rec_key → doc_rec (%s)", doc_rec_key_raw)
 
                     try:
                         # DETAILED LOGGING BLOCK
-                        logger.error("========== BULK UPLOAD ROW DEBUG ==========")
-                        logger.error("Service        : %s", service)
-                        logger.error("Row index      : %s", idx)
-                        logger.error("Row data keys  : %s", list(row.keys()))
-                        logger.error("doc_rec        : %r", row.get("doc_rec"))
-                        logger.error("doc_rec_id     : %r", row.get("doc_rec_id"))
-                        logger.error("doc_rec_key    : %r", row.get("doc_rec_key"))
-                        logger.error("Raw row data   : %s", row)
-                        logger.error("==========================================")
+                        # Detailed per-row debug logging to diagnose doc_rec mapping issues
+                        self.logger.error("========== BULK UPLOAD ROW DEBUG ==========")
+                        self.logger.error("Service        : %s", service)
+                        self.logger.error("Row index      : %s", idx)
+                        self.logger.error("Row data keys  : %s", list(row.keys()))
+                        self.logger.error("doc_rec        : %r", row.get("doc_rec"))
+                        self.logger.error("doc_rec_id     : %r", row.get("doc_rec_id"))
+                        self.logger.error("doc_rec_key    : %r", row.get("doc_rec_key"))
+                        self.logger.error("Raw row data   : %s", row)
+                        self.logger.error("==========================================")
 
                         # Now proceed with original lookup logic
                         if row.get("doc_rec"):
@@ -1834,14 +2127,28 @@ class BulkUploadView(APIView):
                                         _log(idx, key_ident or doc_rec_id_raw, f"Student create/update error: {e}", False)
                                     except Exception:
                                         _log(idx, doc_rec_id_raw, "Student create/update error (exception while logging)", False)
-                        # If doc_rec is missing and the caller asked for auto-creation, try to create it
-                        if not doc_rec and auto_create_docrec:
+                        # If doc_rec is missing, attempt creation using provided identifiers; always try to create to avoid hard failures.
+                        # Prefer explicit doc_rec/doc_rec_id/doc_rec_key values, else fall back to an auto-generated PRV doc_rec.
+                        if not doc_rec:
                             try:
-                                create_key = str(row.get("doc_rec")).strip() if row.get("doc_rec") else None
+                                create_key = None
+                                for candidate in (row.get("doc_rec"), doc_rec_id_raw, doc_rec_key_raw):
+                                    if candidate:
+                                        try:
+                                            create_key = str(candidate).strip()
+                                        except Exception:
+                                            create_key = str(candidate)
+                                        if create_key:
+                                            break
                                 if create_key:
-                                    doc_rec = DocRec.objects.create(doc_rec_id=create_key, apply_for='PRV', created_by=user)
+                                    # Use get_or_create to avoid IntegrityError on duplicates
+                                    doc_rec, _ = DocRec.objects.get_or_create(
+                                        doc_rec_id=create_key,
+                                        defaults={"apply_for": 'PR', "pay_by": PayBy.NA, "created_by": user},
+                                    )
                                 else:
-                                    doc_rec = DocRec.objects.create(apply_for='PRV', created_by=user)
+                                    # Auto-generate doc_rec_id via model save; set minimal required fields
+                                    doc_rec = DocRec.objects.create(apply_for='PR', pay_by=PayBy.NA, created_by=user)
                             except Exception:
                                 doc_rec = None
 
@@ -1911,12 +2218,14 @@ class BulkUploadView(APIView):
                             if prv_date is None:
                                 _log(idx, normalized_prv or row.get("prv_number"), "Missing prv_date for CANCEL record", False); _cache_progress(idx+1); continue
                             # Upsert minimal fields for CANCEL
+                            prv_degree_name_val = _clean_cell(row.get("prv_degree_name"))
                             ProvisionalRecord.objects.update_or_create(
                                 prv_number=normalized_prv,
                                 defaults={
                                     # store the doc_rec_id string (doc_rec may be a DocRec object)
                                     "doc_rec": (doc_rec.doc_rec_id if getattr(doc_rec, 'doc_rec_id', None) else (doc_rec if isinstance(doc_rec, str) else None)),
                                     "prv_date": prv_date,
+                                    "prv_degree_name": prv_degree_name_val if prv_degree_name_val is not None else None,
                                     "prv_status": ProvisionalStatus.CANCELLED,
                                     "created_by": user,
                                 }
@@ -1954,15 +2263,17 @@ class BulkUploadView(APIView):
                             ps_mapped = ProvisionalStatus.ISSUED
 
                         # Build upsert defaults with fallbacks
+                        prv_degree_name_val = _clean_cell(row.get("prv_degree_name"))
+
                         defaults = {
                             # store doc_rec as doc_rec_id string
                             "doc_rec": (doc_rec.doc_rec_id if getattr(doc_rec, 'doc_rec_id', None) else (doc_rec if isinstance(doc_rec, str) else None)),
                             "enrollment": enr,
-                            "student_name": row.get("student_name") or (enr.student_name if enr else None),
+                            "student_name": _clean_cell(row.get("student_name")) or (enr.student_name if enr else None),
                             "institute": inst,
                             "maincourse": main,
                             "subcourse": sub,
-                            "class_obtain": row.get("class_obtain"),
+                            "class_obtain": _clean_cell(row.get("class_obtain")),
                             "prv_date": prv_date,
                             # Normalize passing year into 'Mon-YYYY' format where possible
                             "passing_year": _normalize_month_year(row.get("passing_year")),
@@ -1970,6 +2281,8 @@ class BulkUploadView(APIView):
                             "pay_rec_no": (row.get("pay_rec_no") or (doc_rec.pay_rec_no if doc_rec else None)),
                             "created_by": user,
                         }
+                        if prv_degree_name_val is not None:
+                            defaults["prv_degree_name"] = prv_degree_name_val
 
                         ProvisionalRecord.objects.update_or_create(
                             prv_number=normalized_prv,
@@ -2588,8 +2901,8 @@ class BulkUploadView(APIView):
                                             enrollment_no_text = enr_text,
                                             # If enrollment resolved, copy related institute/main/subcourse
                                             institute = (enr_obj.institute if enr_obj and getattr(enr_obj, 'institute', None) else (Institute.objects.filter(pk=s.get('institute_id')).first() if s.get('institute_id') else None)),
-                                            main_course = (enr_obj.maincourse if enr_obj and getattr(enr_obj, 'maincourse', None) else (MainBranch.objects.filter(pk=s.get('main_course')).first() if s.get('main_course') else None)),
-                                            sub_course = (enr_obj.subcourse if enr_obj and getattr(enr_obj, 'subcourse', None) else (SubBranch.objects.filter(pk=s.get('sub_course')).first() if s.get('sub_course') else None)),
+                                            main_course = (enr_obj.maincourse if enr_obj and getattr(enr_obj, 'maincourse', None) else (MainBranch.objects.filter(pk=s.get('maincourse_id')).first() if s.get('maincourse_id') else None)),
+                                            sub_course = (enr_obj.subcourse if enr_obj and getattr(enr_obj, 'subcourse', None) else (SubBranch.objects.filter(pk=s.get('subcourse_id')).first() if s.get('subcourse_id') else None)),
                                         )
                                         student_created = True
                                 except Exception as e:
@@ -2605,7 +2918,10 @@ class BulkUploadView(APIView):
                                             import json
                                             row_payload = json.dumps(s, default=str, ensure_ascii=False)
                                         except Exception:
-                                            row_payload = repr(s)
+                                            try:
+                                                row_payload = repr(s)
+                                            except Exception:
+                                                row_payload = '<unserializable row>'
                                         msg = f"{type(e).__name__}: {str(e)} | data={row_payload}"
                                         _log(idx, key or f'student_row_{idx}', msg, False)
                                         logging.exception('Failed creating/updating inst verification student (nested students list)')
@@ -2801,6 +3117,10 @@ class BulkUploadView(APIView):
                     'docrec': 'doc_rec_id',
                     'doc rec': 'doc_rec_id',
                     'doc_rec_id': 'doc_rec_id',
+                    'doc_rec': 'doc_rec_id',
+                    'doc rec id': 'doc_rec_id',
+                    'doc rec key': 'doc_rec_key',
+                    'doc_rec_key': 'doc_rec_key',
                     'institute': 'institute_id',
                     'institute id': 'institute_id',
                     'institute_id': 'institute_id',
@@ -3299,6 +3619,7 @@ class DataAnalysisView(APIView):
                     {'count': g['cnt']},
                 )
             )
+            
 
         analysis_param = request.query_params.get('analysis')
         requested = None

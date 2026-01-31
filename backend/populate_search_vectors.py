@@ -15,9 +15,12 @@ populate_sqls = [
     SET search_vector = to_tsvector('english', 
         COALESCE(enrollment_no, '') || ' ' ||
         COALESCE(temp_enroll_no, '') || ' ' ||
-        COALESCE(student_name, '')
-    )
-    WHERE search_vector IS NULL OR search_vector = ''::tsvector;
+        COALESCE(student_name, '') || ' ' ||
+        -- normalized enrollment_no without punctuation/spaces for searching values like 1518B.Sc-Phy as 1518BSCPHY
+        COALESCE(regexp_replace(lower(enrollment_no), '[^a-z0-9]+', '', 'g'), '') || ' ' ||
+        -- normalized temp_enroll_no
+        COALESCE(regexp_replace(lower(temp_enroll_no), '[^a-z0-9]+', '', 'g'), '')
+    );
     """,
     
     # Verification
@@ -28,7 +31,8 @@ populate_sqls = [
         COALESCE(second_enrollment_id, '') || ' ' ||
         COALESCE(student_name, '') || ' ' ||
         COALESCE(final_no, '') || ' ' ||
-        COALESCE(pay_rec_no, '')
+        COALESCE(pay_rec_no, '') || ' ' ||
+        COALESCE(regexp_replace(lower(enrollment_no), '[^a-z0-9]+', '', 'g'), '')
     )
     WHERE search_vector IS NULL OR search_vector = ''::tsvector;
     """,
@@ -59,7 +63,8 @@ populate_sqls = [
         COALESCE(course_language, '') || ' ' ||
         COALESCE(dg_address, '') || ' ' ||
         COALESCE(dg_rec_no, '') || ' ' ||
-        COALESCE(seat_last_exam, '')
+        COALESCE(seat_last_exam, '') || ' ' ||
+        COALESCE(regexp_replace(lower(enrollment_no), '[^a-z0-9]+', '', 'g'), '')
     )
     WHERE search_vector IS NULL OR search_vector = ''::tsvector;
     """,
@@ -71,7 +76,8 @@ populate_sqls = [
         COALESCE(enrollment_no, '') || ' ' ||
         COALESCE(student_name, '') || ' ' ||
         COALESCE(CAST(tr_request_no AS TEXT), '') || ' ' ||
-        COALESCE(trn_reqest_ref_no, '')
+        COALESCE(trn_reqest_ref_no, '') || ' ' ||
+        COALESCE(regexp_replace(lower(enrollment_no), '[^a-z0-9]+', '', 'g'), '')
     )
     WHERE search_vector IS NULL OR search_vector = ''::tsvector;
     """,
@@ -84,7 +90,8 @@ populate_sqls = [
         COALESCE(student_name, '') || ' ' ||
         COALESCE(rec_institute_name, '') || ' ' ||
         COALESCE(rec_official_mail, '') || ' ' ||
-        COALESCE(rec_ref_id, '')
+        COALESCE(rec_ref_id, '') || ' ' ||
+        COALESCE(regexp_replace(lower(enrollment_no), '[^a-z0-9]+', '', 'g'), '')
     )
     WHERE search_vector IS NULL OR search_vector = ''::tsvector;
     """,

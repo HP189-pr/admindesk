@@ -496,6 +496,11 @@ class ProvisionalRecordSerializer(serializers.ModelSerializer):
     doc_rec_id = serializers.CharField(write_only=True, required=False, allow_null=True, allow_blank=True)
     # Expose the stored doc_rec_id (string) on read
     doc_rec = serializers.CharField(read_only=True)
+    # Expose related codes/names for UI consumption
+    institute_code = serializers.CharField(source='institute.institute_code', read_only=True, allow_null=True)
+    maincourse_code = serializers.CharField(source='maincourse.course_code', read_only=True, allow_null=True)
+    maincourse_name = serializers.CharField(source='maincourse.course_name', read_only=True, allow_null=True)
+    subcourse_name = serializers.CharField(source='subcourse.subcourse_name', read_only=True, allow_null=True)
     # Allow blank/nullable student_name from uploads
     student_name = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     # Allow binding enrollment using its enrollment_no (slug) when creating via API

@@ -3,8 +3,11 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Q, Sum, Count, Min, Max
+from django.db import models
+from django.db.models import Q, Sum, Count, Min, Max, F, Value
+from django.db.models.functions import Lower, Replace
 from django.core.paginator import Paginator
+import re
 
 from .domain_fees_ledger import StudentFeesLedger
 from .domain_enrollment import Enrollment
@@ -40,30 +43,50 @@ class StudentFeesViewSet(viewsets.ModelViewSet):
             'enrollment',
             'created_by'
         ).all()
+
+        params = getattr(self.request, 'query_params', {}) if hasattr(self, 'request') else {}
+
+        def _norm(val: str | None):
+            return re.sub(r'[^0-9a-z]+', '', str(val).lower()) if val is not None else ''
+        def _with_norm(qs):
+            return qs.annotate(
+                norm_en=Replace(Replace(Replace(Lower(F('enrollment__enrollment_no')), Value(' '), Value('')), Value('.'), Value('')), Value('-'), Value('')),
+                norm_temp=Replace(Replace(Replace(Lower(F('enrollment__temp_enroll_no')), Value(' '), Value('')), Value('.'), Value('')), Value('-'), Value('')),
+            )
         
         # Filter by student number (enrollment_no or temp_enroll_no)
-        student_no = self.request.query_params.get('student_no', None)
+        student_no = None
+        if hasattr(params, 'get'):
+            student_no = params.get('student_no') or params.get('enrollment_no') or params.get('temp_enroll_no')
+        norm_student = _norm(student_no)
         if student_no:
-            student_no = student_no.strip()
-            # Find enrollment by enrollment_no or temp_enroll_no
-            enrollments = Enrollment.objects.filter(
-                Q(enrollment_no=student_no) | Q(temp_enroll_no=student_no)
-            )
-            if enrollments.exists():
-                enrollment = enrollments.first()
+            enrollment = _with_norm(Enrollment.objects.all()).filter(
+                Q(norm_en__contains=norm_student) | Q(norm_temp__contains=norm_student)
+            ).first()
+            if enrollment:
                 queryset = queryset.filter(enrollment=enrollment)
             else:
-                # Return empty queryset if student not found
                 return queryset.none()
+
+        # Free-form search across enrollment_no/temp_enroll_no/receipt_no/term
+        search = params.get('search', '').strip() if hasattr(params, 'get') else ''
+        norm_search = _norm(search)
+        if search:
+            queryset = _with_norm(queryset).filter(
+                Q(norm_en__contains=norm_search) |
+                Q(norm_temp__contains=norm_search) |
+                Q(receipt_no__icontains=search) |
+                Q(term__icontains=search)
+            )
         
         # Filter by term
-        term = self.request.query_params.get('term', None)
+        term = params.get('term', None) if hasattr(params, 'get') else None
         if term:
             queryset = queryset.filter(term__icontains=term.strip())
         
         # Filter by date range
-        start_date = self.request.query_params.get('start_date', None)
-        end_date = self.request.query_params.get('end_date', None)
+        start_date = params.get('start_date', None) if hasattr(params, 'get') else None
+        end_date = params.get('end_date', None) if hasattr(params, 'get') else None
         
         if start_date:
             queryset = queryset.filter(receipt_date__gte=start_date)
@@ -71,7 +94,7 @@ class StudentFeesViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(receipt_date__lte=end_date)
         
         # Filter by receipt number
-        receipt_no = self.request.query_params.get('receipt_no', None)
+        receipt_no = params.get('receipt_no', None) if hasattr(params, 'get') else None
         if receipt_no:
             queryset = queryset.filter(receipt_no__icontains=receipt_no.strip())
         
@@ -163,7 +186,8 @@ class StudentFeesViewSet(viewsets.ModelViewSet):
         - first_payment_date: Earliest receipt date
         - last_payment_date: Latest receipt date
         """
-        student_no = request.query_params.get('student_no', None)
+        params = getattr(request, 'query_params', {}) if hasattr(request, 'query_params') else {}
+        student_no = params.get('student_no', None) if hasattr(params, 'get') else None
         
         if not student_no:
             return Response(
@@ -172,10 +196,18 @@ class StudentFeesViewSet(viewsets.ModelViewSet):
             )
         
         student_no = student_no.strip()
-        
-        # Find enrollment by enrollment_no or temp_enroll_no
-        enrollment = Enrollment.objects.filter(
-            Q(enrollment_no=student_no) | Q(temp_enroll_no=student_no)
+
+        def _norm(val: str | None):
+            return re.sub(r'[^0-9a-z]+', '', str(val).lower()) if val is not None else ''
+
+        norm_student = _norm(student_no)
+
+        # Find enrollment by normalized enrollment_no or temp_enroll_no
+        enrollment = Enrollment.objects.annotate(
+            norm_en=Replace(Replace(Replace(Lower(F('enrollment_no')), Value(' '), Value('')), Value('.'), Value('')), Value('-'), Value('')),
+            norm_temp=Replace(Replace(Replace(Lower(F('temp_enroll_no')), Value(' '), Value('')), Value('.'), Value('')), Value('-'), Value('')),
+        ).filter(
+            Q(norm_en__contains=norm_student) | Q(norm_temp__contains=norm_student)
         ).first()
         
         if not enrollment:
@@ -220,7 +252,8 @@ class StudentFeesViewSet(viewsets.ModelViewSet):
         Returns:
         - List of terms with total amount and count
         """
-        student_no = request.query_params.get('student_no', None)
+        params = getattr(request, 'query_params', {}) if hasattr(request, 'query_params') else {}
+        student_no = params.get('student_no', None) if hasattr(params, 'get') else None
         
         if not student_no:
             return Response(
@@ -229,10 +262,18 @@ class StudentFeesViewSet(viewsets.ModelViewSet):
             )
         
         student_no = student_no.strip()
-        
-        # Find enrollment
-        enrollment = Enrollment.objects.filter(
-            Q(enrollment_no=student_no) | Q(temp_enroll_no=student_no)
+
+        def _norm(val: str | None):
+            return re.sub(r'[^0-9a-z]+', '', str(val).lower()) if val is not None else ''
+
+        norm_student = _norm(student_no)
+
+        # Find enrollment (normalized)
+        enrollment = Enrollment.objects.annotate(
+            norm_en=Replace(Replace(Replace(Lower(F('enrollment_no')), Value(' '), Value('')), Value('.'), Value('')), Value('-'), Value('')),
+            norm_temp=Replace(Replace(Replace(Lower(F('temp_enroll_no')), Value(' '), Value('')), Value('.'), Value('')), Value('-'), Value('')),
+        ).filter(
+            Q(norm_en__contains=norm_student) | Q(norm_temp__contains=norm_student)
         ).first()
         
         if not enrollment:

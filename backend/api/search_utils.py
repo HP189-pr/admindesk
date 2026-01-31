@@ -3,7 +3,8 @@ PostgreSQL Full-Text Search Utilities
 GIN + tsvector for 100× faster search on large datasets
 """
 from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
-from django.db.models import Q, F
+from django.db.models import Q, F, Value
+from django.db.models.functions import Lower, Replace
 from functools import wraps
 
 
@@ -30,6 +31,28 @@ def apply_fts_search(queryset, search_query, search_fields, fallback_fields=None
     # Check if model has search_vector field (FTS enabled)
     model = queryset.model
     has_fts = hasattr(model, 'search_vector') and 'search_vector' in [f.name for f in model._meta.get_fields()]
+
+    # Normalize tokens for enrollment/temp enrollment numbers (remove spaces/dots/hyphens)
+    import re
+    norm_search = re.sub(r'[^0-9a-z]+', '', search_query.lower()) if search_query else ''
+    annotations = {}
+    norm_filters = Q()
+    field_names = {f.name for f in model._meta.get_fields() if hasattr(f, 'name')}
+    if 'enrollment_no' in field_names:
+        annotations['norm_en'] = Replace(Replace(Replace(Lower(F('enrollment_no')), Value(' '), Value('')), Value('.'), Value('')), Value('-'), Value(''))
+        if norm_search:
+            norm_filters |= Q(norm_en__contains=norm_search)
+    if 'temp_enroll_no' in field_names:
+        annotations['norm_temp'] = Replace(Replace(Replace(Lower(F('temp_enroll_no')), Value(' '), Value('')), Value('.'), Value('')), Value('-'), Value(''))
+        if norm_search:
+            norm_filters |= Q(norm_temp__contains=norm_search)
+
+    if annotations:
+        queryset = queryset.annotate(**annotations)
+        if norm_filters:
+            norm_qs = queryset.filter(norm_filters)
+            if norm_qs.exists():
+                return norm_qs
     
     if has_fts:
         # Use PostgreSQL Full-Text Search with prefix matching for IDs/numbers
@@ -45,7 +68,8 @@ def apply_fts_search(queryset, search_query, search_fields, fallback_fields=None
             if not fts_parts:
                 return queryset
             
-            query = SearchQuery(fts_parts, search_type='raw', config='simple')
+            # Use same config as we build vectors with ('english' by default)
+            query = SearchQuery(fts_parts, search_type='raw', config='english')
             
             queryset = queryset.annotate(
                 rank=SearchRank(F('search_vector'), query)

@@ -32,14 +32,14 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
   const detectServiceFromColumns = (cols = []) => {
     try {
       const norm = new Set(cols.map((c) => String(c || '').trim().toLowerCase()));
+      // Prioritize Student Profile before Enrollment because both share enrollment_no
+      if (norm.has('enrollment_no') && (norm.has('gender') || norm.has('abc_id') || norm.has('aadhar_no') || norm.has('photo_uploaded'))) return 'STUDENT_PROFILE';
       if (norm.has('receipt_no') && norm.has('student_no')) return 'STUDENT_FEES';
       if (norm.has('dg_sr_no')) return 'DEGREE';
       if (norm.has('prv_number')) return 'PROVISIONAL';
       if (norm.has('mg_number')) return 'MIGRATION';
       if (norm.has('doc_rec_id') && norm.has('apply_for')) return 'DOCREC';
       if (norm.has('enrollment_no') && norm.has('institute_id')) return 'ENROLLMENT';
-      // Add detection for Student Profile
-      if (norm.has('enrollment_no') && (norm.has('gender') || norm.has('abc_id') || norm.has('aadhar_no') || norm.has('photo_uploaded'))) return 'STUDENT_PROFILE';
       return null;
     } catch (err) {
       console.warn('Service detection failed', err);
@@ -119,7 +119,7 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
   const postWithProgress = (fd, onProgress) => {
     return new Promise((resolve, reject)=>{
       const xhr = new XMLHttpRequest();
-        const url = buildUrl('action=commit&async=1');
+        const url = buildUrl('action=confirm&async=1');
         xhr.open('POST', url, true);
         xhr.withCredentials = true;
         // set Authorization header if token present
@@ -170,8 +170,28 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
       setMessage('Sheets loaded');
       setStep(1);
     }catch(e){
-      console.error('Fetch sheets error', e);
-      setMessage('Fetch sheets failed: ' + (e && e.message ? e.message : String(e)));
+      console.error('Fetch sheets error (client parse)', e);
+      // Server-side fallback: ask backend to read the file and return first sheet name via preview
+      try {
+        const fd = new FormData();
+        fd.append('service', service);
+        fd.append('action', 'preview');
+        fd.append('file', file);
+        if (preferredSheetProp) fd.append('sheet_name', preferredSheetProp);
+        const res = await postGeneric(fd);
+        const data = await res.json();
+        if (res.ok && data && data.sheet) {
+          setSheets([data.sheet]);
+          setSheet(data.sheet);
+          setMessage('Sheets loaded (server fallback)');
+          setStep(1);
+        } else {
+          setMessage('Fetch sheets failed: ' + (data?.detail || res.statusText || 'Unknown error'));
+        }
+      } catch (err) {
+        console.error('Fetch sheets error (server fallback)', err);
+        setMessage('Fetch sheets failed: ' + (err && err.message ? err.message : String(err)));
+      }
     }
   };
 

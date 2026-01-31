@@ -5,6 +5,7 @@ import Login from "./pages/Login";
 import Sidebar from "./Menu/Sidebar";
 import WorkArea from "./pages/WorkArea";
 import ChatBox from "./components/ChatBox";
+import PopupSearch from "./components/popupsearch";
 
 const ProtectedRoute = ({ children }) => {
     const { user, loading } = useAuth();
@@ -38,6 +39,8 @@ const Layout = () => {
                   isChatboxOpen={isChatboxOpen}
                   setSidebarOpen={setSidebarOpen}
                 />
+                                {/* Floating student search stays on every page */}
+                                <PopupSearch />
             </div>
 
             {/* Right spacer to maintain a constant gap to the chat (collapsed/expanded) */}

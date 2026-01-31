@@ -4,7 +4,10 @@ import {
   fetchProvisionals,
   fetchProvisionalsByDocRec,
   saveProvisional,
-  addProvisionalEntry
+  addProvisionalEntry,
+  fetchInstituteCodes,
+  fetchCourseCodes,
+  fetchSubcourseNames
 } from '../services/provisionalservice';
 import { useNavigate } from 'react-router-dom';
 import PageTopbar from "../components/PageTopbar";
@@ -19,6 +22,9 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
   const [loading, setLoading] = useState(false);
   const [q, setQ] = useState("");
   const [currentRow, setCurrentRow] = useState(null);
+  const [instOptions, setInstOptions] = useState([]);
+  const [courseOptions, setCourseOptions] = useState([]);
+  const [subcourseOptions, setSubcourseOptions] = useState([]);
 
   const [form, setForm] = useState({
     id: null,
@@ -29,6 +35,7 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
     institute: "",
     subcourse: "",
     maincourse: "",
+    prv_degree_name: "",
     class_obtain: "",
     prv_number: "",
     prv_date: "",
@@ -62,6 +69,17 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
 
   useEffect(()=>{ loadList(); }, []);
 
+  // Seed suggestion lists (lightweight fetch)
+  useEffect(() => {
+    (async () => {
+      try {
+        setInstOptions(await fetchInstituteCodes());
+        setCourseOptions(await fetchCourseCodes());
+        setSubcourseOptions(await fetchSubcourseNames());
+      } catch (e) { console.error(e); }
+    })();
+  }, []);
+
   const setF = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
 
@@ -77,9 +95,9 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
           ...f,
           enrollment: item.enrollment_no,
           student_name: item.student_name || "",
-          institute: item.institute?.id || item.institute || "",
-          subcourse: item.subcourse?.id || item.subcourse || "",
-          maincourse: item.maincourse?.id || item.maincourse || "",
+          institute: item.institute?.institute_code || item.institute?.id || item.institute || "",
+          subcourse: item.subcourse?.subcourse_name || item.subcourse?.id || item.subcourse || "",
+          maincourse: item.maincourse?.course_code || item.maincourse?.id || item.maincourse || "",
         }));
       }
     } catch {}
@@ -108,6 +126,24 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
       alert(e.message || 'Failed');
     }
   };
+
+  // Sort list by PRV number (descending). Keep missing numbers at the bottom.
+  const sortedList = useMemo(() => {
+    const parseNum = (val) => {
+      const n = Number(String(val ?? '').replace(/[^0-9.-]/g, ''));
+      return Number.isFinite(n) ? n : null;
+    };
+    return [...list].sort((a, b) => {
+      const aNum = parseNum(a.prv_number);
+      const bNum = parseNum(b.prv_number);
+      if (aNum !== null || bNum !== null) {
+        if (aNum === null) return 1;
+        if (bNum === null) return -1;
+        return bNum - aNum; // higher PRV first
+      }
+      return String(b.prv_number || '').localeCompare(String(a.prv_number || ''));
+    });
+  }, [list]);
 
   return (
   <div className="p-4 md:p-6 space-y-4 h-full bg-slate-100">
@@ -140,20 +176,39 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
               <input className="w-full border rounded-lg p-2" value={form.student_name} onChange={(e)=>setF('student_name', e.target.value)} />
             </div>
             <div>
-              <label className="text-sm">Institute Id</label>
-              <input className="w-full border rounded-lg p-2" value={form.institute} onChange={(e)=>setF('institute', e.target.value)} />
+              <label className="text-sm">Institute Code</label>
+              <input list="inst-codes" className="w-full border rounded-lg p-2" placeholder="INST001" value={form.institute} onChange={(e)=>setF('institute', e.target.value)} />
+              <datalist id="inst-codes">
+                {instOptions.map((i)=> (
+                  <option key={i.institute_code || i.id} value={i.institute_code || i.institute_id || ''}>{i.institute_name || ''}</option>
+                ))}
+              </datalist>
             </div>
             <div>
-              <label className="text-sm">Main Course</label>
-              <input className="w-full border rounded-lg p-2" value={form.maincourse} onChange={(e)=>setF('maincourse', e.target.value)} />
+              <label className="text-sm">Course Code</label>
+              <input list="course-codes" className="w-full border rounded-lg p-2" placeholder="BSC-CH" value={form.maincourse} onChange={(e)=>setF('maincourse', e.target.value)} />
+              <datalist id="course-codes">
+                {courseOptions.map((c)=> (
+                  <option key={c.maincourse_id || c.id} value={c.course_code || c.maincourse_id || ''}>{c.course_name || ''}</option>
+                ))}
+              </datalist>
             </div>
             <div>
-              <label className="text-sm">Sub Course</label>
-              <input className="w-full border rounded-lg p-2" value={form.subcourse} onChange={(e)=>setF('subcourse', e.target.value)} />
+              <label className="text-sm">Subcourse Name</label>
+              <input list="subcourse-names" className="w-full border rounded-lg p-2" placeholder="Chemistry" value={form.subcourse} onChange={(e)=>setF('subcourse', e.target.value)} />
+              <datalist id="subcourse-names">
+                {subcourseOptions.map((s)=> (
+                  <option key={s.subcourse_id || s.id} value={s.subcourse_name || s.subcourse_id || ''}>{s.subcourse_id || ''}</option>
+                ))}
+              </datalist>
             </div>
             <div>
               <label className="text-sm">Class Obtain</label>
               <input className="w-full border rounded-lg p-2" value={form.class_obtain} onChange={(e)=>setF('class_obtain', e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm">Degree Name</label>
+              <input className="w-full border rounded-lg p-2" placeholder="Bachelor of Science" value={form.prv_degree_name} onChange={(e)=>setF('prv_degree_name', e.target.value)} />
             </div>
             <div>
               <label className="text-sm">PRV Number</label>
@@ -206,10 +261,11 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
                 <th className="text-left py-2 px-3">Doc Rec</th>
                 <th className="text-left py-2 px-3">Enroll</th>
                 <th className="text-left py-2 px-3">Name</th>
-                <th className="text-left py-2 px-3">Inst</th>
-                <th className="text-left py-2 px-3">Main</th>
-                <th className="text-left py-2 px-3">Sub</th>
+                <th className="text-left py-2 px-3">Inst Code</th>
+                <th className="text-left py-2 px-3">Course Code</th>
+                <th className="text-left py-2 px-3">Subcourse</th>
                 <th className="text-left py-2 px-3">Class</th>
+                <th className="text-left py-2 px-3">Degree</th>
                 <th className="text-left py-2 px-3">PRV No</th>
                 <th className="text-left py-2 px-3">PRV Date</th>
                 <th className="text-left py-2 px-3">Pass Year</th>
@@ -218,10 +274,10 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
               </tr>
             </thead>
             <tbody>
-              {list.length === 0 && !loading && (
+              {sortedList.length === 0 && !loading && (
                 <tr><td colSpan={12} className="py-6 text-center text-gray-500">No records</td></tr>
               )}
-              {list.map((r)=> (
+              {sortedList.map((r)=> (
                 <tr key={r.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={()=>{
                   setCurrentRow(r);
                   setSelectedTopbarMenu('✏️ Edit');
@@ -231,10 +287,11 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
                     doc_rec: r.doc_rec || r.doc_rec_id || '',
                     enrollment: r.enrollment || r.enrollment_no || '',
                     student_name: r.student_name || '',
-                    institute: r.institute || r.institute_id || '',
-                    subcourse: r.subcourse || r.subcourse_id || '',
-                    maincourse: r.maincourse || r.maincourse_id || '',
+                    institute: r.institute_code || r.institute || r.institute_id || '',
+                    subcourse: r.subcourse_name || r.subcourse || r.subcourse_id || '',
+                    maincourse: r.maincourse_code || r.maincourse || r.maincourse_id || '',
                     class_obtain: r.class_obtain || '',
+                    prv_degree_name: r.prv_degree_name || '',
                     prv_number: r.prv_number || '',
                     prv_date: r.prv_date || '',
                     passing_year: r.passing_year || '',
@@ -246,10 +303,11 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
                   <td className="py-2 px-3">{r.doc_rec || r.doc_rec_id || '-'}</td>
                   <td className="py-2 px-3">{r.enrollment || r.enrollment_no || '-'}</td>
                   <td className="py-2 px-3">{r.student_name || '-'}</td>
-                  <td className="py-2 px-3">{r.institute || r.institute_id || '-'}</td>
-                  <td className="py-2 px-3">{r.maincourse || r.maincourse_id || '-'}</td>
-                  <td className="py-2 px-3">{r.subcourse || r.subcourse_id || '-'}</td>
+                  <td className="py-2 px-3">{r.institute_code || r.institute || r.institute_id || '-'}</td>
+                  <td className="py-2 px-3">{r.maincourse_code || r.maincourse || r.maincourse_id || '-'}</td>
+                  <td className="py-2 px-3">{r.subcourse_name || r.subcourse || r.subcourse_id || '-'}</td>
                   <td className="py-2 px-3">{r.class_obtain || '-'}</td>
+                  <td className="py-2 px-3">{r.prv_degree_name || '-'}</td>
                   <td className="py-2 px-3">{r.prv_number || '-'}</td>
                   <td className="py-2 px-3">{r.prv_date || '-'}</td>
                   <td className="py-2 px-3">{r.passing_year || '-'}</td>

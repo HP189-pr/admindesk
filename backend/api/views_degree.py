@@ -3,13 +3,16 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Q, Count, Subquery, OuterRef
+from django.db import models
+from django.db.models import Q, Count, Subquery, OuterRef, Value
+from django.db.models.functions import Lower, Replace
 from django.core.paginator import Paginator
 import csv
 import io
 import uuid
 import os
 import datetime
+import re
 from django.core.cache import cache
 from django.conf import settings
 
@@ -77,30 +80,43 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
         # Search with PostgreSQL FTS (100× faster)
         search = self.request.query_params.get('search', None)
         if search:
-            queryset = apply_fts_search(
-                queryset=queryset,
-                search_query=search,
-                search_fields=['search_vector'],  # FTS field
-                fallback_fields=[
-                    'enrollment_no',
-                    'student_name_dg',
-                    'dg_sr_no',
-                    'degree_name',
-                    'institute_name_dg',
-                    'specialisation',
-                    'class_obtain',
-                    'dg_contact',
-                    'course_language',
-                    'dg_address',
-                    'dg_rec_no',
-                    'seat_last_exam',
-                ]
+            norm = re.sub(r'[^0-9a-z]+', '', search.lower())
+
+            # Fast path: exact/contains match on normalized enrollment_no to catch temp/enrollment tokens
+            queryset = queryset.annotate(
+                norm_en=Replace(Replace(Replace(Lower(models.F('enrollment_no')), Value(' '), Value('')), Value('.'), Value('')), Value('-'), Value('')),
             )
+            norm_match = queryset.filter(norm_en__contains=norm) if norm else queryset.none()
+            if norm and norm_match.exists():
+                queryset = norm_match
+            else:
+                queryset = apply_fts_search(
+                    queryset=queryset,
+                    search_query=search,
+                    search_fields=['search_vector'],  # FTS field
+                    fallback_fields=[
+                        'enrollment_no',
+                        'student_name_dg',
+                        'dg_sr_no',
+                        'degree_name',
+                        'institute_name_dg',
+                        'specialisation',
+                        'class_obtain',
+                        'dg_contact',
+                        'course_language',
+                        'dg_address',
+                        'dg_rec_no',
+                        'seat_last_exam',
+                    ]
+                )
         
         # Filter by enrollment
         enrollment = self.request.query_params.get('enrollment_no', None)
         if enrollment:
-            queryset = queryset.filter(enrollment_no__iexact=enrollment)
+            norm_en = re.sub(r'[^0-9a-z]+', '', str(enrollment).lower())
+            queryset = queryset.annotate(
+                norm_en=Replace(Replace(Replace(Lower(models.F('enrollment_no')), Value(' '), Value('')), Value('.'), Value('')), Value('-'), Value('')),
+            ).filter(norm_en__contains=norm_en)
         
         # Filter by convocation
         convocation_no = self.request.query_params.get('convocation_no', None)

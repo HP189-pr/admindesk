@@ -47,7 +47,6 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
     const [appliedConvocation, setAppliedConvocation] = useState('');
     const [appliedExamYear, setAppliedExamYear] = useState('');
     const [appliedConvocationMonth, setAppliedConvocationMonth] = useState('');
-    const [hasSearched, setHasSearched] = useState(false);
     const [convocationList, setConvocationList] = useState([]);
     const [convocationLoading, setConvocationLoading] = useState(false);
     const [convocationSearchTerm, setConvocationSearchTerm] = useState('');
@@ -93,9 +92,8 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
     }, []);
 
     useEffect(() => {
-        if (!hasSearched) return;
         fetchDegrees();
-    }, [currentPage, pageSize, appliedSearchTerm, appliedConvocation, appliedExamYear, hasSearched]);
+    }, [currentPage, pageSize, appliedSearchTerm, appliedConvocation, appliedExamYear, appliedConvocationMonth]);
 
     useEffect(() => {
         if (selectedMenu === '🎖 Convocation') {
@@ -168,6 +166,23 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
     const handleConvocationFiltersApply = () => {
         fetchConvocationList();
     };
+
+    // Auto-apply filters with a light debounce (no button needed)
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setAppliedSearchTerm(searchTerm.trim());
+            setAppliedConvocation(filterConvocation);
+            setAppliedExamYear(filterExamYear);
+            setAppliedConvocationMonth(filterConvocationMonth);
+            setCurrentPage(1);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchTerm, filterConvocation, filterExamYear, filterConvocationMonth]);
+
+    const hasActiveFilters = useMemo(
+        () => Boolean(searchTerm || filterConvocation || filterExamYear || filterConvocationMonth),
+        [searchTerm, filterConvocation, filterExamYear, filterConvocationMonth]
+    );
 
     const handleConvocationFiltersReset = () => {
         setConvocationSearchTerm('');
@@ -248,15 +263,6 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
         }
     };
 
-    const handleSearchDegrees = () => {
-        setAppliedSearchTerm(searchTerm.trim());
-        setAppliedConvocation(filterConvocation);
-        setAppliedExamYear(filterExamYear);
-        setAppliedConvocationMonth(filterConvocationMonth);
-        setCurrentPage(1);
-        setHasSearched(true);
-    };
-
     const handleClearSearch = () => {
         setSearchTerm('');
         setFilterConvocation('');
@@ -270,7 +276,6 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
         setTotalPages(1);
         setTotalCount(0);
         setCurrentPage(1);
-        setHasSearched(false);
     };
 
     const handleSubmit = async (e) => {
@@ -619,24 +624,22 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
                                         />
                                     </div>
                                 </div>
-                                <div className="flex flex-wrap justify-end gap-3">
-                                    {hasSearched && (
-                                        <button
-                                            type="button"
-                                            onClick={handleClearSearch}
-                                            className="px-4 py-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-indigo-50"
-                                        >
-                                            Clear
-                                        </button>
-                                    )}
-                                    <button
-                                        type="button"
-                                        onClick={handleSearchDegrees}
-                                        className="px-5 py-2.5 bg-[#5d4bff] text-white rounded-xl shadow hover:bg-[#4b3de6] disabled:bg-gray-400 disabled:cursor-not-allowed"
-                                        disabled={loading}
-                                    >
-                                        Search Degrees
-                                    </button>
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <span className="text-sm text-slate-500">Results refresh automatically when you type or change filters.</span>
+                                    <div className="flex items-center gap-3">
+                                        {hasActiveFilters && (
+                                            <button
+                                                type="button"
+                                                onClick={handleClearSearch}
+                                                className="px-4 py-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-indigo-50"
+                                            >
+                                                Clear
+                                            </button>
+                                        )}
+                                        <span className="text-sm text-slate-500">
+                                            {loading ? <span className="text-indigo-600 animate-pulse">Loading…</span> : 'Auto-refreshed'}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         )}
