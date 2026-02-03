@@ -1,6 +1,6 @@
 import API from '../api/axiosInstance';
 
-const BASE_PATH = '/mail-requests/';
+const BASE_PATH = '/api/mail-requests/';
 
 const normalizeResponseArray = (data) => {
   if (!data) return [];

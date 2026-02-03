@@ -143,7 +143,7 @@ const LeaveCalendar = ({ user }) => {
         return;
       }
       try {
-        const response = await axios.get('/empprofile/');
+        const response = await axios.get('/api/empprofile/');
         if (!cancelled) {
           setProfiles(normalize(response.data));
           setError('');
@@ -200,7 +200,7 @@ const LeaveCalendar = ({ user }) => {
       setError('');
       setSelectedDate('');
       try {
-        const response = await axios.get('/reports/leave-calendar/', {
+        const response = await axios.get('/api/reports/leave-calendar/', {
           params: { emp_id: empId, year },
         });
         setCalendarData(response.data.calendar || {});

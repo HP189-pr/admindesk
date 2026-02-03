@@ -39,6 +39,8 @@ try:
     )
 
     from .views_admin import UploadDocRecView
+    from django.http import JsonResponse
+
 
     # EMPLOYEE / LEAVE MANAGEMENT (OPTION A) - main views
     from .views_emp import (
@@ -117,6 +119,8 @@ try:
     urlpatterns = [
 
         # Router URLs
+      
+        path("health/", lambda r: JsonResponse({"status": "ok"})),
         path("", include(router.urls)),
 
         # JWT LOGIN

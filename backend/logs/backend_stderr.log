@@ -1,0 +1,418 @@
+INFO:waitress:Serving on http://127.0.0.1:8000
+INFO:waitress:Serving on http://127.0.0.1:8000
+INFO:waitress:Serving on http://127.0.0.1:8000
+INFO:waitress:Serving on http://127.0.0.1:8000
+INFO:waitress:Serving on http://127.0.0.1:8000
+INFO:waitress:Serving on http://127.0.0.1:8000
+Not Found: /
+WARNING:django.request:Not Found: /
+Not Found: /userlogin/
+WARNING:django.request:Not Found: /userlogin/
+Not Found: /userlogin/
+WARNING:django.request:Not Found: /userlogin/
+Not Found: /userlogin/
+WARNING:django.request:Not Found: /userlogin/
+Not Found: /userlogin/
+WARNING:django.request:Not Found: /userlogin/
+INFO:waitress:Serving on http://127.0.0.1:8000
+Not Found: /userlogin/
+WARNING:django.request:Not Found: /userlogin/
+Not Found: /userlogin/
+WARNING:django.request:Not Found: /userlogin/
+INFO:waitress:Serving on http://127.0.0.1:8000
+Not Found: /userlogin/
+WARNING:django.request:Not Found: /userlogin/
+Not Found: /
+WARNING:django.request:Not Found: /
+Not Found: /
+WARNING:django.request:Not Found: /
+Not Found: /
+WARNING:django.request:Not Found: /
+Not Found: /
+WARNING:django.request:Not Found: /
+Not Found: /
+WARNING:django.request:Not Found: /
+INFO:waitress:Serving on http://127.0.0.1:8000
+Not Found: /token/verify/
+WARNING:django.request:Not Found: /token/verify/
+Not Found: /token/refresh/
+WARNING:django.request:Not Found: /token/refresh/
+Not Found: /token/verify/
+WARNING:django.request:Not Found: /token/verify/
+Not Found: /token/refresh/
+WARNING:django.request:Not Found: /token/refresh/
+Not Found: /token/verify/
+WARNING:django.request:Not Found: /token/verify/
+Not Found: /token/refresh/
+WARNING:django.request:Not Found: /token/refresh/
+Not Found: /token/verify/
+WARNING:django.request:Not Found: /token/verify/
+Not Found: /token/refresh/
+WARNING:django.request:Not Found: /token/refresh/
+Not Found: /token/verify/
+WARNING:django.request:Not Found: /token/verify/
+Not Found: /token/refresh/
+WARNING:django.request:Not Found: /token/refresh/
+Not Found: /token/verify/
+WARNING:django.request:Not Found: /token/verify/
+Not Found: /token/refresh/
+WARNING:django.request:Not Found: /token/refresh/
+Not Found: /token/verify/
+WARNING:django.request:Not Found: /token/verify/
+Not Found: /token/refresh/
+WARNING:django.request:Not Found: /token/refresh/
+Not Found: /token/verify/
+WARNING:django.request:Not Found: /token/verify/
+Not Found: /token/refresh/
+WARNING:django.request:Not Found: /token/refresh/
+Not Found: /token/verify/
+WARNING:django.request:Not Found: /token/verify/
+Not Found: /token/refresh/
+WARNING:django.request:Not Found: /token/refresh/
+Not Found: /token/verify/
+WARNING:django.request:Not Found: /token/verify/
+Not Found: /token/refresh/
+WARNING:django.request:Not Found: /token/refresh/
+Not Found: /backlogin/
+WARNING:django.request:Not Found: /backlogin/
+Not Found: /backlogin/
+WARNING:django.request:Not Found: /backlogin/
+Not Found: /backlogin/
+WARNING:django.request:Not Found: /backlogin/
+Not Found: /backlogin/
+WARNING:django.request:Not Found: /backlogin/
+Not Found: /backlogin/
+WARNING:django.request:Not Found: /backlogin/
+Not Found: /backlogin/
+WARNING:django.request:Not Found: /backlogin/
+Not Found: /api/institute/
+WARNING:django.request:Not Found: /api/institute/
+Not Found: /
+WARNING:django.request:Not Found: /
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+Not Found: /
+WARNING:django.request:Not Found: /
+Not Found: /
+WARNING:django.request:Not Found: /
+Not Found: /
+WARNING:django.request:Not Found: /
+Not Found: /
+WARNING:django.request:Not Found: /
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /
+WARNING:django.request:Not Found: /
+Not Found: /api/api/convocations/list_all/
+WARNING:django.request:Not Found: /api/api/convocations/list_all/
+Not Found: /api/api/degrees/
+WARNING:django.request:Not Found: /api/api/degrees/
+Not Found: /api/api/convocations/list_all/
+WARNING:django.request:Not Found: /api/api/convocations/list_all/
+Not Found: /api/api/degrees/
+WARNING:django.request:Not Found: /api/api/degrees/
+Not Found: /api/api/degrees/
+WARNING:django.request:Not Found: /api/api/degrees/
+Not Found: /api/api/degrees/
+WARNING:django.request:Not Found: /api/api/degrees/
+Not Found: /api/api/convocations/list_all/
+WARNING:django.request:Not Found: /api/api/convocations/list_all/
+Not Found: /api/api/degrees/
+WARNING:django.request:Not Found: /api/api/degrees/
+Not Found: /api/api/convocations/list_all/
+WARNING:django.request:Not Found: /api/api/convocations/list_all/
+Not Found: /api/api/degrees/
+WARNING:django.request:Not Found: /api/api/degrees/
+Not Found: /api/api/degrees/
+WARNING:django.request:Not Found: /api/api/degrees/
+Not Found: /api/api/degrees/
+WARNING:django.request:Not Found: /api/api/degrees/
+Not Found: /api/api/degrees/
+WARNING:django.request:Not Found: /api/api/degrees/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+Not Found: /api/api/convocations/list_all/
+WARNING:django.request:Not Found: /api/api/convocations/list_all/
+Not Found: /api/api/degrees/
+WARNING:django.request:Not Found: /api/api/degrees/
+Not Found: /api/api/degrees/
+WARNING:django.request:Not Found: /api/api/degrees/
+Not Found: /api/api/convocations/list_all/
+WARNING:django.request:Not Found: /api/api/convocations/list_all/
+Not Found: /api/api/degrees/
+WARNING:django.request:Not Found: /api/api/degrees/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /api/institute/
+WARNING:django.request:Not Found: /api/institute/
+Not Found: /api/institute/
+WARNING:django.request:Not Found: /api/institute/
+Unauthorized: /api/convocations/list_all/
+WARNING:django.request:Unauthorized: /api/convocations/list_all/
+Unauthorized: /api/degrees/
+WARNING:django.request:Unauthorized: /api/degrees/
+Unauthorized: /api/convocations/list_all/
+WARNING:django.request:Unauthorized: /api/convocations/list_all/
+Unauthorized: /api/degrees/
+WARNING:django.request:Unauthorized: /api/degrees/
+Unauthorized: /api/degrees/
+WARNING:django.request:Unauthorized: /api/degrees/
+Unauthorized: /api/degrees/
+WARNING:django.request:Unauthorized: /api/degrees/
+Unauthorized: /api/degrees/
+WARNING:django.request:Unauthorized: /api/degrees/
+Unauthorized: /api/degrees/
+WARNING:django.request:Unauthorized: /api/degrees/
+Unauthorized: /api/degrees/
+WARNING:django.request:Unauthorized: /api/degrees/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /api/institute/
+WARNING:django.request:Not Found: /api/institute/
+Not Found: /api/institute/
+WARNING:django.request:Not Found: /api/institute/
+Not Found: /api/institute/
+WARNING:django.request:Not Found: /api/institute/
+Not Found: /api/institute/
+WARNING:django.request:Not Found: /api/institute/
+Not Found: /api/mainbranches/
+WARNING:django.request:Not Found: /api/mainbranches/
+Not Found: /api/mainbranches/
+WARNING:django.request:Not Found: /api/mainbranches/
+Not Found: /api/mainbranches/
+WARNING:django.request:Not Found: /api/mainbranches/
+Not Found: /api/mainbranches/
+WARNING:django.request:Not Found: /api/mainbranches/
+Not Found: /api/mainbranches/
+WARNING:django.request:Not Found: /api/mainbranches/
+Not Found: /api/institute/
+WARNING:django.request:Not Found: /api/institute/
+Not Found: /api/institute/
+WARNING:django.request:Not Found: /api/institute/
+Not Found: /api/institute/
+WARNING:django.request:Not Found: /api/institute/
+Not Found: /api/institute/
+WARNING:django.request:Not Found: /api/institute/
+Not Found: /api/institute/
+WARNING:django.request:Not Found: /api/institute/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /api/institute/
+WARNING:django.request:Not Found: /api/institute/
+Not Found: /api/institute/
+WARNING:django.request:Not Found: /api/institute/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /api/institute/
+WARNING:django.request:Not Found: /api/institute/
+Not Found: /api/institute/
+WARNING:django.request:Not Found: /api/institute/
+Not Found: /api/institute/
+WARNING:django.request:Not Found: /api/institute/
+Not Found: /api/institute/
+WARNING:django.request:Not Found: /api/institute/
+Not Found: /api/institute/
+WARNING:django.request:Not Found: /api/institute/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+Method Not Allowed: /api/backlogin/
+WARNING:django.request:Method Not Allowed: /api/backlogin/
+Method Not Allowed: /api/backlogin/
+WARNING:django.request:Method Not Allowed: /api/backlogin/
+Method Not Allowed: /api/backlogin/
+WARNING:django.request:Method Not Allowed: /api/backlogin/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+Unauthorized: /api/migration/
+WARNING:django.request:Unauthorized: /api/migration/
+Unauthorized: /api/verification/
+WARNING:waitress.queue:Task queue depth is 1
+Unauthorized: /api/provisional/
+WARNING:django.request:Unauthorized: /api/verification/
+Unauthorized: /api/dashboard-preferences/
+WARNING:django.request:Unauthorized: /api/provisional/
+WARNING:django.request:Unauthorized: /api/dashboard-preferences/
+Unauthorized: /api/inst-verification-main/
+WARNING:django.request:Unauthorized: /api/inst-verification-main/
+Unauthorized: /api/migration/
+WARNING:django.request:Unauthorized: /api/migration/
+Unauthorized: /api/verification/
+WARNING:django.request:Unauthorized: /api/verification/
+Unauthorized: /api/dashboard-preferences/
+Unauthorized: /api/provisional/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:django.request:Unauthorized: /api/dashboard-preferences/
+WARNING:django.request:Unauthorized: /api/provisional/
+Unauthorized: /api/inst-verification-main/
+WARNING:django.request:Unauthorized: /api/inst-verification-main/
+Unauthorized: /api/dashboard-preferences/
+WARNING:django.request:Unauthorized: /api/dashboard-preferences/
+Unauthorized: /api/dashboard-preferences/
+WARNING:django.request:Unauthorized: /api/dashboard-preferences/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:api.views_auth:Error deleting old profile picture: [WinError 32] The process cannot access the file because it is being used by another process: 'E:\\admindesk\\backend\\media\\profile_pictures/hpadmin_1762232238.jpg'
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+Internal Server Error: /api/student-search/search/
+ERROR:django.request:Internal Server Error: /api/student-search/search/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+Not Found: /
+WARNING:django.request:Not Found: /
+Not Found: /favicon.ico
+WARNING:django.request:Not Found: /favicon.ico
+INFO:waitress:Serving on http://127.0.0.1:8000
+Unauthorized: /api/token/verify/
+WARNING:django.request:Unauthorized: /api/token/verify/
+Unauthorized: /api/token/verify/
+WARNING:django.request:Unauthorized: /api/token/verify/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1

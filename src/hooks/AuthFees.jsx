@@ -1,18 +1,38 @@
+/**
+ * AuthFees.jsx
+ * Permission gate for Fees module (Cash Register / Fee Type / Student Fees)
+ * Works in DEV (3000) + PROD (8081)
+ */
 import React, { useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
+import API from '../api/axiosInstance';
+
 import CashRegister from '../pages/CashRegister';
 import FeeTypeMaster from '../pages/FeeTypeMaster';
 import StudentFees from '../pages/StudentFees';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
-const DEFAULT_RIGHTS = { can_view: false, can_create: false, can_edit: false, can_delete: false };
-const FULL_RIGHTS = { can_view: true, can_create: true, can_edit: true, can_delete: true };
+/* ==================== CONSTANTS ==================== */
+
+const DEFAULT_RIGHTS = {
+  can_view: false,
+  can_create: false,
+  can_edit: false,
+  can_delete: false,
+};
+
+const FULL_RIGHTS = {
+  can_view: true,
+  can_create: true,
+  can_edit: true,
+  can_delete: true,
+};
 
 const MENU_KEYWORDS = {
   'cash-register': ['cash register', 'daily register'],
   'fee-type-master': ['fee type master', 'fee type', 'fee master'],
   'student-fees': ['student fees', 'fees ledger', 'fee ledger'],
 };
+
+/* ==================== UI STATES ==================== */
 
 const AccessDenied = ({ message }) => (
   <div className="flex min-h-screen items-center justify-center bg-gray-50">
@@ -42,6 +62,8 @@ const LoadingState = () => (
   </div>
 );
 
+/* ==================== MAIN COMPONENT ==================== */
+
 const AuthFees = ({ view = 'cash-register' }) => {
   const [rights, setRights] = useState(DEFAULT_RIGHTS);
   const [loading, setLoading] = useState(true);
@@ -53,57 +75,60 @@ const AuthFees = ({ view = 'cash-register' }) => {
     const checkPermissions = async () => {
       setLoading(true);
       setError('');
+
       try {
         const token = localStorage.getItem('access_token');
         if (!token) {
           setError('Please login to continue.');
           setRights(DEFAULT_RIGHTS);
-          setLoading(false);
           return;
         }
 
+        // 🔹 Admin shortcut
         const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-        if (storedUser?.is_admin) {
+        if (storedUser?.is_admin || storedUser?.is_superuser) {
           setRights(FULL_RIGHTS);
-          setLoading(false);
           return;
         }
 
-        const response = await axios.get(`${API_BASE_URL}/api/my-navigation/`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
+        // 🔹 Fetch navigation using RELATIVE PATH
+        const response = await API.get('/api/my-navigation/');
         const modules = response.data?.modules || [];
-        const financeModule = modules.find((mod) => (mod.name || '').toLowerCase().includes('accounts'));
+
+        const financeModule = modules.find((mod) =>
+          (mod.name || '').toLowerCase().includes('accounts')
+        );
 
         if (!financeModule) {
+          setError('Accounts & Finance module permissions are not configured.');
           setRights(DEFAULT_RIGHTS);
-          setError('Accounts & Finance module permissions are not configured for this user.');
-          setLoading(false);
           return;
         }
 
         let resolvedRights = DEFAULT_RIGHTS;
+
         for (const menu of financeModule.menus || []) {
           const menuName = (menu.name || '').toLowerCase();
           if (menuKeys.some((keyword) => menuName.includes(keyword))) {
             resolvedRights = {
-              can_view: Boolean(menu.rights?.can_view || menu.rights?.view),
-              can_create: Boolean(menu.rights?.can_create || menu.rights?.add),
-              can_edit: Boolean(menu.rights?.can_edit || menu.rights?.edit),
-              can_delete: Boolean(menu.rights?.can_delete || menu.rights?.delete),
+              can_view: !!(menu.rights?.can_view ?? menu.rights?.view),
+              can_create: !!(menu.rights?.can_create ?? menu.rights?.add),
+              can_edit: !!(menu.rights?.can_edit ?? menu.rights?.edit),
+              can_delete: !!(menu.rights?.can_delete ?? menu.rights?.delete),
             };
             break;
           }
         }
 
         setRights(resolvedRights);
+
         if (!resolvedRights.can_view) {
           setError('You do not have permission to access this screen.');
         }
       } catch (err) {
-        setError('Failed to verify permissions. Please try again.');
+        console.error('AuthFees permission error:', err);
         setRights(DEFAULT_RIGHTS);
+        setError('Failed to verify permissions. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -112,9 +137,9 @@ const AuthFees = ({ view = 'cash-register' }) => {
     checkPermissions();
   }, [menuKeys]);
 
-  if (loading) {
-    return <LoadingState />;
-  }
+  /* ==================== RENDER ==================== */
+
+  if (loading) return <LoadingState />;
 
   if (!rights.can_view) {
     return <AccessDenied message={error || 'You do not have permission to view this page.'} />;
@@ -124,8 +149,8 @@ const AuthFees = ({ view = 'cash-register' }) => {
     view === 'fee-type-master'
       ? FeeTypeMaster
       : view === 'student-fees'
-        ? StudentFees
-        : CashRegister;
+      ? StudentFees
+      : CashRegister;
 
   return <PageComponent rights={rights} />;
 };

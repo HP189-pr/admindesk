@@ -44,7 +44,12 @@ SECRET_KEY = 'django-insecure-0x0bwjij$1%19z)@kld_2l3(wx3j*slrp)d6=0dfw=jd&3&sir
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '160.160.109.147', '*']
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    'ksvoffice',
+    '160.160.160.130',   # your LAN IP
+]
 
 # Application definition
 
@@ -189,15 +194,39 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS settings
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # React Frontend
+    "http://localhost:3000",  # React Frontend (Dev)
     "http://127.0.0.1:3000",  # React Alternative URL
     "http://localhost:5173",  # Vite default
     "http://127.0.0.1:5173",  # Vite alt
     "http://localhost:8000",  # Django backend self
     "http://127.0.0.1:8000",  # Django backend alt
+    "http://localhost:8081",  # Production build preview
+    "http://127.0.0.1:8081",  # Production build alt
+
+    "http://ksvoffice",
+    "http://160.160.160.130",
 ]
 
 CORS_ALLOW_CREDENTIALS = True  # Allow credentials (cookies, sessions)
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
 
 # CSRF trusted origins for local dev
 CSRF_TRUSTED_ORIGINS = [
@@ -207,6 +236,10 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
+    "http://localhost:8081",
+    "http://127.0.0.1:8081",
+    "http://ksvoffice",
+    "http://160.160.160.130"
 ]
 
 # REST framework settings (leave settings dict in place; it's safe even if package absent)
@@ -276,9 +309,10 @@ AUTH_USER_MODEL = 'auth.User'  # Django's default User model
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',  # Default Django model backend
 ]
-
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'http')
 # Optional: Set up Admin credentials or further configurations here if needed
 
 # Admin Panel secondary password (not the user password)
 # Configure in environment variable ADMIN_PANEL_SECRET. If not set, admin panel verification will fail safely.
 ADMIN_PANEL_SECRET = os.getenv("ADMIN_PANEL_SECRET")
+

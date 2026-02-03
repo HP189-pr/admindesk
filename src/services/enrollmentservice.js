@@ -1,8 +1,8 @@
 import axios from 'axios';
 
-// Use relative baseURL to leverage Vite proxy (/api -> Django) and avoid CORS issues
+// Relative URL - works with Vite proxy (dev) and nginx proxy (production)
 const api = axios.create({
-    baseURL: `/api/enrollments`,
+    baseURL: '/api/enrollments',
     headers: { 'Content-Type': 'application/json' }
 });
 

@@ -37,7 +37,7 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
   useEffect(() => {
     (async () => {
       try {
-        const r = await axios.get('/empprofile/');
+        const r = await axios.get('/api/empprofile/');
         setProfiles(normalize(r.data));
       } catch (e) {
         setProfiles([]);
@@ -55,7 +55,7 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
     const load = async () => {
       setLoading(true);
       try {
-        const r2 = await axios.get('/leave-report/all-employees-balance/', {
+        const r2 = await axios.get('/api/leave-report/all-employees-balance/', {
           params: { period_id: selectedPeriod }
         });
         setComputedReport(r2.data);

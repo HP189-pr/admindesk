@@ -79,14 +79,14 @@ function EmpLeavePage() {
 
   // Load leave types
   useEffect(() => {
-    axios.get('/leavetype/')
+    axios.get('/api/leavetype/')
       .then(r => setLeaveTypes(normalize(r.data)))
       .catch(() => setLeaveTypes([]));
   }, []);
 
   // Load periods (auto-select active if present)
   useEffect(() => {
-    axios.get('/leave-periods/')
+    axios.get('/api/leave-periods/')
       .then(r => {
         const pd = normalize(r.data);
         setPeriods(pd);
@@ -97,14 +97,14 @@ function EmpLeavePage() {
 
   // Load employee profiles
   useEffect(() => {
-    axios.get('/empprofile/')
+    axios.get('/api/empprofile/')
       .then(r => setProfiles(normalize(r.data)))
       .catch(() => setProfiles([]));
   }, []);
 
   // Load leave entries
   useEffect(() => {
-    axios.get('/leaveentry/')
+    axios.get('/api/leaveentry/')
       .then(r => setLeaveEntries(normalize(r.data)))
       .catch(() => setLeaveEntries([]));
   }, []);
@@ -140,11 +140,11 @@ function EmpLeavePage() {
               : null,
       };
       if (editingId) {
-        await axios.patch(`/leaveentry/${editingId}/`, payload);
+        await axios.patch(`/api/leaveentry/${editingId}/`, payload);
       } else {
-        await axios.post('/leaveentry/', payload);
+        await axios.post('/api/leaveentry/', payload);
       }
-      const r = await axios.get('/leaveentry/');
+      const r = await axios.get('/api/leaveentry/');
       setLeaveEntries(normalize(r.data));
       setForm({
         report_no: '',
@@ -420,7 +420,7 @@ function EmpLeavePage() {
             <div className="border rounded-xl overflow-hidden mt-4">
               <div className="p-3 border-b bg-gray-50 flex justify-between">
                 <div className="font-semibold">Last Leave Records</div>
-                <button onClick={() => axios.get('/leaveentry/').then(r => setLeaveEntries(normalize(r.data)))} className="text-sm px-3 py-1 bg-blue-600 text-white rounded">Refresh</button>
+                <button onClick={() => axios.get('/api/leaveentry/').then(r => setLeaveEntries(normalize(r.data)))} className="text-sm px-3 py-1 bg-blue-600 text-white rounded">Refresh</button>
               </div>
 
               <div className="p-3 bg-white border-b flex flex-col gap-3 md:flex-row md:items-center">

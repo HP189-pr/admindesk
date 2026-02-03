@@ -17,11 +17,7 @@ const SEARCH_FIELDS = [
 
 const DEFAULT_RIGHTS = { can_view: true, can_create: true, can_edit: true, can_delete: true };
 
-const apiBase = (() => {
-  const base = import.meta.env?.VITE_API_BASE_URL || "";
-  if (!base) return "/api";
-  return `${base.replace(/\/$/, "")}/api`;
-})();
+const apiBase = "/api";
 
 const createMainForm = () => ({
   id: null,

@@ -1,27 +1,34 @@
 import axios from 'axios';
 
-// Use provided API base URL; otherwise use a relative URL so Vite dev
-// server proxy can forward `/api` to the backend during development.
-const baseURL = '/api';
-
 const API = axios.create({
-  baseURL,
+  baseURL: '/',   // Relative URL - nginx proxy handles routing to backend
   headers: { 'Content-Type': 'application/json' },
-  withCredentials: true,
+  timeout: 10000,
 });
 
-// Attach Authorization header automatically when access token is present
-API.interceptors.request.use((config) => {
-  try {
+// ✅ ALWAYS attach access_token
+API.interceptors.request.use(
+  (config) => {
     const token = localStorage.getItem('access_token');
     if (token) {
-      config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
     }
-  } catch (e) {
-    // ignore localStorage errors in SSR or restricted environments
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// ✅ OPTIONAL but recommended: auto logout on 401
+API.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      console.warn('401 detected — logging out');
+      localStorage.clear();
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
   }
-  return config;
-});
+);
 
 export default API;

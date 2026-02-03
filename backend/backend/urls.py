@@ -1,28 +1,24 @@
-"""File: backend/backend/urls.py
+"""
 Project root URL configuration.
 
 Stable endpoints:
 - /admin/ -> Django admin
-- /api/   -> Application API (see `api/urls.py`)
-
-Root redirect currently points to admin index.
+- /api/   -> Application API
 """
 
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from django.shortcuts import redirect
 
 urlpatterns = [
-    # Redirect root URL to Django admin (change target if you prefer a different landing page)
-    path("", lambda request: redirect("admin:index")),
+    path("admin/", admin.site.urls),
 
-    path("admin/", admin.site.urls),  # Admin Panel
-    path("api/", include("api.urls")),  # API routes
-    path("api/reports/", include("reports.urls")),  # Analytics endpoints
+    # Core APIs
+    path("api/", include("api.urls")),
+    path("api/reports/", include("reports.urls")),
 ]
 
-# ✅ Serve media files in development mode
+# Serve media files in development only
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

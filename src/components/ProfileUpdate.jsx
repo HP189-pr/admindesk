@@ -2,8 +2,6 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../hooks/AuthContext";
 
-const API_BASE_URL = "http://127.0.0.1:8000";
-
 const ProfileUpdate = ({ setWorkArea }) => {
     const { user, fetchUserProfile } = useAuth();  // fetchUserProfile to refresh after update
 
@@ -76,7 +74,7 @@ const ProfileUpdate = ({ setWorkArea }) => {
         try {
             // IMPORTANT: do NOT set the Content-Type header manually for multipart/form-data.
             // Let axios/browser set the proper Content-Type with boundary.
-            const response = await axios.patch(`${API_BASE_URL}/api/profile/`, formData, {
+            const response = await axios.patch(`/api/profile/`, formData, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -90,15 +88,23 @@ const ProfileUpdate = ({ setWorkArea }) => {
         }
     };
 
+    const normalizeMediaUrl = (value) => {
+        if (!value) return value;
+        try {
+            const url = new URL(value, window.location.origin);
+            if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+                return url.pathname + url.search + url.hash;
+            }
+        } catch {
+            // keep as-is for relative paths
+        }
+        return value;
+    };
+
     // Choose displayed picture (uploaded file preview or backend URL)
     const displayedProfilePicture = profile.profile_picture_file
         ? URL.createObjectURL(profile.profile_picture_file)
-        : (function () {
-            const p = profile.profile_picture_url || "/default-profile.png";
-            // If backend returns a relative path like /media/Profpic/filename, prefix API_BASE_URL
-            if (p && typeof p === 'string' && p.startsWith('/')) return `${API_BASE_URL}${p}`;
-            return p;
-        })();  // Use profile_picture_url for display
+        : (normalizeMediaUrl(profile.profile_picture_url) || "/default-profile.png");
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">

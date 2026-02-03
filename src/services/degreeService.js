@@ -2,323 +2,223 @@
  * Degree Service
  * Handles all API calls related to degree management
  */
-import axios from 'axios';
+import API from '../api/axiosInstance';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
-const API_URL = `${API_BASE_URL}/api/degrees/`;
-const CONVOCATION_URL = `${API_BASE_URL}/api/convocations/`;
+/* ==================== API PATHS ==================== */
+/* IMPORTANT:
+   axiosInstance baseURL MUST be '/'
+   so these resolve to:
+   - http://localhost:3000/api/... (Vite dev)
+   - http://localhost:8081/api/... (Nginx prod)
+*/
+const DEGREE_API = '/api/degrees/';
+const CONVOCATION_API = '/api/convocations/';
 
-// Configure axios interceptors
-axios.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem('access_token');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
-    }
-);
-
-axios.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        if (error.response?.status === 401) {
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refresh_token');
-            window.location.href = '/login';
-        }
-        return Promise.reject(error);
-    }
-);
+/* ==================== Degree APIs ==================== */
 
 /**
  * Get all degrees with pagination and filtering
  */
 export const getDegrees = async (params = {}) => {
-    try {
-        const response = await axios.get(API_URL, { params });
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching degrees:', error);
-        throw error;
-    }
+    const res = await API.get(DEGREE_API, { params });
+    return res.data;
 };
 
 /**
  * Get degree by ID
  */
 export const getDegreeById = async (id) => {
-    try {
-        const response = await axios.get(`${API_URL}${id}/`);
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching degree:', error);
-        throw error;
-    }
+    const res = await API.get(`${DEGREE_API}${id}/`);
+    return res.data;
 };
 
 /**
  * Create new degree
  */
-export const createDegree = async (degreeData) => {
-    try {
-        const response = await axios.post(API_URL, degreeData);
-        return response.data;
-    } catch (error) {
-        console.error('Error creating degree:', error);
-        throw error;
-    }
+export const createDegree = async (data) => {
+    const res = await API.post(DEGREE_API, data);
+    return res.data;
 };
 
 /**
- * Update degree
+ * Update degree (full update)
  */
-export const updateDegree = async (id, degreeData) => {
-    try {
-        const response = await axios.put(`${API_URL}${id}/`, degreeData);
-        return response.data;
-    } catch (error) {
-        console.error('Error updating degree:', error);
-        throw error;
-    }
+export const updateDegree = async (id, data) => {
+    const res = await API.put(`${DEGREE_API}${id}/`, data);
+    return res.data;
 };
 
 /**
  * Partial update degree
  */
-export const patchDegree = async (id, degreeData) => {
-    try {
-        const response = await axios.patch(`${API_URL}${id}/`, degreeData);
-        return response.data;
-    } catch (error) {
-        console.error('Error patching degree:', error);
-        throw error;
-    }
+export const patchDegree = async (id, data) => {
+    const res = await API.patch(`${DEGREE_API}${id}/`, data);
+    return res.data;
 };
 
 /**
  * Delete degree
  */
 export const deleteDegree = async (id) => {
-    try {
-        const response = await axios.delete(`${API_URL}${id}/`);
-        return response.data;
-    } catch (error) {
-        console.error('Error deleting degree:', error);
-        throw error;
-    }
+    await API.delete(`${DEGREE_API}${id}/`);
 };
 
+/* ==================== Bulk Upload ==================== */
+
 /**
- * Bulk upload degrees from CSV
+ * Bulk upload degrees from CSV/Excel
  */
 export const bulkUploadDegrees = async (file) => {
-    try {
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        const response = await axios.post(`${API_URL}bulk_upload/`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        });
-        return response.data;
-    } catch (error) {
-        console.error('Error uploading degrees:', error);
-        throw error;
-    }
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await API.post(
+        `${DEGREE_API}bulk_upload/`,
+        formData,
+        {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            timeout: 60000,
+        }
+    );
+    return res.data;
 };
 
 /**
- * Poll bulk upload progress by upload_id
+ * Poll bulk upload progress
  */
 export const getBulkUploadProgress = async (uploadId) => {
-    try {
-        const response = await axios.get(`${API_URL}bulk_upload_progress/`, { params: { upload_id: uploadId } });
-        return response.data;
-    } catch (error) {
-        console.error('Error getting bulk upload progress:', error);
-        throw error;
-    }
+    const res = await API.get(
+        `${DEGREE_API}bulk_upload_progress/`,
+        { params: { upload_id: uploadId } }
+    );
+    return res.data;
 };
 
 /**
- * Download bulk upload log content for an upload_id
+ * Download bulk upload log
  */
 export const downloadBulkUploadLog = async (uploadId) => {
-    try {
-        const response = await axios.get(`${API_URL}bulk_upload_log/`, { params: { upload_id: uploadId } });
-        return response.data;
-    } catch (error) {
-        console.error('Error downloading bulk upload log:', error);
-        throw error;
-    }
+    const res = await API.get(
+        `${DEGREE_API}bulk_upload_log/`,
+        { params: { upload_id: uploadId } }
+    );
+    return res.data;
 };
+
+/* ==================== Reports & Statistics ==================== */
 
 /**
  * Get degree statistics
  */
 export const getDegreeStatistics = async () => {
-    try {
-        const response = await axios.get(`${API_URL}statistics/`);
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching statistics:', error);
-        throw error;
-    }
+    const res = await API.get(`${DEGREE_API}statistics/`);
+    return res.data;
 };
 
 /**
- * Get aggregated degree report data
+ * Get aggregated degree report
  */
 export const getDegreeReport = async (params = {}, config = {}) => {
-    try {
-        const response = await axios.get(`${API_URL}report/`, { params, ...config });
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching degree report:', error);
-        throw error;
-    }
+    const res = await API.get(
+        `${DEGREE_API}report/`,
+        { params, ...config }
+    );
+    return res.data;
 };
 
 /**
- * Get distinct values for degree report filters
+ * Get filter dropdown options
  */
 export const getDegreeFilterOptions = async () => {
-    try {
-        const response = await axios.get(`${API_URL}filter-options/`);
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching degree filter options:', error);
-        throw error;
-    }
+    const res = await API.get(`${DEGREE_API}filter-options/`);
+    return res.data;
 };
 
 /**
  * Search degrees by enrollment number
  */
 export const searchDegreesByEnrollment = async (enrollmentNo) => {
-    try {
-        const response = await axios.get(`${API_URL}search_by_enrollment/`, {
-            params: { enrollment_no: enrollmentNo }
-        });
-        return response.data;
-    } catch (error) {
-        console.error('Error searching degrees:', error);
-        throw error;
-    }
+    const res = await API.get(
+        `${DEGREE_API}search_by_enrollment/`,
+        { params: { enrollment_no: enrollmentNo } }
+    );
+    return res.data;
 };
 
-// ==================== Convocation Services ====================
+/* ==================== Convocation APIs ==================== */
 
 /**
- * Get all convocations
+ * Get all convocations (paginated)
  */
 export const getConvocations = async (params = {}) => {
-    try {
-        const response = await axios.get(CONVOCATION_URL, { params });
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching convocations:', error);
-        throw error;
-    }
+    const res = await API.get(CONVOCATION_API, { params });
+    return res.data;
 };
 
 /**
- * Get all convocations for dropdown (no pagination)
+ * Get all convocations (dropdown)
  */
 export const getAllConvocations = async () => {
-    try {
-        const response = await axios.get(`${CONVOCATION_URL}list_all/`);
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching all convocations:', error);
-        throw error;
-    }
+    const res = await API.get(`${CONVOCATION_API}list_all/`);
+    return res.data;
 };
 
 /**
  * Get convocation by ID
  */
 export const getConvocationById = async (id) => {
-    try {
-        const response = await axios.get(`${CONVOCATION_URL}${id}/`);
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching convocation:', error);
-        throw error;
-    }
+    const res = await API.get(`${CONVOCATION_API}${id}/`);
+    return res.data;
 };
 
 /**
  * Create new convocation
  */
-export const createConvocation = async (convocationData) => {
-    try {
-        const response = await axios.post(CONVOCATION_URL, convocationData);
-        return response.data;
-    } catch (error) {
-        console.error('Error creating convocation:', error);
-        throw error;
-    }
+export const createConvocation = async (data) => {
+    const res = await API.post(CONVOCATION_API, data);
+    return res.data;
 };
 
 /**
  * Update convocation
  */
-export const updateConvocation = async (id, convocationData) => {
-    try {
-        const response = await axios.put(`${CONVOCATION_URL}${id}/`, convocationData);
-        return response.data;
-    } catch (error) {
-        console.error('Error updating convocation:', error);
-        throw error;
-    }
+export const updateConvocation = async (id, data) => {
+    const res = await API.put(`${CONVOCATION_API}${id}/`, data);
+    return res.data;
 };
 
 /**
  * Delete convocation
  */
 export const deleteConvocation = async (id) => {
-    try {
-        const response = await axios.delete(`${CONVOCATION_URL}${id}/`);
-        return response.data;
-    } catch (error) {
-        console.error('Error deleting convocation:', error);
-        throw error;
-    }
+    await API.delete(`${CONVOCATION_API}${id}/`);
 };
 
-// ==================== Utility Functions ====================
+/* ==================== Utility Functions ==================== */
 
 /**
- * Format date from ISO to DD/MM/YYYY
+ * Format ISO date → DD/MM/YYYY
  */
 export const formatDate = (dateString) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
+    const d = new Date(dateString);
+    return `${String(d.getDate()).padStart(2, '0')}/${
+        String(d.getMonth() + 1).padStart(2, '0')
+    }/${d.getFullYear()}`;
 };
 
 /**
- * Get status badge color
+ * Status badge color helper
  */
-export const getStatusColor = (status) => {
-    const colors = {
-        'PENDING': 'bg-yellow-100 text-yellow-800',
-        'APPROVED': 'bg-green-100 text-green-800',
-        'REJECTED': 'bg-red-100 text-red-800',
-        'IN_PROGRESS': 'bg-blue-100 text-blue-800',
-        'COMPLETED': 'bg-purple-100 text-purple-800',
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-};
+export const getStatusColor = (status) => ({
+    PENDING: 'bg-yellow-100 text-yellow-800',
+    APPROVED: 'bg-green-100 text-green-800',
+    REJECTED: 'bg-red-100 text-red-800',
+    IN_PROGRESS: 'bg-blue-100 text-blue-800',
+    COMPLETED: 'bg-purple-100 text-purple-800',
+}[status] || 'bg-gray-100 text-gray-800');
+
+/* ==================== Default Export ==================== */
 
 export default {
     getDegrees,
@@ -328,8 +228,11 @@ export default {
     patchDegree,
     deleteDegree,
     bulkUploadDegrees,
+    getBulkUploadProgress,
+    downloadBulkUploadLog,
     getDegreeStatistics,
     getDegreeReport,
+    getDegreeFilterOptions,
     searchDegreesByEnrollment,
     getConvocations,
     getAllConvocations,

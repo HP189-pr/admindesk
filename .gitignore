@@ -2,11 +2,13 @@
 node_modules/
 dist/
 .vite/
+scripts
 
 # Python/Django files
 backend/__pycache__/
 backend/db.sqlite3
 backend/.env
+
 backend/secrets/
 # Service account JSONs and other secrets. Keep out of VCS.
 venv/

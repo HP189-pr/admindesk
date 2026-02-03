@@ -3,7 +3,7 @@
  * Permission checking component for Degree module
  */
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import API from '../api/axiosInstance';
 import Degree from '../pages/Degree';
 
 const AuthDegree = () => {
@@ -20,39 +20,29 @@ const AuthDegree = () => {
             const token = localStorage.getItem('access_token');
             if (!token) {
                 setError('No authentication token found. Please login.');
-                setLoading(false);
                 return;
             }
 
-            // Check if user has degree module access
-            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
-            const response = await axios.get(`${API_BASE_URL}/api/userpermissions/`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            // Check if user has access to 'degree' module or is admin
+            // Fetch permissions from backend
+            const response = await API.get('/api/userpermissions/');
             const data = response.data;
-            console.log('Permissions API response:', data);
-            
-            // Check if user is admin first (admin has access to everything)
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            const isAdmin = user.is_admin || false;
-            
-            if (isAdmin) {
-                console.log('User is admin, granting access');
+
+            const user = data?.user || {};
+            const permissions = Array.isArray(data?.permissions)
+                ? data.permissions
+                : [];
+
+            // 1. Superuser has full access
+            if (user.is_superuser === true) {
                 setHasAccess(true);
-                setLoading(false);
                 return;
             }
-            
-            // Check module permissions
-            const permissions = Array.isArray(data) ? data : (Array.isArray(data?.results) ? data.results : []);
-            console.log('Permissions array:', permissions);
-            
-            const hasDegreeAccess = permissions.length > 0 && permissions.some(
-                perm => perm.module?.module_name?.toLowerCase() === 'degree' && perm.has_access
+
+            // 2. Check Degree module permission
+            const hasDegreeAccess = permissions.some(
+                (perm) =>
+                    perm.module_name?.toLowerCase() === 'degree' &&
+                    perm.can_view === true
             );
 
             if (hasDegreeAccess) {
@@ -67,6 +57,8 @@ const AuthDegree = () => {
             setLoading(false);
         }
     };
+
+    /* ==================== UI STATES ==================== */
 
     if (loading) {
         return (
@@ -84,15 +76,27 @@ const AuthDegree = () => {
             <div className="flex items-center justify-center min-h-screen bg-gray-50">
                 <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
                     <div className="flex items-center justify-center w-16 h-16 mx-auto bg-red-100 rounded-full">
-                        <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                        <svg
+                            className="w-8 h-8 text-red-600"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M6 18L18 6M6 6l12 12"
+                            />
                         </svg>
                     </div>
-                    <h2 className="mt-4 text-2xl font-bold text-center text-gray-800">Access Denied</h2>
+                    <h2 className="mt-4 text-2xl font-bold text-center text-gray-800">
+                        Access Denied
+                    </h2>
                     <p className="mt-2 text-center text-gray-600">{error}</p>
                     <div className="mt-6">
                         <button
-                            onClick={() => window.location.href = '/'}
+                            onClick={() => (window.location.href = '/')}
                             className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                         >
                             Return to Dashboard
@@ -103,11 +107,7 @@ const AuthDegree = () => {
         );
     }
 
-    if (hasAccess) {
-        return <Degree />;
-    }
-
-    return null;
+    return hasAccess ? <Degree /> : null;
 };
 
 export default AuthDegree;

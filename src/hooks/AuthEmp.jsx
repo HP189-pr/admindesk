@@ -39,7 +39,7 @@ export default function AuthEmp() {
   const load = async () => {
     setLoading(true); setError(null);
     try {
-      const r = await axios.get('/empprofile/');
+      const r = await axios.get('/api/empprofile/');
       const data = r.data;
       if (Array.isArray(data)) {
         setProfiles(data);

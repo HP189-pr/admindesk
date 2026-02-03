@@ -1,6 +1,6 @@
 import API from '../api/axiosInstance';
 
-const BASE_PATH = '/transcript-requests/';
+const BASE_PATH = '/api/transcript-requests/';
 
 const normalizeResponseArray = (data) => {
   if (!data) return [];

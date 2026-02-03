@@ -1,7 +1,10 @@
 import axios from "axios";
 import Cookies from "js-cookie";
 
-const API_URL = "http://localhost:1337/api/auth";
+// This file is deprecated - authentication is handled in AuthContext.jsx
+// Kept for backwards compatibility only
+
+const API_URL = "/api/auth";  // Relative URL for proxy
 
 export const login = async (username, usrpassword) => {
   try {

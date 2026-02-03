@@ -3,7 +3,7 @@
  * Permission checking component for Doc Register (Inward/Outward Register) module
  */
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import API from '../api/axiosInstance';
 import InOutRegister from '../pages/inout_register';
 
 const AuthDocRegister = () => {
@@ -20,43 +20,41 @@ const AuthDocRegister = () => {
             const token = localStorage.getItem('access_token');
             if (!token) {
                 setError('No authentication token found. Please login.');
-                setLoading(false);
                 return;
             }
 
-            // Check if user has doc register module access
-            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
-            const response = await axios.get(`${API_BASE_URL}/api/userpermissions/`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            // Check if user has access to 'doc_register' or 'office management' module or is admin
+            // 🔹 Fetch permissions (RELATIVE PATH → works in DEV & PROD)
+            const response = await API.get('/api/userpermissions/');
             const data = response.data;
-            
-            // Check if user is admin first (admin has access to everything)
+
+            // 🔹 Admin shortcut
             const user = JSON.parse(localStorage.getItem('user') || '{}');
-            const isAdmin = user.is_admin || false;
-            
+            const isAdmin = user.is_admin || user.is_superuser || false;
+
             if (isAdmin) {
                 setHasAccess(true);
-                setLoading(false);
                 return;
             }
-            
-            // Check module permissions
-            const permissions = Array.isArray(data) ? data : (Array.isArray(data?.results) ? data.results : []);
-            
-            const hasDocRegisterAccess = permissions.length > 0 && permissions.some(
-                perm => {
-                    const moduleName = perm.module?.module_name?.toLowerCase();
-                    return (moduleName === 'doc_register' || 
-                            moduleName === 'doc register' || 
-                            moduleName === 'office management' ||
-                            moduleName === 'office_management') && perm.has_access;
-                }
-            );
+
+            // 🔹 Normalize permissions list
+            const permissions = Array.isArray(data)
+                ? data
+                : Array.isArray(data?.results)
+                ? data.results
+                : [];
+
+            const hasDocRegisterAccess = permissions.some((perm) => {
+                const moduleName = perm.module?.module_name?.toLowerCase();
+                return (
+                    (
+                        moduleName === 'doc_register' ||
+                        moduleName === 'doc register' ||
+                        moduleName === 'office management' ||
+                        moduleName === 'office_management'
+                    ) &&
+                    perm.has_access === true
+                );
+            });
 
             if (hasDocRegisterAccess) {
                 setHasAccess(true);
@@ -64,11 +62,14 @@ const AuthDocRegister = () => {
                 setError('You do not have permission to access the Doc Register module.');
             }
         } catch (err) {
+            console.error('Error checking Doc Register access:', err);
             setError('Failed to verify permissions. Please try again.');
         } finally {
             setLoading(false);
         }
     };
+
+    /* ==================== UI STATES ==================== */
 
     if (loading) {
         return (
@@ -86,15 +87,27 @@ const AuthDocRegister = () => {
             <div className="flex items-center justify-center min-h-screen bg-gray-50">
                 <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
                     <div className="flex items-center justify-center w-16 h-16 mx-auto bg-red-100 rounded-full">
-                        <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                        <svg
+                            className="w-8 h-8 text-red-600"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M6 18L18 6M6 6l12 12"
+                            />
                         </svg>
                     </div>
-                    <h2 className="mt-4 text-2xl font-bold text-center text-gray-800">Access Denied</h2>
+                    <h2 className="mt-4 text-2xl font-bold text-center text-gray-800">
+                        Access Denied
+                    </h2>
                     <p className="mt-2 text-center text-gray-600">{error}</p>
                     <div className="mt-6">
                         <button
-                            onClick={() => window.location.href = '/'}
+                            onClick={() => (window.location.href = '/')}
                             className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                         >
                             Return to Dashboard
@@ -105,11 +118,7 @@ const AuthDocRegister = () => {
         );
     }
 
-    if (hasAccess) {
-        return <InOutRegister />;
-    }
-
-    return null;
+    return hasAccess ? <InOutRegister /> : null;
 };
 
 export default AuthDocRegister;

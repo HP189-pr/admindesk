@@ -6,7 +6,9 @@
     "scripts": {
         "dev": "vite",
         "build": "vite build",
+        "build:static": "vite build && node copy-media.js",
         "serve": "vite preview",
+        "copy-media": "node copy-media.js",
         "backend": "cd strapi-backend && npm run develop",
         "frontend": "cd frontdesk-app && npm run dev"
     },

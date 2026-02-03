@@ -30,7 +30,7 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
   useEffect(() => {
     (async () => {
       try {
-        const r = await axios.get('/leave-periods/');
+        const r = await axios.get('/api/leave-periods/');
         const pd = normalize(r.data);
         setPeriods(pd);
         if (!selectedPeriod && pd.length > 0) {

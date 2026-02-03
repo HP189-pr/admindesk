@@ -2,13 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/AuthContext';
 
 const INSTITUTION_NAME = 'Kadi Sarva Vishwavidyalaya';
-// Serve logo from Django MEDIA - adjust path if your MEDIA_URL differs.
-// When the frontend runs on a different origin (Vite dev server) we must request the
-// media from the backend host. Use VITE_BACKEND_URL to override in development.
-// Default to the local Django dev server used in this project.
-const BACKEND_URL = (import.meta && import.meta.env && import.meta.env.VITE_BACKEND_URL) || 'http://127.0.0.1:8000';
+// Logo served from Django MEDIA via nginx/Vite proxy
 const LOGO_PATH = '/media/logo/ksv.png';
-const LOGO_URL = `${BACKEND_URL}${LOGO_PATH}`;
+const LOGO_URL = LOGO_PATH;
 
 const MODULES = [
   {

@@ -68,7 +68,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
   useEffect(() => {
     const token = localStorage.getItem("access_token");
     if (!token) return;
-    axios.get("http://127.0.0.1:8000/api/my-navigation/", {
+    axios.get("/api/my-navigation/", {
       headers: { Authorization: `Bearer ${token}` },
     }).then(({ data }) => {
       const mods = data.modules || [];

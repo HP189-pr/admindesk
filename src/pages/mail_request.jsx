@@ -9,7 +9,6 @@ import {
   syncMailRequestsFromSheet,
 } from '../services/mailRequestService';
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
 const ACTIONS = ['🔍 Filter', '🧰 Tools', '📝 Edit'];
 
 const STATUS_OPTIONS = [
@@ -65,7 +64,7 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
     }
     const loadRights = async () => {
       try {
-        const { data } = await axios.get(`${API_BASE_URL}/api/my-navigation/`, {
+        const { data } = await axios.get(`/api/my-navigation/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const modules = data?.modules || [];

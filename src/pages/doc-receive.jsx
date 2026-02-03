@@ -201,8 +201,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     const run = async () => {
       try {
         const token = localStorage.getItem("access_token");
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
-        const res = await fetch(`${API_BASE_URL}/api/docrec/next-id/?apply_for=${encodeURIComponent(form.apply_for)}`, {
+        const res = await fetch(`/api/docrec/next-id/?apply_for=${encodeURIComponent(form.apply_for)}`, {
           headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           signal: ctrl.signal,
         });

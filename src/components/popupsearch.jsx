@@ -59,14 +59,24 @@ const PopupSearch = () => {
   const firstMigration = result?.services?.migration?.[0];
   const firstDegree = result?.services?.degree?.[0];
 
-  const provisionalNumber =
-    firstProvisional?.prv_number || firstProvisional?.final_no;
+  // Join multiple values with comma
+  const finalNos = (result?.services?.verification || [])
+    .map(v => v.final_no)
+    .filter(Boolean)
+    .join(', ') || '-';
+
+  const provisionalNumbers = (result?.services?.provisional || [])
+    .map(p => p.prv_number || p.final_no)
+    .filter(Boolean)
+    .join(', ') || '-';
   const provisionalDate = formatDate(
     firstProvisional?.prv_date || firstProvisional?.date
   );
 
-  const migrationNumber =
-    firstMigration?.mg_number || firstMigration?.final_no;
+  const migrationNumbers = (result?.services?.migration || [])
+    .map(m => m.mg_number || m.final_no)
+    .filter(Boolean)
+    .join(', ') || '-';
   const migrationDate = formatDate(
     firstMigration?.mg_date || firstMigration?.date
   );
@@ -160,6 +170,7 @@ const PopupSearch = () => {
                         <span>MS</span><span>{firstVerification?.ms_count ?? '-'}</span>
                         <span>DG</span><span>{firstVerification?.dg_count ?? '-'}</span>
                         </div>
+                        <Field label="Final No" value={finalNos} />
                         <Field label="ECA Name" value={firstVerification?.eca_name} />
                         <Field label="ECA REF NO" value={firstVerification?.eca_ref_no} />
                         <Field
@@ -180,7 +191,7 @@ const PopupSearch = () => {
                             </span>
                         </div>
                         <div className="border-t pt-2 space-y-1">
-                            <Field label="pvr_number" value={provisionalNumber} />
+                            <Field label="pvr_number" value={provisionalNumbers} />
                             <Field label="pvr_date" value={provisionalDate} />
                         </div>
                         </div>
@@ -194,7 +205,7 @@ const PopupSearch = () => {
                             </span>
                         </div>
                         <div className="border-t pt-2 space-y-1">
-                            <Field label="mg_number" value={migrationNumber} />
+                            <Field label="mg_number" value={migrationNumbers} />
                             <Field label="mg_date" value={migrationDate} />
                         </div>
                         </div>

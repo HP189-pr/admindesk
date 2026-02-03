@@ -1,45 +1,93 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import axios from "../api/axiosInstance";
-const AuthContext = createContext();
+import API from "../api/axiosInstance";
+
+const AuthContext = createContext({
+    user: null,
+    token: null,
+    isAdmin: false,
+    profilePicture: "/profilepic/default-profile.png",
+    loading: true,
+    login: async () => ({ success: false, error: "Auth not initialized" }),
+    logout: () => {},
+    refreshToken: async () => false,
+    verifyPassword: async () => ({ success: false }),
+    verifyAdminPanelPassword: async () => ({ success: false }),
+    isAdminPanelVerified: false,
+    fetchUsers: async () => [],
+    fetchUserDetail: async () => null,
+    createUser: async () => ({ success: false }),
+    updateUser: async () => ({ success: false }),
+});
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(() => {
         const storedUser = localStorage.getItem("user");
         return storedUser ? JSON.parse(storedUser) : null;
     });
-    const [token, setToken] = useState(() => localStorage.getItem("access_token"));
 
-    const [profilePicture, setProfilePicture] = useState("/profilepic/default-profile.png");
+    const [token, setToken] = useState(() =>
+        localStorage.getItem("access_token")
+    );
+
+    const [profilePicture, setProfilePicture] = useState(
+        "/profilepic/default-profile.png"
+    );
+
     const [loading, setLoading] = useState(true);
     const [isAdmin, setIsAdmin] = useState(false);
 
-    // 🔹 Fetch user profile
+    /* ==================== HELPERS ==================== */
+
+    const normalizeMediaUrl = (value) => {
+        if (!value) return value;
+        try {
+            const url = new URL(value, window.location.origin);
+            // If backend returned absolute URL with localhost/127.0.0.1, strip origin
+            if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+                return url.pathname + url.search + url.hash;
+            }
+        } catch {
+            // if value is already a relative path, just return it
+        }
+        return value;
+    };
+
+    const authHeader = () => ({
+        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+    });
+
+    /* ==================== FETCH USER PROFILE ==================== */
+
     const fetchUserProfile = async () => {
         const storedToken = localStorage.getItem("access_token");
         if (!storedToken) {
             setLoading(false);
             return;
         }
-        // Validate token before making API request
+
+        // 1️⃣ Verify token
         try {
-            await axios.post(`/token/verify/`, 
-                { token: storedToken },
-                { headers: { "Content-Type": "application/json" } }
+            await API.post("/api/token/verify/", { token: storedToken });
+        } catch (err) {
+            console.error(
+                "❌ Token Verification Failed:",
+                err.response?.data || err.message
             );
-        } catch (error) {
-            console.error("❌ Token Verification Failed:", error.response?.data || error.message);
             const refreshed = await refreshToken();
             if (!refreshed) {
                 setLoading(false);
             }
             return;
         }
+
         setToken(storedToken);
-        // Fetch user profile
+
+        // 2️⃣ Fetch profile
         try {
-            const { data } = await axios.get(`/profile/`, {
-                headers: { Authorization: `Bearer ${storedToken}` },
+            const { data } = await API.get("/api/profile/", {
+                headers: authHeader(),
             });
+
             setUser({
                 username: data.username || "",
                 first_name: data.first_name || "",
@@ -48,43 +96,56 @@ export const AuthProvider = ({ children }) => {
                 phone: data.phone || "",
                 address: data.address || "",
                 city: data.city || "",
-                profile_picture: data.profile_picture || "/profilepic/default-profile.png",
                 state: data.state || "",
                 country: data.country || "",
                 bio: data.bio || "",
                 social_links: data.social_links || {},
-                is_admin: data.is_admin || false,
+                profile_picture:
+                    normalizeMediaUrl(data.profile_picture) || "/profilepic/default-profile.png",
+                is_admin: !!data.is_admin,
             });
-            setProfilePicture(data.profile_picture || "/profilepic/default-profile.png");
-            // Initially set isAdmin from profile payload
-            let adminFlag = !!(data.is_admin);
+
+            setProfilePicture(
+                normalizeMediaUrl(data.profile_picture) || "/profilepic/default-profile.png"
+            );
+
+            // 3️⃣ Admin check (server-authoritative)
+            let adminFlag = !!data.is_admin;
             try {
-                // Fallback/confirmation: call server to check admin access via flags/groups
-                const checkRes = await axios.get(`/check-admin-access/`, {
-                    headers: { Authorization: `Bearer ${storedToken}` },
-                    validateStatus: () => true,
-                });
-                if (checkRes.status === 200 && checkRes.data && typeof checkRes.data.is_admin !== 'undefined') {
+                const checkRes = await API.get(
+                    "/api/check-admin-access/",
+                    { headers: authHeader(), validateStatus: () => true }
+                );
+                if (
+                    checkRes.status === 200 &&
+                    typeof checkRes.data?.is_admin !== "undefined"
+                ) {
                     adminFlag = !!checkRes.data.is_admin;
                 }
-            } catch (e) {
-                // ignore, keep profile flag
+            } catch {
+                /* ignore */
             }
+
             setIsAdmin(adminFlag);
             localStorage.setItem("user", JSON.stringify(data));
-        } catch (error) {
-            console.error("❌ Fetch User Error:", error.response?.data || error.message);
-            if (error.response?.status === 401) await refreshToken();
+        } catch (err) {
+            console.error(
+                "❌ Fetch User Error:",
+                err.response?.data || err.message
+            );
+            if (err.response?.status === 401) {
+                await refreshToken();
+            }
         } finally {
             setLoading(false);
         }
     };
-    
+
+    /* ==================== INIT ==================== */
 
     useEffect(() => {
-        const storedToken = localStorage.getItem("access_token");
         const initAuth = async () => {
-            if (storedToken) {
+            if (localStorage.getItem("access_token")) {
                 await fetchUserProfile();
             } else {
                 setUser(null);
@@ -95,14 +156,15 @@ export const AuthProvider = ({ children }) => {
         initAuth();
     }, []);
 
-    // 🔹 Login function
+    /* ==================== LOGIN ==================== */
+
     const login = async (identifier, password) => {
         try {
-            const { data } = await axios.post(
-                `/userlogin/`,
-                { username: identifier, password },
-                { headers: { "Content-Type": "application/json" } }
-            );
+            const { data } = await API.post("/api/backlogin/", {
+                username: identifier,
+                password,
+            });
+
             if (data.access) {
                 localStorage.setItem("access_token", data.access);
                 localStorage.setItem("refresh_token", data.refresh);
@@ -110,146 +172,182 @@ export const AuthProvider = ({ children }) => {
                 await fetchUserProfile();
                 return { success: true };
             }
-            return { success: false, error: "Login failed. No access token received." };
-        } catch (error) {
-            return { success: false, error: error.response?.data?.detail || "Invalid credentials." };
+
+            return {
+                success: false,
+                error: "Login failed. No access token received.",
+            };
+        } catch (err) {
+            return {
+                success: false,
+                error:
+                    err.response?.data?.detail ||
+                    "Invalid credentials.",
+            };
         }
     };
 
-    // 🔹 Verify user password (for general secure pages)
-    const verifyPassword = async (password) => {
-        try {
-            const { status } = await axios.post(
-                `/verify-password/`,
-                { password },
-                { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }
-            );
-            return status === 200;
-        } catch (error) {
-            console.error("❌ Password Verification Error:", error.response?.data || error.message);
-            return false;
-        }
-    };
+    /* ==================== TOKEN REFRESH ==================== */
 
-    // 🔹 Admin Panel special password verification (server-configured)
-    const verifyAdminPanelPassword = async (password) => {
-        try {
-            const res = await axios.post(
-                `/verify-admin-panel-password/`,
-                { password },
-                {
-                    headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
-                    withCredentials: true,
-                    validateStatus: () => true,
-                }
-            );
-            if (res.status === 200) return { success: true, message: res.data?.message || "Admin panel access granted." };
-            // surface message from server when available
-            return { success: false, message: res.data?.detail || res.data?.message || "Invalid admin panel password." };
-        } catch (error) {
-            console.error('❌ Admin Panel Verify Error:', error.response?.data || error.message);
-            return { success: false, message: error.response?.data?.detail || "Failed to verify admin password." };
-        }
-    };
-
-    // 🔹 Check if admin panel already verified in this session
-    const isAdminPanelVerified = async () => {
-        try {
-            const { data } = await axios.get(`/verify-admin-panel-password/`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
-                withCredentials: true,
-            });
-            return !!data?.verified;
-        } catch (e) {
-            return false;
-        }
-    };
-
-    // 🔹 Refresh token function
     const refreshToken = async () => {
-        const refresh_token = localStorage.getItem("refresh_token");
-        if (!refresh_token) {
+        const refresh = localStorage.getItem("refresh_token");
+        if (!refresh) {
             logout();
             return false;
         }
+
         try {
-            const { data } = await axios.post(`/token/refresh/`, { refresh: refresh_token });
+            const { data } = await API.post("/api/token/refresh/", {
+                refresh,
+            });
             localStorage.setItem("access_token", data.access);
             setToken(data.access);
-            // Don't call fetchUserProfile here to avoid loop
-            setLoading(false);
             return true;
-        } catch (error) {
-            console.error("❌ Token Refresh Error:", error.response?.data || error.message);
+        } catch (err) {
+            console.error(
+                "❌ Token Refresh Error:",
+                err.response?.data || err.message
+            );
             logout();
             return false;
         }
     };
 
-    // 🔹 Logout function
-    const logout = (navigate) => {
-        localStorage.clear();
-        setUser(null);
-        setProfilePicture("/profilepic/default-profile.png");
-        setIsAdmin(false);
-        setToken(null);
-        if (navigate) navigate("/login");
+    /* ==================== PASSWORD / ADMIN ==================== */
+
+    const verifyPassword = async (password) => {
+        try {
+            const res = await API.post(
+                "/api/verify-password/",
+                { password },
+                { headers: authHeader() }
+            );
+            return res.status === 200;
+        } catch {
+            return false;
+        }
     };
 
-    // 🔹 Fetch all users
+    const verifyAdminPanelPassword = async (password) => {
+        try {
+            const res = await API.post(
+                "/api/verify-admin-panel-password/",
+                { password },
+                { headers: authHeader(), validateStatus: () => true }
+            );
+            if (res.status === 200)
+                return {
+                    success: true,
+                    message: res.data?.message || "Access granted",
+                };
+            return {
+                success: false,
+                message:
+                    res.data?.detail ||
+                    res.data?.message ||
+                    "Invalid password",
+            };
+        } catch (err) {
+            return {
+                success: false,
+                message:
+                    err.response?.data?.detail ||
+                    "Verification failed",
+            };
+        }
+    };
+
+    const isAdminPanelVerified = async () => {
+        try {
+            const { data } = await API.get(
+                "/api/verify-admin-panel-password/",
+                { headers: authHeader() }
+            );
+            return !!data?.verified;
+        } catch {
+            return false;
+        }
+    };
+
+    /* ==================== USERS ==================== */
+
     const fetchUsers = async () => {
         try {
-            const { data } = await axios.get(`/users/`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+            const { data } = await API.get("/api/users/", {
+                headers: authHeader(),
             });
             return data;
-        } catch (error) {
-            console.error("❌ Fetch Users Error:", error.response?.data || error.message);
+        } catch {
             return [];
         }
     };
 
-    // 🔹 Create a new user (calls backend)
-    const createUser = async (payload) => {
+    const fetchUserDetail = async (id) => {
         try {
-            const { data } = await axios.post(`/users/`, payload, {
-                headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}`, 'Content-Type': 'application/json' }
-            });
-            return { success: true, data };
-        } catch (error) {
-            console.error('❌ Create User Error:', error.response?.data || error.message);
-            return { success: false, error: error.response?.data || error.message };
-        }
-    };
-
-    // 🔹 Update existing user
-    const updateUser = async (userId, payload) => {
-        try {
-            const { data } = await axios.put(`/users/${userId}/`, payload, {
-                headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}`, 'Content-Type': 'application/json' }
-            });
-            return { success: true, data };
-        } catch (error) {
-            console.error('❌ Update User Error:', error.response?.data || error.message);
-            return { success: false, error: error.response?.data || error.message };
-        }
-    };
-    
-    // 🔹 Fetch user details by ID
-    const fetchUserDetail = async (userId) => {
-        try {
-            const { data } = await axios.get(`/users/${userId}/`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+            const { data } = await API.get(`/api/users/${id}/`, {
+                headers: authHeader(),
             });
             return data;
-        } catch (error) {
-            console.error(`❌ Fetch User Detail Error (ID: ${userId}):`, error.response?.data || error.message);
+        } catch {
             return null;
         }
     };
 
+    const createUser = async (payload) => {
+        try {
+            const { data } = await API.post("/api/users/", payload, {
+                headers: authHeader(),
+            });
+            return { success: true, data };
+        } catch (err) {
+            return { success: false, error: err.response?.data };
+        }
+    };
+
+    const updateUser = async (id, payload) => {
+        try {
+            const { data } = await API.put(
+                `/api/users/${id}/`,
+                payload,
+                { headers: authHeader() }
+            );
+            return { success: true, data };
+        } catch (err) {
+            return { success: false, error: err.response?.data };
+        }
+    };
+
+    /* ==================== LOGOUT ==================== */
+
+    const logout = (navigate) => {
+        localStorage.clear();
+        setUser(null);
+        setToken(null);
+        setIsAdmin(false);
+        setProfilePicture("/profilepic/default-profile.png");
+        if (navigate) navigate("/login");
+    };
+
     return (
-        <AuthContext.Provider value={{ user, token, isAdmin, profilePicture, loading, login, logout, refreshToken, verifyPassword, verifyAdminPanelPassword, isAdminPanelVerified, fetchUsers, fetchUserDetail, createUser, updateUser }}>
+        <AuthContext.Provider
+            value={{
+                user,
+                token,
+                isAdmin,
+                profilePicture,
+                loading,
+                login,
+                logout,
+                refreshToken,
+                verifyPassword,
+                verifyAdminPanelPassword,
+                isAdminPanelVerified,
+                fetchUsers,
+                fetchUserDetail,
+                createUser,
+                updateUser,
+            }}
+        >
             {children}
         </AuthContext.Provider>
     );
