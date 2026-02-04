@@ -469,3 +469,15 @@ WARNING:waitress.queue:Task queue depth is 1
 WARNING:waitress.queue:Task queue depth is 1
 WARNING:waitress.queue:Task queue depth is 1
 WARNING:waitress.queue:Task queue depth is 1
+Unauthorized: /api/inst-verification/generate-pdf/
+WARNING:django.request:Unauthorized: /api/inst-verification/generate-pdf/
+Unauthorized: /api/inst-verification/generate-pdf/
+WARNING:django.request:Unauthorized: /api/inst-verification/generate-pdf/
+Unauthorized: /api/inst-verification/generate-pdf/
+WARNING:django.request:Unauthorized: /api/inst-verification/generate-pdf/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1

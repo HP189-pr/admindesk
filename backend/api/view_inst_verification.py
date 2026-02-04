@@ -3,7 +3,12 @@ from django.template.loader import render_to_string
 from django.http import HttpResponse, JsonResponse
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-from weasyprint import HTML, CSS
+try:
+    from weasyprint import HTML, CSS
+except Exception:
+    # Missing system libs (e.g., GTK/Pango/Cairo). Keep placeholders so the module imports.
+    HTML = None
+    CSS = None
 from pathlib import Path
 import json
 
