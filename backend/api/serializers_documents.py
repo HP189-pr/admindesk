@@ -16,7 +16,7 @@ from .models import (
 __all__ = [
     'VerificationSerializer','EcaResendSerializer','AssignFinalSerializer','ResubmitSerializer',
     'DocRecSerializer','MigrationRecordSerializer','ProvisionalRecordSerializer',
-    'InstVerificationMainSerializer','InstVerificationStudentSerializer','EcaSerializer'
+    'InstLetterMainSerializer','InstLetterstudentSerializer','InstVerificationMainSerializer','InstVerificationStudentSerializer','EcaSerializer'
 ]
 
 class VerificationSerializer(serializers.ModelSerializer):
@@ -174,7 +174,7 @@ class ProvisionalRecordSerializer(serializers.ModelSerializer):
         except Exception:
             return None
 
-class InstVerificationMainSerializer(serializers.ModelSerializer):
+class InstLetterMainSerializer(serializers.ModelSerializer):
     doc_rec_id = serializers.PrimaryKeyRelatedField(queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False)
     doc_rec_key = serializers.SlugRelatedField(slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False)
     doc_rec = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
@@ -249,20 +249,22 @@ class InstVerificationMainSerializer(serializers.ModelSerializer):
             pass
         return obj
 
-class InstVerificationStudentSerializer(serializers.ModelSerializer):
+class InstLetterstudentSerializer(serializers.ModelSerializer):
     # Expose enrollment number (FK uses to_field='enrollment_no') for templates and consumers
     enrollment_no = serializers.CharField(source='enrollment.enrollment_no', read_only=True)
     doc_rec_key = serializers.SlugRelatedField(slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False)
     doc_rec = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
-    doc_remark = serializers.CharField(source='doc_remark', required=False, allow_blank=True)
     class Meta:
         model = InstVerificationStudent
         fields = '__all__'
 
+# Backward-compatible aliases
+InstVerificationMainSerializer = InstLetterMainSerializer
+InstVerificationStudentSerializer = InstLetterstudentSerializer
+
 class EcaSerializer(serializers.ModelSerializer):
     doc_rec_key = serializers.SlugRelatedField(slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False)
     doc_rec_id = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
-    doc_remark = serializers.CharField(source='doc_remark', required=False, allow_blank=True)
     class Meta:
         model = Eca
         fields = ['id','doc_rec_id','doc_rec_key','eca_name','eca_ref_no','eca_send_date','doc_remark','createdat','updatedat']

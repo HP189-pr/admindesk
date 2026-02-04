@@ -38,7 +38,7 @@ from .models import EmpProfile, LeaveType, LeaveEntry
 from .models import Institute, MainBranch, SubBranch, Enrollment  # noqa: E402
 from .serializers import (
     DocRecSerializer, VerificationSerializer, MigrationRecordSerializer, ProvisionalRecordSerializer,
-    InstVerificationMainSerializer, InstVerificationStudentSerializer, EcaSerializer, StudentProfileSerializer
+    InstLetterMainSerializer, InstLetterstudentSerializer, EcaSerializer, StudentProfileSerializer
 )
 from .search_utils import apply_fts_search
 from .domain_degree import StudentDegree, ConvocationMaster
@@ -852,7 +852,7 @@ class ProvisionalRecordViewSet(viewsets.ModelViewSet):
 
 class InstVerificationMainViewSet(viewsets.ModelViewSet):
     queryset = InstVerificationMain.objects.select_related('doc_rec', 'institute').order_by('-id')
-    serializer_class = InstVerificationMainSerializer
+    serializer_class = InstLetterMainSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
@@ -925,7 +925,7 @@ class InstVerificationMainViewSet(viewsets.ModelViewSet):
             return Response({"error": "InstVerificationMain not found"}, status=status.HTTP_404_NOT_FOUND)
 
         # Update with provided data
-        serializer = InstVerificationMainSerializer(inst_verification, data=request.data, partial=True)
+        serializer = InstLetterMainSerializer(inst_verification, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response({
@@ -950,7 +950,7 @@ class EcaViewSet(viewsets.ModelViewSet):
 
 class InstVerificationStudentViewSet(viewsets.ModelViewSet):
     queryset = InstVerificationStudent.objects.select_related('doc_rec', 'enrollment', 'institute', 'sub_course', 'main_course').order_by('-id')
-    serializer_class = InstVerificationStudentSerializer
+    serializer_class = InstLetterstudentSerializer
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):

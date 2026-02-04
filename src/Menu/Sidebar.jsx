@@ -15,7 +15,7 @@ const modules = [
       '📑 Migration',
       '📋 Provisional',
       '🏅 Degree',
-      '🏛️ Inst-Verification',
+      '🏛️ Inst-Letter',
     ],
   },
   {

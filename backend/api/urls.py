@@ -74,7 +74,7 @@ try:
     )
 
     from .in_out_register import IN_OUT_REGISTER_URLS
-    from .view_inst_verification import GenerateInstVerificationPDF, SuggestDocRec
+    from .view_inst_verification import InstLetterPDF, SuggestDocRec, DebugInstLetter
 
     router = DefaultRouter()
     # Core router registrations
@@ -143,8 +143,9 @@ try:
         path("profile-picture/", ProfilePictureView.as_view(), name="profile-picture"),
 
         # INST VERIFICATION
-        path("inst-verification/generate-pdf/", GenerateInstVerificationPDF.as_view(), name="inst-verification-generate-pdf"),
+        path("inst-verification/generate-pdf/", InstLetterPDF.as_view(), name="inst-verification-generate-pdf"),
         path("inst-verification/suggest-doc-rec/", SuggestDocRec.as_view(), name="inst-verification-suggest-doc-rec"),
+        path("inst-verification/debug/", DebugInstLetter.as_view(), name="inst-verification-debug"),
 
         # LEAVE SYSTEM (OPTION A)
         path("leave-allocations/", LeaveAllocationListView.as_view(), name="leave-allocations"),

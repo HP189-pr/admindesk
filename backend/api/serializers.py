@@ -561,7 +561,7 @@ class ProvisionalRecordSerializer(serializers.ModelSerializer):
         return super().update(instance, validated)
 
 
-class InstVerificationMainSerializer(serializers.ModelSerializer):
+class InstLetterMainSerializer(serializers.ModelSerializer):
     # Accept doc_rec id directly
     doc_rec_id = serializers.PrimaryKeyRelatedField(
         queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False
@@ -613,7 +613,7 @@ class InstVerificationMainSerializer(serializers.ModelSerializer):
         return data
 
 
-class InstVerificationStudentSerializer(serializers.ModelSerializer):
+class InstLetterstudentSerializer(serializers.ModelSerializer):
     # Bind to doc_rec via slug
     doc_rec_key = serializers.SlugRelatedField(
         slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False
@@ -628,6 +628,11 @@ class InstVerificationStudentSerializer(serializers.ModelSerializer):
         # include all model fields; explicit iv_degree_name added above to ensure
         # serializer reads/writes it even if the model was recently changed in DB.
         fields = '__all__'
+
+
+# Backward-compatible aliases
+InstVerificationMainSerializer = InstLetterMainSerializer
+InstVerificationStudentSerializer = InstLetterstudentSerializer
 
 
 class EcaSerializer(serializers.ModelSerializer):

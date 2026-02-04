@@ -3,23 +3,25 @@
 <head>
   <meta charset="utf-8" />
   <style>
-  @page { size: A4; margin: 50mm 6mm 6mm 10mm; }
-  body { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; color: #000; font-size:12pt; line-height:1.7; letter-spacing:0.1px; padding-bottom:16px; }
-  .header { margin-bottom: 8px; position:relative; }
-  .letter-meta { display:flex; justify-content:space-between; align-items:flex-start; font-weight:bold; font-size:14pt; }
+  @page { size: A4; margin: 1cm 0.5cm 1cm 1cm; }
+  body { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; color: #000; font-size:11pt; line-height:1.5; padding: 0; margin: 0; }
+  .header { margin-bottom: 8px; }
+  .letter-meta { display:flex; justify-content:space-between; align-items:flex-start; font-weight:bold; font-size:13pt; }
   .letter-meta .meta-right { text-align:right; }
-  .issuer-block { text-align:right; line-height:1.4; margin-left:auto; margin-top:16px; font-weight:bold; }
-  .recipient-block { margin-top:12px; font-weight:bold; }
+  .issuer-block { text-align:right; line-height:1.4; margin-left:auto; margin-top:10px; font-weight:bold; font-size: 10pt; }
+  .recipient-block { margin-top:8px; font-weight:bold; font-size: 10pt; }
   .recipient-block .recipient-lines { font-weight:normal; }
-  .subject-line { margin-top:10px; font-weight:bold; }
+  .subject-line { margin-top:8px; font-weight:bold; font-size: 11pt; }
   .subject-line strong { font-weight:bold; }
-  .ref-line { margin-top:4px; font-weight:bold; }
+  .ref-line { margin-top:2px; font-weight:bold; font-size: 10pt; }
   .ref-line span { font-weight:normal; }
   .cell-strong { font-weight:bold; }
-  table { width:100%; border-collapse:collapse; font-size:12pt; }
-    th, td { border:1px solid #bfbfbf; padding:8px 10px; white-space:normal; word-break:break-word; }
-    th { background:#f3f3f3; text-align:center; vertical-align:middle; }
+  table { width:100%; border-collapse:collapse; font-size:10pt; margin-top: 8px; }
+    th, td { border:1px solid #999; padding:5px 8px; white-space:normal; word-break:break-word; }
+    th { background:#e8e8e8; text-align:center; vertical-align:middle; font-weight: bold; }
     td { text-align:center; vertical-align:top; }
+  thead { display: table-header-group; }
+  tr { page-break-inside: avoid; }
   td.cell-label { text-align:left; }
   </style>
 </head>
@@ -34,7 +36,6 @@
         {% if main.inst_veri_date %}<div>{{ main.inst_veri_date }}</div>{% endif %}
       </div>
     </div>
-    <div style="height:20px"></div>
     {% endif %}
     <div class="issuer-block" align="right">
       <div>Office of the Registrar,</div>
@@ -42,8 +43,8 @@
       <div>Sector -15,</div>
       <div>Gandhinagar- 382015</div>
     </div>
-  <div class="recipient-block" style="line-height:1.8;">
-      {% if main.rec_inst_name %}<div>{{ main.rec_inst_name }}</div>{% endif %}
+  <div class="recipient-block" style="line-height:1.6;">
+      {% if main.rec_inst_name %}<div style="font-size: 11pt;">{{ main.rec_inst_name }}</div>{% endif %}
       <div class="recipient-lines">
         {% if main.rec_inst_sfx_name %}<div>{{ main.rec_inst_sfx_name }}</div>{% endif %}
         {% if main.rec_inst_address_1 %}<div>{{ main.rec_inst_address_1 }}</div>{% endif %}
@@ -57,11 +58,10 @@
         {% endif %}
       </div>
     </div>
-  <div style="height:10px"></div>
-    <div class="subject-line" style="margin:0 0 2px 3.5cm;">
+    <div class="subject-line" style="margin:6px 0 2px 0;">
       Sub: Educational Verification of <strong>{% if main.doc_types %}{% with doc=main.doc_types %}{{ doc }}{% if 'certificate' not in doc|lower %} certificate{% endif %}{% endwith %}{% else %}Certificate{% endif %}</strong>.
     </div>
-    <div class="ref-line" style="margin:0 0 0 3.5cm;">
+    <div class="ref-line" style="margin:0;">
       Ref:
       <span>
         Your Ref
@@ -73,38 +73,44 @@
         <span> Dated on <strong>{{ main.ref_date }}</strong></span>
       {% endif %}
     </div>
-    <div style="height:16px"></div>
-    <div style="line-height:1.7;text-align:justify;">
+    <div style="height:8px"></div>
+    <div style="line-height:1.5;text-align:justify; font-size: 10pt;">
       Regarding the subject and reference mentioned above, I am delighted to confirm that upon thorough verification, the documents pertaining to the candidate in question have been meticulously examined and found to be in accordance with our office records. Below are the details of the provided <strong>{% if main.doc_types %}{% with doc=main.doc_types %}{{ doc }}{% if 'certificate' not in doc|lower %} Certificate{% endif %}{% endwith %}{% else %}Certificate{% endif %}</strong>:
     </div>
   </div>
   <table>
     <thead>
       <tr>
-  <th style="width:6%">Sr. No.</th>
-  <th style="width:36%">Candidate Name</th>
-  <th style="width:21%">Enrollment Number</th>
-  <th style="width:21%">Branch</th>
-  <th style="width:16%">{{ credential_header|default:"Type of Credential" }}</th>
+  <th style="width:6%;">Sr. No.</th>
+  <th style="width:32%;">Candidate Name</th>
+  <th style="width:18%;">Enrollment Number</th>
+  <th style="width:22%;">Branch</th>
+  <th style="width:22%;">{{ credential_header|default:"Type of Credential" }}</th>
       </tr>
     </thead>
     <tbody>
-      {% for s in students %}
+      {% if students %}
+        {% for s in students %}
+        <tr>
+      <td>{{ forloop.counter }}</td>
+      <td class="cell-label cell-strong">{{ s.student_name }}</td>
+      <td class="cell-strong">{% if s.enrollment_no %}{{ s.enrollment_no }}{% else %}{{ s.enrollment }}{% endif %}</td>
+      <td class="cell-strong">{% if s.iv_degree_name %}{{ s.iv_degree_name }}{% else %}{{ s.branch|default:"" }}{% endif %}</td>
+      <td class="cell-strong">{% if s.month_year %}{{ s.month_year }}{% else %}{{ s.type_of_credential|default:"" }}{% endif %}</td>
+        </tr>
+        {% endfor %}
+      {% else %}
       <tr>
-    <td>{{ forloop.counter }}</td>
-    <td class="cell-label cell-strong">{{ s.student_name }}</td>
-    <td class="cell-strong">{% if s.enrollment_no %}{{ s.enrollment_no }}{% else %}{{ s.enrollment }}{% endif %}</td>
-    <td class="cell-strong">{% if s.iv_degree_name %}{{ s.iv_degree_name }}{% else %}{{ s.branch }}{% endif %}</td>
-  <td class="cell-strong">{% if s.month_year %}{{ s.month_year }}{% else %}{{ s.type_of_credential }}{% endif %}</td>
+        <td colspan="5" style="text-align: center; padding: 20px;">No student records found</td>
       </tr>
-      {% endfor %}
+      {% endif %}
     </tbody>
   </table>
-  <div style="height:16px"></div>
-  <div><strong>Remark:</strong> The above record has been verified and found correct as per university records.</div>
-  <div style="height:22px"></div>
-  <div>Should you require any additional information or have further inquiries, please do not hesitate to reach out to us.</div>
-  <div style="height:74px"></div>
-  <div>Registrar</div>
+  <div style="height:10px"></div>
+  <div style="font-size: 10pt;"><strong>Remark:</strong> The above record has been verified and found correct as per university records.</div>
+  <div style="height:15px"></div>
+  <div style="font-size: 10pt;">Should you require any additional information or have further inquiries, please do not hesitate to reach out to us.</div>
+  <div style="height:50px"></div>
+  <div style="font-size: 10pt;">Registrar</div>
 </body>
 </html>

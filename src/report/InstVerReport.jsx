@@ -245,7 +245,7 @@ const InstVerReport = ({
     <section className="bg-white rounded-xl border p-6 shadow space-y-6">
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
-          <h3 className="text-lg font-semibold">Inst-Verification Report</h3>
+          <h3 className="text-lg font-semibold">Inst-Letter Report</h3>
           <p className="text-sm text-slate-500">
             Choose single or multiple IV record printing without leaving this tab.
           </p>

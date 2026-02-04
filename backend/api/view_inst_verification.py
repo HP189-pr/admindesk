@@ -3,21 +3,25 @@ from django.template.loader import render_to_string
 from django.http import HttpResponse, JsonResponse
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
+from weasyprint import HTML, CSS
+from pathlib import Path
 import json
+
+
 try:
-    import pdfkit
+    pass
 except Exception:
-    # pdfkit may not be installed in all environments (we still want debug mode to work)
-    pdfkit = None
+    # weasyprint may not be installed in all environments (we still want debug mode to work)
+    HTML = None
 
 import re, logging
 
 from .models import InstVerificationMain, InstVerificationStudent
 from collections import OrderedDict
-from .serializers import InstVerificationMainSerializer, InstVerificationStudentSerializer
+from .serializers import InstLetterMainSerializer, InstLetterstudentSerializer
 
 
-class GenerateInstVerificationPDF(APIView):
+class InstLetterPDF(APIView):
     """Generate PDF for one or more inst verification records.
 
     Accepts POST JSON body: { "doc_recs": ["iv25000001", ...] } or { "doc_rec": "iv25000001" }
@@ -34,7 +38,7 @@ class GenerateInstVerificationPDF(APIView):
         # DEBUG: log incoming payload and user to help diagnose missing header data during PDF generation
         try:
             if getattr(settings, 'DEBUG', False):
-                logging.getLogger('api').info('GenerateInstVerificationPDF called by=%s payload=%s', getattr(request, 'user', None), payload)
+                logging.getLogger('api').info('InstLetterPDF called by=%s payload=%s', getattr(request, 'user', None), payload)
         except Exception:
             pass
 
@@ -235,15 +239,21 @@ class GenerateInstVerificationPDF(APIView):
                         for main_obj in mains_qs:
                             actual_doc_rec = getattr(getattr(main_obj, 'doc_rec', None), 'doc_rec_id', None) or ''
                             # serialize and format similar to the non-numeric branch below
-                            main_ser = InstVerificationMainSerializer(main_obj).data
+                            main_ser = InstLetterMainSerializer(main_obj).data
                             main_ser = _prepare_main(main_ser, main_obj)
 
                             # Match students by the exact DocRec FK from the main_obj so
                             # we only pick InstVerificationStudent rows that belong to
                             # this InstVerificationMain's DocRec. Avoid string-based
                             # matching to prevent incorrect/over-broad results.
-                            students_qs = InstVerificationStudent.objects.filter(doc_rec=getattr(main_obj, 'doc_rec', None)).order_by('id')
-                            students_ser = InstVerificationStudentSerializer(students_qs, many=True).data
+                            doc_rec_obj = getattr(main_obj, 'doc_rec', None)
+                            if doc_rec_obj:
+                                students_qs = InstVerificationStudent.objects.filter(doc_rec=doc_rec_obj).order_by('id')
+                                logging.getLogger('api').info(f'PDF Generation (numeric): Found {students_qs.count()} students for doc_rec={doc_rec_obj.doc_rec_id}')
+                            else:
+                                students_qs = InstVerificationStudent.objects.none()
+                                logging.getLogger('api').warning(f'PDF Generation (numeric): No doc_rec_obj found for main_obj={main_obj.id}')
+                            students_ser = InstLetterstudentSerializer(students_qs, many=True).data
                             students_ser = [_sanitize_student_row(s) for s in students_ser]
                             debug_results.append({
                                 'requested': dr,
@@ -289,7 +299,7 @@ class GenerateInstVerificationPDF(APIView):
                     pass
 
             # Try to fetch main by doc_rec (doc_rec is stored on related DocRec model)
-            main_qs = InstVerificationMain.objects.filter(doc_rec__doc_rec_id=dr)
+            main_qs = InstVerificationMain.objects.filter(doc_rec__doc_rec_id__iexact=dr)
             main_obj = main_qs.first()
             # If not found, try common variant formats (2-digit year, unpadded sequence, contains sequence)
             if not main_obj:
@@ -348,21 +358,27 @@ class GenerateInstVerificationPDF(APIView):
                         except Exception:
                             pass
             if not main_obj:
-                logging.getLogger('api').info('GenerateInstVerificationPDF: doc_rec not found, attempts=%s', attempts)
+                logging.getLogger('api').info('InstLetterPDF: doc_rec not found, attempts=%s', attempts)
                 # keep debug result for not-found but continue so grouping can still occur for others
                 debug_results.append({'requested': dr, 'doc_rec': None, 'found': False, 'attempts': attempts, 'students': []})
                 continue
 
             # We have a main_obj; serialize and fetch students
-            main_ser = InstVerificationMainSerializer(main_obj).data
+            main_ser = InstLetterMainSerializer(main_obj).data
             main_ser = _prepare_main(main_ser, main_obj)
             # Use the actual doc_rec id from the found main_obj (safer if variant matched)
             actual_doc_rec = getattr(getattr(main_obj, 'doc_rec', None), 'doc_rec_id', None) or dr
             # Use the DocRec FK on the main_obj to fetch matching students. This
             # ensures the student rows are exactly those attached to the same
             # DocRec as the InstVerificationMain we found.
-            students_qs = InstVerificationStudent.objects.filter(doc_rec=getattr(main_obj, 'doc_rec', None)).order_by('id')
-            students_ser = InstVerificationStudentSerializer(students_qs, many=True).data
+            doc_rec_obj = getattr(main_obj, 'doc_rec', None)
+            if doc_rec_obj:
+                students_qs = InstVerificationStudent.objects.filter(doc_rec=doc_rec_obj).order_by('id')
+                logging.getLogger('api').info(f'PDF Generation: Found {students_qs.count()} students for doc_rec={doc_rec_obj.doc_rec_id}')
+            else:
+                students_qs = InstVerificationStudent.objects.none()
+                logging.getLogger('api').warning(f'PDF Generation: No doc_rec_obj found for main_obj={main_obj.id}')
+            students_ser = InstLetterstudentSerializer(students_qs, many=True).data
             students_ser = [_sanitize_student_row(s) for s in students_ser]
             # capture debug info
             debug_results.append({
@@ -463,41 +479,56 @@ class GenerateInstVerificationPDF(APIView):
                 pass
             pages.append(page_html)
 
+
+        # Fallback: If no valid pages, render error template
+        if not pages or all(not str(p).strip() for p in pages):
+            error_html = render_to_string('pdf_templates/record_not_found.html', {
+                'doc_rec': doc_recs,
+                'attempts': resolved_docs,
+            })
+            pages = [error_html]
+
         # Wrap pages into single HTML
         full_html = render_to_string('pdf_templates/batch_wrapper.html', {'pages': pages})
 
-        options = {
-            'page-size': 'A4',
-            'encoding': 'UTF-8',
-            'margin-top': '5cm',
-            'margin-bottom': '6mm',
-            'margin-left': '10mm',
-            'margin-right': '6mm',
-            'footer-center': 'Email: verification@ksv.ac.in    Contact No.: 9408801690 / 079-23244690',
-            'footer-font-size': '10',
-            'footer-spacing': '2',
-            'enable-local-file-access': None,
-        }
+        # Optional: return HTML with console logs for browser debugging instead of PDF
+        debug_console = (request.query_params.get('debug_console') == '1') or bool(payload.get('debug_console'))
+        if debug_console:
+            try:
+                dbg_data = {
+                    'requested': doc_recs,
+                    'groups': list(groups.keys()),
+                    'debug_results': debug_results,
+                }
+                dbg_json = json.dumps(dbg_data)
+                debug_script = f"<script>console.log('IV Debug:', {dbg_json});</script>"
+                debug_banner = f"<div style='padding:12px;border:1px solid #ccc;background:#f8f8f8;font-family:monospace;font-size:12px;'>" \
+                                f"<strong>IV Debug</strong><pre>{json.dumps(dbg_data, indent=2)}</pre></div>"
+                debug_html = debug_script + debug_banner + full_html
+                return HttpResponse(debug_html, content_type='text/html; charset=utf-8')
+            except Exception:
+                return HttpResponse(full_html, content_type='text/html; charset=utf-8')
 
-        config = None
-        wkpath = getattr(settings, 'WKHTMLTOPDF_CMD', None)
-        if pdfkit is None:
+        # If weasyprint is not available, return error with debug info
+        if HTML is None:
+            logging.getLogger('api').error('weasyprint library not installed')
             return JsonResponse({
                 'detail': 'PDF generation unavailable',
-                'error': 'pdfkit library not installed',
-                'html': full_html,
-                'debug_results': debug_results,
+                'error': 'weasyprint library not installed. Please install: pip install weasyprint',
+                'html_preview': full_html[:2000] + '...',
             }, status=503)
+        
         try:
-            if wkpath:
-                config = pdfkit.configuration(wkhtmltopdf=wkpath)
-            pdf = pdfkit.from_string(full_html, False, options=options, configuration=config)
+            # Generate PDF using weasyprint
+            static_base = getattr(settings, 'STATIC_ROOT', None) or getattr(settings, 'BASE_DIR', None) or '/'
+            base_url = Path(static_base).as_uri()
+            pdf_bytes = HTML(string=full_html, base_url=base_url).write_pdf()
         except Exception as e:
+            logging.getLogger('api').error(f'PDF generation failed: {str(e)}')
             return JsonResponse({
                 'detail': 'PDF generation failed',
                 'error': str(e),
-                'html': full_html,
-                'debug_results': debug_results,
+                'html_sample': full_html[:1000] + '...',
             }, status=500)
 
         # Choose filename: if the PDF contains a single grouped iv_record_no, use that number
@@ -510,7 +541,7 @@ class GenerateInstVerificationPDF(APIView):
         except Exception:
             filename = f"Verification_Multiple_Records_{doc_recs[0] if doc_recs else 'batch'}.pdf"
 
-        response = HttpResponse(pdf, content_type='application/pdf')
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
 
@@ -605,3 +636,76 @@ class SuggestDocRec(APIView):
         # unique preserving order
         found = [f for f in dict.fromkeys([x for x in found if x])]
         return JsonResponse({'candidates': found})
+
+
+class DebugInstLetter(APIView):
+    """Debug endpoint to check what students exist in database and return HTML."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            payload = request.data if hasattr(request, 'data') else json.loads(request.body.decode('utf-8') or '{}')
+        except Exception:
+            payload = {}
+
+        iv_record_no = payload.get('iv_record_no') or payload.get('iv_no')
+        
+        response_data = {
+            'search_params': {
+                'iv_record_no': iv_record_no,
+            },
+            'main_records': [],
+            'total_main': 0,
+            'total_students': 0,
+            'student_details': [],
+        }
+
+        # Try to find main records
+        if iv_record_no:
+            try:
+                iv_int = int(iv_record_no)
+                mains = InstVerificationMain.objects.filter(iv_record_no=iv_int)
+                response_data['total_main'] = mains.count()
+                
+                for main in mains:
+                    doc_rec_val = getattr(main.doc_rec, 'doc_rec_id', None) if main.doc_rec else None
+                    response_data['main_records'].append({
+                        'id': main.id,
+                        'iv_record_no': main.iv_record_no,
+                        'inst_veri_number': main.inst_veri_number,
+                        'doc_rec_id': doc_rec_val,
+                        'doc_rec_obj_id': main.doc_rec_id if main.doc_rec_id else None,
+                    })
+                    
+                    # Now check for students
+                    if main.doc_rec:
+                        students = InstVerificationStudent.objects.filter(doc_rec=main.doc_rec)
+                        response_data['total_students'] += students.count()
+                        
+                        for student in students:
+                            response_data['student_details'].append({
+                                'id': student.id,
+                                'enrollment': str(student.enrollment) if student.enrollment else student.enrollment_no_text,
+                                'student_name': student.student_name,
+                                'doc_rec_id': student.doc_rec_id if student.doc_rec_id else None,
+                            })
+                        
+                        # If ?html=1, render and return the HTML
+                        if request.query_params.get('html') == '1':
+                            main_ser = InstLetterMainSerializer(main).data
+                            students_ser = InstLetterstudentSerializer(students, many=True).data
+                            
+                            page_html = render_to_string('pdf_templates/inst_verification_record.html', {
+                                'main': main_ser,
+                                'students': students_ser,
+                                'group_doc_recs': [doc_rec_val],
+                                'iv_record_no': str(iv_int),
+                                'credential_header': 'Type of Credential',
+                            })
+                            return HttpResponse(page_html, content_type='text/html; charset=utf-8')
+            except Exception as e:
+                response_data['error'] = str(e)
+                import traceback
+                response_data['traceback'] = traceback.format_exc()
+
+        return JsonResponse(response_data)

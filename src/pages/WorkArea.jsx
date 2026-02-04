@@ -4,7 +4,7 @@ import Migration from "./Migration";
 import Provisional from "./Provisional";
 import Enrollment from "./Enrollment";
 import Degree from "./Degree";
-import InstitutionalVerification from "./Inst-Verification";
+import InstLetter from "./inst-Letter";
 import CustomDashboard from './CustomDashboardClean';
 import DocReceive from "./doc-receive";
 import AdminDashboard from "../components/AdminDashboard";
@@ -133,7 +133,7 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
         );
       case "inst_ver":
         return (
-          <InstitutionalVerification
+          <InstLetter
             onToggleSidebar={onToggleSidebar}
             onToggleChatbox={onToggleChatbox}
           />
