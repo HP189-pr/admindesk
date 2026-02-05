@@ -4,6 +4,7 @@ import axios from '../api/axiosInstance';
 import { useAuth } from '../hooks/AuthContext';
 import { printElement } from '../utils/print';
 import { normalize, fmtDate, roundLeave } from './utils';
+import { fetchLeaveReport, fetchMyLeaveBalance } from '../services/empLeaveService';
 
 const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPeriod: setControlledPeriod }) => {
   const { user: authUser } = useAuth() || {};
@@ -47,9 +48,8 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
 
   useEffect(() => {
     if (!hasMgmt) {
-      axios
-        .get('/my-leave-balance/')
-        .then((r) => setMyBalances(Array.isArray(r.data) ? r.data : []))
+      fetchMyLeaveBalance()
+        .then((data) => setMyBalances(Array.isArray(data) ? data : []))
         .catch(() => setMyBalances([]));
     }
   }, [hasMgmt]);
@@ -72,7 +72,7 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
     setBalanceError(null);
 
     try {
-      let url = '';
+      let endpoint = '';
       let params = {};
 
       switch (balanceMode) {
@@ -82,7 +82,7 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
             setLoading(false);
             return;
           }
-          url = '/leave-report/employee-summary/';
+          endpoint = 'employee-summary';
           params = { emp_id: selectedEmpId, period_id: selectedPeriod };
           break;
         case 'employee-range':
@@ -92,7 +92,7 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
             setLoading(false);
             return;
           }
-          url = '/leave-report/employee-range/';
+          endpoint = 'employee-range';
           params = { emp_id: selectedEmpId, from: fromDate, to: toDate };
           break;
         case 'multi-year':
@@ -101,7 +101,7 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
             setLoading(false);
             return;
           }
-          url = '/leave-report/multi-year/';
+          endpoint = 'multi-year';
           params = { emp_id: selectedEmpId };
           break;
         case 'all-employees':
@@ -110,7 +110,7 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
             setLoading(false);
             return;
           }
-          url = '/leave-report/all-employees-balance/';
+          endpoint = 'all-employees-balance';
           params = { period_id: selectedPeriod };
           break;
         default:
@@ -119,8 +119,8 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
       }
 
       try {
-        const response = await axios.get(url, { params });
-        setBalanceData(response.data);
+        const data = await fetchLeaveReport(endpoint, params);
+        setBalanceData(data);
         setBalanceError(null);
       } catch (error) {
         let errorMsg = 'Failed to load balance data';

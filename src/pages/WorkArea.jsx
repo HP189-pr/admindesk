@@ -5,7 +5,6 @@ import Provisional from "./Provisional";
 import Enrollment from "./Enrollment";
 import Degree from "./Degree";
 import InstLetter from "./inst-Letter";
-import CustomDashboard from './CustomDashboardClean';
 import DocReceive from "./doc-receive";
 import AdminDashboard from "../components/AdminDashboard";
 import ProfileUpdate from "../components/ProfileUpdate";
@@ -21,7 +20,7 @@ import AuthFees from "../hooks/AuthFees";
 
 // Pages will render their own topbars; WorkArea only decides which page to show.
 
-const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebarOpen, isChatboxOpen, setSelectedMenuItem, selectedMenuItem, setSidebarOpen }) => {
+const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebarOpen, isChatboxOpen, setSelectedMenuItem, selectedMenuItem, setSidebarOpen, DashboardComponent }) => {
   // Keep a per-page ephemeral action if a page needs it
   const [selectedTopbarMenu, setSelectedTopbarMenu] = useState(null);
 
@@ -139,8 +138,20 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
           />
         );
       case "dashboard":
+        if (DashboardComponent) {
+          return (
+            <DashboardComponent
+              selectedMenuItem={selectedMenuItem}
+              setSelectedMenuItem={setSelectedMenuItem}
+              isSidebarOpen={isSidebarOpen}
+              setSidebarOpen={setSidebarOpen}
+            />
+          );
+        }
         return (
-          <CustomDashboard selectedMenuItem={selectedMenuItem} setSelectedMenuItem={setSelectedMenuItem} isSidebarOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} />
+          <h1 style={{ padding: "20px", fontSize: "20px", fontWeight: "bold" }}>
+            Select a Menu Item
+          </h1>
         );
       case "doc_receive":
         return (

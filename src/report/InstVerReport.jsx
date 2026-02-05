@@ -1,4 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState, useRef } from "react";
+import { isoToDMY } from "../utils/date";
+import { printElement } from "../utils/print"; // 👈 NEW
+import { generateInstLetterPDF, fetchInstLetterStudents } from "../services/inst-letterservice";
 
 const MAX_RANGE_PRINT = 300;
 
@@ -11,356 +14,420 @@ const InstVerReport = ({
 }) => {
   const [mode, setMode] = useState("single");
   const [singleIv, setSingleIv] = useState(defaultIvRecordNo || "");
-  const [instVerNo, setInstVerNo] = useState(defaultInstVeriNumber || "");
   const [rangeStart, setRangeStart] = useState("");
   const [rangeEnd, setRangeEnd] = useState("");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
-  const [selectedOptionIdx, setSelectedOptionIdx] = useState("");
-  const [rangeStartIdx, setRangeStartIdx] = useState("");
-  const [rangeEndIdx, setRangeEndIdx] = useState("");
+  const [printBusy, setPrintBusy] = useState(false);
+  const [printData, setPrintData] = useState([]);
+
+  // 👇 REF FOR PRINT.JS
+  const printRef = useRef(null);
+
+  /* ---------------- record options ---------------- */
 
   const recordOptions = useMemo(() => {
     if (!Array.isArray(records)) return [];
     return records
       .map((rec, idx) => {
         const ivNoRaw = rec?.iv_record_no;
-        const ivRecordNo = ivNoRaw === null || ivNoRaw === undefined ? "" : String(ivNoRaw).replace(/[^0-9]/g, "");
-        const instNo = rec?.inst_veri_number || rec?.inst_veri_no || "";
-        const fallback = rec?.doc_rec || `Record ${idx + 1}`;
+        const ivRecordNo =
+          ivNoRaw === null || ivNoRaw === undefined
+            ? ""
+            : String(ivNoRaw).replace(/[^0-9]/g, "");
+
+        const instNo = rec?.inst_veri_number || "";
         const labelParts = [];
         if (ivRecordNo) labelParts.push(ivRecordNo);
         if (instNo) labelParts.push(instNo);
-        const label = labelParts.length ? labelParts.join(" / ") : fallback;
-        const sortVal = ivRecordNo ? parseInt(ivRecordNo, 10) : 0;
-        const createdAt = rec?.inst_veri_date || rec?.doc_rec_date || rec?.createdat || rec?.created_at || null;
-        const createdAtTime = createdAt ? new Date(createdAt).getTime() : 0;
+
         return {
-          key: `${ivRecordNo || fallback}-${idx}`,
-          label,
+          key: `${ivRecordNo || idx}`,
+          label: labelParts.join(" / "),
           ivRecordNo,
           instVeriNumber: instNo,
-          sortVal: Number.isFinite(sortVal) ? sortVal : 0,
-          createdAtTime,
+          idx,
         };
-      })
-      .sort((a, b) => {
-        if (a.sortVal !== b.sortVal) return b.sortVal - a.sortVal;
-        if (a.createdAtTime !== b.createdAtTime) return b.createdAtTime - a.createdAtTime;
-        return b.label.localeCompare(a.label);
       });
   }, [records]);
 
-  useEffect(() => {
-    if (defaultIvRecordNo) {
-      setSingleIv((prev) => prev || defaultIvRecordNo);
-    }
-  }, [defaultIvRecordNo]);
-
-  useEffect(() => {
-    if (defaultInstVeriNumber) {
-      setInstVerNo((prev) => prev || defaultInstVeriNumber);
-    }
-  }, [defaultInstVeriNumber]);
-
-  useEffect(() => {
-    if (!singleIv) {
-      if (selectedOptionIdx !== "") {
-        setSelectedOptionIdx("");
-      }
-      return;
-    }
-    const idx = recordOptions.findIndex((opt) => opt.ivRecordNo === singleIv);
-    if (idx >= 0) {
-      const idxString = String(idx);
-      if (selectedOptionIdx !== idxString) {
-        setSelectedOptionIdx(idxString);
-      }
-      const option = recordOptions[idx];
-      if (option?.instVeriNumber && option.instVeriNumber !== instVerNo) {
-        setInstVerNo(option.instVeriNumber);
-      }
-    }
-  }, [recordOptions, singleIv, instVerNo, selectedOptionIdx]);
-
-  useEffect(() => {
-    if (!rangeStart) {
-      if (rangeStartIdx !== "") setRangeStartIdx("");
-    } else {
-      const idx = recordOptions.findIndex((opt) => opt.ivRecordNo === rangeStart);
-      if (idx >= 0) {
-        const idxString = String(idx);
-        if (rangeStartIdx !== idxString) setRangeStartIdx(idxString);
-      }
-    }
-  }, [rangeStart, rangeStartIdx, recordOptions]);
-
-  useEffect(() => {
-    if (!rangeEnd) {
-      if (rangeEndIdx !== "") setRangeEndIdx("");
-    } else {
-      const idx = recordOptions.findIndex((opt) => opt.ivRecordNo === rangeEnd);
-      if (idx >= 0) {
-        const idxString = String(idx);
-        if (rangeEndIdx !== idxString) setRangeEndIdx(idxString);
-      }
-    }
-  }, [rangeEnd, rangeEndIdx, recordOptions]);
+  /* ---------------- backend PDF (UNCHANGED) ---------------- */
 
   const buildPayload = () => {
     if (mode === "single") {
-      const trimmed = (singleIv || "").trim();
-      if (!trimmed) {
+      if (!singleIv) {
         setStatus("Select an IV record to continue.");
         return null;
       }
-      return { iv_record_no: trimmed };
+      return { iv_record_no: singleIv };
     }
 
-    const startNum = parseInt(rangeStart, 10);
-    const endNum = parseInt(rangeEnd, 10);
-    if (!Number.isFinite(startNum) || !Number.isFinite(endNum)) {
-      setStatus("Provide numeric values for both start and end record numbers.");
+    const start = Number(rangeStart);
+    const end = Number(rangeEnd);
+    if (!start || !end) {
+      setStatus("Select valid start and end records.");
       return null;
     }
 
-    const low = Math.min(startNum, endNum);
-    const high = Math.max(startNum, endNum);
-    const range = [];
-    for (let current = low; current <= high; current += 1) {
-      range.push(current);
-      if (range.length > MAX_RANGE_PRINT) {
-        setStatus(`Please limit batch prints to ${MAX_RANGE_PRINT} records or fewer.`);
+    const list = [];
+    for (let i = Math.min(start, end); i <= Math.max(start, end); i++) {
+      list.push(i);
+      if (list.length > MAX_RANGE_PRINT) {
+        setStatus(`Max ${MAX_RANGE_PRINT} records allowed.`);
         return null;
       }
     }
-
-    if (!range.length) {
-      setStatus("Unable to compute record range.");
-      return null;
-    }
-
-    return { iv_record_nos: range };
+    return { iv_record_nos: list };
   };
 
-  const handleDropdownChange = (event) => {
-    const idx = event.target.value;
-    if (!idx) {
-      setSelectedOptionIdx("");
-      setSingleIv("");
-      setInstVerNo("");
-      return;
-    }
-    setSelectedOptionIdx(idx);
-    const selected = recordOptions[Number(idx)] || null;
-    if (!selected) {
-      setSingleIv("");
-      setInstVerNo("");
-      return;
-    }
-    setSingleIv(selected.ivRecordNo || "");
-    setInstVerNo(selected.instVeriNumber || "");
-  };
-
-  const handleRangeDropdownChange = (which, idx) => {
-    if (which === "start") {
-      if (!idx) {
-        setRangeStartIdx("");
-        setRangeStart("");
-        return;
-      }
-      setRangeStartIdx(idx);
-      const selected = recordOptions[Number(idx)];
-      setRangeStart(selected?.ivRecordNo || "");
-    } else {
-      if (!idx) {
-        setRangeEndIdx("");
-        setRangeEnd("");
-        return;
-      }
-      setRangeEndIdx(idx);
-      const selected = recordOptions[Number(idx)];
-      setRangeEnd(selected?.ivRecordNo || "");
-    }
-  };
-
-  const handlePrint = async () => {
+  const handleBackendPrint = async () => {
     setStatus("");
     const payload = buildPayload();
     if (!payload) return;
 
     setLoading(true);
     try {
-      const headers = {
-        ...(typeof authHeadersFn === "function"
-          ? authHeadersFn()
-          : { "Content-Type": "application/json" }),
-        Accept: "application/pdf, application/json;q=0.9, */*;q=0.8",
-      };
-      const res = await fetch(`${apiBase}/inst-verification/generate-pdf/`, {
-        method: "POST",
-        headers,
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-      const contentType = res.headers.get("content-type") || "";
-      if (!res.ok) {
-        if (contentType.includes("application/json")) {
-          const errJson = await res.json();
-          throw new Error(errJson?.detail || errJson?.error || "Unable to generate PDF");
-        }
-        const errText = await res.text();
-        throw new Error(errText || "Unable to generate PDF");
-      }
-      if (contentType.includes("application/json")) {
-        const errJson = await res.json();
-        throw new Error(errJson?.detail || errJson?.error || "Unable to generate PDF");
-      }
-      const blob = await res.blob();
-      if (!blob || blob.size === 0) {
-        throw new Error("Received an empty PDF from the server.");
-      }
-      const blobUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      const fileLabel =
-        "iv_record_no" in payload
-          ? payload.iv_record_no
-          : `${payload.iv_record_nos[0]}_${payload.iv_record_nos[payload.iv_record_nos.length - 1]}`;
-      link.href = blobUrl;
-      link.download = `Verification_${fileLabel || "Batch"}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 4000);
-      setStatus("PDF generated. Check your downloads.");
-    } catch (err) {
-      console.error(err);
-      setStatus(err.message || "Unable to generate PDF.");
+      const blob = await generateInstLetterPDF(payload, { apiBase, headersFn: authHeadersFn });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "Verification.pdf";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setStatus(e.message || "Unable to generate PDF");
     } finally {
       setLoading(false);
     }
   };
 
+  /* ---------------- NEW: FRONTEND PRINT ---------------- */
+  const docRecId = (rec = {}) =>
+    typeof rec?.doc_rec === "string" ? rec.doc_rec : rec?.doc_rec?.doc_rec_id || rec?.doc_rec?.id || rec?.doc_rec || "";
+
+  const selectedRecords =
+    mode === "single"
+      ? records.filter((r) => String(r.iv_record_no) === String(singleIv))
+      : records.filter((r) => {
+          const iv = Number(r.iv_record_no);
+          return iv >= Number(rangeStart) && iv <= Number(rangeEnd);
+        });
+
+  const handleFrontendPrint = async () => {
+    setStatus("");
+    if (!selectedRecords.length) {
+      setStatus("Select at least one record to print.");
+      return;
+    }
+
+    setPrintBusy(true);
+    try {
+      const enriched = [];
+      for (const rec of selectedRecords) {
+        const docRec = docRecId(rec);
+        const students = docRec
+          ? await fetchInstLetterStudents({ docRec, apiBase, headersFn: authHeadersFn })
+          : [];
+
+        const sorted = [...students].sort((a, b) => (a?.sr_no || 0) - (b?.sr_no || 0));
+        enriched.push({ ...rec, students: sorted });
+      }
+
+      setPrintData(enriched);
+
+      // Wait a frame so the hidden print area renders before calling print
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+
+      // Match backend template: A4 portrait, roughly 10mm/5mm/10mm/10mm margins handled in print styles
+      printElement(printRef.current, { orientation: "portrait", pageSize: "A4", marginMm: 10 });
+    } catch (e) {
+      setStatus(e?.message || "Unable to prepare print view");
+    } finally {
+      setPrintBusy(false);
+    }
+  };
+
+  /* ---------------- records to print ---------------- */
+
+  const printableRecords = printData;
+
+  /* ---------------- UI ---------------- */
+
+  const hasRecords = recordOptions.length > 0;
+
   return (
+    <div className="p-4 md:p-6 space-y-4 h-full bg-slate-100">
     <section className="bg-white rounded-xl border p-6 shadow space-y-6">
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Inst-Letter Report</h3>
-          <p className="text-sm text-slate-500">
-            Choose single or multiple IV record printing without leaving this tab.
-          </p>
-        </div>
+
+      {/* HEADER */}
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold">Inst-Letter Report</h3>
         <div className="flex gap-2">
-          {(["single", "multiple"]).map((opt) => (
-            <button
-              key={opt}
-              type="button"
-              onClick={() => setMode(opt)}
-              className={[
-                "px-4 py-2 rounded-lg border text-sm font-medium transition",
-                mode === opt
-                  ? "bg-indigo-600 text-white border-indigo-600"
-                  : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50",
-              ].join(" ")}
-            >
-              {opt === "single" ? "Single Print" : "Multiple Print"}
-            </button>
-          ))}
+          <button
+            onClick={() => setMode("single")}
+            className={`px-3 py-1 border rounded ${mode === "single" ? "bg-indigo-600 text-white" : ""}`}
+          >
+            Single
+          </button>
+          <button
+            onClick={() => setMode("multiple")}
+            className={`px-3 py-1 border rounded ${mode === "multiple" ? "bg-indigo-600 text-white" : ""}`}
+          >
+            Multiple
+          </button>
         </div>
       </div>
 
-      {mode === "single" ? (
-        <div className="space-y-4">
-          <div className="space-y-3">
-            <label className="label">Select Record (IV Record No / Inst Veri Number)</label>
-            <select
-              className="input"
-              value={selectedOptionIdx}
-              onChange={handleDropdownChange}
-            >
-              <option value="">Choose a record…</option>
-              {recordOptions.map((opt, idx) => (
-                <option key={opt.key} value={idx}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            {singleIv && (
-              <p className="text-xs text-slate-500">
-                Selected: {singleIv}
-                {instVerNo ? ` / ${instVerNo}` : ""}
-              </p>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={handlePrint}
-            disabled={loading}
-            className="bg-indigo-600 text-white px-5 py-2 rounded-lg font-semibold disabled:opacity-60"
-          >
-            {loading ? "Preparing PDF…" : "Print"}
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="label">From (Start Record)</label>
-              <select
-                className="input"
-                value={rangeStartIdx}
-                onChange={(e) => handleRangeDropdownChange("start", e.target.value)}
-              >
-                <option value="">Choose start…</option>
-                {recordOptions.map((opt, idx) => (
-                  <option key={`start-${opt.key}`} value={idx}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              {rangeStart && (
-                <p className="text-xs text-slate-500">Start record: {rangeStart}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <label className="label">To (End Record)</label>
-              <select
-                className="input"
-                value={rangeEndIdx}
-                onChange={(e) => handleRangeDropdownChange("end", e.target.value)}
-              >
-                <option value="">Choose end…</option>
-                {recordOptions.map((opt, idx) => (
-                  <option key={`end-${opt.key}`} value={idx}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              {rangeEnd && (
-                <p className="text-xs text-slate-500">End record: {rangeEnd}</p>
-              )}
-            </div>
-          </div>
-          <p className="text-xs text-slate-500">
-            The backend prints the entire sequence between From and To (max {MAX_RANGE_PRINT} records per batch).
-          </p>
-          <button
-            type="button"
-            onClick={handlePrint}
-            disabled={loading}
-            className="bg-indigo-600 text-white px-5 py-2 rounded-lg font-semibold disabled:opacity-60"
-          >
-            {loading ? "Preparing PDF…" : "Print Range"}
-          </button>
+      {!hasRecords && (
+        <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded p-3">
+          No records loaded. Fetch records first, then pick the IV numbers to print.
         </div>
       )}
 
-      {status && (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-          {status}
+      {/* MODE-SPECIFIC FIELDS */}
+      {mode === "single" ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="space-y-1 sm:col-span-2">
+            <div className="text-sm font-medium">IV record number</div>
+            <select
+              value={singleIv}
+              onChange={e => setSingleIv(e.target.value)}
+              className="w-full border rounded px-3 py-2"
+              disabled={!hasRecords}
+            >
+              <option value="">Select record</option>
+              {recordOptions.map(opt => (
+                <option key={opt.key} value={opt.ivRecordNo}>
+                  {opt.label || opt.ivRecordNo || opt.key}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="space-y-1">
+            <div className="text-sm font-medium">Start IV record number</div>
+            <select
+              value={rangeStart}
+              onChange={e => setRangeStart(e.target.value)}
+              className="w-full border rounded px-3 py-2"
+              disabled={!hasRecords}
+            >
+              <option value="">Select start record</option>
+              {recordOptions.map(opt => (
+                <option key={`${opt.key}-start`} value={opt.ivRecordNo}>
+                  {opt.label || opt.ivRecordNo || opt.key}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-1">
+            <div className="text-sm font-medium">End IV record number</div>
+            <select
+              value={rangeEnd}
+              onChange={e => setRangeEnd(e.target.value)}
+              className="w-full border rounded px-3 py-2"
+              disabled={!hasRecords}
+            >
+              <option value="">Select end record</option>
+              {recordOptions.map(opt => (
+                <option key={`${opt.key}-end`} value={opt.ivRecordNo}>
+                  {opt.label || opt.ivRecordNo || opt.key}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="text-xs text-slate-600 sm:col-span-2">
+            Pick start and end records from the list (max {MAX_RANGE_PRINT} records per print job).
+          </div>
         </div>
       )}
+
+      {/* ACTION BUTTONS */}
+      <div className="flex gap-3">
+        {/* OLD BUTTON (BACKEND) */}
+        <button
+          onClick={handleBackendPrint}
+          disabled={loading || !hasRecords}
+          className="bg-indigo-600 text-white px-4 py-2 rounded"
+        >
+          {loading ? "Generating…" : "Print (Backend PDF)"}
+        </button>
+
+        {/* NEW BUTTON (FRONTEND PRINT.JS) */}
+        <button
+          onClick={handleFrontendPrint}
+          disabled={!hasRecords || printBusy}
+          className="bg-emerald-600 text-white px-4 py-2 rounded disabled:opacity-60"
+        >
+          {printBusy ? "Preparing…" : "Print (Browser / No Setup)"}
+        </button>
+      </div>
+
+      {status && (
+        <div className="text-sm text-red-600">{status}</div>
+      )}
+
+      {/* ---------------- HIDDEN PRINT AREA ---------------- */}
+      <div style={{ display: "none" }}>
+        <div ref={printRef} className="print-area">
+          <style>
+            {`
+              @page { size: A4; margin: 2in 5mm 10mm 10mm; }
+              body { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; color: #000; font-size: 11pt; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+              .letter { page-break-after: always; }
+              .letter:last-child { page-break-after: auto; }
+              .header { margin-bottom: 8px; }
+              .letter-meta { display: flex; justify-content: space-between; align-items: flex-start; font-weight: bold; font-size: 13pt; }
+              .meta-right { text-align: right; }
+              .issuer { text-align: right; line-height: 1.4; margin-top: 10px; font-weight: bold; font-size: 10pt; }
+              .recipient { margin-top: 8px; font-weight: bold; font-size: 14pt; line-height: 1.6; }
+              .recipient .lines { font-weight: normal; font-size: 11pt; }
+              .subject { margin: 2px 0 2px 0; font-weight: bold; }
+              .ref { margin: 0 0 2px 0; font-weight: bold; }
+              .text { line-height: 1.5; text-align: justify; font-size: 11pt; }
+              table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+              th, td { border:1px solid #999; padding:5px 8px; white-space:normal; word-break:break-word; }
+              th { background: #e8e8e8; text-align: center; vertical-align: middle; font-weight: bold; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+              td { text-align: center; vertical-align: top; }
+              thead { display: table-header-group; }
+              tr { page-break-inside: avoid; }
+              td.cell-label { text-align: left; }
+              .cell-strong { font-weight: bold; }
+              .footer { position: fixed; bottom: 10mm; left: 0; right: 0; text-align: center; font-size: 10pt; }
+            `}
+          </style>
+
+          {/* Spacer to reach ~2in top margin after print host padding (10mm) */}
+          <div style={{ height: "40.8mm" }} />
+
+          {printableRecords.map((rec, idx) => {
+            const refNo = rec?.inst_veri_number ? `KSV/${rec.inst_veri_number}` : "";
+            const refDate = rec?.inst_veri_date ? isoToDMY(rec.inst_veri_date) : "";
+            const recPin = rec?.rec_inst_pin ? rec.rec_inst_pin : "";
+            const docTypes = rec?.doc_types || "Certificate";
+            const docLabel = docTypes.toLowerCase().includes("certificate") ? docTypes : `${docTypes} Certificate`;
+            const students = rec?.students || [];
+            const credentialHeader = (() => {
+              let header = "";
+              for (const s of students) {
+                const val = s?.type_of_credential ? String(s.type_of_credential).trim() : "";
+                if (val) {
+                  header = val;
+                  break;
+                }
+              }
+              if (!header && rec?.type_of_credential) {
+                header = String(rec.type_of_credential).trim();
+              }
+              return header || "Type of Credential";
+            })();
+
+            return (
+              <div className="letter" key={`${idx}-${rec?.id || refNo || idx}`}>
+                <div className="header">
+                  <div className="letter-meta">
+                    <div className="meta-left">{refNo && <div>Ref: {refNo}</div>}</div>
+                    <div className="meta-right">{refDate && <div>{refDate}</div>}</div>
+                  </div>
+                </div>
+
+                <div className="issuer">
+                  <div>Office of the Registrar,</div>
+                  <div>Kadi Sarva Vishwavidyalaya,</div>
+                  <div>Sector -15,</div>
+                  <div>Gandhinagar- 382015</div>
+                </div>
+
+                <div className="recipient" style={{ lineHeight: 1.6 }}>
+                  {rec?.rec_inst_name && <div style={{ fontSize: "11pt" }}>{rec.rec_inst_name}</div>}
+                  <div className="lines">
+                    {rec?.rec_inst_sfx_name && <div>{rec.rec_inst_sfx_name}</div>}
+                    {rec?.rec_inst_address_1 && <div>{rec.rec_inst_address_1}</div>}
+                    {(rec?.rec_inst_address_2 || rec?.rec_inst_location || rec?.rec_inst_city || recPin) && (
+                      <div>
+                        {[rec.rec_inst_address_2, rec.rec_inst_location, rec.rec_inst_city, recPin]
+                          .filter(Boolean)
+                          .join(", ")}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="subject" style={{ margin: "6px 0 2px 0", marginLeft: "0.7in" }}>
+
+                              {/* Footer contact info for all pages */}
+                              <div className="footer">
+                                Email: verification@ksv.ac.in&nbsp;&nbsp;&nbsp;Contact No.: 9408801690 | 079-23244690
+                              </div>
+                  Sub: Educational Verification of <strong>{docLabel}</strong>.
+                </div>
+
+                <div className="ref" style={{ margin: 0, marginLeft: "0.7in" }}>
+                  Ref: <span>Your Ref </span>
+                  {rec?.inst_ref_no ? <strong> {rec.inst_ref_no}</strong> : null}
+                  {rec?.rec_by ? <strong> {rec.rec_by}</strong> : null}
+                  {!rec?.inst_ref_no && !rec?.rec_by ? <strong> N/A</strong> : null}
+                  {rec?.ref_date && <span> Dated on <strong>{isoToDMY(rec.ref_date)}</strong></span>}
+                </div>
+
+                <div style={{ height: "8px" }} />
+
+                <div className="text" style={{ lineHeight: 1.5 }}>
+                  Regarding the subject and reference mentioned above, I am delighted to confirm that upon thorough verification, the documents pertaining to the candidate in question have been meticulously examined and found to be in accordance with our office records. Below are the details of the provided <strong>{docLabel}</strong>:
+                </div>
+
+                <table>
+                  <thead>
+                    <tr>
+                      <th style={{ width: "8%" }}>No.</th>
+                      <th style={{ width: "32%" }}>Candidate Name</th>
+                      <th style={{ width: "22%" }}>Enrollment Number</th>
+                      <th style={{ width: "20%" }}>Branch</th>
+                        <th style={{ width: "18%" }}>{credentialHeader}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {students.length ? (
+                      students.map((s, i) => (
+                        <tr key={`${i}-${s?.id || s?.enrollment || s?.enrollment_no_text || ""}`}>
+                          <td>{i + 1}</td>
+                          <td className="cell-label cell-strong">{s?.student_name || ""}</td>
+                          <td className="cell-strong">{s?.enrollment_no || s?.enrollment_no_text || s?.enrollment || ""}</td>
+                          <td className="cell-strong">{s?.iv_degree_name || s?.branch || ""}</td>
+                          <td className="cell-strong">{s?.month_year || s?.type_of_credential || ""}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="5" style={{ textAlign: "center", padding: "20px" }}>
+                          No student records found
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+
+                <div style={{ marginTop: "10px" }}>
+                  <strong>Remark:</strong> The above record has been verified and found correct as per university records.
+                </div>
+
+                <div style={{ marginTop: "15px" }}>
+                  Should you require any additional information or have further inquiries, please do not hesitate to reach out to us.
+                </div>
+
+                <div style={{ marginTop: "90px", fontSize: "10pt" }}>Registrar</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
     </section>
+    </div>
   );
 };
 

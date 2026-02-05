@@ -367,9 +367,25 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
         if institute_name:
             queryset = queryset.filter(institute_name_dg__icontains=institute_name)
 
+        institute_code = request.query_params.get('institute_code')
+        if institute_code:
+            enrollments_for_inst = Enrollment.objects.filter(
+                enrollment_no__isnull=False,
+                institute__institute_code__iexact=institute_code
+            ).values('enrollment_no')
+            queryset = queryset.filter(enrollment_no__in=models.Subquery(enrollments_for_inst))
+
         degree_name = request.query_params.get('degree_name')
         if degree_name:
             queryset = queryset.filter(degree_name__icontains=degree_name)
+
+        subcourse_name = request.query_params.get('subcourse_name')
+        if subcourse_name:
+            enrollments_for_subcourse = Enrollment.objects.filter(
+                enrollment_no__isnull=False,
+                subcourse__subcourse_name__icontains=subcourse_name
+            ).values('enrollment_no')
+            queryset = queryset.filter(enrollment_no__in=models.Subquery(enrollments_for_subcourse))
 
         exam_year = request.query_params.get('last_exam_year')
         if exam_year:
@@ -424,7 +440,9 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
             'filters': {
                 'convocation_no': convocation_no,
                 'institute_name_dg': institute_name,
+                'institute_code': institute_code,
                 'degree_name': degree_name,
+                'subcourse_name': subcourse_name,
                 'last_exam_year': exam_year,
             },
             'overall_total': queryset.count(),
@@ -439,10 +457,20 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
         """Return distinct values for report filters"""
         years_qs = (
             StudentDegree.objects
-            .exclude(last_exam_year__isnull=True)
-            .exclude(last_exam_year='')
+            .filter(last_exam_year__isnull=False)
             .values_list('last_exam_year', flat=True)
             .order_by('-last_exam_year')
+            .distinct()
+        )
+
+        institute_codes_qs = (
+            Enrollment.objects
+            .filter(enrollment_no__isnull=False)
+            .filter(enrollment_no__in=StudentDegree.objects.values('enrollment_no'))
+            .exclude(institute__institute_code__isnull=True)
+            .exclude(institute__institute_code='')
+            .values_list('institute__institute_code', flat=True)
+            .order_by('institute__institute_code')
             .distinct()
         )
 
@@ -464,6 +492,17 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
             .distinct()
         )
 
+        subcourses_qs = (
+            Enrollment.objects
+            .filter(enrollment_no__isnull=False)
+            .filter(enrollment_no__in=StudentDegree.objects.values('enrollment_no'))
+            .exclude(subcourse__subcourse_name__isnull=True)
+            .exclude(subcourse__subcourse_name='')
+            .values_list('subcourse__subcourse_name', flat=True)
+            .order_by('subcourse__subcourse_name')
+            .distinct()
+        )
+
         def _clean_list(values):
             cleaned = []
             seen = set()
@@ -478,13 +517,17 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
             return cleaned
 
         years = _clean_list(years_qs)
+        institute_codes = _clean_list(institute_codes_qs)
         institutes = _clean_list(institutes_qs)
         courses = _clean_list(courses_qs)
+        subcourses = _clean_list(subcourses_qs)
 
         data = {
             'years': years,
+            'institute_codes': institute_codes,
             'institutes': institutes,
             'courses': courses,
+            'subcourses': subcourses,
         }
         return Response(data)
     

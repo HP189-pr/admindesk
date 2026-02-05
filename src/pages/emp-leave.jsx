@@ -271,9 +271,9 @@ function EmpLeavePage() {
             <LeaveReport user={user} defaultPeriod={selectedPeriod} onPeriodChange={setSelectedPeriod} />
           </Suspense>
         ) : selectedPanel === 'Balance Certificate' ? (
-          <Suspense fallback={<div className="p-4">Loading balance...</div>}>
-            <LeaveBalance user={user} defaultPeriod={selectedPeriod} onPeriodChange={setSelectedPeriod} />
-          </Suspense>
+        <Suspense fallback={<div className="p-4">Loading balance...</div>}>
+          <LeaveBalance user={user} selectedPeriod={selectedPeriod} setSelectedPeriod={setSelectedPeriod} />
+        </Suspense>
         ) : selectedPanel === 'Calander View' ? (
           <Suspense fallback={<div className="p-4">Loading calendar...</div>}>
             <LeaveCalendar user={user} />

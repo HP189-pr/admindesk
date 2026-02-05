@@ -4,14 +4,17 @@ import { getAllConvocations, getDegreeReport, getDegreeFilterOptions } from '../
 const defaultFilters = {
     convocation_no: '',
     last_exam_year: '',
-    institute_name_dg: '',
-    degree_name: ''
+    institute_code: '',
+    degree_name: '',
+    subcourse_name: ''
 };
 
 const emptyFilterOptions = {
     years: [],
+    instituteCodes: [],
     institutes: [],
-    courses: []
+    courses: [],
+    subcourses: []
 };
 
 const SummaryCard = ({ title, value = 0, sublabel }) => (
@@ -90,8 +93,10 @@ const DegreeReport = () => {
                 if (!isMounted) return;
                 setFilterOptions({
                     years: Array.isArray(data?.years) ? data.years : [],
+                    instituteCodes: Array.isArray(data?.institute_codes) ? data.institute_codes : [],
                     institutes: Array.isArray(data?.institutes) ? data.institutes : [],
                     courses: Array.isArray(data?.courses) ? data.courses : [],
+                    subcourses: Array.isArray(data?.subcourses) ? data.subcourses : [],
                 });
             } catch (err) {
                 if (isMounted) setFilterOptions(emptyFilterOptions);
@@ -177,18 +182,18 @@ const DegreeReport = () => {
                             ))}
                         </select>
                     </div>
-                    <div className="flex-1 min-w-[200px]">
-                        <label className="text-xs text-slate-500">Institute</label>
+                    <div className="flex-1 min-w-[180px]">
+                        <label className="text-xs text-slate-500">Institute Code</label>
                         <select
-                            name="institute_name_dg"
-                            value={filters.institute_name_dg}
+                            name="institute_code"
+                            value={filters.institute_code}
                             onChange={handleInput}
                             className="w-full mt-1 px-3 py-2 border rounded-lg"
                             disabled={filterOptionsLoading}
                         >
-                            <option value="">All Institutes</option>
-                            {filterOptions.institutes.map((name) => (
-                                <option key={name} value={name}>{name}</option>
+                            <option value="">All Codes</option>
+                            {filterOptions.instituteCodes.map((code) => (
+                                <option key={code} value={code}>{code}</option>
                             ))}
                         </select>
                     </div>
@@ -203,6 +208,21 @@ const DegreeReport = () => {
                         >
                             <option value="">All Courses</option>
                             {filterOptions.courses.map((name) => (
+                                <option key={name} value={name}>{name}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="flex-1 min-w-[200px]">
+                        <label className="text-xs text-slate-500">Subcourse</label>
+                        <select
+                            name="subcourse_name"
+                            value={filters.subcourse_name}
+                            onChange={handleInput}
+                            className="w-full mt-1 px-3 py-2 border rounded-lg"
+                            disabled={filterOptionsLoading}
+                        >
+                            <option value="">All Subcourses</option>
+                            {filterOptions.subcourses.map((name) => (
                                 <option key={name} value={name}>{name}</option>
                             ))}
                         </select>

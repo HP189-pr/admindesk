@@ -3,26 +3,29 @@
 <head>
   <meta charset="utf-8" />
   <style>
-  @page { size: A4; margin: 1cm 0.5cm 1cm 1cm; }
-  body { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; color: #000; font-size:11pt; line-height:1.5; padding: 0; margin: 0; }
+  @page { size: A4; margin: 1cm 0.5cm 1.6cm 1cm; }
+  body { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; color: #000; font-size:11pt; line-height:1.5; padding: 0 0 22mm 0; margin: 0; }
   .header { margin-bottom: 8px; }
   .letter-meta { display:flex; justify-content:space-between; align-items:flex-start; font-weight:bold; font-size:13pt; }
   .letter-meta .meta-right { text-align:right; }
   .issuer-block { text-align:right; line-height:1.4; margin-left:auto; margin-top:10px; font-weight:bold; font-size: 10pt; }
-  .recipient-block { margin-top:8px; font-weight:bold; font-size: 10pt; }
+  .recipient-block { margin-top:8px; font-weight:bold; font-size: 14pt; }
   .recipient-block .recipient-lines { font-weight:normal; }
-  .subject-line { margin-top:8px; font-weight:bold; font-size: 11pt; }
+  .subject-line { margin-top:8px; font-weight:bold; margin-left: 1.5in; }
   .subject-line strong { font-weight:bold; }
-  .ref-line { margin-top:2px; font-weight:bold; font-size: 10pt; }
+  .ref-line { margin-top:2px; font-weight:bold; margin-left: 1.5in; }
   .ref-line span { font-weight:normal; }
+  .indent-1in { margin-left: 1.5in; margin-right: 0; }
   .cell-strong { font-weight:bold; }
-  table { width:100%; border-collapse:collapse; font-size:10pt; margin-top: 8px; }
+  .text-14 { line-height:1.5; }
+  table { width:100%; border-collapse:collapse; margin-top: 8px; }
     th, td { border:1px solid #999; padding:5px 8px; white-space:normal; word-break:break-word; }
     th { background:#e8e8e8; text-align:center; vertical-align:middle; font-weight: bold; }
     td { text-align:center; vertical-align:top; }
   thead { display: table-header-group; }
   tr { page-break-inside: avoid; }
   td.cell-label { text-align:left; }
+  .footer { position: fixed; bottom: 8mm; left: 0; right: 0; text-align: center; font-size: 10pt; }
   </style>
 </head>
 <body>
@@ -58,10 +61,10 @@
         {% endif %}
       </div>
     </div>
-    <div class="subject-line" style="margin:6px 0 2px 0;">
+    <div class="subject-line indent-1in" style="margin:6px 0 2px 0;">
       Sub: Educational Verification of <strong>{% if main.doc_types %}{% with doc=main.doc_types %}{{ doc }}{% if 'certificate' not in doc|lower %} certificate{% endif %}{% endwith %}{% else %}Certificate{% endif %}</strong>.
     </div>
-    <div class="ref-line" style="margin:0;">
+    <div class="ref-line indent-1in" style="margin:0;">
       Ref:
       <span>
         Your Ref
@@ -74,7 +77,7 @@
       {% endif %}
     </div>
     <div style="height:8px"></div>
-    <div style="line-height:1.5;text-align:justify; font-size: 10pt;">
+    <div class="text-14" style="line-height:1.5;text-align:justify;">
       Regarding the subject and reference mentioned above, I am delighted to confirm that upon thorough verification, the documents pertaining to the candidate in question have been meticulously examined and found to be in accordance with our office records. Below are the details of the provided <strong>{% if main.doc_types %}{% with doc=main.doc_types %}{{ doc }}{% if 'certificate' not in doc|lower %} Certificate{% endif %}{% endwith %}{% else %}Certificate{% endif %}</strong>:
     </div>
   </div>
@@ -107,10 +110,14 @@
     </tbody>
   </table>
   <div style="height:10px"></div>
-  <div style="font-size: 10pt;"><strong>Remark:</strong> The above record has been verified and found correct as per university records.</div>
+  <div class="text-14"><strong>Remark:</strong> The above record has been verified and found correct as per university records.</div>
   <div style="height:15px"></div>
-  <div style="font-size: 10pt;">Should you require any additional information or have further inquiries, please do not hesitate to reach out to us.</div>
+  <div class="text-14">Should you require any additional information or have further inquiries, please do not hesitate to reach out to us.</div>
   <div style="height:50px"></div>
   <div style="font-size: 10pt;">Registrar</div>
+
+  <div class="footer">
+    Email: verification@ksv.ac.in&nbsp;&nbsp;&nbsp;Contact No.: 9408801690 | 079-23244690
+  </div>
 </body>
 </html>

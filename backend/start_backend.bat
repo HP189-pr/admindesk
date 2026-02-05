@@ -1,8 +1,11 @@
 @echo off
 cd /d E:\admindesk\backend
 
-REM If you use virtualenv, activate it
-REM call venv\Scripts\activate
+REM Activate the workspace venv
+call ..\.venv\Scripts\activate.bat
+
+REM Ensure GTK runtime (for WeasyPrint) is on PATH; adjust if installed elsewhere
+set "PATH=D:\Program Files\GTK3-Runtime Win64\bin;%PATH%"
 
 waitress-serve ^
   --host=127.0.0.1 ^

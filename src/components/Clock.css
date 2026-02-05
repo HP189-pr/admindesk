@@ -23,4 +23,28 @@
     font-weight: bold;
     color: #4b0082;
   }
+
+  /* Compact variant for embedding in headers */
+  .clock-compact {
+    margin: 0;
+    padding: 0;
+    background-color: transparent;
+    box-shadow: none;
+    color: inherit;
+    align-items: flex-end;
+  }
+
+  .clock-compact .date,
+  .clock-compact .time {
+    color: inherit;
+  }
+
+  .clock-compact .date {
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+  }
+
+  .clock-compact .time {
+    font-size: 1.4rem;
+  }
   

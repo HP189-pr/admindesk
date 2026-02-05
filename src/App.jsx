@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "./hooks/AuthContext.jsx";
 import Login from "./pages/Login";
 import Sidebar from "./Menu/Sidebar";
 import WorkArea from "./pages/WorkArea";
+import { CustomDashboard } from "./pages/Dashboard";
 import ChatBox from "./components/ChatBox";
 import PopupSearch from "./components/popupsearch";
 
@@ -38,6 +39,7 @@ const Layout = () => {
                   isSidebarOpen={isSidebarOpen}
                   isChatboxOpen={isChatboxOpen}
                   setSidebarOpen={setSidebarOpen}
+                                    DashboardComponent={CustomDashboard}
                 />
                                 {/* Floating student search stays on every page */}
                                 <PopupSearch />

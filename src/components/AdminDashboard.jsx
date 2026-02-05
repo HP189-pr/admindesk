@@ -21,24 +21,34 @@ const AdminDashboard = ({ selectedTopbarMenu, onToggleSidebar, onToggleChatbox, 
   const fetchUserPermissions = async (userId) => {
     try {
       const res = await axios.get(`/api/userpermissions/`);
-      const all = res.data || [];
+      const all = Array.isArray(res.data) ? res.data : (res.data?.results || []);
       // filter rows for this user
-      const rows = all.filter((r) => String(r.user) === String(userId) || (r.user && r.user.id && String(r.user.id) === String(userId)));
+      const rows = all.filter((r) => {
+        const rUser = r.user && typeof r.user === 'object' ? r.user.id : r.user;
+        return String(rUser) === String(userId);
+      });
 
       const menus = {};
       const modules = new Set();
       rows.forEach((r) => {
-        const menuId = r.menu ?? r.menuid ?? r.menu_id ?? r.id;
-        const moduleId = r.module ?? r.moduleid ?? r.module_id;
-        modules.add(String(moduleId));
-        menus[String(menuId)] = {
-          view: !!r.can_view,
-          add: !!r.can_create,
-          edit: !!r.can_edit,
-          delete: !!r.can_delete,
-          all: !!(r.can_view && r.can_create && r.can_edit && r.can_delete),
-          _pk: r.id ?? r.permitid ?? r.pk,
-        };
+        let menuId = r.menu ?? r.menuid ?? r.menu_id ?? r.id;
+        if (menuId && typeof menuId === 'object') menuId = menuId.id || menuId.menuid;
+
+        let moduleId = r.module ?? r.moduleid ?? r.module_id;
+        if (moduleId && typeof moduleId === 'object') moduleId = moduleId.id || moduleId.moduleid;
+
+        if (moduleId) modules.add(String(moduleId));
+        if (menuId) {
+          menus[String(menuId)] = {
+            view: !!r.can_view,
+            add: !!r.can_create,
+            edit: !!r.can_edit,
+            delete: !!r.can_delete,
+            all: !!(r.can_view && r.can_create && r.can_edit && r.can_delete),
+            _pk: r.id ?? r.permitid ?? r.pk,
+            module: moduleId,
+          };
+        }
       });
 
       return { menus, modules: Array.from(modules) };
@@ -52,14 +62,18 @@ const AdminDashboard = ({ selectedTopbarMenu, onToggleSidebar, onToggleChatbox, 
     // payload: { menus: {menuId: {view,add,edit,delete}}, modules: [moduleIds] }
     try {
       const res = await axios.get(`/api/userpermissions/`);
-      const all = res.data || [];
-      const existing = all.filter((r) => String(r.user) === String(userId) || (r.user && r.user.id && String(r.user.id) === String(userId)));
+      const all = Array.isArray(res.data) ? res.data : (res.data?.results || []);
+      const existing = all.filter((r) => {
+        const rUser = r.user && typeof r.user === 'object' ? r.user.id : r.user;
+        return String(rUser) === String(userId);
+      });
 
       // Map existing by menu id
       const existingByMenu = {};
       existing.forEach((r) => {
-        const menuId = String(r.menu ?? r.menuid ?? r.menu_id ?? r.id);
-        existingByMenu[menuId] = r;
+        let menuId = r.menu ?? r.menuid ?? r.menu_id ?? r.id;
+        if (menuId && typeof menuId === 'object') menuId = menuId.id || menuId.menuid;
+        if (menuId) existingByMenu[String(menuId)] = r;
       });
 
       // Desired menus
@@ -96,8 +110,9 @@ const AdminDashboard = ({ selectedTopbarMenu, onToggleSidebar, onToggleChatbox, 
 
       // Delete any existing that are no longer desired
       for (const ex of existing) {
-        const menuId = String(ex.menu ?? ex.menuid ?? ex.menu_id ?? ex.id);
-        if (!desired[menuId]) {
+        let menuId = ex.menu ?? ex.menuid ?? ex.menu_id ?? ex.id;
+        if (menuId && typeof menuId === 'object') menuId = menuId.id || menuId.menuid;
+        if (!desired[String(menuId)]) {
           const pk = ex.id ?? ex.permitid ?? ex.pk;
           if (pk) await axios.delete(`/api/userpermissions/${pk}/`);
         }
@@ -137,7 +152,7 @@ const AdminDashboard = ({ selectedTopbarMenu, onToggleSidebar, onToggleChatbox, 
       case "Add Module":
         return <AddModule selectedTopbarMenu={selectedTopbarMenu} />;
       case "Add Course":
-        return <Addcourse />;
+        return <Addcourse selectedTopbarMenu={selectedTopbarMenu} />;
       case "Upload":
         // Provide the admin upload area — AuthUpload contains the service
         // dropdown and will render the correct AdminBulkUpload based on

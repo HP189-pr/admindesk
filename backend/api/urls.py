@@ -142,7 +142,12 @@ try:
         path("verify-admin-panel-password/", VerifyAdminPanelPasswordView.as_view(), name="verify-admin-panel-password"),
         path("profile-picture/", ProfilePictureView.as_view(), name="profile-picture"),
 
-        # INST VERIFICATION
+        # INST LETTER (renamed from inst-verification)
+        path("inst-letter/generate-pdf/", InstLetterPDF.as_view(), name="inst-letter-generate-pdf"),
+        path("inst-letter/suggest-doc-rec/", SuggestDocRec.as_view(), name="inst-letter-suggest-doc-rec"),
+        path("inst-letter/debug/", DebugInstLetter.as_view(), name="inst-letter-debug"),
+
+        # Legacy aliases (kept temporarily to avoid breaking older clients)
         path("inst-verification/generate-pdf/", InstLetterPDF.as_view(), name="inst-verification-generate-pdf"),
         path("inst-verification/suggest-doc-rec/", SuggestDocRec.as_view(), name="inst-verification-suggest-doc-rec"),
         path("inst-verification/debug/", DebugInstLetter.as_view(), name="inst-verification-debug"),
