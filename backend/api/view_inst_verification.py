@@ -3,27 +3,37 @@ from django.template.loader import render_to_string
 from django.http import HttpResponse, JsonResponse
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-try:
-    from weasyprint import HTML, CSS
-except Exception:
-    # Missing system libs (e.g., GTK/Pango/Cairo). Keep placeholders so the module imports.
-    HTML = None
-    CSS = None
 from pathlib import Path
 import json
-
-
-try:
-    pass
-except Exception:
-    # weasyprint may not be installed in all environments (we still want debug mode to work)
-    HTML = None
 
 import re, logging
 
 from .models import InstVerificationMain, InstVerificationStudent
 from collections import OrderedDict
 from .serializers import InstLetterMainSerializer, InstLetterstudentSerializer
+
+# --- REPORTLAB IMPORTS (add once) ---
+try:
+    from io import BytesIO
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.platypus import (
+        SimpleDocTemplate,
+        Paragraph,
+        Spacer,
+        Table,
+        TableStyle,
+        PageBreak,
+        Flowable,
+    )
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+    from reportlab.graphics.barcode import qr
+    from reportlab.graphics.shapes import Drawing
+
+    REPORTLAB_AVAILABLE = True
+except Exception:
+    REPORTLAB_AVAILABLE = False
 
 
 class InstLetterPDF(APIView):
@@ -426,64 +436,256 @@ class InstLetterPDF(APIView):
         if debug_mode:
             return JsonResponse({'debug': True, 'results': debug_results}, status=200)
 
-        # Render grouped pages: one page per iv_record_no (merge students)
-        for gk, gval in groups.items():
-            # pick representative main for header
-            rep_main = None
-            for m in gval['mains']:
-                if m and isinstance(m, dict):
-                    rep_main = m
-                    break
-            if not rep_main:
-                rep_main = {'inst_veri_number': gk, 'rec_inst_name': '', 'doc_types': '', 'inst_ref_no': '', 'rec_by': '', 'inst_veri_date': ''}
-
-            # merge students with simple dedupe by id or enrollment
-            merged = []
-            seen = set()
-            for s in gval['students']:
-                sid = None
-                if isinstance(s, dict):
-                    sid = s.get('id') or s.get('enrollment') or s.get('enrollment_no') or s.get('enrollment_no_text')
-                # fallback to source+json
-                if not sid:
-                    sid = json.dumps(s, sort_keys=True)
-                if sid in seen:
-                    continue
-                seen.add(sid)
-                # remove internal marker before rendering
-                if isinstance(s, dict) and '_source_doc_rec' in s:
-                    s.pop('_source_doc_rec', None)
-                merged.append(s)
-
+        # ---------- REPORTLAB-BASED PDF GENERATION (preferred) ----------
+        # Helper: build QR payload (compact deterministic format)
+        def build_qr_payload(main, students):
             try:
-                credential_header = ''
-                for candidate in merged:
-                    if isinstance(candidate, dict):
-                        credential_header = _sanitize_template_field(candidate.get('type_of_credential'))
-                        if credential_header:
+                if not isinstance(students, (list, tuple)):
+                    students = []
+                if len(students) == 1:
+                    candidate = students[0].get("student_name", "") if isinstance(students[0], dict) else ""
+                elif len(students) == 0:
+                    candidate = "N/A"
+                else:
+                    candidate = "Multiple Candidates"
+            except Exception:
+                candidate = "Multiple Candidates"
+
+            inst_no = main.get("inst_veri_number", "") if isinstance(main, dict) else ""
+            rec_inst = main.get("rec_inst_name", "") if isinstance(main, dict) else ""
+
+            # cap to 200 chars to limit QR density
+            payload = f"IV:{inst_no}|NAME:{candidate}|INST:{rec_inst}"
+            return payload[:200]
+
+        # Use canvas-scoped attributes (safer than module globals) via Flowable
+        if REPORTLAB_AVAILABLE:
+            class _SetCurrentMainFlowable(Flowable):
+                def __init__(self, main, qr_text):
+                    super().__init__()
+                    self.main = main
+                    self.qr_text = qr_text
+                    self.width = 0
+                    self.height = 0
+
+                def draw(self):
+                    # Attach state to the canvas object used for this PDF build (avoids cross-request globals)
+                    try:
+                        # self.canv is the canvas for the current document build
+                        setattr(self.canv, '_rl_current_main', self.main)
+                        setattr(self.canv, '_rl_current_qr_text', self.qr_text)
+                    except Exception:
+                        logging.getLogger('api').exception('Failed to set canvas attributes for header/footer')
+
+            def draw_header_footer(canvas_obj, doc_obj):
+                """Draw header/footer and QR using attributes attached to the canvas."""
+                try:
+                    canvas_obj.saveState()
+                    current_main = getattr(canvas_obj, '_rl_current_main', {}) or {}
+                    current_qr_text = getattr(canvas_obj, '_rl_current_qr_text', None)
+
+                    # Header reference
+                    canvas_obj.setFont("Helvetica-Bold", 12)
+                    if current_main.get("inst_veri_number"):
+                        canvas_obj.drawString(10 * mm, 282 * mm, f"Ref: KSV/{current_main['inst_veri_number']}")
+
+                    # Header date (right)
+                    if current_main.get("inst_veri_date"):
+                        canvas_obj.setFont("Helvetica", 11)
+                        canvas_obj.drawRightString(200 * mm, 282 * mm, current_main["inst_veri_date"])
+                        canvas_obj.setFont("Helvetica-Bold", 12)
+
+                    # Issuer info block (top-right)
+                    canvas_obj.setFont("Helvetica-Bold", 9)
+                    lines = [
+                        "Office of the Registrar,",
+                        "Kadi Sarva Vishwavidyalaya,",
+                        "Sector -15, Gandhinagar",
+                    ]
+                    y_pos = 270 * mm
+                    for line in lines:
+                        canvas_obj.drawRightString(200 * mm, y_pos, line)
+                        y_pos -= 4 * mm
+
+                    # Footer centered
+                    canvas_obj.setFont("Helvetica", 9)
+                    footer = "Email: verification@ksv.ac.in | Contact: 9408801690"
+                    canvas_obj.drawCentredString(A4[0] / 2.0, 10 * mm, footer)
+
+                    # QR code bottom-right (inside margins)
+                    if current_qr_text:
+                        try:
+                            qr_code = qr.QrCodeWidget(current_qr_text)
+                            bounds = qr_code.getBounds()
+                            width = bounds[2] - bounds[0]
+                            height = bounds[3] - bounds[1]
+
+                            size_mm = 25 * mm
+                            d = Drawing(
+                                size_mm,
+                                size_mm,
+                                transform=[size_mm / width, 0, 0, size_mm / height, 0, 0]
+                            )
+                            d.add(qr_code)
+
+                            x = doc_obj.pagesize[0] - getattr(doc_obj, 'rightMargin', 15 * mm) - size_mm
+                            y = getattr(doc_obj, 'bottomMargin', 15 * mm) + 5 * mm
+
+                            d.drawOn(canvas_obj, x, y)
+                        except Exception:
+                            logging.getLogger('api').exception('QR draw failed')
+
+                except Exception:
+                    logging.getLogger('api').exception('Header/footer drawing failed')
+                finally:
+                    try:
+                        canvas_obj.restoreState()
+                    except Exception:
+                        pass
+
+            # Build PDF using ReportLab Platypus
+            try:
+                buffer = BytesIO()
+                # margins chosen to approximate existing HTML layout (top, right, bottom, left)
+                doc = SimpleDocTemplate(
+                    buffer,
+                    pagesize=A4,
+                    leftMargin=15 * mm,
+                    rightMargin=10 * mm,
+                    topMargin=35 * mm,
+                    bottomMargin=25 * mm,
+                )
+                styles = getSampleStyleSheet()
+                normal = styles['Normal']
+                normal.spaceAfter = 6
+                normal.fontSize = 11
+                normal.leading = 14
+                bold = ParagraphStyle('Bold', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=11)
+                story = []
+
+                group_items = list(groups.items())
+                for idx, (gk, gval) in enumerate(group_items):
+                    # pick representative main
+                    rep_main = None
+                    for m in gval['mains']:
+                        if m and isinstance(m, dict):
+                            rep_main = m
                             break
-                if not credential_header and isinstance(rep_main, dict):
-                    credential_header = _sanitize_template_field(rep_main.get('type_of_credential'))
-            except Exception:
-                credential_header = ''
+                    if not rep_main:
+                        rep_main = {'inst_veri_number': gk, 'rec_inst_name': '', 'doc_types': '', 'inst_ref_no': '', 'rec_by': '', 'inst_veri_date': ''}
 
-            page_html = render_to_string('pdf_templates/inst_verification_record.html', {
-                'main': rep_main,
-                'students': merged,
-                'group_doc_recs': gval.get('doc_recs', []),
-                'iv_record_no': gk,
-                'credential_header': credential_header or 'Type of Credential',
-            })
-            try:
-                if getattr(settings, 'DEBUG', False):
-                    dbg = json.dumps({'group_key': gk, 'main_keys': list(rep_main.keys()), 'students_count': len(merged)})
-                    if len(dbg) > 4000:
-                        dbg = dbg[:4000] + '...'
-                    page_html = f"<!-- GROUP_DEBUG:{dbg} -->\n" + page_html
-            except Exception:
-                pass
-            pages.append(page_html)
+                    # merge students with dedupe
+                    merged = []
+                    seen = set()
+                    for s in gval['students']:
+                        sid = None
+                        if isinstance(s, dict):
+                            sid = s.get('id') or s.get('enrollment') or s.get('enrollment_no') or s.get('enrollment_no_text')
+                        if not sid:
+                            sid = json.dumps(s, sort_keys=True)
+                        if sid in seen:
+                            continue
+                        seen.add(sid)
+                        if isinstance(s, dict) and '_source_doc_rec' in s:
+                            s = dict(s)
+                            s.pop('_source_doc_rec', None)
+                        merged.append(s)
 
+                    # set current main and QR for the pages that follow (scoped via canvas attributes)
+                    qr_text = build_qr_payload(rep_main, merged)
+                    story.append(_SetCurrentMainFlowable(rep_main, qr_text))
+
+                    # Recipient block
+                    if rep_main.get('rec_inst_name'):
+                        story.append(Paragraph(f"<b>{rep_main.get('rec_inst_name')}</b>", normal))
+                    if rep_main.get('rec_inst_address_1'):
+                        story.append(Paragraph(rep_main.get('rec_inst_address_1'), normal))
+                    story.append(Spacer(1, 4 * mm))
+
+                    # Subject & Ref
+                    doc_types = rep_main.get('doc_types') or "Certificate"
+                    doc_label = doc_types if 'certificate' in str(doc_types).lower() else f"{doc_types} Certificate"
+                    story.append(Paragraph(f"Sub: Educational Verification of <b>{doc_label}</b>.", normal))
+                    ref_frag = "Ref: Your Ref "
+                    if rep_main.get('inst_ref_no'):
+                        ref_frag += f"<strong>{rep_main.get('inst_ref_no')}</strong> "
+                    if rep_main.get('rec_by'):
+                        ref_frag += f"<strong>{rep_main.get('rec_by')}</strong> "
+                    if not rep_main.get('inst_ref_no') and not rep_main.get('rec_by'):
+                        ref_frag += "<strong>N/A</strong>"
+                    if rep_main.get('ref_date'):
+                        ref_frag += f" Dated on <strong>{rep_main.get('ref_date')}</strong>"
+                    story.append(Paragraph(ref_frag, normal))
+                    story.append(Spacer(1, 6 * mm))
+
+                    # Intro/body
+                    story.append(Paragraph("Regarding the subject and reference mentioned above, I am delighted to confirm that upon thorough verification, the documents pertaining to the candidate in question have been meticulously examined and found to be valid as per our records.", normal))
+                    story.append(Spacer(1, 6 * mm))
+
+                    # Student table
+                    table_data = []
+                    headers = ["Sr. No.", "Candidate Name", "Enrollment Number", "Branch", rep_main.get('type_of_credential') or "Type of Credential"]
+                    table_data.append(headers)
+                    if merged:
+                        for i, s in enumerate(merged):
+                            name = s.get('student_name') if isinstance(s, dict) else ""
+                            enroll = s.get('enrollment_no') or s.get('enrollment') or s.get('enrollment_no_text') if isinstance(s, dict) else ""
+                            branch = s.get('iv_degree_name') or s.get('branch') if isinstance(s, dict) else ""
+                            cred = s.get('month_year') or s.get('type_of_credential') if isinstance(s, dict) else ""
+                            table_data.append([str(i+1), name, enroll, branch, cred])
+                    else:
+                        table_data.append(['', 'No student records found', '', '', ''])
+
+                    col_widths = [16*mm, 70*mm, 40*mm, 40*mm, 34*mm]
+                    tbl = Table(table_data, colWidths=col_widths, repeatRows=1)
+                    tbl.setStyle(TableStyle([
+                        ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+                        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#e8e8e8')),
+                        ('ALIGN', (0,0), (-1,0), 'CENTER'),
+                        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+                        ('ALIGN', (0,1), (0,-1), 'CENTER'),
+                        ('ALIGN', (2,1), (2,-1), 'LEFT'),
+                        ('LEFTPADDING', (1,1), (1,-1), 6),
+                        ('RIGHTPADDING', (1,1), (1,-1), 6),
+                    ]))
+                    story.append(tbl)
+                    story.append(Spacer(1, 8 * mm))
+
+                    # Remark and closing
+                    story.append(Paragraph("<strong>Remark:</strong> The above record has been verified and found correct as per university records.", normal))
+                    story.append(Spacer(1, 12))
+                    story.append(Paragraph("Should you require any additional information or have further inquiries, please do not hesitate to reach out to us.", normal))
+                    story.append(Spacer(1, 36))
+                    story.append(Paragraph("Registrar", ParagraphStyle('sign', parent=styles['Normal'], fontSize=10)))
+
+                    # Add page break between groups, but not after the last one
+                    if idx != len(group_items) - 1:
+                        story.append(PageBreak())
+
+                # Build document
+                doc.build(story, onFirstPage=draw_header_footer, onLaterPages=draw_header_footer)
+                pdf_bytes = buffer.getvalue()
+                buffer.close()
+            except Exception as e:
+                logging.getLogger('api').exception('ReportLab generation failed: %s', e)
+                pdf_bytes = None
+
+            if pdf_bytes:
+                # Choose filename: mimic existing logic
+                try:
+                    if groups and len(groups) == 1:
+                        single_key = next(iter(groups))
+                        filename = f"Verification_{single_key}.pdf"
+                    else:
+                        filename = f"Verification_Multiple_Records_{doc_recs[0] if doc_recs else 'batch'}.pdf"
+                except Exception:
+                    filename = f"Verification_Multiple_Records_{doc_recs[0] if doc_recs else 'batch'}.pdf"
+
+                response = HttpResponse(pdf_bytes, content_type='application/pdf')
+                response['Content-Disposition'] = f'attachment; filename="{filename}"'
+                return response
+
+        # ---------- END REPORTLAB PATH ----------
 
         # Fallback: If no valid pages, render error template
         if not pages or all(not str(p).strip() for p in pages):
@@ -493,7 +695,7 @@ class InstLetterPDF(APIView):
             })
             pages = [error_html]
 
-        # Wrap pages into single HTML
+        # Wrap pages into single HTML (used for debug preview / html preview in error messages)
         full_html = render_to_string('pdf_templates/batch_wrapper.html', {'pages': pages})
 
         # Optional: return HTML with console logs for browser debugging instead of PDF
@@ -514,41 +716,22 @@ class InstLetterPDF(APIView):
             except Exception:
                 return HttpResponse(full_html, content_type='text/html; charset=utf-8')
 
-        # If weasyprint is not available, return error with debug info
-        if HTML is None:
-            logging.getLogger('api').error('weasyprint library not installed')
+        # If ReportLab is not available, return an error instructing to install it (include HTML preview for debugging)
+        if not REPORTLAB_AVAILABLE:
+            logging.getLogger('api').error('reportlab library not installed')
             return JsonResponse({
                 'detail': 'PDF generation unavailable',
-                'error': 'weasyprint library not installed. Please install: pip install weasyprint',
+                'error': 'reportlab library not installed. Please install: pip install reportlab',
                 'html_preview': full_html[:2000] + '...',
             }, status=503)
-        
-        try:
-            # Generate PDF using weasyprint
-            static_base = getattr(settings, 'STATIC_ROOT', None) or getattr(settings, 'BASE_DIR', None) or '/'
-            base_url = Path(static_base).as_uri()
-            pdf_bytes = HTML(string=full_html, base_url=base_url).write_pdf()
-        except Exception as e:
-            logging.getLogger('api').error(f'PDF generation failed: {str(e)}')
-            return JsonResponse({
-                'detail': 'PDF generation failed',
-                'error': str(e),
-                'html_sample': full_html[:1000] + '...',
-            }, status=500)
 
-        # Choose filename: if the PDF contains a single grouped iv_record_no, use that number
-        try:
-            if groups and len(groups) == 1:
-                single_key = next(iter(groups))
-                filename = f"Verification_{single_key}.pdf"
-            else:
-                filename = f"Verification_Multiple_Records_{doc_recs[0] if doc_recs else 'batch'}.pdf"
-        except Exception:
-            filename = f"Verification_Multiple_Records_{doc_recs[0] if doc_recs else 'batch'}.pdf"
-
-        response = HttpResponse(pdf_bytes, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response
+        # If we reached here, ReportLab was available but generation failed earlier
+        logging.getLogger('api').error('PDF generation failed (ReportLab path)')
+        return JsonResponse({
+            'detail': 'PDF generation failed',
+            'error': 'ReportLab generation returned no PDF bytes',
+            'html_sample': full_html[:1000] + '...',
+        }, status=500)
 
 
 class SuggestDocRec(APIView):
