@@ -75,6 +75,8 @@ try:
 
     from .in_out_register import IN_OUT_REGISTER_URLS
     from .view_inst_verification import InstLetterPDF, SuggestDocRec, DebugInstLetter
+    from .views_enrollment_stats import EnrollmentStatsView
+
 
     router = DefaultRouter()
     # Core router registrations
@@ -185,6 +187,7 @@ try:
         path("admin/upload-cash-excel/", UploadCashExcelView.as_view(), name="admin-upload-cash-excel"),
         path("cash-on-hand/report/", CashOnHandReportView.as_view()),
         path("cash-on-hand/close/", CloseCashDayView.as_view()),
+        path("enrollment-stats/", EnrollmentStatsView.as_view(), name="enrollment-stats"),
 
     ] + IN_OUT_REGISTER_URLS
 

@@ -29,6 +29,7 @@ const modules = [
       '📋 Doc Register',
       '🏖️ Leave Management',
       '📦 Inventory',
+      '📊 Record',
     ],
   },
   {

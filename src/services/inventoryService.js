@@ -6,7 +6,7 @@ import axiosInstance from '../api/axiosInstance';
 
 // axiosInstance is already configured with baseURL '/api',
 // so we use relative paths here (no extra /api prefix).
-const BASE_URL = '';
+const BASE_URL = '/api';
 
 // ==================== ITEM MASTER ====================
 

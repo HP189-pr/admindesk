@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+// Prefer explicit backend origin when provided, otherwise fall back to relative URL for proxy setups
+const apiBaseUrl = import.meta?.env?.VITE_API_BASE_URL?.trim() || '/';
+
 const API = axios.create({
-  baseURL: '/',   // Relative URL - nginx proxy handles routing to backend
+  baseURL: apiBaseUrl,
   headers: { 'Content-Type': 'application/json' },
   timeout: 10000,
 });

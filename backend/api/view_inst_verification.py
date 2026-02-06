@@ -514,14 +514,10 @@ class InstLetterPDF(APIView):
             except Exception:
                 return HttpResponse(full_html, content_type='text/html; charset=utf-8')
 
-        # If weasyprint is not available, return error with debug info
+        # If weasyprint is not available, return HTML preview as a fallback
         if HTML is None:
-            logging.getLogger('api').error('weasyprint library not installed')
-            return JsonResponse({
-                'detail': 'PDF generation unavailable',
-                'error': 'weasyprint library not installed. Please install: pip install weasyprint',
-                'html_preview': full_html[:2000] + '...',
-            }, status=503)
+            logging.getLogger('api').error('weasyprint library not installed, returning HTML preview.')
+            return HttpResponse(full_html, content_type='text/html; charset=utf-8')
         
         try:
             # Generate PDF using weasyprint

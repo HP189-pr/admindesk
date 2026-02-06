@@ -130,23 +130,39 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
   };
 
   // Resolve an enrollment number to enrollment object (try retrieve by enrollment_no, fall back to search)
-  const resolveEnrollment = async (en_no) => {
-    if (!en_no) return null;
-    try {
-      const token = localStorage.getItem('access_token');
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      // Prefer the list search on the registered `enrollments` endpoint.
-      // Many list endpoints are paginated returning { results: [...] }.
-      let res = await fetch(`/api/enrollments/?search=${encodeURIComponent(en_no)}&limit=1`, { headers });
-      if (!res.ok) return null;
-      const data = await res.json();
-      const items = data && data.results ? data.results : (Array.isArray(data) ? data : (data && data.items ? data.items : []));
-      return items && items.length ? items[0] : null;
-    } catch (e) {
-      console.warn('resolveEnrollment error', e);
-      return null;
-    }
-  };
+ const resolveEnrollment = async (en_no) => {
+  if (!en_no) return null;
+
+  const typed = en_no.trim().toLowerCase();
+
+  try {
+    const token = localStorage.getItem('access_token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+    const res = await fetch(
+      `/api/enrollments/?search=${encodeURIComponent(en_no)}&limit=20`,
+      { headers }
+    );
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const items =
+      data?.results ??
+      (Array.isArray(data) ? data : []);
+
+    // ✅ EXACT MATCH ONLY
+    const exact = items.find(
+      (e) =>
+        String(e.enrollment_no || e.enrollment || '').trim().toLowerCase() === typed
+    );
+
+    return exact || null;
+  } catch (e) {
+    console.warn('resolveEnrollment error', e);
+    return null;
+  }
+};
 
   const handleChange = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -968,4 +984,3 @@ v.trim())}`, { headers: { ...authHeaders() } });                                
     </div>
   );
 }
-

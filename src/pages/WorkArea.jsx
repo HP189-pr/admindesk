@@ -15,6 +15,7 @@ import StudentSearch from "./student-search";
 import AuthInventory from "../hooks/AuthInventory";
 import AuthDocRegister from "../hooks/AuthDocRegister";
 import AuthFees from "../hooks/AuthFees";
+import Record from "./Record";
 
 
 
@@ -91,6 +92,7 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
   else if (l.includes("student fees") || l.includes("fees ledger")) key = "student_fees";
   else if (l.includes("fee type")) key = "fee_type_master";
   else if (l.includes("inventory")) key = "inventory";
+  else if (l.includes("record")) key = "record";
   else if (l.includes("leave management")) key = "emp_leave";
   else if (l.includes("leave report")) key = "emp_leave_report";
   else if (l.includes("balance certificate")) key = "emp_balance_certificate";
@@ -196,6 +198,8 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
             onToggleChatbox={onToggleChatbox}
           />
         );
+      case "record":
+        return <Record />;
       case "emp_leave":
         return <EmpLeavePage />;
       case "emp_leave_report":

@@ -89,51 +89,39 @@ export const suggestInstLetterDocRec = async ({ year = "", number = "", apiBase 
 };
 
 export const generateInstLetterPDF = async (payload, { apiBase = "/api", headersFn = defaultHeaders } = {}) => {
-  const paths = ["/inst-letter/generate-pdf/", "/inst-verification/generate-pdf/"]; // fallback to legacy until backend is restarted everywhere
-  let lastError = "Unable to generate PDF";
+  const path = "/inst-letter/generate-pdf/";
+  try {
+    const res = await fetch(`${apiBase}${path}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/pdf, application/json;q=0.9, */*;q=0.8",
+        ...headersFn(),
+      },
+      credentials: "include",
+      body: JSON.stringify(payload || {}),
+    });
 
-  for (const path of paths) {
-    try {
-      const res = await fetch(`${apiBase}${path}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/pdf, application/json;q=0.9, */*;q=0.8",
-          ...headersFn(),
-        },
-        credentials: "include",
-        body: JSON.stringify(payload || {}),
-      });
+    const contentType = res.headers.get("content-type") || "";
+    const isJson = contentType.includes("application/json");
 
-      const contentType = res.headers.get("content-type") || "";
-      const isJson = contentType.includes("application/json");
-
-      if (!res.ok || isJson) {
-        let errText = "Unable to generate PDF";
-        try {
-          const errJson = await res.json();
-          errText = errJson?.detail || errJson?.error || errText;
-        } catch {
-          errText = (await res.text().catch(() => null)) || errText;
-        }
-
-        // Try legacy path only when current path 404s
-        if (res.status === 404) {
-          lastError = errText;
-          continue;
-        }
-        throw new Error(errText);
+    if (!res.ok || isJson) {
+      let errText = "Unable to generate PDF";
+      try {
+        const errJson = await res.json();
+        errText = errJson?.detail || errJson?.error || errText;
+      } catch {
+        errText = (await res.text().catch(() => null)) || errText;
       }
-
-      const blob = await res.blob();
-      if (!blob || blob.size === 0) throw new Error("Received an empty PDF from the server.");
-      return blob;
-    } catch (err) {
-      lastError = err?.message || lastError;
+      throw new Error(errText);
     }
-  }
 
-  throw new Error(lastError);
+    const blob = await res.blob();
+    if (!blob || blob.size === 0) throw new Error("Received an empty PDF from the server.");
+    return blob;
+  } catch (err) {
+    throw new Error(err?.message || "Unable to generate PDF");
+  }
 };
 
 export default {

@@ -2733,3 +2733,641 @@ WARNING:waitress.queue:Task queue depth is 1
 WARNING:waitress.queue:Task queue depth is 1
 WARNING:waitress.queue:Task queue depth is 1
 WARNING:waitress.queue:Task queue depth is 1
+Not Found: /
+WARNING:django.request:Not Found: /
+Not Found: /favicon.ico
+WARNING:django.request:Not Found: /favicon.ico
+Not Found: /api/inst-letter/suggest-doc-rec/
+WARNING:django.request:Not Found: /api/inst-letter/suggest-doc-rec/
+Not Found: /api/inst-letter/generate-pdf/
+WARNING:django.request:Not Found: /api/inst-letter/generate-pdf/
+ERROR:api:weasyprint library not installed
+Service Unavailable: /api/inst-verification/generate-pdf/
+ERROR:django.request:Service Unavailable: /api/inst-verification/generate-pdf/
+Not Found: /api/inst-letter/generate-pdf/
+WARNING:django.request:Not Found: /api/inst-letter/generate-pdf/
+ERROR:api:weasyprint library not installed
+Service Unavailable: /api/inst-verification/generate-pdf/
+ERROR:django.request:Service Unavailable: /api/inst-verification/generate-pdf/
+Not Found: /api/inst-letter/generate-pdf/
+WARNING:django.request:Not Found: /api/inst-letter/generate-pdf/
+Not Found: /api/inst-letter/generate-pdf/
+WARNING:django.request:Not Found: /api/inst-letter/generate-pdf/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+Unauthorized: /api/verification/
+WARNING:django.request:Unauthorized: /api/verification/
+Unauthorized: /api/verification/
+WARNING:django.request:Unauthorized: /api/verification/
+Unauthorized: /api/verification/
+WARNING:django.request:Unauthorized: /api/verification/
+Unauthorized: /api/docrec/
+WARNING:django.request:Unauthorized: /api/docrec/
+Unauthorized: /api/docrec/
+WARNING:django.request:Unauthorized: /api/docrec/
+Unauthorized: /api/enrollments/
+WARNING:django.request:Unauthorized: /api/enrollments/
+Unauthorized: /api/enrollments/
+WARNING:django.request:Unauthorized: /api/enrollments/
+Unauthorized: /api/enrollments/
+WARNING:django.request:Unauthorized: /api/enrollments/
+Unauthorized: /api/enrollments/
+WARNING:django.request:Unauthorized: /api/enrollments/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+INFO:waitress:Serving on http://127.0.0.1:8000
+Unauthorized: /api/token/verify/
+WARNING:django.request:Unauthorized: /api/token/verify/
+Unauthorized: /api/token/verify/
+WARNING:django.request:Unauthorized: /api/token/verify/
+Unauthorized: /api/token/verify/
+WARNING:django.request:Unauthorized: /api/token/verify/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+Bad Request: /api/verification/48945/
+WARNING:django.request:Bad Request: /api/verification/48945/
+Bad Request: /api/verification/48953/
+WARNING:django.request:Bad Request: /api/verification/48953/
+ERROR:api:weasyprint library not installed, returning HTML preview.
+ERROR:api:weasyprint library not installed, returning HTML preview.
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Unauthorized: /api/userpermissions/
+WARNING:django.request:Unauthorized: /api/userpermissions/
+Unauthorized: /api/userpermissions/
+WARNING:django.request:Unauthorized: /api/userpermissions/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /favicon.ico
+WARNING:django.request:Not Found: /favicon.ico
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /favicon.ico
+WARNING:django.request:Not Found: /favicon.ico
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /enrollment-stats/
+WARNING:django.request:Not Found: /enrollment-stats/
+Not Found: /api/enrollment-stats
+WARNING:django.request:Not Found: /api/enrollment-stats
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /favicon.ico
+WARNING:django.request:Not Found: /favicon.ico
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Unauthorized: /api/token/verify/
+WARNING:django.request:Unauthorized: /api/token/verify/
+Unauthorized: /api/token/verify/
+WARNING:django.request:Unauthorized: /api/token/verify/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Unauthorized: /api/modules/
+WARNING:django.request:Unauthorized: /api/modules/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
+Not Found: /api/enrollment-stats/
+WARNING:django.request:Not Found: /api/enrollment-stats/
