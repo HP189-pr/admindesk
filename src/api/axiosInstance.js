@@ -1,8 +1,12 @@
 import axios from 'axios';
 
-// Prefer explicit backend origin when provided, otherwise fall back to relative URL for proxy setups
-const apiBaseUrl = import.meta?.env?.VITE_API_BASE_URL?.trim() || '/';
+// Prefer explicit backend origin when provided, otherwise fall back to local backend for dev
+// This avoids accidental proxying to the Vite preview server when a standalone backend is on 127.0.0.1:8000
+const rawApiBase = import.meta?.env?.VITE_API_BASE_URL?.trim() || 'http://127.0.0.1:8000';
+const apiBaseUrl = rawApiBase.replace(/\/$/, '');
 
+// NOTE: API calls across the app already include the `/api/*` path.
+// Keep baseURL as the backend origin to avoid duplicating `/api` in requests.
 const API = axios.create({
   baseURL: apiBaseUrl,
   headers: { 'Content-Type': 'application/json' },

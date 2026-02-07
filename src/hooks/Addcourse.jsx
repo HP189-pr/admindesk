@@ -35,10 +35,10 @@ const Addcourse = () => {
   const loadData = async () => {
     try {
       const [mainRes, subRes, instRes, offRes] = await Promise.all([
-        API.get("/mainbranch/"),
-        API.get("/subbranch/"),
-        API.get("/institutes/"),
-        API.get("/institute-course-offerings/"),
+        API.get("/api/mainbranch/"),
+        API.get("/api/subbranch/"),
+        API.get("/api/institutes/"),
+        API.get("/api/institute-course-offerings/"),
       ]);
 
       const toArray = (d) =>
@@ -62,7 +62,7 @@ const Addcourse = () => {
   // =========================
   const createMain = async () => {
     try {
-      await API.post("/mainbranch/", mainForm);
+      await API.post("/api/mainbranch/", mainForm);
       setMainForm({ maincourse_id: "", course_code: "", course_name: "" });
       loadData();
     } catch (err) {
@@ -75,7 +75,7 @@ const Addcourse = () => {
   // =========================
   const createSub = async () => {
     try {
-      await API.post("/subbranch/", subForm);
+      await API.post("/api/subbranch/", subForm);
       setSubForm({ subcourse_id: "", maincourse_id: "", subcourse_name: "" });
       loadData();
     } catch (err) {
@@ -91,7 +91,7 @@ const Addcourse = () => {
       const payload = { ...offerForm };
       if (!payload.end_date) delete payload.end_date;
 
-      await API.post("/institute-course-offerings/", payload);
+      await API.post("/api/institute-course-offerings/", payload);
       setOfferForm({
         institute_id: "",
         maincourse_id: "",
@@ -239,7 +239,7 @@ const Addcourse = () => {
               if (maincourse_id) {
                 try {
                   const res = await API.get(
-                    `/subbranch/?maincourse_id=${encodeURIComponent(
+                    `/api/subbranch/?maincourse_id=${encodeURIComponent(
                       maincourse_id
                     )}`
                   );

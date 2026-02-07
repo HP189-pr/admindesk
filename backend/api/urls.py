@@ -13,7 +13,10 @@ try:
     from .views_courses import (
         ModuleViewSet, MenuViewSet, UserPermissionViewSet,
         InstituteCourseOfferingViewSet, MainBranchViewSet,
-        SubBranchViewSet, InstituteViewSet, EnrollmentViewSet,
+        SubBranchViewSet, InstituteViewSet,
+    )
+    from .views_enrollment import (
+        EnrollmentViewSet, AdmissionCancelViewSet, EnrollmentStatsView,
     )
 
     from .views_mail_request import GoogleFormSubmissionViewSet
@@ -75,7 +78,6 @@ try:
 
     from .in_out_register import IN_OUT_REGISTER_URLS
     from .view_inst_verification import InstLetterPDF, SuggestDocRec, DebugInstLetter
-    from .views_enrollment_stats import EnrollmentStatsView
 
 
     router = DefaultRouter()
@@ -99,6 +101,7 @@ try:
     router.register(r'subbranch', SubBranchViewSet, basename='subbranch')
     router.register(r'institutes', InstituteViewSet, basename='institutes')
     router.register(r'enrollments', EnrollmentViewSet, basename='enrollments')
+    router.register(r'admission-cancel', AdmissionCancelViewSet, basename='admission-cancel')
     router.register(r'docrec', DocRecViewSet, basename='docrec')
     router.register(r'verification', VerificationViewSet, basename='verification')
     router.register(r'migration', MigrationRecordViewSet, basename='migration')
@@ -123,7 +126,7 @@ try:
         # Router URLs
       
         path("health/", lambda r: JsonResponse({"status": "ok"})),
-        path("", include(router.urls)),
+       
 
         # JWT LOGIN
         path("backlogin/", CustomTokenObtainPairView.as_view(), name="backlogin"),
@@ -188,6 +191,7 @@ try:
         path("cash-on-hand/report/", CashOnHandReportView.as_view()),
         path("cash-on-hand/close/", CloseCashDayView.as_view()),
         path("enrollment-stats/", EnrollmentStatsView.as_view(), name="enrollment-stats"),
+        path("", include(router.urls)),
 
     ] + IN_OUT_REGISTER_URLS
 

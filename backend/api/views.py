@@ -52,7 +52,10 @@ from .views_auth import (
 )
 from .views_courses import (
     ModuleViewSet, MenuViewSet, UserPermissionViewSet, MainBranchViewSet, SubBranchViewSet,
-    InstituteViewSet, InstituteCourseOfferingViewSet, EnrollmentViewSet
+    InstituteViewSet, InstituteCourseOfferingViewSet
+)
+from .views_enrollment import (
+    EnrollmentViewSet, AdmissionCancelViewSet, EnrollmentStatsView
 )
 
 

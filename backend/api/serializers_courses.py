@@ -7,7 +7,7 @@ from .models import Institute, MainBranch, SubBranch, InstituteCourseOffering, E
 
 __all__ = [
     'InstituteSerializer','MainBranchSerializer','SubBranchSerializer',
-    'EnrollmentSerializer','InstituteCourseOfferingSerializer','StudentProfileSerializer'
+    'InstituteCourseOfferingSerializer','StudentProfileSerializer'
 ]
 
 class InstituteSerializer(serializers.ModelSerializer):
@@ -25,33 +25,6 @@ class SubBranchSerializer(serializers.ModelSerializer):
     class Meta:
         model = SubBranch
         fields = ['id','subcourse_id','subcourse_name','maincourse','maincourse_id','updated_by','created_at','updated_at']
-
-class EnrollmentSerializer(serializers.ModelSerializer):
-    institute_id = serializers.PrimaryKeyRelatedField(queryset=Institute.objects.all(), source='institute', write_only=True)
-    maincourse_id = serializers.PrimaryKeyRelatedField(queryset=MainBranch.objects.all(), source='maincourse', write_only=True)
-    subcourse_id = serializers.PrimaryKeyRelatedField(queryset=SubBranch.objects.all(), source='subcourse', write_only=True)
-    cancel = serializers.BooleanField(required=False, allow_null=True)
-    status = serializers.CharField(source='status', read_only=True)
-    class Meta:
-        model = Enrollment
-        fields = [
-            'enrollment_no','student_name','institute','institute_id','batch','enrollment_date','admission_date',
-            'subcourse','subcourse_id','maincourse','maincourse_id','updated_by','created_at','updated_at','temp_enroll_no',
-            'cancel','status'
-        ]
-        read_only_fields = ['enrollment_date','created_at','updated_at','institute','subcourse','maincourse','updated_by','status']
-        extra_kwargs = {'enrollment_no': {'required': True},'student_name': {'required': True},'batch': {'required': True}}
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        def wrap(obj):
-            return {'id': obj.pk, 'name': str(obj)} if obj else None
-        for f in ('institute','subcourse','maincourse'):
-            data[f] = wrap(getattr(instance,f))
-        if instance.updated_by:
-            data['updated_by'] = {'id': instance.updated_by.id, 'username': instance.updated_by.username}
-        data['cancel'] = instance.cancel
-        data['status'] = instance.status
-        return data
 
 class InstituteCourseOfferingSerializer(serializers.ModelSerializer):
     institute_id = serializers.PrimaryKeyRelatedField(queryset=Institute.objects.all(), source='institute', write_only=True)

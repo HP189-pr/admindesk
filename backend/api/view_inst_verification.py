@@ -15,9 +15,9 @@ from .serializers import InstLetterMainSerializer, InstLetterstudentSerializer
 # --- REPORTLAB IMPORTS (add once) ---
 try:
     from io import BytesIO
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.units import mm
-    from reportlab.platypus import (
+    from reportlab.lib.pagesizes import A4  # type: ignore
+    from reportlab.lib.units import mm  # type: ignore
+    from reportlab.platypus import (  # type: ignore
         SimpleDocTemplate,
         Paragraph,
         Spacer,
@@ -26,10 +26,10 @@ try:
         PageBreak,
         Flowable,
     )
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib import colors
-    from reportlab.graphics.barcode import qr
-    from reportlab.graphics.shapes import Drawing
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle  # type: ignore
+    from reportlab.lib import colors  # type: ignore
+    from reportlab.graphics.barcode import qr  # type: ignore
+    from reportlab.graphics.shapes import Drawing  # type: ignore
 
     REPORTLAB_AVAILABLE = True
 except Exception:
@@ -716,25 +716,6 @@ class InstLetterPDF(APIView):
             except Exception:
                 return HttpResponse(full_html, content_type='text/html; charset=utf-8')
 
-<<<<<<< HEAD
-        # If weasyprint is not available, return HTML preview as a fallback
-        if HTML is None:
-            logging.getLogger('api').error('weasyprint library not installed, returning HTML preview.')
-            return HttpResponse(full_html, content_type='text/html; charset=utf-8')
-        
-        try:
-            # Generate PDF using weasyprint
-            static_base = getattr(settings, 'STATIC_ROOT', None) or getattr(settings, 'BASE_DIR', None) or '/'
-            base_url = Path(static_base).as_uri()
-            pdf_bytes = HTML(string=full_html, base_url=base_url).write_pdf()
-        except Exception as e:
-            logging.getLogger('api').error(f'PDF generation failed: {str(e)}')
-            return JsonResponse({
-                'detail': 'PDF generation failed',
-                'error': str(e),
-                'html_sample': full_html[:1000] + '...',
-            }, status=500)
-=======
         # If ReportLab is not available, return an error instructing to install it (include HTML preview for debugging)
         if not REPORTLAB_AVAILABLE:
             logging.getLogger('api').error('reportlab library not installed')
@@ -743,7 +724,6 @@ class InstLetterPDF(APIView):
                 'error': 'reportlab library not installed. Please install: pip install reportlab',
                 'html_preview': full_html[:2000] + '...',
             }, status=503)
->>>>>>> 17da0735eabc0a17de469103ef5f249125aa5e2f
 
         # If we reached here, ReportLab was available but generation failed earlier
         logging.getLogger('api').error('PDF generation failed (ReportLab path)')

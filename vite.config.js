@@ -4,7 +4,8 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   const env = loadEnv(mode, process.cwd(), '');
-  const apiBaseUrl = env.VITE_API_BASE_URL || 'http://localhost:8000';
+  // Default to local Django dev server on 127.0.0.1:8000 unless overridden
+  const apiBaseUrl = env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
   return {
     plugins: [react()],

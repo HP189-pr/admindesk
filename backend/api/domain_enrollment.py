@@ -4,10 +4,11 @@ Enrollment, StudentProfile
 from django.contrib.auth.models import User
 from django.db import models
 from django.contrib.postgres.search import SearchVectorField
+from django.utils import timezone
 from .domain_courses import Institute, SubBranch, MainBranch
 
 __all__ = [
-    'Enrollment', 'StudentProfile'
+    'Enrollment', 'StudentProfile', 'AdmissionCancel'
 ]
 
 class Enrollment(models.Model):
@@ -73,5 +74,43 @@ class StudentProfile(models.Model):
         ]
     def __str__(self):
         return f"Profile for {getattr(self.enrollment, 'enrollment_no', None) or '-'}"
+
+
+class AdmissionCancel(models.Model):
+    STATUS_CANCELLED = 'CANCELLED'
+    STATUS_REVOKED = 'REVOKED'
+    STATUS_CHOICES = [
+        (STATUS_CANCELLED, 'Cancelled'),
+        (STATUS_REVOKED, 'Revoked'),
+    ]
+
+    id = models.AutoField(primary_key=True)
+    cancel_date = models.DateField(default=timezone.now)
+    enrollment = models.OneToOneField(
+        Enrollment,
+        on_delete=models.CASCADE,
+        related_name='cancellation'
+    )
+    student_name = models.CharField(max_length=100)
+    inward_no = models.CharField(max_length=50, null=True, blank=True)
+    inward_date = models.DateField(null=True, blank=True)
+    outward_no = models.CharField(max_length=50, null=True, blank=True)
+    outward_date = models.DateField(null=True, blank=True)
+    can_remark = models.TextField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_CANCELLED)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'admission_cancel'
+        ordering = ['-cancel_date', '-id']
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        Enrollment.objects.filter(pk=self.enrollment_id).update(
+            cancel=self.status == self.STATUS_CANCELLED
+        )
+
+    def __str__(self):
+        return f"{getattr(self.enrollment, 'enrollment_no', '-') } - {self.status.title()}"
 
 

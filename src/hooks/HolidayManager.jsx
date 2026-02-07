@@ -14,14 +14,15 @@ export default function HolidayManager() {
 
   const [editingId, setEditingId] = useState(null);
   const [editValues, setEditValues] = useState({});
-  const [selectedYear, setSelectedYear] = useState('all');
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString()); // Default to current year
 
   /* ========================= FETCH ========================= */
 
-  const fetchHolidays = async () => {
+  const fetchHolidays = async (year = null) => {
     setLoading(true);
     try {
-      const res = await axios.get('/holidays/?all=1');
+      const yearParam = year || selectedYear;
+      const res = await axios.get(`/api/holidays/?year=${yearParam}`);
       const data = Array.isArray(res.data)
         ? res.data
         : res.data?.results || [];
@@ -36,7 +37,7 @@ export default function HolidayManager() {
 
   useEffect(() => {
     fetchHolidays();
-  }, []);
+  }, [selectedYear]);
 
   /* ========================= ADD ========================= */
 
@@ -50,7 +51,7 @@ export default function HolidayManager() {
     }
 
     try {
-      await axios.post('/holidays/', {
+      await axios.post('/api/holidays/', {
         holiday_date: date,
         holiday_name: name,
         holiday_day: new Date(date).toLocaleDateString('en-US', { weekday: 'long' }),
@@ -68,7 +69,7 @@ export default function HolidayManager() {
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this holiday?')) return;
     try {
-      await axios.delete(`/holidays/${id}/`);
+      await axios.delete(`/api/holidays/${id}/`);
       fetchHolidays();
     } catch {
       setError('Failed to delete holiday');
@@ -159,7 +160,7 @@ export default function HolidayManager() {
 
     for (const r of uploadedData) {
       try {
-        await axios.post('/holidays/', r);
+        await axios.post('/api/holidays/', r);
       } catch {
         failed++;
       }
@@ -185,7 +186,7 @@ export default function HolidayManager() {
   const handleEditSave = async (id) => {
     try {
       const d = editValues.holiday_date;
-      await axios.put(`/holidays/${id}/`, {
+      await axios.put(`/api/holidays/${id}/`, {
         holiday_date: d,
         holiday_name: editValues.holiday_name,
         holiday_day: new Date(d).toLocaleDateString('en-US', { weekday: 'long' }),
@@ -202,16 +203,18 @@ export default function HolidayManager() {
     setEditValues({});
   };
 
-  /* ========================= GROUP BY YEAR ========================= */
+  /* ========================= SORT HOLIDAYS (JAN TO DEC) ========================= */
 
-  const holidaysByYear = holidays.reduce((acc, h) => {
-    const y = h.holiday_date?.slice(0, 4) || 'Unknown';
-    acc[y] = acc[y] || [];
-    acc[y].push(h);
-    return acc;
-  }, {});
-
-  const years = Object.keys(holidaysByYear).sort((a, b) => b.localeCompare(a));
+  const sortedHolidays = [...holidays].sort(
+    (a, b) => new Date(a.holiday_date) - new Date(b.holiday_date)
+  );
+  
+  // Generate year options (current year ± 5 years)
+  const currentYear = new Date().getFullYear();
+  const yearOptions = [];
+  for (let y = currentYear + 2; y >= currentYear - 5; y--) {
+    yearOptions.push(y.toString());
+  }
 
   /* ========================= UI ========================= */
 
@@ -219,50 +222,149 @@ export default function HolidayManager() {
     <div className="space-y-6">
       <h3 className="text-2xl font-bold">Holiday Management</h3>
 
-      {/* ADD */}
-      <form onSubmit={handleAdd} className="flex gap-2 flex-wrap">
-        <input type="date" value={date} onChange={e => setDate(e.target.value)} className="border p-2 rounded" />
-        <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Holiday Name" className="border p-2 rounded" />
-        <button className="bg-indigo-600 text-white px-4 py-2 rounded">Add</button>
-      </form>
-
-      {/* UPLOAD */}
-      <div className="space-x-2">
-        <input type="file" accept=".xls,.xlsx" onChange={handleFilePick} />
-        <button onClick={parseSelectedFile} className="bg-blue-600 text-white px-3 py-1 rounded">Preview</button>
-        {uploadedData.length > 0 && (
-          <button onClick={handleBulkSave} className="bg-green-600 text-white px-3 py-1 rounded">
-            {loading ? 'Saving...' : 'Upload'}
+      {/* ADD HOLIDAY PANEL */}
+      <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-6">
+        <h4 className="font-semibold text-lg mb-4">Add New Holiday</h4>
+        <form onSubmit={handleAdd} className="flex gap-3 flex-wrap items-end">
+          <div className="flex flex-col">
+            <label className="text-sm font-medium text-gray-700 mb-1">Date</label>
+            <input 
+              type="date" 
+              value={date} 
+              onChange={e => setDate(e.target.value)} 
+              className="border border-gray-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+            />
+          </div>
+          <div className="flex flex-col">
+            <label className="text-sm font-medium text-gray-700 mb-1">Holiday Name</label>
+            <input 
+              type="text" 
+              value={name} 
+              onChange={e => setName(e.target.value)} 
+              placeholder="Holiday Name" 
+              className="border border-gray-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+            />
+          </div>
+          <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded font-medium">
+            Add Holiday
           </button>
-        )}
+        </form>
+        
+        {/* UPLOAD EXCEL */}
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <h5 className="text-sm font-medium text-gray-700 mb-2">Or upload from Excel</h5>
+          <div className="flex gap-2 items-center">
+            <input type="file" accept=".xls,.xlsx" onChange={handleFilePick} className="text-sm" />
+            <button onClick={parseSelectedFile} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded text-sm">
+              Preview
+            </button>
+            {uploadedData.length > 0 && (
+              <button onClick={handleBulkSave} className="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded text-sm">
+                {loading ? 'Saving...' : 'Upload'}
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
-      {error && <div className="text-red-600">{error}</div>}
+      {error && <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded">{error}</div>}
 
-      {/* LIST */}
-      {years.filter(y => selectedYear === 'all' || y === selectedYear).map(year => (
-        <div key={year}>
-          <h4 className="font-semibold mt-4">{year}</h4>
-          <table className="min-w-full border mt-2">
+      {/* HOLIDAY LIST PANEL */}
+      <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h4 className="font-semibold text-lg">Holiday List</h4>
+          
+          {/* YEAR FILTER */}
+          <div className="flex items-center gap-3">
+            <label className="font-medium text-gray-700">Year:</label>
+            <select 
+              value={selectedYear} 
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="border border-gray-300 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              {yearOptions.map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+            <span className="text-sm text-gray-600">({holidays.length} holidays)</span>
+          </div>
+        </div>
+
+        {loading && <div className="text-gray-500 text-center py-4">Loading...</div>}
+
+        {/* LIST */}
+        {!loading && holidays.length === 0 && (
+          <div className="text-gray-500 text-center py-8">No holidays found for {selectedYear}</div>
+        )}
+
+        {!loading && holidays.length > 0 && (
+          <table className="min-w-full border border-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="border-b px-4 py-2 text-left text-sm font-semibold text-gray-700 w-16">No.</th>
+                <th className="border-b px-4 py-2 text-left text-sm font-semibold text-gray-700">Date</th>
+                <th className="border-b px-4 py-2 text-left text-sm font-semibold text-gray-700">Holiday Name</th>
+                <th className="border-b px-4 py-2 text-left text-sm font-semibold text-gray-700">Actions</th>
+              </tr>
+            </thead>
             <tbody>
-              {holidaysByYear[year].map(h => (
-                <tr key={h.hdid} className="border-t">
+              {sortedHolidays.map((h, index) => (
+                <tr key={h.hdid} className="border-b hover:bg-gray-50">
                   {editingId === h.hdid ? (
                     <>
-                      <td><input type="date" value={editValues.holiday_date} onChange={e => setEditValues(v => ({ ...v, holiday_date: e.target.value }))} /></td>
-                      <td><input value={editValues.holiday_name} onChange={e => setEditValues(v => ({ ...v, holiday_name: e.target.value }))} /></td>
-                      <td>
-                        <button onClick={() => handleEditSave(h.hdid)}>Save</button>
-                        <button onClick={handleEditCancel}>Cancel</button>
+                      <td className="px-4 py-2 text-gray-600 font-medium">{index + 1}</td>
+                      <td className="px-4 py-2">
+                        <input 
+                          type="date" 
+                          value={editValues.holiday_date} 
+                          onChange={e => setEditValues(v => ({ ...v, holiday_date: e.target.value }))} 
+                          className="border border-gray-300 px-2 py-1 rounded w-full"
+                        />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input 
+                          value={editValues.holiday_name} 
+                          onChange={e => setEditValues(v => ({ ...v, holiday_name: e.target.value }))} 
+                          className="border border-gray-300 px-2 py-1 rounded w-full"
+                        />
+                      </td>
+                      <td className="px-4 py-2">
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => handleEditSave(h.hdid)} 
+                            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
+                          >
+                            Save
+                          </button>
+                          <button 
+                            onClick={handleEditCancel} 
+                            className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm"
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       </td>
                     </>
                   ) : (
                     <>
-                      <td>{h.holiday_date}</td>
-                      <td>{h.holiday_name}</td>
-                      <td>
-                        <button onClick={() => handleEditStart(h)}>Edit</button>
-                        <button onClick={() => handleDelete(h.hdid)}>Delete</button>
+                      <td className="px-4 py-2 text-gray-600 font-medium">{index + 1}</td>
+                      <td className="px-4 py-2 text-gray-800">{h.holiday_date}</td>
+                      <td className="px-4 py-2 text-gray-800">{h.holiday_name}</td>
+                      <td className="px-4 py-2">
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => handleEditStart(h)} 
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(h.hdid)} 
+                            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </>
                   )}
@@ -270,8 +372,8 @@ export default function HolidayManager() {
               ))}
             </tbody>
           </table>
-        </div>
-      ))}
+        )}
+      </div>
     </div>
   );
 }

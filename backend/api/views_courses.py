@@ -27,11 +27,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import (
-    Module, Menu, UserPermission, InstituteCourseOffering, Institute, MainBranch, SubBranch, Enrollment
+    Module, Menu, UserPermission, InstituteCourseOffering, Institute, MainBranch, SubBranch
 )
 from .serializers import (
     ModuleSerializer, MenuSerializer, UserPermissionSerializer, InstituteCourseOfferingSerializer,
-    InstituteSerializer, MainBranchSerializer, SubBranchSerializer, EnrollmentSerializer
+    InstituteSerializer, MainBranchSerializer, SubBranchSerializer
 )
 from .search_utils import apply_fts_search
 
@@ -123,54 +123,7 @@ class InstituteCourseOfferingViewSet(viewsets.ModelViewSet):
     serializer_class = InstituteCourseOfferingSerializer
 
 
-class EnrollmentViewSet(viewsets.ModelViewSet):
-    queryset = Enrollment.objects.all().select_related("institute", "subcourse", "maincourse", "updated_by")
-    serializer_class = EnrollmentSerializer
-    lookup_field = "enrollment_no"
-    lookup_value_regex = r"[^/]+"  # allow string with dashes etc.
-
-    def get_queryset(self):
-        qs = super().get_queryset().order_by("-created_at")
-        search = self.request.query_params.get("search", "").strip()
-        if search:
-            norm_q = ''.join(search.split()).lower()
-            # Normalize enrollment/temp_enroll (remove spaces, dots, hyphens) so queries like "bscphy" match "B.Sc-Phy"
-            qs = qs.annotate(
-                norm_en=Replace(Replace(Replace(Lower(models.F('enrollment_no')), Value(' '), Value('')), Value('.'), Value('')), Value('-'), Value('')),
-                norm_temp=Replace(Replace(Replace(Lower(models.F('temp_enroll_no')), Value(' '), Value('')), Value('.'), Value('')), Value('-'), Value('')),
-            ).filter(
-                Q(norm_en__contains=norm_q) |
-                Q(norm_temp__contains=norm_q) |
-                Q(enrollment_no__icontains=search) |
-                Q(temp_enroll_no__icontains=search) |
-                Q(student_name__icontains=search)
-            )
-        return qs
-
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        try:
-            limit = int(request.query_params.get("limit", 10))
-            page = int(request.query_params.get("page", 1))
-            if limit <= 0:
-                limit = 10
-            if page <= 0:
-                page = 1
-        except ValueError:
-            limit = 10
-            page = 1
-        total = queryset.count()
-        start = (page - 1) * limit
-        end = start + limit
-        page_items = queryset[start:end]
-        serializer = self.get_serializer(page_items, many=True)
-        return Response({"items": serializer.data, "total": total})
-
-    def perform_create(self, serializer):
-        serializer.save(updated_by=self.request.user if self.request.user.is_authenticated else None)
-
-
 __all__ = [
     'ModuleViewSet', 'MenuViewSet', 'UserPermissionViewSet', 'MainBranchViewSet', 'SubBranchViewSet',
-    'InstituteViewSet', 'InstituteCourseOfferingViewSet', 'EnrollmentViewSet'
+    'InstituteViewSet', 'InstituteCourseOfferingViewSet'
 ]

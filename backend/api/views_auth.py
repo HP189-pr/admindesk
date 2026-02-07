@@ -34,7 +34,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.db import connection
 
-from rest_framework import status, generics, viewsets
+from rest_framework import status, generics, viewsets, serializers
 from rest_framework.decorators import action  # (retained if future expansions need it)
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
@@ -54,7 +54,6 @@ from .models import (
 )
 from .serializers import (
     HolidaySerializer,
-    LoginSerializer,  # kept for potential future use (original file imported it)
     UserSerializer,
     ChangePasswordSerializer,
     UserProfileSerializer,
@@ -95,6 +94,57 @@ class HolidayViewSet(viewsets.ModelViewSet):
         )
 
 
+class LoginSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        identifier = data.get("username", "").strip()
+        password = data.get("password", "")
+
+        if not identifier or not password:
+            raise serializers.ValidationError({"detail": "Both username (or usercode) and password are required."})
+
+        UserModel = get_user_model()
+        # 1. Try normal username lookup (case-insensitive)
+        user = UserModel.objects.filter(username__iexact=identifier).first()
+        usercode = None
+
+        # 2. Try raw SQL on usercode column (ignore errors if column missing)
+        if not user:
+            try:
+                with connection.cursor() as cur:
+                    cur.execute("SELECT id, usercode FROM auth_user WHERE LOWER(usercode)=LOWER(%s) LIMIT 1", [identifier])
+                    row = cur.fetchone()
+                    if row:
+                        uid, uc = row
+                        user = UserModel.objects.filter(pk=uid).first()
+                        usercode = uc
+            except Exception:
+                pass
+
+        if not user or not check_password(password, user.password):
+            raise serializers.ValidationError({"detail": "Invalid credentials."})
+
+        if not user.is_active:
+            raise serializers.ValidationError({"detail": "User account is disabled."})
+
+        # Fetch usercode if available (if we found user by username)
+        if user and not usercode:
+            try:
+                with connection.cursor() as cur:
+                    cur.execute("SELECT usercode FROM auth_user WHERE id=%s", [user.id])
+                    r = cur.fetchone()
+                    if r:
+                        usercode = r[0]
+            except Exception:
+                pass
+
+        data['user'] = user
+        data['usercode'] = usercode
+        return data
+
+
 class LoginView(APIView):
     """Login using either username OR a custom raw DB column `usercode`.
 
@@ -110,54 +160,16 @@ class LoginView(APIView):
     about the extra column. We therefore access it via parameterised raw SQL.
     """
     permission_classes = [AllowAny]
-
-    def _get_user_by_identifier(self, identifier: str):
-        identifier = (identifier or "").strip()
-        if not identifier:
-            return None, None
-        UserModel = get_user_model()
-        # 1. Try normal username lookup (case-insensitive)
-        user = UserModel.objects.filter(username__iexact=identifier).first()
-        if user:
-            return user, None
-        # 2. Try raw SQL on usercode column (ignore errors if column missing)
-        try:
-            with connection.cursor() as cur:
-                cur.execute("SELECT id, usercode FROM auth_user WHERE LOWER(usercode)=LOWER(%s) LIMIT 1", [identifier])
-                row = cur.fetchone()
-                if row:
-                    uid, usercode = row
-                    u = UserModel.objects.filter(pk=uid).first()
-                    return u, usercode
-        except Exception:  # Column may not exist or other DB errors
-            return None, None
-        return None, None
-
-    def _fetch_usercode_for(self, user):
-        try:
-            with connection.cursor() as cur:
-                cur.execute("SELECT usercode FROM auth_user WHERE id=%s", [user.id])
-                r = cur.fetchone()
-                if r:
-                    return r[0]
-        except Exception:
-            return None
-        return None
+    serializer_class = LoginSerializer
 
     def post(self, request):  # noqa: C901 (complexity acceptable for clarity)
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            identifier = request.data.get("username")  # front-end still sends 'username'
-            password = request.data.get("password")
-
-            if not identifier or not password:
-                return Response(
-                    {"detail": "Both username (or usercode) and password are required."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            user, usercode_from_lookup = self._get_user_by_identifier(identifier)
-            if not user or not check_password(password, user.password):
-                return Response({"detail": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST)
+            user = serializer.validated_data['user']
+            usercode_val = serializer.validated_data['usercode']
 
             # Determine privilege flags
             is_admin = (
@@ -169,8 +181,6 @@ class LoginView(APIView):
             is_restricted = user.groups.filter(name__iexact="Restricted").exists()
 
             refresh = RefreshToken.for_user(user)
-            # Get usercode if available (either from lookup or second fetch)
-            usercode_val = usercode_from_lookup or self._fetch_usercode_for(user)
 
             return Response(
                 {

@@ -64,19 +64,6 @@ function EmpLeavePage() {
     sandwich_leave: ''
   });
 
-  // Auto-select latest available year if not set
-  useEffect(() => {
-    if (leaveEntries.length && !yearFilter) {
-      const years = leaveEntries
-        .map(le => parseDMY(le.start_date))
-        .filter(Boolean)
-        .map(d => d.getFullYear());
-      if (years.length) {
-        setYearFilter(String(Math.max(...years)));
-      }
-    }
-  }, [leaveEntries, yearFilter]);
-
   // Load leave types
   useEffect(() => {
     axios.get('/api/leavetype/')
@@ -184,24 +171,24 @@ function EmpLeavePage() {
     }
   };
   // ...existing return statement and JSX...
-  // Filter by calendar year (not period)
+  // Filter by period date range
   const filteredEntries = useMemo(() => {
+    const selectedPeriodObj = periods.find(p => String(p.id) === String(selectedPeriod));
+    
     return (leaveEntries || [])
       .filter(le => {
         if (filterEmp && String(le.emp) !== String(filterEmp)) return false;
 
-        // YEAR FILTER (calendar year)
-        if (yearFilter) {
-          const d = parseDMY(le.start_date);
-          if (!d) return false;
-          if (String(d.getFullYear()) !== String(yearFilter)) return false;
-        }
-
-        // MONTH FILTER
-        if (monthFilter) {
-          const d = parseDMY(le.start_date);
-          if (!d) return false;
-          if (String(d.getMonth() + 1) !== String(monthFilter)) return false;
+        // PERIOD FILTER (date range)
+        if (selectedPeriod && selectedPeriodObj) {
+          const leaveStart = parseDMY(le.start_date);
+          if (!leaveStart) return false;
+          
+          const periodStart = new Date(selectedPeriodObj.start_date);
+          const periodEnd = new Date(selectedPeriodObj.end_date);
+          
+          // Check if leave start date falls within period range
+          if (leaveStart < periodStart || leaveStart > periodEnd) return false;
         }
 
         // SEARCH
@@ -217,15 +204,20 @@ function EmpLeavePage() {
         return true;
       })
       .sort((a, b) => {
-        // ...existing sort logic...
-        const orderA = getReportOrderValue(a.leave_report_no);
-        const orderB = getReportOrderValue(b.leave_report_no);
-        if (orderA !== orderB) return orderB - orderA;
-        const startA = parseDMY(a.start_date)?.getTime() || 0;
-        const startB = parseDMY(b.start_date)?.getTime() || 0;
-        return startB - startA;
+        // Sort by report number (latest/highest first)
+        const reportA = parseInt(a.leave_report_no, 10) || 0;
+        const reportB = parseInt(b.leave_report_no, 10) || 0;
+        
+        if (reportB !== reportA) {
+          return reportB - reportA; // Descending order (latest on top)
+        }
+        
+        // If report numbers are equal, sort by start date (most recent first)
+        const dateA = parseDMY(a.start_date)?.getTime() || 0;
+        const dateB = parseDMY(b.start_date)?.getTime() || 0;
+        return dateB - dateA;
       });
-  }, [leaveEntries, filterEmp, yearFilter, monthFilter, recordSearch]);
+  }, [leaveEntries, filterEmp, selectedPeriod, periods, recordSearch]);
 
   const PANEL_LABELS = {
     'Entry Leave': 'Add',
@@ -424,24 +416,21 @@ function EmpLeavePage() {
               </div>
 
               <div className="p-3 bg-white border-b flex flex-col gap-3 md:flex-row md:items-center">
-                <select value={yearFilter} onChange={e => setYearFilter(e.target.value)} className="border p-1 rounded text-sm">
-                  <option value="">All Years</option>
-                  {/* Dynamically generate year options from leaveEntries */}
-                  {Array.from(new Set((leaveEntries || [])
-                    .map(le => {
-                      const d = parseDMY(le.start_date);
-                      return d ? d.getFullYear() : null;
-                    })
-                    .filter(y => y != null)
-                  )).sort((a, b) => b - a).map(y => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
-
-                <select value={monthFilter} onChange={e => setMonthFilter(e.target.value)} className="border p-1 rounded text-sm">
-                  <option value="">All Months</option>
-                  {Array.from({ length: 12 }).map((_, i) => <option key={i} value={i+1}>{i+1}</option>)}
-                </select>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700">Period:</label>
+                  <select 
+                    value={selectedPeriod} 
+                    onChange={e => setSelectedPeriod(e.target.value)} 
+                    className="border p-2 rounded text-sm min-w-[250px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">All Periods</option>
+                    {periods.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.period_name} ({p.start_date} to {p.end_date})
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
                 <input
                   type="text"

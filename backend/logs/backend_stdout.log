@@ -18,3 +18,13 @@ DEBUG: UserPermissionViewSet.create called. request.data= {'user': 3, 'module': 
 DEBUG: UserPermissionViewSet.create called. request.data= {'user': 3, 'module': 2, 'menu': 9, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
 DEBUG: UserPermissionViewSet.create called. request.data= {'user': 3, 'module': 2, 'menu': 10, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
 DEBUG: UserPermissionViewSet.create called. request.data= {'user': 3, 'module': 2, 'menu': 11, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+
+-----
+
+WeasyPrint could not import some external libraries. Please carefully follow the installation steps before reporting an issue:
+https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#installation
+https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#troubleshooting 
+
+-----
+
+[api.urls] Import error: invalid decimal literal (view_inst_verification.py, line 746)
