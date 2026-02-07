@@ -120,7 +120,7 @@ export async function deleteLeaveAllocation(id) {
 // GET leave periods
 // ------------------------------------------------------------
 export async function getLeavePeriods() {
-  const res = await API.get("/api/leaveperiods/");
+  const res = await API.get("/api/leave-periods/");
   return res.data?.results || res.data || [];
 }
 

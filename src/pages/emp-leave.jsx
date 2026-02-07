@@ -34,11 +34,8 @@ function EmpLeavePage() {
   // parseDMY, fmtDate, toISO are now imported from '../report/utils'
   const { user } = useAuth();
 
-  // FILTER STATES (must be top-level)
-  const [yearFilter, setYearFilter] = useState('');
-  const [monthFilter, setMonthFilter] = useState('');
+  // FILTER & UI STATES
   const [recordSearch, setRecordSearch] = useState('');
-  const [filterEmp, setFilterEmp] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -48,7 +45,6 @@ function EmpLeavePage() {
   const [profiles, setProfiles] = useState([]);
   const [periods, setPeriods] = useState([]);
   const [selectedPeriod, setSelectedPeriod] = useState('');
-  const [profile, setProfile] = useState(null);
 
   // FORM STATE ONLY HOLDS FORM DATA
   const [form, setForm] = useState({
@@ -91,7 +87,7 @@ function EmpLeavePage() {
 
   // Load leave entries
   useEffect(() => {
-    axios.get('/api/leaveentry/')
+    axios.get('/api/leaveentry/?page_size=9999')
       .then(r => setLeaveEntries(normalize(r.data)))
       .catch(() => setLeaveEntries([]));
   }, []);
@@ -109,6 +105,31 @@ function EmpLeavePage() {
 
   const handleApply = async (ev) => {
     ev.preventDefault();
+    
+    // Validate dates against selected period
+    if (selectedPeriod && form.start_date && form.end_date) {
+      const selectedPeriodObj = periods.find(p => String(p.id) === String(selectedPeriod));
+      if (selectedPeriodObj) {
+        const startDate = parseDMY(form.start_date);
+        const endDate = parseDMY(form.end_date);
+        const periodStart = new Date(selectedPeriodObj.start_date);
+        const periodEnd = new Date(selectedPeriodObj.end_date);
+        
+        if (startDate && endDate) {
+          if (startDate < periodStart || startDate > periodEnd) {
+            alert(`Start date must be within period: ${selectedPeriodObj.period_name} (${selectedPeriodObj.start_date} to ${selectedPeriodObj.end_date})`);
+            setLoading(false);
+            return;
+          }
+          if (endDate < periodStart || endDate > periodEnd) {
+            alert(`End date must be within period: ${selectedPeriodObj.period_name} (${selectedPeriodObj.start_date} to ${selectedPeriodObj.end_date}).\n\nPlease create separate entries for leaves spanning multiple periods.`);
+            setLoading(false);
+            return;
+          }
+        }
+      }
+    }
+    
     setLoading(true);
     try {
       const payload = {
@@ -131,7 +152,7 @@ function EmpLeavePage() {
       } else {
         await axios.post('/api/leaveentry/', payload);
       }
-      const r = await axios.get('/api/leaveentry/');
+      const r = await axios.get('/api/leaveentry/?page_size=9999');
       setLeaveEntries(normalize(r.data));
       setForm({
         report_no: '',
@@ -177,15 +198,36 @@ function EmpLeavePage() {
     
     return (leaveEntries || [])
       .filter(le => {
-        if (filterEmp && String(le.emp) !== String(filterEmp)) return false;
-
         // PERIOD FILTER (date range)
         if (selectedPeriod && selectedPeriodObj) {
-          const leaveStart = parseDMY(le.start_date);
-          if (!leaveStart) return false;
+          // Parse leave start date - try ISO format first, then DD-MM-YYYY
+          let leaveStart;
+          if (/^\d{4}-\d{2}-\d{2}$/.test(le.start_date)) {
+            leaveStart = new Date(le.start_date);
+          } else {
+            leaveStart = parseDMY(le.start_date);
+          }
           
-          const periodStart = new Date(selectedPeriodObj.start_date);
-          const periodEnd = new Date(selectedPeriodObj.end_date);
+          if (!leaveStart || isNaN(leaveStart.getTime())) {
+            return false;
+          }
+          
+          // Parse period dates - try ISO format first, then DD-MM-YYYY
+          let periodStart, periodEnd;
+          
+          // Check if dates are in ISO format (YYYY-MM-DD)
+          if (/^\d{4}-\d{2}-\d{2}$/.test(selectedPeriodObj.start_date)) {
+            periodStart = new Date(selectedPeriodObj.start_date);
+            periodEnd = new Date(selectedPeriodObj.end_date);
+          } else {
+            // Try DD-MM-YYYY format
+            periodStart = parseDMY(selectedPeriodObj.start_date);
+            periodEnd = parseDMY(selectedPeriodObj.end_date);
+          }
+          
+          if (!periodStart || !periodEnd || isNaN(periodStart.getTime()) || isNaN(periodEnd.getTime())) {
+            return true; // Don't filter if period dates are invalid
+          }
           
           // Check if leave start date falls within period range
           if (leaveStart < periodStart || leaveStart > periodEnd) return false;
@@ -217,7 +259,7 @@ function EmpLeavePage() {
         const dateB = parseDMY(b.start_date)?.getTime() || 0;
         return dateB - dateA;
       });
-  }, [leaveEntries, filterEmp, selectedPeriod, periods, recordSearch]);
+  }, [leaveEntries, selectedPeriod, periods, recordSearch]);
 
   const PANEL_LABELS = {
     'Entry Leave': 'Add',
@@ -281,6 +323,25 @@ function EmpLeavePage() {
                 </div>
 
                 <form onSubmit={handleApply} className="mt-4 space-y-4">
+                  {/* Period Selector */}
+                  <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded">
+                    <label className="font-medium text-gray-700">Period:</label>
+                    <select 
+                      value={selectedPeriod} 
+                      onChange={e => setSelectedPeriod(e.target.value)} 
+                      className="border border-gray-300 p-2 rounded text-sm min-w-[300px] focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                      required
+                    >
+                      <option value="">-- Select Period --</option>
+                      {periods.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.period_name} ({p.start_date} to {p.end_date})
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-sm text-gray-600">⚠️ Leave dates must fall within selected period</span>
+                  </div>
+
                   <div className="flex flex-col gap-3 md:flex-row">
                     <div className="flex flex-col gap-1 md:w-28">
                       <label className="text-xs text-gray-600">Report No</label>
@@ -412,7 +473,7 @@ function EmpLeavePage() {
             <div className="border rounded-xl overflow-hidden mt-4">
               <div className="p-3 border-b bg-gray-50 flex justify-between">
                 <div className="font-semibold">Last Leave Records</div>
-                <button onClick={() => axios.get('/api/leaveentry/').then(r => setLeaveEntries(normalize(r.data)))} className="text-sm px-3 py-1 bg-blue-600 text-white rounded">Refresh</button>
+                <button onClick={() => axios.get('/api/leaveentry/?page_size=9999').then(r => setLeaveEntries(normalize(r.data)))} className="text-sm px-3 py-1 bg-blue-600 text-white rounded">Refresh</button>
               </div>
 
               <div className="p-3 bg-white border-b flex flex-col gap-3 md:flex-row md:items-center">
