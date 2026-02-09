@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { dmyToISO, isoToDMY, pad2 } from "../utils/date";
 import PageTopbar from "../components/PageTopbar";
-import { resolveEnrollment } from "../services/enrollmentservice";
+import useEnrollmentLookup from '../hooks/useEnrollmentLookup';
 
 const ACTIONS = ["➕", "🔍", "📄 Report"];
 
@@ -132,36 +132,40 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
 
   const handleChange = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  // When user types or pastes an enrollment number, try to resolve and auto-fill name + enrollment_id
-  useEffect(() => {
-    let active = true;
-    const en = (form.enrollment || '').toString().trim();
-    if (!en) {
-      setForm((f) => ({ ...f, student_name: '', enrollment_id: null }));
-      return;
+  // Centralized enrollment lookup for enrollment field
+  useEnrollmentLookup(form.enrollment, (enr) => {
+    if (enr) {
+      setForm((f) => ({
+        ...f,
+        student_name: enr.student_name || enr.student || '',
+        enrollment_id: enr.id || enr.pk || null,
+      }));
+    } else {
+      setForm((f) => ({
+        ...f,
+        student_name: '',
+        enrollment_id: null,
+      }));
     }
-    const run = async () => {
-      const enr = await resolveEnrollment(en);
-      if (!active) return;
-      if (enr) {
-        // Enrollment object may expose 'id' or 'pk' depending on serializer
-        const id = enr.id || enr.pk || null;
-        const name = enr.student_name || enr.student || '';
-        setForm((f) => ({ ...f, student_name: name || f.student_name, enrollment_id: id }));
-      } else {
-        // Clear if not found
-        setForm((f) => ({ ...f, student_name: '', enrollment_id: null }));
-      }
-    };
-    // debounce slightly
-    const t = setTimeout(run, 300);
-    return () => { active = false; clearTimeout(t); };
-  }, [form.enrollment]);
+  });
 
-  // clear payment fields if pay_by becomes NA/null
+  // Financial year suffix helper: matches backend logic
+  const financialYearSuffix = (dmy) => {
+  if (!dmy) return String(new Date().getFullYear() % 100).padStart(2, '0');
+
+  // dmy = "dd-mm-yyyy"
+  const [dd, mm, yyyy] = dmy.split('-').map(Number);
+
+  // JS month is 0-based
+  const d = new Date(yyyy, mm - 1, dd);
+
+  const fyStartYear = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;
+  return String(fyStartYear).slice(-2);
+};
+
   useEffect(() => {
-    const yy = new Date().getFullYear() % 100;
-    const year_str = pad2(yy);
+    // Use financial year suffix based on doc_rec_date
+    const year_str = financialYearSuffix(form.doc_rec_date);
     const mapping = {
       CASH: `C01/${year_str}/R`,
       BANK: `1471/${year_str}/R`,
@@ -175,7 +179,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
       const pre = mapping[form.pay_by] ?? `NA/${year_str}/R`;
       setForm((f) => ({ ...f, pay_rec_no_pre: pre }));
     }
-  }, [form.pay_by]);
+  }, [form.pay_by, form.doc_rec_date]);
 
   // Fetch next doc_rec_id preview when apply_for changes
   useEffect(() => {
@@ -304,23 +308,46 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
   // initial load
   useEffect(()=>{ fetchRecentRecords('', 'all'); }, []);
 
+  const resolvePayment = (r) => {
+    return {
+      payBy: r.pay_by || null,
+      payPre: r.pay_rec_no_pre || '',
+      payNo: r.pay_rec_no || '',
+      payAmount: r.pay_amount || 0,
+    };
+  };
+
+  const resolveDocRecId = (r) => {
+    return (
+      r.doc_rec_key ||     // Verification (NEW)
+      r.doc_rec_id ||      // DocRec / Provisional
+      (typeof r.doc_rec === 'string' ? r.doc_rec : '') ||
+      ''
+    );
+  };
+
   const onRecordClick = (rec) => {
     const r = rec.raw || rec;
+    const payBy = r.pay_by || null;
+    const payPre = r.pay_rec_no_pre || '';
+    const payNo = r.pay_rec_no || '';
+
     const type = rec.type || 'docrec';
     // Some records have doc_rec or doc_rec_id or id
-    const docRecId = r.doc_rec || r.doc_rec_id || r.id || r.doc_rec_id_string || '';
+    const docRecId = r.doc_rec_key || r.doc_rec_id || r.doc_rec || '';
+
     const studentName = r.student_name || r.student || r.name || '';
     const enrollmentNo = r.enrollment_no || r.enrollment_no_string || r.enrollment || '';
     const enrollmentId = r.enrollment_id || r.enrollment_pk || null;
     // Overwrite the form with selected record values (clear fields when absent)
     setForm({
       apply_for: r.apply_for || form.apply_for || 'VR',
-      pay_by: r.pay_by || form.pay_by || 'NA',
+      pay_by: payBy || form.pay_by || 'NA',
       pay_amount: (typeof r.pay_amount !== 'undefined' && r.pay_amount !== null) ? r.pay_amount : (form.pay_amount || 0),
       doc_rec_date: r.doc_rec_date ? (typeof r.doc_rec_date === 'string' ? isoToDMY(r.doc_rec_date) : form.doc_rec_date) : (form.doc_rec_date || todayDMY()),
       doc_rec_id: docRecId,
-      pay_rec_no_pre: r.pay_rec_no_pre || r.pay_rec_pre || form.pay_rec_no_pre || '',
-      pay_rec_no: r.pay_rec_no || r.pay_receipt_no || form.pay_rec_no || '',
+      pay_rec_no_pre: payPre || r.pay_rec_pre || form.pay_rec_no_pre || '',
+      pay_rec_no: payNo || r.pay_receipt_no || form.pay_rec_no || '',
       doc_remark: r.doc_remark || form.doc_remark || '',
       // verification specific
       enrollment: enrollmentNo,
@@ -926,17 +953,28 @@ v.trim())}`, { headers: { ...authHeaders() } });                                
                 {recentRecords.map((rec, idx) => {
                   const r = rec.raw || rec;
                   const type = rec.type || 'docrec';
-                  const docId = r.doc_rec || r.doc_rec_id || r.id || '';
+                  const docId = resolveDocRecId(r);
                   const name = (type === 'inst-verification') ? (r.rec_inst_name || r.rec_inst_city || '') : (r.student_name || r.name || r.full_name || '');
                   const enr = r.enrollment_no || r.enrollment || r.enrollment_no_string || '';
                   const date = r.prv_date || r.mg_date || r.vr_date || r.inst_veri_date || r.created_at || r.received_at || '';
                   const docNumber = type === 'inst-verification' ? (r.inst_veri_number || '') : (type === 'migration' ? (r.mg_number || '') : (type === 'provisional' ? (r.prv_number || '') : (type === 'verification' ? (r.final_no || '') : '')));
+                  
+                  const { payBy, payPre, payNo } = resolvePayment(r);
+
                   return (
                     <div key={`${type}-${docId}-${idx}`} className="p-2 border rounded hover:bg-gray-50 cursor-pointer" onClick={()=>onRecordClick(rec)}>
                       <div className="flex justify-between items-center">
                         <div>
-                          <div className="text-sm font-medium">{docId || '(no doc_rec)'}{docNumber ? ` · ${docNumber}` : ''}</div>
-                          <div className="text-xs text-gray-600">{name} {enr ? `· ${enr}` : ''}</div>
+                          <div className="text-sm font-medium">
+                            {docId && `${docId} · `}
+                            {name}
+                            {enr ? ` · ${enr}` : ''}
+                          </div>
+                          {payBy && payBy !== 'NA' && (
+                            <div className="mt-1 text-xs text-gray-800">
+                              {payBy}{(payPre || payNo) ? ` · ${payPre}${payNo}` : ''}
+                            </div>
+                          )}
                         </div>
                         <div className="text-xs text-right">
                           <div className="uppercase text-[10px] px-2 py-1 rounded bg-gray-100">{type}</div>

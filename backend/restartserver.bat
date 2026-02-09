@@ -1,0 +1,1 @@
+"E:\nssm\win64\nssm.exe" restart AdminDeskBackend

@@ -12712,3 +12712,174 @@ WARNING:waitress.queue:Task queue depth is 1
 WARNING:waitress.queue:Task queue depth is 1
 WARNING:waitress.queue:Task queue depth is 1
 WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+Unauthorized: /api/enrollments/
+WARNING:django.request:Unauthorized: /api/enrollments/
+Unauthorized: /api/enrollments/
+WARNING:django.request:Unauthorized: /api/enrollments/
+Unauthorized: /api/enrollments/
+WARNING:django.request:Unauthorized: /api/enrollments/
+Unauthorized: /api/enrollments/
+WARNING:django.request:Unauthorized: /api/enrollments/
+Unauthorized: /api/enrollments/
+WARNING:django.request:Unauthorized: /api/enrollments/
+Unauthorized: /api/enrollments/
+WARNING:django.request:Unauthorized: /api/enrollments/
+Unauthorized: /api/enrollments/
+WARNING:django.request:Unauthorized: /api/enrollments/
+Unauthorized: /api/enrollments/
+WARNING:django.request:Unauthorized: /api/enrollments/
+Unauthorized: /api/enrollments/
+WARNING:django.request:Unauthorized: /api/enrollments/
+Unauthorized: /api/enrollments/
+WARNING:django.request:Unauthorized: /api/enrollments/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+INFO:waitress:Serving on http://127.0.0.1:8000
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+Unauthorized: /api/inst-verification-main/
+WARNING:django.request:Unauthorized: /api/inst-verification-main/
+Unauthorized: /api/verification/
+WARNING:django.request:Unauthorized: /api/verification/
+Unauthorized: /api/provisional/
+WARNING:django.request:Unauthorized: /api/provisional/
+Unauthorized: /api/migration/
+WARNING:django.request:Unauthorized: /api/migration/
+Unauthorized: /api/inst-verification-student/
+WARNING:django.request:Unauthorized: /api/inst-verification-student/
+Unauthorized: /api/docrec/
+WARNING:django.request:Unauthorized: /api/docrec/
+Unauthorized: /api/docrec/
+WARNING:django.request:Unauthorized: /api/docrec/
+Unauthorized: /api/migration/
+WARNING:django.request:Unauthorized: /api/migration/
+Unauthorized: /api/my-navigation/
+WARNING:django.request:Unauthorized: /api/my-navigation/
+Unauthorized: /api/my-navigation/
+WARNING:django.request:Unauthorized: /api/my-navigation/
+Unauthorized: /api/mail-requests/
+WARNING:django.request:Unauthorized: /api/mail-requests/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /api/docrec/48957/
+WARNING:django.request:Not Found: /api/docrec/48957/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+Not Found: /api/docrec/48957/
+WARNING:django.request:Not Found: /api/docrec/48957/
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+Not Found: /api/docrec/48957/
+WARNING:django.request:Not Found: /api/docrec/48957/
+Not Found: /api/docrec/48957/
+WARNING:django.request:Not Found: /api/docrec/48957/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+Not Found: /api/docrec/48957/
+WARNING:django.request:Not Found: /api/docrec/48957/
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+Not Found: /api/docrec/48957/
+WARNING:django.request:Not Found: /api/docrec/48957/
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /api/docrec/48957/
+WARNING:django.request:Not Found: /api/docrec/48957/
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /api/docrec/48956/
+WARNING:django.request:Not Found: /api/docrec/48956/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+Not Found: /api/docrec/48956/
+WARNING:django.request:Not Found: /api/docrec/48956/
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+Not Found: /api/docrec/48956/
+WARNING:django.request:Not Found: /api/docrec/48956/
+Not Found: /api/docrec/48956/
+WARNING:django.request:Not Found: /api/docrec/48956/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+Not Found: /api/docrec/48956/
+WARNING:django.request:Not Found: /api/docrec/48956/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+INFO:waitress:Serving on http://127.0.0.1:8000

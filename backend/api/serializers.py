@@ -269,14 +269,41 @@ class InstituteCourseOfferingSerializer(serializers.ModelSerializer):
             data["updated_by"] = {"id": instance.updated_by.id, "username": instance.updated_by.username}
         return data
 class VerificationSerializer(serializers.ModelSerializer):
-    # enrollment_no and second_enrollment_id are now CharField (not FK)
-    # Write-only: allow linking to DocRec by its primary key id
+    # Write-only: link DocRec by PK
     doc_rec_id = serializers.PrimaryKeyRelatedField(
-        queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False
+        queryset=DocRec.objects.all(),
+        source='doc_rec',
+        write_only=True,
+        required=False
     )
-    # Read-only: expose doc_rec public id (string) if linked
-    doc_rec_key = serializers.CharField(source="doc_rec.doc_rec_id", read_only=True)
-    # Nested ECA info for this verification (by same doc_rec)
+
+    # Read-only: public DocRec ID like "vr26000090"
+    doc_rec_key = serializers.CharField(
+        source="doc_rec.doc_rec_id",
+        read_only=True
+    )
+
+    # 🔥 Payment passthrough from DocRec
+    pay_by = serializers.CharField(
+        source="doc_rec.pay_by",
+        read_only=True
+    )
+    pay_rec_no_pre = serializers.CharField(
+        source="doc_rec.pay_rec_no_pre",
+        read_only=True
+    )
+    pay_rec_no = serializers.CharField(
+        source="doc_rec.pay_rec_no",
+        read_only=True
+    )
+    pay_amount = serializers.DecimalField(
+        source="doc_rec.pay_amount",
+        max_digits=12,
+        decimal_places=2,
+        read_only=True
+    )
+
+    # Nested ECA info
     eca = serializers.SerializerMethodField()
 
     class Meta:
@@ -289,86 +316,87 @@ class VerificationSerializer(serializers.ModelSerializer):
             "second_enrollment_id",
             "student_name",
             "tr_count", "ms_count", "dg_count", "moi_count", "backlog_count",
-            "pay_rec_no",
+
+            # verification-level
             "status",
             "final_no",
             "mail_status",
+
+            # ECA
             "eca_required", "eca_name", "eca_ref_no", "eca_send_date",
             "eca_status", "eca_resubmit_date",
+
             "replaces_verification",
             "doc_remark",
             "last_resubmit_date", "last_resubmit_status",
             "createdat", "updatedat", "updatedby",
-            "doc_rec_id", "doc_rec_key",
+
+            # 🔥 DocRec + payment (READ)
+            "doc_rec_key",
+            "pay_by",
+            "pay_rec_no_pre",
+            "pay_rec_no",
+            "pay_amount",
+
+            # 🔥 DocRec (WRITE)
+            "doc_rec_id",
+
             "eca",
         ]
+
         read_only_fields = [
             "id", "createdat", "updatedat", "updatedby",
-            "eca_resend_count", "eca_last_action_at", "eca_last_to_email",
             "last_resubmit_date", "last_resubmit_status",
         ]
 
     def validate(self, attrs):
-        # pull current + incoming
         status = attrs.get("status", getattr(self.instance, "status", None))
         final_no = attrs.get("final_no", getattr(self.instance, "final_no", None))
         eca_required = attrs.get("eca_required", getattr(self.instance, "eca_required", False))
 
-        # 3-digit caps (extra guard; DB also enforces)
         for f in ("tr_count", "ms_count", "dg_count", "moi_count", "backlog_count"):
             val = attrs.get(f, getattr(self.instance, f, 0) if self.instance else 0)
             if val is not None and (val < 0 or val > 999):
                 raise serializers.ValidationError({f: "Must be between 0 and 999."})
 
-        # Final number rules
         if status == VerificationStatus.DONE and not final_no:
             raise serializers.ValidationError({"final_no": "Required when status is DONE."})
         if status in (VerificationStatus.PENDING, VerificationStatus.CANCEL) and final_no:
             raise serializers.ValidationError({"final_no": "Must be empty for PENDING or CANCEL."})
 
-        # ECA details must be empty if not required
-        eca_fields = ("eca_name", "eca_ref_no", "eca_send_date", "eca_resubmit_date")
         if not eca_required:
-            for ef in eca_fields:
+            for ef in ("eca_name", "eca_ref_no", "eca_send_date", "eca_resubmit_date"):
                 if attrs.get(ef) is not None:
                     raise serializers.ValidationError("ECA details present but eca_required=False.")
-            # Enforce ECA status blank/null if not required
             if attrs.get("eca_status") not in (None, ""):
                 attrs["eca_status"] = ""
 
         return attrs
 
     def create(self, validated):
-        # enrollment_no is now a CharField, no FK to auto-fill student_name from
-        # Stamp audit
         request = self.context.get("request")
         if request and request.user and request.user.is_authenticated:
             validated["updatedby"] = request.user
         return super().create(validated)
 
     def update(self, instance, validated):
-        # Stamp audit
         request = self.context.get("request")
         if request and request.user and request.user.is_authenticated:
             validated["updatedby"] = request.user
-        # enrollment_no is now a CharField, no FK relationship to sync
         return super().update(instance, validated)
 
     def get_eca(self, obj):
-        try:
-            # Return ECA info from verification's denormalized fields
-            if not obj:
-                return None
-            return {
-                "id": None,
-                "doc_rec_id": obj.doc_rec.doc_rec_id if getattr(obj, 'doc_rec', None) else None,
-                "eca_name": getattr(obj, 'eca_name', None),
-                "eca_ref_no": getattr(obj, 'eca_ref_no', None),
-                "eca_send_date": getattr(obj, 'eca_submit_date', None),
-                "eca_remark": None,
-            }
-        except Exception:
+        if not obj or not obj.doc_rec:
             return None
+        return {
+            "id": None,
+            "doc_rec_id": obj.doc_rec.doc_rec_id,
+            "eca_name": obj.eca_name,
+            "eca_ref_no": obj.eca_ref_no,
+            "eca_send_date": obj.eca_send_date,
+            "eca_remark": None,
+        }
+
 
 
 class EcaResendSerializer(serializers.Serializer):

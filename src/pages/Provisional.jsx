@@ -10,7 +10,7 @@ import {
   fetchSubcourseNames
 } from '../services/provisionalservice';
 import { useNavigate } from 'react-router-dom';
-import { resolveEnrollment } from "../services/enrollmentservice";
+import useEnrollmentLookup from '../hooks/useEnrollmentLookup';
 import PageTopbar from "../components/PageTopbar";
 
 const ACTIONS = ["➕", "✏️ Edit", "🔍", "📄 Report"];
@@ -84,20 +84,27 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
   const setF = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
 
-  // (Optional) You can keep fetchEnrollment here if not moving to service
-  const fetchEnrollment = async (enrollNo) => {
-    const item = await resolveEnrollment(enrollNo);
+  // Centralized enrollment lookup using useEnrollmentLookup
+  useEnrollmentLookup(form.enrollment, (item) => {
     if (item) {
-        setForm((f)=>({
-          ...f,
-          enrollment: item.enrollment_no,
-          student_name: item.student_name || "",
-          institute: item.institute?.institute_code || item.institute?.id || item.institute || "",
-          subcourse: item.subcourse?.subcourse_name || item.subcourse?.id || item.subcourse || "",
-          maincourse: item.maincourse?.course_code || item.maincourse?.id || item.maincourse || "",
-        }));
-      }
-  };
+      setForm((f) => ({
+        ...f,
+        enrollment: item.enrollment_no,
+        student_name: item.student_name || '',
+        institute: item.institute?.institute_code || item.institute?.id || item.institute || '',
+        subcourse: item.subcourse?.subcourse_name || item.subcourse?.id || item.subcourse || '',
+        maincourse: item.maincourse?.course_code || item.maincourse?.id || item.maincourse || '',
+      }));
+    } else {
+      setForm((f) => ({
+        ...f,
+        student_name: '',
+        institute: '',
+        subcourse: '',
+        maincourse: '',
+      }));
+    }
+  });
 
   const save = async () => {
     await saveProvisional(form);
@@ -165,7 +172,7 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
             </div>
             <div>
               <label className="text-sm">Enrollment</label>
-              <input className="w-full border rounded-lg p-2" value={form.enrollment} onChange={(e)=>setF('enrollment', e.target.value)} onBlur={()=>fetchEnrollment(form.enrollment)} />
+              <input className="w-full border rounded-lg p-2" value={form.enrollment} onChange={(e)=>setF('enrollment', e.target.value)} />
             </div>
             <div>
               <label className="text-sm">Student Name</label>

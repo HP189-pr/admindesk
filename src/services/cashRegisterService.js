@@ -6,10 +6,10 @@ import axiosInstance from '../api/axiosInstance';
 
 // axiosInstance baseURL is '/api', so use relative paths here
 // to avoid generating '/api/api/...'.
-const RECEIPTS_BASE = '/receipts/';
-const CASH_REGISTER_BASE = '/cash-register/';
-const CASH_OUTWARD_BASE = '/cash-outward/';
-const CASH_ON_HAND_BASE = '/cash-on-hand/';
+const RECEIPTS_BASE = '/api/receipts/';
+const CASH_REGISTER_BASE = '/api/cash-register/';
+const CASH_OUTWARD_BASE = '/api/cash-outward/';
+const CASH_ON_HAND_BASE = '/api/cash-on-hand/';
 
 /* ----------------------------------------------------
    CASH REGISTER (FLATTENED – USED BY MAIN ENTRY PAGE)

@@ -1,3 +1,4 @@
+import useEnrollmentLookup from '../hooks/useEnrollmentLookup';
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import PageTopbar from "../components/PageTopbar";
 import { isoToDMY, dmyToISO } from "../utils/date";
@@ -11,7 +12,6 @@ import {
 	saveInstLetterStudent,
 	suggestInstLetterDocRec,
 } from "../services/inst-letterservice";
-import { resolveEnrollment } from "../services/enrollmentservice";
 
 const ACTIONS = ["➕", "✏️ Edit", "🔍", "📄 Report"];
 const IV_STATUS_OPTIONS = ["", "Pending", "Done", "Correction", "Post", "Mail"];
@@ -157,6 +157,21 @@ const NoAccessState = () => (
 );
 
 const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbox }) => {
+		// Auto-fetch student name when enrollment is typed
+		useEnrollmentLookup(sform.enrollment, (enr) => {
+			if (enr) {
+				setSForm((prev) => ({
+					...prev,
+					enrollment: enr.enrollment_no || prev.enrollment,
+					student_name: enr.student_name || '',
+				}));
+			} else {
+				setSForm((prev) => ({
+					...prev,
+					student_name: '',
+				}));
+			}
+		});
 	const [selectedAction, setSelectedAction] = useState("➕");
 	const [mform, setMForm] = useState(createMainForm());
 	const [sform, setSForm] = useState(createStudentForm());
@@ -185,17 +200,6 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 	const selectedRecordId = mform.id;
 	const [savingMain, setSavingMain] = useState(false);
 	const [savingStudent, setSavingStudent] = useState(false);
-
-	const fetchStudentEnrollment = async (enrollNo) => {
-		const item = await resolveEnrollment(enrollNo);
-		if (item) {
-			setSForm(prev => ({
-				...prev,
-				enrollment: item.enrollment_no,
-				student_name: item.student_name || prev.student_name,
-			}));
-		}
-	};
 
 	const isSearchMode = selectedAction === "🔍";
 	const isReportMode = selectedAction === "📄 Report";
@@ -811,7 +815,7 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 					</div>
 					<div className="md:col-span-3">
 						<label className="label">Enrollment</label>
-						<input className="input" value={sform.enrollment} onChange={(e) => setSForm((prev) => ({ ...prev, enrollment: e.target.value }))} onBlur={() => fetchStudentEnrollment(sform.enrollment)} />
+						<input className="input" value={sform.enrollment} onChange={(e) => setSForm((prev) => ({ ...prev, enrollment: e.target.value }))} />
 					</div>
 					<div className="md:col-span-3">
 						<label className="label">Student Name</label>

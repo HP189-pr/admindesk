@@ -79,8 +79,8 @@ class DocRec(models.Model):
             ApplyFor.MIGRATION: 'mg',
             ApplyFor.GRADE_TRANS: 'gt',
         }.get(self.apply_for, 'vr')
-    def _pay_prefix_for_payby(self, yy: int) -> str:
-        now = timezone.now(); yyyy = now.year; year_str = f"{yy:02d}"
+    def _pay_prefix_for_payby(self, yy: int, yyyy: int) -> str:
+        year_str = f"{yy:02d}"
         try:
             rule = (PayPrefixRule.objects
                 .filter(pay_by=self.pay_by, is_active=True)
@@ -111,22 +111,34 @@ class DocRec(models.Model):
         if self.pay_amount is not None and self.pay_amount < 0:
             raise ValidationError({'pay_amount': 'Amount cannot be negative.'})
     def save(self, *args, **kwargs):
-        now = timezone.now(); yy = now.year % 100
+        now = timezone.now()
+        # Financial year logic: if month >= 4, year is current year, else previous year
+        if now.month >= 4:
+            fy_start = now.year
+        else:
+            fy_start = now.year - 1
+        yy = fy_start % 100
+        yyyy = fy_start
         if self.pay_by == PayBy.NA:
-            self.pay_rec_no_pre = None; self.pay_rec_no = None
+            self.pay_rec_no_pre = None
+            self.pay_rec_no = None
         else:
             if not self.pay_rec_no_pre:
-                self.pay_rec_no_pre = self._pay_prefix_for_payby(yy)
+                self.pay_rec_no_pre = self._pay_prefix_for_payby(yy, yyyy)
         if not self.doc_rec_id:
-            prefix = self._prefix_for_apply(); year_str = f"{yy:02d}"; base = f"{prefix}{year_str}"
+            prefix = self._prefix_for_apply()
+            year_str = f"{yy:02d}"
+            base = f"{prefix}{year_str}"
             with transaction.atomic():
                 last = (DocRec.objects.select_for_update(skip_locked=True)
                         .filter(doc_rec_id__startswith=base)
                         .order_by('-doc_rec_id').first())
                 next_num = 1
                 if last and last.doc_rec_id:
-                    try: next_num = int(last.doc_rec_id[len(base):]) + 1
-                    except Exception: next_num = 1
+                    try:
+                        next_num = int(last.doc_rec_id[len(base):]) + 1
+                    except Exception:
+                        next_num = 1
                 self.doc_rec_id = f"{prefix}{year_str}{next_num:06d}"
         if not self.doc_rec_date:
             self.doc_rec_date = timezone.now().date()

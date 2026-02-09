@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { dmyToISO, isoToDMY } from "../utils/date";
 import { useNavigate } from 'react-router-dom';
 import PageTopbar from "../components/PageTopbar";
-import { resolveEnrollment } from "../services/enrollmentservice";
+import useEnrollmentLookup from '../hooks/useEnrollmentLookup';
 
 const ACTIONS = ["➕", "✏️ Edit", "🔍", "📄 Report"];
 
@@ -67,19 +67,27 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
 
   const setF = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  const fetchEnrollment = async (enrollNo) => {
-    const item = await resolveEnrollment(enrollNo);
+  // Centralized enrollment lookup using useEnrollmentLookup
+  useEnrollmentLookup(form.enrollment, (item) => {
     if (item) {
-        setForm((f)=>({
-          ...f,
-          enrollment: item.enrollment_no,
-          student_name: item.student_name || "",
-          institute: item.institute?.id || item.institute || "",
-          subcourse: item.subcourse?.id || item.subcourse || "",
-          maincourse: item.maincourse?.id || item.maincourse || "",
-        }));
-      }
-  };
+      setForm((f) => ({
+        ...f,
+        enrollment: item.enrollment_no,
+        student_name: item.student_name || '',
+        institute: item.institute?.id || item.institute || '',
+        subcourse: item.subcourse?.id || item.subcourse || '',
+        maincourse: item.maincourse?.id || item.maincourse || '',
+      }));
+    } else {
+      setForm((f) => ({
+        ...f,
+        student_name: '',
+        institute: '',
+        subcourse: '',
+        maincourse: '',
+      }));
+    }
+  });
 
   const save = async () => {
     const payload = {
@@ -181,7 +189,7 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
             </div>
             <div>
               <label className="text-sm">Enrollment</label>
-              <input className="w-full border rounded-lg p-2" value={form.enrollment} onChange={(e)=>{ setF('enrollment', e.target.value); }} onBlur={()=>fetchEnrollment(form.enrollment)} />
+                <input className="w-full border rounded-lg p-2" value={form.enrollment} onChange={(e)=>{ setF('enrollment', e.target.value); }} />
             </div>
             <div>
               <label className="text-sm">Student Name</label>

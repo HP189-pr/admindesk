@@ -21,30 +21,9 @@ const MailBadge = ({ text }) => (
   </span>
 );
 
-// Utility to fetch enrollment details by enrollment_no or id
-async function resolveEnrollment(en_no) {
-  if (!en_no) return null;
-  const typed = String(en_no).trim().toLowerCase();
-  try {
-    const token = localStorage.getItem('access_token');
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    let res = await fetch(`/api/enrollments/?search=${encodeURIComponent(typed)}&limit=20`, { headers });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const items = data && data.results ? data.results : (Array.isArray(data) ? data : (data && data.items ? data.items : []));
-    // Exact match
-    return items.find(e => String(e.enrollment_no || e.enrollment || '').trim().toLowerCase() === typed) || null;
-  } catch (e) {
-    console.warn('resolveEnrollment error', e);
-    return null;
-  }
-}
-export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar, onToggleChatbox }) {
-  // Wrapper for service: always passes correct state setters
-  const loadRecords = async () => {
-    await loadRecordsService(q, setLoading, setErrorMsg, setRecords);
-  };
+import useEnrollmentLookup from '../hooks/useEnrollmentLookup';
 
+export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar, onToggleChatbox }) {
   // Search/filter state variables
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -57,7 +36,8 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
   const [form, setForm] = useState({
     date: "",
     vr_done_date: "",
-    enrollment_id: "",
+    enrollment_no: "",
+    enrollment_id: null,
     second_enrollment_id: "",
     name: "",
     tr: 0,
@@ -80,6 +60,34 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
     doc_rec_key: "",
     eca_remark: ""
   });
+
+  // Centralized enrollment lookup for enrollment field
+  // Auto-fetch student name when enrollment_no is typed
+  useEnrollmentLookup(form.enrollment_no, (enr) => {
+    setForm((prev) => {
+      if (!enr) {
+        if (!prev.enrollment_id && prev.name === "") return prev;
+        return { ...prev, enrollment_id: null, name: "" };
+      }
+      if (
+        prev.enrollment_id === enr.id &&
+        prev.name === enr.student_name
+      ) {
+        return prev;
+      }
+      return {
+        ...prev,
+        enrollment_id: enr.id,
+        name: enr.student_name || "",
+      };
+    });
+  });
+  // Wrapper for service: always passes correct state setters
+  const loadRecords = async () => {
+    await loadRecordsService(q, setLoading, setErrorMsg, setRecords);
+  };
+
+ 
   const navigate = useNavigate();
   const formRef = useRef(null);
   const [flashMsg, setFlashMsg] = useState("");
@@ -166,7 +174,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
   };
 
   const handleChange = (field, val) => {
-    if (field === "enrollment_id") {
+    if (field === "enrollment_no") {
       setForm((f) => ({ ...f, [field]: val }));
       setQ((val || "").toString());
     } else if (["tr","ms","dg","moi","backlog"].includes(field)) {
@@ -378,12 +386,12 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                   />
                 </div>
                 <div>
-                  <label className="block text-sm mb-1">Enrollment ID</label>
+                  <label className="block text-sm mb-1">Enrollment No</label>
                   <input
                     className="w-full border rounded-lg p-2"
-                    placeholder="Pick from Enrollment table"
-                    value={form.enrollment_id}
-                    onChange={(e) => handleChange("enrollment_id", e.target.value)}
+                    placeholder="Type enrollment number"
+                    value={form.enrollment_no || ""}
+                    onChange={(e) => handleChange("enrollment_no", e.target.value)}
                   />
                 </div>
                 <div>
