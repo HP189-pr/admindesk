@@ -6,6 +6,7 @@ from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
 from django.db.models import Q, F, Value
 from django.db.models.functions import Lower, Replace
 from functools import wraps
+import re
 
 
 def apply_fts_search(queryset, search_query, search_fields, fallback_fields=None):
@@ -33,7 +34,6 @@ def apply_fts_search(queryset, search_query, search_fields, fallback_fields=None
     has_fts = hasattr(model, 'search_vector') and 'search_vector' in [f.name for f in model._meta.get_fields()]
 
     # Normalize tokens for enrollment/temp enrollment numbers (remove spaces/dots/hyphens)
-    import re
     norm_search = re.sub(r'[^0-9a-z]+', '', search_query.lower()) if search_query else ''
     annotations = {}
     norm_filters = Q()
@@ -68,8 +68,8 @@ def apply_fts_search(queryset, search_query, search_fields, fallback_fields=None
             if not fts_parts:
                 return queryset
             
-            # Use same config as we build vectors with ('english' by default)
-            query = SearchQuery(fts_parts, search_type='raw', config='english')
+            # Use 'simple' config to match the index configuration (no stemming, just lowercasing)
+            query = SearchQuery(fts_parts, search_type='raw', config='simple')
             
             queryset = queryset.annotate(
                 rank=SearchRank(F('search_vector'), query)

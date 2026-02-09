@@ -10,6 +10,7 @@ import {
   fetchSubcourseNames
 } from '../services/provisionalservice';
 import { useNavigate } from 'react-router-dom';
+import { resolveEnrollment } from "../services/enrollmentservice";
 import PageTopbar from "../components/PageTopbar";
 
 const ACTIONS = ["➕", "✏️ Edit", "🔍", "📄 Report"];
@@ -85,12 +86,8 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
 
   // (Optional) You can keep fetchEnrollment here if not moving to service
   const fetchEnrollment = async (enrollNo) => {
-    if (!enrollNo || String(enrollNo).trim().length < 2) return;
-    try {
-      const res = await fetch(`/api/enrollments/?search=${encodeURIComponent(enrollNo)}&limit=1&page=1`, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } });
-      const data = await res.json();
-      const item = data?.items?.[0];
-      if (item) {
+    const item = await resolveEnrollment(enrollNo);
+    if (item) {
         setForm((f)=>({
           ...f,
           enrollment: item.enrollment_no,
@@ -100,7 +97,6 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
           maincourse: item.maincourse?.course_code || item.maincourse?.id || item.maincourse || "",
         }));
       }
-    } catch {}
   };
 
   const save = async () => {

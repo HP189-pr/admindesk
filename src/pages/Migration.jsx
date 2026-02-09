@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { dmyToISO, isoToDMY } from "../utils/date";
 import { useNavigate } from 'react-router-dom';
 import PageTopbar from "../components/PageTopbar";
+import { resolveEnrollment } from "../services/enrollmentservice";
 
 const ACTIONS = ["➕", "✏️ Edit", "🔍", "📄 Report"];
 
@@ -67,12 +68,8 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
   const setF = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const fetchEnrollment = async (enrollNo) => {
-    if (!enrollNo || String(enrollNo).trim().length < 2) return;
-    try {
-      const res = await fetch(`/api/enrollments/?search=${encodeURIComponent(enrollNo)}&limit=1&page=1`, { headers: { ...authHeaders() } });
-      const data = await res.json();
-      const item = data?.items?.[0];
-      if (item) {
+    const item = await resolveEnrollment(enrollNo);
+    if (item) {
         setForm((f)=>({
           ...f,
           enrollment: item.enrollment_no,
@@ -82,7 +79,6 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
           maincourse: item.maincourse?.id || item.maincourse || "",
         }));
       }
-    } catch {}
   };
 
   const save = async () => {

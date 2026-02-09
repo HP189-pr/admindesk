@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { dmyToISO, isoToDMY, pad2 } from "../utils/date";
 import PageTopbar from "../components/PageTopbar";
+import { resolveEnrollment } from "../services/enrollmentservice";
 
 const ACTIONS = ["➕", "🔍", "📄 Report"];
 
@@ -129,41 +130,6 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     }
   };
 
-  // Resolve an enrollment number to enrollment object (try retrieve by enrollment_no, fall back to search)
- const resolveEnrollment = async (en_no) => {
-  if (!en_no) return null;
-
-  const typed = en_no.trim().toLowerCase();
-
-  try {
-    const token = localStorage.getItem('access_token');
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
-    const res = await fetch(
-      `/api/enrollments/?search=${encodeURIComponent(en_no)}&limit=20`,
-      { headers }
-    );
-
-    if (!res.ok) return null;
-
-    const data = await res.json();
-    const items =
-      data?.results ??
-      (Array.isArray(data) ? data : []);
-
-    // ✅ EXACT MATCH ONLY
-    const exact = items.find(
-      (e) =>
-        String(e.enrollment_no || e.enrollment || '').trim().toLowerCase() === typed
-    );
-
-    return exact || null;
-  } catch (e) {
-    console.warn('resolveEnrollment error', e);
-    return null;
-  }
-};
-
   const handleChange = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   // When user types or pastes an enrollment number, try to resolve and auto-fill name + enrollment_id
@@ -182,6 +148,9 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
         const id = enr.id || enr.pk || null;
         const name = enr.student_name || enr.student || '';
         setForm((f) => ({ ...f, student_name: name || f.student_name, enrollment_id: id }));
+      } else {
+        // Clear if not found
+        setForm((f) => ({ ...f, student_name: '', enrollment_id: null }));
       }
     };
     // debounce slightly

@@ -23,6 +23,7 @@ import {
 import DegreeReport from '../report/DegreeReport';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { resolveEnrollment } from '../services/enrollmentservice';
 
 const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
     const navigate = useNavigate();
@@ -90,6 +91,34 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
     useEffect(() => {
         fetchConvocations();
     }, []);
+    useEffect(() => {
+    const en = formData.enrollment_no?.trim();
+
+    if (!en) {
+        setFormData(prev => ({
+            ...prev,
+            student_name_dg: '',
+            institute_name_dg: '',
+        }));
+        return;
+    }
+
+    const timer = setTimeout(() => {
+        resolveEnrollment(en).then((item) => {
+            if (item) {
+                setFormData(prev => ({
+                    ...prev,
+                    enrollment_no: item.enrollment_no,
+                    student_name_dg: item.student_name || prev.student_name_dg,
+                    institute_name_dg: item.institute?.institute_name || item.institute?.name || prev.institute_name_dg,
+                }));
+            }
+        });
+    }, 300); // debounce, same UX as DocReceive
+
+    return () => clearTimeout(timer);
+}, [formData.enrollment_no]);
+
 
     useEffect(() => {
         fetchDegrees();

@@ -16,6 +16,7 @@ import {
   getAdmissionCancellationList,
   createAdmissionCancellation,
   getEnrollmentByNumber,
+  resolveEnrollment,
 } from "../services/enrollmentservice";
 import { useAuth } from "../hooks/AuthContext";
 import API from "../api/axiosInstance";
@@ -347,12 +348,17 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
     }
     setCancelForm(prev => ({ ...prev, loadingEnrollment: true, error: '' }));
     try {
-      const record = await getEnrollmentByNumber(enrollmentNo);
+      const record = await resolveEnrollment(enrollmentNo);
+
+      if (!record) {
+         throw new Error('Enrollment not found (exact match)');
+      }
+
       setCancelForm(prev => ({
         ...prev,
         enrollmentId: record.id,
         studentName: record.student_name || '',
-        enrollmentNoInput: enrollmentNo,
+        enrollmentNoInput: record.enrollment_no,
         loadingEnrollment: false,
       }));
     } catch (error) {

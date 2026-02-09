@@ -122,6 +122,42 @@ export const validateEnrollmentData = (data) => {
 
     return errors;
 };
+/**
+ * Resolve enrollment by number (exact match)
+ * Used across Degree, DocReceive, Verification, etc.
+ */
+export const resolveEnrollment = async (enrollmentNo) => {
+    if (!enrollmentNo) return null;
+
+    const typed = enrollmentNo.trim().toLowerCase();
+
+    try {
+        const res = await API.get(ENROLLMENT_API, {
+            params: {
+                search: enrollmentNo,
+                limit: 20,
+            },
+        });
+
+        const data = res.data;
+        const items =
+            data?.results ??
+            (Array.isArray(data) ? data : []);
+
+        // ✅ EXACT MATCH ONLY
+        return (
+            items.find(
+                (e) =>
+                    String(e.enrollment_no || e.enrollment || '')
+                        .trim()
+                        .toLowerCase() === typed
+            ) || null
+        );
+    } catch (e) {
+        console.warn('resolveEnrollment failed', e);
+        return null;
+    }
+};
 
 export default {
     getEnrollments,

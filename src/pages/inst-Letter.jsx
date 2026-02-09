@@ -11,6 +11,7 @@ import {
 	saveInstLetterStudent,
 	suggestInstLetterDocRec,
 } from "../services/inst-letterservice";
+import { resolveEnrollment } from "../services/enrollmentservice";
 
 const ACTIONS = ["➕", "✏️ Edit", "🔍", "📄 Report"];
 const IV_STATUS_OPTIONS = ["", "Pending", "Done", "Correction", "Post", "Mail"];
@@ -184,6 +185,17 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 	const selectedRecordId = mform.id;
 	const [savingMain, setSavingMain] = useState(false);
 	const [savingStudent, setSavingStudent] = useState(false);
+
+	const fetchStudentEnrollment = async (enrollNo) => {
+		const item = await resolveEnrollment(enrollNo);
+		if (item) {
+			setSForm(prev => ({
+				...prev,
+				enrollment: item.enrollment_no,
+				student_name: item.student_name || prev.student_name,
+			}));
+		}
+	};
 
 	const isSearchMode = selectedAction === "🔍";
 	const isReportMode = selectedAction === "📄 Report";
@@ -799,7 +811,7 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 					</div>
 					<div className="md:col-span-3">
 						<label className="label">Enrollment</label>
-						<input className="input" value={sform.enrollment} onChange={(e) => setSForm((prev) => ({ ...prev, enrollment: e.target.value }))} />
+						<input className="input" value={sform.enrollment} onChange={(e) => setSForm((prev) => ({ ...prev, enrollment: e.target.value }))} onBlur={() => fetchStudentEnrollment(sform.enrollment)} />
 					</div>
 					<div className="md:col-span-3">
 						<label className="label">Student Name</label>
