@@ -157,21 +157,6 @@ const NoAccessState = () => (
 );
 
 const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbox }) => {
-		// Auto-fetch student name when enrollment is typed
-		useEnrollmentLookup(sform.enrollment, (enr) => {
-			if (enr) {
-				setSForm((prev) => ({
-					...prev,
-					enrollment: enr.enrollment_no || prev.enrollment,
-					student_name: enr.student_name || '',
-				}));
-			} else {
-				setSForm((prev) => ({
-					...prev,
-					student_name: '',
-				}));
-			}
-		});
 	const [selectedAction, setSelectedAction] = useState("➕");
 	const [mform, setMForm] = useState(createMainForm());
 	const [sform, setSForm] = useState(createStudentForm());
@@ -200,6 +185,22 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 	const selectedRecordId = mform.id;
 	const [savingMain, setSavingMain] = useState(false);
 	const [savingStudent, setSavingStudent] = useState(false);
+
+	// Auto-fetch student name when enrollment is typed
+	useEnrollmentLookup(sform.enrollment, (enr) => {
+		if (enr) {
+			setSForm((prev) => ({
+				...prev,
+				enrollment: enr.enrollment_no || prev.enrollment,
+				student_name: enr.student_name || '',
+			}));
+		} else {
+			setSForm((prev) => ({
+				...prev,
+				student_name: '',
+			}));
+		}
+	});
 
 	const isSearchMode = selectedAction === "🔍";
 	const isReportMode = selectedAction === "📄 Report";

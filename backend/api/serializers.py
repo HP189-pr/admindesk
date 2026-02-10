@@ -23,7 +23,8 @@ from django.contrib.auth.hashers import check_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.utils import timezone
 from django.db import transaction
-from .models import Holiday, UserProfile, User, Module, Menu, UserPermission, DashboardPreference, Enrollment, Institute, MainBranch, SubBranch, InstituteCourseOffering, Verification, VerificationStatus, DocRec, MigrationRecord, ProvisionalRecord, InstVerificationMain, InstVerificationStudent, Eca, StudentProfile, ProvisionalStatus
+from .models import Holiday, UserProfile, User, Module, Menu, UserPermission, DashboardPreference, Enrollment, Institute, MainBranch, SubBranch, InstituteCourseOffering, Verification, VerificationStatus, DocRec, MigrationRecord, ProvisionalRecord, Eca, StudentProfile, ProvisionalStatus
+from .domain_letter import InstLetterMain, InstLetterStudent
 from django.conf import settings
 
 # --- Holiday Serializer ---
@@ -532,78 +533,10 @@ class ProvisionalRecordSerializer(serializers.ModelSerializer):
         return super().update(instance, validated)
 
 
-class InstLetterMainSerializer(serializers.ModelSerializer):
-    # Accept doc_rec id directly
-    doc_rec_id = serializers.PrimaryKeyRelatedField(
-        queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False
-    )
-    # Or accept doc_rec public key (string) directly
-    doc_rec_key = serializers.SlugRelatedField(
-        slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False
-    )
-    doc_rec = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
-    class Meta:
-        model = InstVerificationMain
-        fields = '__all__'
-
-    def to_representation(self, instance):
-        """Sanitize commonly-used header fields so templates don't print importer
-        placeholders like numeric ids or 'nan'. This mirrors behaviour in
-        serializers_documents.py and keeps output consistent across APIs.
-        """
-        import re
-        def _sanitize(val):
-            try:
-                if val is None:
-                    return ''
-                if isinstance(val, (list, tuple)):
-                    return '' if len(val) == 0 else str(val)
-                s = str(val).strip()
-                if not s:
-                    return ''
-                s2 = re.sub(r'^\[\s*|\s*\]$', '', s)
-                if re.fullmatch(r'\d+', s2):
-                    return ''
-                if s2.strip().lower() in ('nan', 'none', 'null', 'n/a'):
-                    return ''
-                return s2
-            except Exception:
-                return ''
-
-        data = super().to_representation(instance)
-        for k in ('rec_inst_sfx_name','rec_inst_name','rec_inst_address_1','rec_inst_address_2','rec_inst_location','rec_inst_city','rec_inst_pin','rec_inst_email','doc_types','inst_ref_no','rec_by'):
-            if k in data:
-                data[k] = _sanitize(data.get(k))
-        # ensure date fields are string/blank
-        for df in ('inst_veri_date','ref_date','doc_rec_date'):
-            v = data.get(df)
-            try:
-                data[df] = '' if not v else str(v)
-            except Exception:
-                data[df] = ''
-        return data
-
-
-class InstLetterstudentSerializer(serializers.ModelSerializer):
-    # Bind to doc_rec via slug
-    doc_rec_key = serializers.SlugRelatedField(
-        slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False
-    )
-    doc_rec = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
-    # Expose iv_degree_name if present in the DB/model
-    iv_degree_name = serializers.CharField(allow_null=True, allow_blank=True, required=False)
-    enrollment_no_text = serializers.CharField(allow_null=True, allow_blank=True, required=False)
-
-    class Meta:
-        model = InstVerificationStudent
-        # include all model fields; explicit iv_degree_name added above to ensure
-        # serializer reads/writes it even if the model was recently changed in DB.
-        fields = '__all__'
-
-
+from .serializers_Letter import InstLetterMainSerializer, InstLetterStudentSerializer
 # Backward-compatible aliases
 InstVerificationMainSerializer = InstLetterMainSerializer
-InstVerificationStudentSerializer = InstLetterstudentSerializer
+InstVerificationStudentSerializer = InstLetterStudentSerializer
 
 
 class EcaSerializer(serializers.ModelSerializer):

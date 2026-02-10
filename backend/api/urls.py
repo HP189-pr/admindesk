@@ -77,7 +77,7 @@ try:
     )
 
     from .in_out_register import IN_OUT_REGISTER_URLS
-    from .view_inst_verification import InstLetterPDF, SuggestDocRec, DebugInstLetter
+    from .views_Letter import InstLetterPDF, SuggestDocRec, DebugInstLetter
 
 
     router = DefaultRouter()
