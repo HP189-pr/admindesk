@@ -28,7 +28,7 @@ from django.conf import settings
 from django.core.cache import cache
 
 from .models import (
-    User, DocRec, MigrationRecord, ProvisionalRecord, InstVerificationMain, InstVerificationStudent, Verification, Eca,
+    User, DocRec, MigrationRecord, ProvisionalRecord, Verification, Eca,
     StudentProfile, MigrationStatus, ProvisionalStatus, VerificationStatus, PayBy,
 )
 from .models import MailStatus
@@ -57,6 +57,11 @@ from .views_courses import (
 from .views_enrollment import (
     EnrollmentViewSet, AdmissionCancelViewSet, EnrollmentStatsView
 )
+from .views_Letter import (
+    InstLetterMainViewSet as InstVerificationMainViewSet,
+    InstLetterStudentViewSet as InstVerificationStudentViewSet,
+)
+from .domain_letter import InstLetterMain, InstLetterStudent
 
 
 # ---------- DocRec / Verification / Migration / Provisional / InstVerification Main ----------
@@ -483,7 +488,7 @@ class DocRecViewSet(viewsets.ModelViewSet):
                         service_id = service_obj.id
                 
                 elif service_type == 'IV':
-                    service_obj = InstVerificationMain.objects.filter(doc_rec=doc_rec_id).first()
+                    service_obj = InstLetterMain.objects.filter(doc_rec=doc_rec_id).first()
                     if service_obj:
                         for key, value in service_data.items():
                             if hasattr(service_obj, key):
@@ -534,8 +539,8 @@ class DocRecViewSet(viewsets.ModelViewSet):
                     service_deleted = count > 0
                 elif service_type == 'IV':
                     # Delete students first, then main
-                    InstVerificationStudent.objects.filter(main_verification__doc_rec=doc_rec_id).delete()
-                    count = InstVerificationMain.objects.filter(doc_rec=doc_rec_id).delete()[0]
+                    InstLetterStudent.objects.filter(main_verification__doc_rec=doc_rec_id).delete()
+                    count = InstLetterMain.objects.filter(doc_rec=doc_rec_id).delete()[0]
                     service_deleted = count > 0
                 
                 # Delete DocRec
@@ -853,171 +858,15 @@ class ProvisionalRecordViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class InstVerificationMainViewSet(viewsets.ModelViewSet):
-    queryset = InstVerificationMain.objects.select_related('doc_rec', 'institute').order_by('-id')
-    serializer_class = InstLetterMainSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        params = getattr(self.request, 'query_params', {})
-
-        doc_rec_param = None
-        iv_record_no_param = None
-        inst_veri_number_param = None
-
-        try:
-            doc_rec_param = params.get('doc_rec') or params.get('doc_rec_id')
-        except Exception:
-            doc_rec_param = None
-        try:
-            iv_record_no_param = params.get('iv_record_no')
-        except Exception:
-            iv_record_no_param = None
-        try:
-            inst_veri_number_param = params.get('inst_veri_number')
-        except Exception:
-            inst_veri_number_param = None
-
-        if doc_rec_param:
-            qs = qs.filter(doc_rec__doc_rec_id=doc_rec_param)
-        if iv_record_no_param:
-            try:
-                qs = qs.filter(iv_record_no=int(str(iv_record_no_param).strip()))
-            except Exception:
-                qs = qs.filter(iv_record_no=iv_record_no_param)
-        if inst_veri_number_param:
-            qs = qs.filter(inst_veri_number=inst_veri_number_param)
-
-        search = params.get('search', '').strip() if hasattr(params, 'get') else ''
-        if search:
-            # Use PostgreSQL Full-Text Search (100× faster)
-            # Falls back to normalized search if FTS not available
-            qs = apply_fts_search(
-                queryset=qs,
-                search_query=search,
-                search_fields=['search_vector'],  # FTS field
-                fallback_fields=['inst_veri_number', 'rec_inst_name', 'inst_ref_no']
-            )
-        return qs
-
-    @action(detail=False, methods=["get"], url_path="search-rec-inst")
-    def search_rec_inst(self, request):
-        """Autocomplete for rec_inst_name by prefix (min 3 chars)."""
-        q = request.query_params.get('q', '').strip()
-        if len(q) < 3:
-            return Response([], status=200)
-        qs = self.queryset.filter(rec_inst_name__icontains=q)[:20]
-        return Response([{ 'id': x.id, 'name': x.rec_inst_name } for x in qs], status=200)
-
-    @action(detail=False, methods=["post"], url_path="update-service-only")
-    def update_service_only(self, request):
-        """
-        Update only the InstVerificationMain record without modifying DocRec.
-        Use this from the inst-verification page when editing service details only.
-        
-        Payload: { "id": 123, "inst_veri_number": "...", "rec_inst_name": "...", ... }
-        """
-        inst_verification_id = request.data.get("id")
-        if not inst_verification_id:
-            return Response({"error": "InstVerificationMain id is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            inst_verification = InstVerificationMain.objects.get(id=inst_verification_id)
-        except InstVerificationMain.DoesNotExist:
-            return Response({"error": "InstVerificationMain not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        # Update with provided data
-        serializer = InstLetterMainSerializer(inst_verification, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({
-                "message": "InstVerificationMain updated successfully",
-                "id": inst_verification.id,
-                "doc_rec_id": inst_verification.doc_rec.doc_rec_id if inst_verification.doc_rec else None
-            }, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def perform_create(self, serializer):
-        serializer.save()
-
-    def perform_update(self, serializer):
-        serializer.save()
+# Backward compatibility: re-export viewsets from views_Letter
+# These are now maintained in views_Letter.py as InstLetterMainViewSet and InstLetterStudentViewSet
+# but imported here with old names for any code that imports from views.py directly
 
 
 class EcaViewSet(viewsets.ModelViewSet):
     queryset = Eca.objects.select_related('doc_rec').order_by('-id')
     serializer_class = EcaSerializer
     permission_classes = [IsAuthenticated]
-
-
-class InstVerificationStudentViewSet(viewsets.ModelViewSet):
-    queryset = InstVerificationStudent.objects.select_related('doc_rec', 'enrollment', 'institute', 'sub_course', 'main_course').order_by('-id')
-    serializer_class = InstLetterstudentSerializer
-    permission_classes = [IsAuthenticated]
-    
-    def get_queryset(self):
-        """Allow filtering students by the parent doc_rec identifier.
-        Supports query params:
-          - doc_rec: the DocRec.doc_rec_id string (preferred)
-          - doc_rec_id: alias for doc_rec
-        Returns the base queryset filtered when these params are present.
-        """
-        qs = super().get_queryset()
-        req = self.request
-        if not req:
-            return qs
-        doc_rec_param = req.query_params.get('doc_rec') or req.query_params.get('doc_rec_id')
-        if doc_rec_param:
-            # doc_rec is a FK to DocRec using to_field='doc_rec_id', so filter via the related field
-            return qs.filter(doc_rec__doc_rec_id=doc_rec_param)
-        return qs
-    def create(self, request, *args, **kwargs):
-        # If an enrollment identifier is provided, attempt to resolve the Enrollment
-        # and copy institute/main/subcourse fields onto the student record so that
-        # data created via API matches the behaviour of the bulk importer.
-        data = request.data.copy() if hasattr(request, 'data') else {}
-        enr_key = data.get('enrollment') or data.get('enrollment_no') or data.get('enrollment_no_text')
-        try:
-            if enr_key:
-                enr_obj = Enrollment.objects.filter(enrollment_no__iexact=str(enr_key).strip()).first()
-                if enr_obj:
-                    if getattr(enr_obj, 'institute', None):
-                        data['institute'] = getattr(enr_obj.institute, 'id', None) or getattr(enr_obj.institute, 'pk', None)
-                    if getattr(enr_obj, 'maincourse', None):
-                        data['main_course'] = getattr(enr_obj.maincourse, 'id', None) or getattr(enr_obj.maincourse, 'pk', None)
-                    if getattr(enr_obj, 'subcourse', None):
-                        data['sub_course'] = getattr(enr_obj.subcourse, 'id', None) or getattr(enr_obj.subcourse, 'pk', None)
-        except Exception:
-            # best-effort: do not fail creation if sync fails
-            pass
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-
-    def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', False)
-        instance = self.get_object()
-        data = request.data.copy() if hasattr(request, 'data') else {}
-        enr_key = data.get('enrollment') or data.get('enrollment_no') or data.get('enrollment_no_text')
-        try:
-            if enr_key:
-                enr_obj = Enrollment.objects.filter(enrollment_no__iexact=str(enr_key).strip()).first()
-                if enr_obj:
-                    if getattr(enr_obj, 'institute', None):
-                        data['institute'] = getattr(enr_obj.institute, 'id', None) or getattr(enr_obj.institute, 'pk', None)
-                    if getattr(enr_obj, 'maincourse', None):
-                        data['main_course'] = getattr(enr_obj.maincourse, 'id', None) or getattr(enr_obj.maincourse, 'pk', None)
-                    if getattr(enr_obj, 'subcourse', None):
-                        data['sub_course'] = getattr(enr_obj.subcourse, 'id', None) or getattr(enr_obj.subcourse, 'pk', None)
-        except Exception:
-            pass
-        serializer = self.get_serializer(instance, data=data, partial=partial)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        return Response(serializer.data)
 
 
 # -------- Bulk Upload & Data Analysis --------
@@ -2760,7 +2609,7 @@ class BulkUploadView(APIView):
                                 _log(idx, doc_rec_id_raw or row.get('inst_veri_number'), 'Missing or invalid doc_rec_id', False); _cache_progress(idx+1); continue
 
                         # Upsert main record (one per doc_rec)
-                        main = InstVerificationMain.objects.filter(doc_rec=doc_rec).first()
+                        main = InstLetterMain.objects.filter(doc_rec=doc_rec).first()
                         main_fields = dict(
                             inst_veri_number = row.get('inst_veri_number') or None,
                             inst_veri_date = _parse_excel_date_safe(row.get('inst_veri_date')) or None,
@@ -2782,7 +2631,7 @@ class BulkUploadView(APIView):
                             institute_id = row.get('institute_id') or None,
                         )
                         if not main:
-                            InstVerificationMain.objects.create(doc_rec=doc_rec, **main_fields)
+                            InstLetterMain.objects.create(doc_rec=doc_rec, **main_fields)
                             # remember last main for carry-forward
                             last_doc_rec = doc_rec
                             last_doc_rec_id_raw = doc_rec_id_raw
@@ -2813,11 +2662,11 @@ class BulkUploadView(APIView):
                                         except Exception:
                                             enr_obj = None
                                         if enr_obj:
-                                            exists = InstVerificationStudent.objects.filter(doc_rec=doc_rec, enrollment=enr_obj).first()
+                                            exists = InstLetterStudent.objects.filter(doc_rec=doc_rec, enrollment=enr_obj).first()
                                         else:
-                                            exists = InstVerificationStudent.objects.filter(doc_rec=doc_rec, enrollment_no_text=str(s.get('enrollment')).strip()).first()
+                                            exists = InstLetterStudent.objects.filter(doc_rec=doc_rec, enrollment_no_text=str(s.get('enrollment')).strip()).first()
                                     if not exists and s.get('sr_no') is not None:
-                                        exists = InstVerificationStudent.objects.filter(doc_rec=doc_rec, sr_no=s.get('sr_no')).first()
+                                        exists = InstLetterStudent.objects.filter(doc_rec=doc_rec, sr_no=s.get('sr_no')).first()
                                     if exists:
                                         # update fields
                                         changed = False
@@ -2892,7 +2741,7 @@ class BulkUploadView(APIView):
                                         vs = s.get('verification_status') or None
                                         if isinstance(vs, str) and len(vs) > 20:
                                             vs = vs[:20]
-                                        InstVerificationStudent.objects.create(
+                                        InstLetterStudent.objects.create(
                                             doc_rec=doc_rec,
                                             sr_no = s.get('sr_no') or None,
                                             student_name = s.get('student_name') or None,
@@ -2947,9 +2796,9 @@ class BulkUploadView(APIView):
                                             enr_text = str(enr_key).strip()
                                     exists = None
                                     if enr:
-                                        exists = InstVerificationStudent.objects.filter(doc_rec=doc_rec, enrollment=enr).first()
+                                        exists = InstLetterStudent.objects.filter(doc_rec=doc_rec, enrollment=enr).first()
                                     if not exists and row.get('sr_no') is not None:
-                                        exists = InstVerificationStudent.objects.filter(doc_rec=doc_rec, sr_no=row.get('sr_no')).first()
+                                        exists = InstLetterStudent.objects.filter(doc_rec=doc_rec, sr_no=row.get('sr_no')).first()
                                     if exists:
                                         changed = False
                                         for fld in ('student_name','type_of_credential','month_year','verification_status','iv_degree_name'):
@@ -3004,7 +2853,7 @@ class BulkUploadView(APIView):
                                         vs = row.get('verification_status') or None
                                         if isinstance(vs, str) and len(vs) > 20:
                                             vs = vs[:20]
-                                        InstVerificationStudent.objects.create(
+                                        InstLetterStudent.objects.create(
                                             doc_rec=doc_rec,
                                             sr_no = row.get('sr_no') or None,
                                             student_name = row.get('student_name') or None,

@@ -24,8 +24,7 @@ try:
 
     from .views import (
         DocRecViewSet, VerificationViewSet, MigrationRecordViewSet,
-        ProvisionalRecordViewSet, InstVerificationMainViewSet,
-        InstVerificationStudentViewSet, StudentProfileViewSet,
+        ProvisionalRecordViewSet, StudentProfileViewSet,
         EcaViewSet, BulkUploadView, DataAnalysisView,
     )
 
@@ -77,7 +76,10 @@ try:
     )
 
     from .in_out_register import IN_OUT_REGISTER_URLS
-    from .views_Letter import InstLetterPDF, SuggestDocRec, DebugInstLetter
+    from .views_Letter import (
+        InstLetterPDF, SuggestDocRec, DebugInstLetter,
+        InstLetterMainViewSet, InstLetterStudentViewSet,
+    )
 
 
     router = DefaultRouter()
@@ -106,8 +108,8 @@ try:
     router.register(r'verification', VerificationViewSet, basename='verification')
     router.register(r'migration', MigrationRecordViewSet, basename='migration')
     router.register(r'provisional', ProvisionalRecordViewSet, basename='provisional')
-    router.register(r'inst-verification-main', InstVerificationMainViewSet, basename='inst-verification-main')
-    router.register(r'inst-verification-student', InstVerificationStudentViewSet, basename='inst-verification-student')
+    router.register(r'inst-verification-main', InstLetterMainViewSet, basename='inst-verification-main')
+    router.register(r'inst-verification-student', InstLetterStudentViewSet, basename='inst-verification-student')
     router.register(r'eca', EcaViewSet, basename='eca')
     router.register(r'student-profiles', StudentProfileViewSet, basename='student-profiles')
     router.register(r'mail-requests', GoogleFormSubmissionViewSet, basename='mail-requests')

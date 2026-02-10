@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from .domain_leave_balance import compute_and_persist_leave_balances
 from .snapshot_queue import enqueue_recompute_task, process_queue_once
+from .leave_activation import activate_period
 
 
 class LeaveBalanceReportView(APIView):
@@ -118,7 +119,6 @@ class ActivatePeriodView(APIView):
         except Exception:
             return Response({'detail': 'invalid period_id'}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            from .leave_activation import activate_period
             summary = activate_period(period_id)
             return Response({'status': 'ok', 'summary': summary})
         except Exception as e:

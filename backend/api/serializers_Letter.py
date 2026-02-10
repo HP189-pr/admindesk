@@ -1,6 +1,6 @@
 from rest_framework import serializers
-from .domain_Letter import InstLetterMain, InstLetterStudent
-from .domain_documents import DocRec
+from .models import InstLetterMain, InstLetterStudent
+from .models import DocRec
 
 class InstLetterMainSerializer(serializers.ModelSerializer):
     doc_rec_id = serializers.PrimaryKeyRelatedField(
