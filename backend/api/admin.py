@@ -205,7 +205,7 @@ except Exception:  # pragma: no cover
 
 from .models import (
     MainBranch, SubBranch, Module, Menu, UserPermission, Institute, Enrollment,
-    DocRec, PayPrefixRule, Eca, InstVerificationMain, InstVerificationStudent,
+    DocRec, PayPrefixRule, Eca, InstLetterMain, InstLetterStudent,
     MigrationRecord, ProvisionalRecord, StudentProfile, Verification, FeeType,
     Receipt
 )
@@ -1611,8 +1611,8 @@ class EcaAdmin(admin.ModelAdmin):
             _assign_user_field(obj, request.user, 'created_by')
         super().save_model(request, obj, form, change)
 
-@admin.register(InstVerificationMain)
-class InstVerificationMainAdmin(admin.ModelAdmin):
+@admin.register(InstLetterMain)
+class InstLetterMainAdmin(admin.ModelAdmin):
     list_display = ("id", "doc_rec", "inst_veri_number", "inst_veri_date", "institute", "rec_inst_city", "doc_types", 'rec_inst_sfx_name', 'study_mode', 'iv_status')
     list_filter = ("inst_veri_date", "institute", 'iv_status')
 
@@ -1809,8 +1809,8 @@ class EnrollmentAdmin(CommonAdminMixin):
     readonly_fields = ("created_at", "updated_at")
     autocomplete_fields = ("institute", "subcourse", "maincourse")
 
-@admin.register(InstVerificationStudent)
-class InstVerificationStudentAdmin(admin.ModelAdmin):
+@admin.register(InstLetterStudent)
+class InstLetterStudentAdmin(admin.ModelAdmin):
     list_display = ("id", "doc_rec", "sr_no", "enrollment", "student_name", "institute", "verification_status")
     list_filter = ("verification_status", "institute")
     search_fields = ("doc_rec__doc_rec_id", "enrollment__enrollment_no", "student_name")

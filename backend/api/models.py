@@ -19,6 +19,7 @@ from .domain_courses import *  # noqa: F401,F403
 from .domain_enrollment import *  # noqa: F401,F403
 from .domain_documents import *  # noqa: F401,F403
 from .domain_verification import *  # noqa: F401,F403
+from .domain_letter import *  # noqa: F401,F403
 from .domain_mail_request import *  # noqa: F401,F403
 from .domain_transcript_generate import *  # noqa: F401,F403
 from .domain_degree import *  # noqa: F401,F403
@@ -31,6 +32,7 @@ from .domain_courses import __all__ as _courses_all  # type: ignore
 from .domain_enrollment import __all__ as _enroll_all  # type: ignore
 from .domain_documents import __all__ as _docs_all  # type: ignore
 from .domain_verification import __all__ as _ver_all  # type: ignore
+from .domain_letter import __all__ as _letter_all  # type: ignore
 from .domain_mail_request import __all__ as _mail_req_all  # type: ignore
 from .domain_transcript_generate import __all__ as _transcript_all  # type: ignore
 from .domain_degree import __all__ as _degree_all  # type: ignore
@@ -44,6 +46,7 @@ __all__ = [
   *_enroll_all,
   *_docs_all,
   *_ver_all,
+  *_letter_all,
   *_mail_req_all,
   *_transcript_all,
   *_degree_all,

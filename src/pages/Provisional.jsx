@@ -21,6 +21,7 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
   const [panelOpen, setPanelOpen] = useState(true);
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [q, setQ] = useState("");
   const [currentRow, setCurrentRow] = useState(null);
   const [instOptions, setInstOptions] = useState([]);
@@ -61,10 +62,14 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
 
   const loadList = async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await fetchProvisionals(q);
       setList(data);
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+      console.error(e);
+      setError("Failed to load records. Please check the server logs.");
+    }
     finally { setLoading(false); }
   };
 
@@ -257,6 +262,9 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
 
       {/* Records Section */}
       <div className="bg-white shadow rounded-2xl p-4 h-[calc(100vh-260px)] overflow-auto">
+        {error && (
+          <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 border border-red-200 rounded-lg">{error}</div>
+        )}
         <div className="overflow-auto">
           <table className="min-w-[1100px] w-full text-sm">
             <thead className="bg-gray-50">

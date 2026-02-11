@@ -3,7 +3,7 @@ from django.dispatch import receiver
 from django.utils import timezone
 from django.conf import settings
 from django.contrib.postgres.search import SearchVector
-from .models import DocRec, Verification, MigrationRecord, ProvisionalRecord, InstVerificationMain
+from .models import DocRec, Verification, MigrationRecord, ProvisionalRecord, InstLetterMain
 from .models import PayBy, VerificationStatus
 from .domain_transcript_generate import TranscriptRequest
 from .domain_enrollment import Enrollment
@@ -14,7 +14,7 @@ from .domain_mail_request import GoogleFormSubmission
 @receiver(post_save, sender=DocRec)
 def docrec_post_save(sender, instance: DocRec, created, **kwargs):
     """When a DocRec is created or updated, ensure a matching service row exists.
-    We create placeholder rows for services that support nullable fields (Verification, InstVerificationMain).
+    We create placeholder rows for services that support nullable fields (Verification, InstLetterMain).
     For Migration/Provisional (which require unique numbers) we skip auto-creation unless
     the necessary identifiers are present in the DocRec or are passed via related payloads.
     """
@@ -46,9 +46,9 @@ def docrec_post_save(sender, instance: DocRec, created, **kwargs):
                 pass
         elif svc == 'IV':
             try:
-                exists = InstVerificationMain.objects.filter(doc_rec__doc_rec_id=doc_rec_id).exists()
+                exists = InstLetterMain.objects.filter(doc_rec__doc_rec_id=doc_rec_id).exists()
                 if not exists:
-                    iv = InstVerificationMain(doc_rec=instance)
+                    iv = InstLetterMain(doc_rec=instance)
                     try:
                         iv.full_clean()
                     except Exception:
@@ -165,8 +165,8 @@ def provisional_post_save(sender, instance: ProvisionalRecord, created, **kwargs
         pass
 
 
-@receiver(post_save, sender=InstVerificationMain)
-def inst_veri_main_post_save(sender, instance: InstVerificationMain, created, **kwargs):
+@receiver(post_save, sender=InstLetterMain)
+def inst_veri_main_post_save(sender, instance: InstLetterMain, created, **kwargs):
     try:
         doc_rec_id = None
         if instance.doc_rec:
@@ -193,7 +193,7 @@ def docrec_post_delete(sender, instance: DocRec, **kwargs):
         Verification.objects.filter(doc_rec__doc_rec_id=doc_rec_id).delete()
         MigrationRecord.objects.filter(doc_rec=doc_rec_id).delete()
         ProvisionalRecord.objects.filter(doc_rec=doc_rec_id).delete()
-        InstVerificationMain.objects.filter(doc_rec__doc_rec_id=doc_rec_id).delete()
+        InstLetterMain.objects.filter(doc_rec__doc_rec_id=doc_rec_id).delete()
     except Exception:
         # Never raise from signal handler
         pass
@@ -214,7 +214,7 @@ def verification_post_delete(sender, instance: Verification, **kwargs):
         has_other_services = (
             MigrationRecord.objects.filter(doc_rec=doc_rec_id).exists() or
             ProvisionalRecord.objects.filter(doc_rec=doc_rec_id).exists() or
-            InstVerificationMain.objects.filter(doc_rec__doc_rec_id=doc_rec_id).exists()
+            InstLetterMain.objects.filter(doc_rec__doc_rec_id=doc_rec_id).exists()
         )
         
         # Only delete DocRec if no other services reference it
@@ -236,7 +236,7 @@ def migration_post_delete(sender, instance: MigrationRecord, **kwargs):
         has_other_services = (
             Verification.objects.filter(doc_rec__doc_rec_id=doc_rec_id).exists() or
             ProvisionalRecord.objects.filter(doc_rec=doc_rec_id).exists() or
-            InstVerificationMain.objects.filter(doc_rec__doc_rec_id=doc_rec_id).exists()
+            InstLetterMain.objects.filter(doc_rec__doc_rec_id=doc_rec_id).exists()
         )
         
         if not has_other_services:
@@ -256,7 +256,7 @@ def provisional_post_delete(sender, instance: ProvisionalRecord, **kwargs):
         has_other_services = (
             Verification.objects.filter(doc_rec__doc_rec_id=doc_rec_id).exists() or
             MigrationRecord.objects.filter(doc_rec=doc_rec_id).exists() or
-            InstVerificationMain.objects.filter(doc_rec__doc_rec_id=doc_rec_id).exists()
+            InstLetterMain.objects.filter(doc_rec__doc_rec_id=doc_rec_id).exists()
         )
         
         if not has_other_services:
@@ -265,8 +265,8 @@ def provisional_post_delete(sender, instance: ProvisionalRecord, **kwargs):
         pass
 
 
-@receiver(post_delete, sender=InstVerificationMain)
-def inst_verification_post_delete(sender, instance: InstVerificationMain, **kwargs):
+@receiver(post_delete, sender=InstLetterMain)
+def inst_verification_post_delete(sender, instance: InstLetterMain, **kwargs):
     """When InstVerification is deleted, automatically delete linked DocRec if no other services reference it."""
     try:
         if not instance.doc_rec:
@@ -386,11 +386,11 @@ def update_googleform_search_vector_post(sender, instance, **kwargs):
         pass
 
 
-@receiver(post_save, sender=InstVerificationMain)
+@receiver(post_save, sender=InstLetterMain)
 def update_instverif_search_vector_post(sender, instance, **kwargs):
-    """Auto-update search vector for InstVerificationMain"""
+    """Auto-update search vector for InstLetterMain"""
     try:
-        InstVerificationMain.objects.filter(pk=instance.pk).update(
+        InstLetterMain.objects.filter(pk=instance.pk).update(
             search_vector=SearchVector(
                 'inst_veri_number', 'rec_inst_name', 'inst_ref_no'
             )

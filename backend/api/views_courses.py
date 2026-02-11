@@ -33,8 +33,6 @@ from .serializers import (
     ModuleSerializer, MenuSerializer, UserPermissionSerializer, InstituteCourseOfferingSerializer,
     InstituteSerializer, MainBranchSerializer, SubBranchSerializer
 )
-from .search_utils import apply_fts_search
-
 
 class ModuleViewSet(viewsets.ModelViewSet):
     queryset = Module.objects.all()

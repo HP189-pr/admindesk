@@ -6,7 +6,8 @@ import re
 from .domain_courses import Institute, MainBranch, SubBranch
 from .domain_documents import DocRec
 from .domain_enrollment import Enrollment
-from .domain_verification import VerificationStatus
+
+__all__ = ['InstLetterMain', 'InstLetterStudent']
 
 class InstLetterMain(models.Model):
     id = models.BigAutoField(primary_key=True)
@@ -97,7 +98,7 @@ class InstLetterStudent(models.Model):
     main_course = models.ForeignKey(MainBranch, to_field='maincourse_id', db_column='main_course', on_delete=models.SET_NULL, related_name='inst_verification_students', null=True, blank=True)
     type_of_credential = models.CharField(max_length=50, null=True, blank=True, db_column='type_of_credential')
     month_year = models.CharField(max_length=20, null=True, blank=True, db_column='month_year')
-    verification_status = models.CharField(max_length=100, null=True, blank=True, db_column='verification_status', choices=VerificationStatus.choices)
+    verification_status = models.CharField(max_length=100, null=True, blank=True, db_column='verification_status')
     iv_degree_name = models.CharField(max_length=255, null=True, blank=True, db_column='iv_degree_name')
     class Meta:
         db_table = 'inst_verification_student'

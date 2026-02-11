@@ -27,7 +27,7 @@ export default function AuthUpload() {
   const [result, setResult] = useState(null);
   const [autoCreateDocRec, setAutoCreateDocRec] = useState(false);
 
-  const apiBase = '/api';
+  const apiBase = (import.meta && import.meta.env && import.meta.env.VITE_API_BASE) || 'http://127.0.0.1:8000/api';
 
   /* ===================== DOWNLOAD TEMPLATE ===================== */
 
@@ -148,6 +148,9 @@ export default function AuthUpload() {
 
   /* ===================== UI (UNCHANGED) ===================== */
 
+  // Get token from localStorage for passing to AdminBulkUpload
+  const token = localStorage.getItem('access_token');
+
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center gap-2">
@@ -163,7 +166,6 @@ export default function AuthUpload() {
             </option>
           ))}
         </select>
-
         <label className="ml-3 font-semibold">Sheet Name:</label>
         <input
           value={sheetName}
@@ -171,7 +173,6 @@ export default function AuthUpload() {
           placeholder="Optional"
           className="border rounded p-1 text-black"
         />
-
         <button
           onClick={downloadTemplate}
           className="ml-2 px-3 py-1 bg-blue-600 text-white rounded"
@@ -179,13 +180,13 @@ export default function AuthUpload() {
           Download Sample
         </button>
       </div>
-
       <div>
         <AdminBulkUpload
           service={service}
-          uploadApi="/api/bulk-upload/"
+          uploadApi={`${apiBase}/bulk-upload/`}
           sheetName={sheetName}
           onServiceChange={setService}
+          token={token}
         />
       </div>
     </div>

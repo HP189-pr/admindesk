@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 // Generic admin bulk upload UI. Props:
 // - service: service key string (e.g., 'MIGRATION')
 // - uploadApi: URL to POST to (defaults to '/api/bulk-upload/')
-export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = '/api/bulk-upload/', sheetName: preferredSheetProp = '', resetKey = null, onServiceChange = null }) {
+export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = '/api/bulk-upload/', sheetName: preferredSheetProp = '', resetKey = null, onServiceChange = null, token: tokenProp = null }) {
   const [step, setStep] = useState(0);
   const [sheets, setSheets] = useState([]);
   const [sheet, setSheet] = useState('');
@@ -24,7 +24,8 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
     return result.results.filter((r) => String(r.status || '').toUpperCase() === 'FAIL');
   }, [result]);
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+  // Accept token as a prop for robust authentication; fallback to localStorage only if prop not provided
+  const token = tokenProp || (typeof window !== 'undefined' ? localStorage.getItem('access_token') : null);
   const headersForFetch = token ? { Authorization: `Bearer ${token}` } : {};
   const buildUrl = (suffix) => `${uploadApi}${uploadApi.includes('?') ? '&' : '?'}${suffix}`;
   const normalizedService = (service || '').toString().toUpperCase();

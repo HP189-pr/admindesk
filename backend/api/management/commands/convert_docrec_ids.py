@@ -47,7 +47,8 @@ class Command(BaseCommand):
                     return 1
             return 1
 
-        from api.domain_verification import Verification, InstVerificationMain, InstVerificationStudent
+        from api.domain_verification import Verification
+        from api.domain_letter import InstLetterMain, InstLetterStudent
         with transaction.atomic():
             updated = 0
             for docrec in DocRec.objects.all():
@@ -63,8 +64,8 @@ class Command(BaseCommand):
                     self.stdout.write(f"Updating {old_id} -> {new_id}")
                     # Update all referencing tables
                     Verification.objects.filter(doc_rec_id=old_id).update(doc_rec_id=new_id)
-                    InstVerificationMain.objects.filter(doc_rec_id=old_id).update(doc_rec_id=new_id)
-                    InstVerificationStudent.objects.filter(doc_rec_id=old_id).update(doc_rec_id=new_id)
+                    InstLetterMain.objects.filter(doc_rec_id=old_id).update(doc_rec_id=new_id)
+                    InstLetterStudent.objects.filter(doc_rec_id=old_id).update(doc_rec_id=new_id)
                     docrec.doc_rec_id = new_id
                     docrec.save(update_fields=['doc_rec_id'])
                     updated += 1

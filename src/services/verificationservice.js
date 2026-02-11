@@ -239,7 +239,7 @@ export const updateRecord = async (id, form, syncDocRecRemark) => {
     vr_done_date: (function(s){ if(!s) return null; if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return s; const x = dmyToISO(s); return x || null; })(form.vr_done_date),
     // DO NOT send doc_rec_id on update - it would change the linked DocRec!
     // doc_rec_id should remain unchanged when editing
-    enrollment_no: form.enrollment_id || null,
+    enrollment_no: form.enrollment_no || null,
     second_enrollment_id: form.second_enrollment_id || null,
     student_name: form.name || null,
     tr_count: +form.tr || null,

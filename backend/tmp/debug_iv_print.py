@@ -26,14 +26,14 @@ def main():
         return
 
     try:
-        from api.models import InstVerificationMain, InstVerificationStudent
+        from api.domain_letter import InstLetterMain, InstLetterStudent
     except Exception as e:
         print(json.dumps({'error': 'import models failed', 'exception': str(e)}))
         return
 
     out = []
     try:
-        mains = InstVerificationMain.objects.filter(iv_record_no=iv_int)
+        mains = InstLetterMain.objects.filter(iv_record_no=iv_int)
         for m in mains:
             # also get serializer representation if available
             ser_data = None
@@ -75,7 +75,7 @@ def main():
             }
             students = []
             if doc_rec_id:
-                studs = InstVerificationStudent.objects.filter(doc_rec__doc_rec_id=doc_rec_id).order_by('id')
+                studs = InstLetterStudent.objects.filter(doc_rec__doc_rec_id=doc_rec_id).order_by('id')
                 for s in studs:
                     students.append({
                         'id': getattr(s, 'id', None),

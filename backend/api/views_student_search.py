@@ -10,7 +10,8 @@ from django.db.models import Q, Prefetch
 from django.shortcuts import get_object_or_404
 
 from .domain_enrollment import Enrollment, StudentProfile
-from .domain_verification import Verification, InstVerificationStudent, InstVerificationMain, MigrationRecord, ProvisionalRecord
+from .domain_verification import Verification, MigrationRecord, ProvisionalRecord
+from .domain_letter import InstLetterMain, InstLetterStudent
 from .domain_degree import StudentDegree, ConvocationMaster
 from .domain_courses import Institute, MainBranch, SubBranch
 from .domain_documents import DocRec
@@ -180,7 +181,7 @@ class StudentSearchViewSet(viewsets.ViewSet):
             })
         
         # Institutional Verification records
-        inst_verifications = InstVerificationStudent.objects.filter(
+        inst_verifications = InstLetterStudent.objects.filter(
             enrollment__enrollment_no__iexact=enroll_no
         ).select_related('doc_rec').order_by('-id')
         
@@ -189,7 +190,7 @@ class StudentSearchViewSet(viewsets.ViewSet):
             # Get the main record from the doc_rec relationship
             main_record = None
             if iv.doc_rec:
-                main_record = InstVerificationMain.objects.filter(
+                main_record = InstLetterMain.objects.filter(
                     doc_rec__doc_rec_id=iv.doc_rec.doc_rec_id
                 ).first()
             

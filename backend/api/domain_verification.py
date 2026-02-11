@@ -10,10 +10,9 @@ from django.contrib.auth.models import User
 from .domain_enrollment import Enrollment
 from .domain_courses import Institute, MainBranch, SubBranch
 from .domain_documents import DocRec
-from .domain_Letter import InstLetterMain, InstLetterStudent
 
 __all__ = [
-    'MailStatus','VerificationStatus','Verification','InstLetterMain','InstLetterStudent',
+    'MailStatus','VerificationStatus','Verification',
     'MigrationStatus','MigrationRecord','ProvisionalStatus','ProvisionalRecord'
 ]
 

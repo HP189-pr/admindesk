@@ -4,12 +4,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 import django
 django.setup()
-from api.models import InstVerificationMain, InstVerificationStudent
+from api.domain_letter import InstLetterMain, InstLetterStudent
 
 import os
 iv = int(os.environ.get('IV', '25001'))
-qs = InstVerificationMain.objects.filter(iv_record_no=iv)
-print('InstVerificationMain count for iv_record_no', iv, ':', qs.count())
+qs = InstLetterMain.objects.filter(iv_record_no=iv)
+print('InstLetterMain count for iv_record_no', iv, ':', qs.count())
 for m in qs:
     doc_rec = getattr(getattr(m, 'doc_rec', None), 'doc_rec_id', None)
     print('\n--- MAIN ---')
@@ -21,7 +21,7 @@ for m in qs:
             print(f+':', getattr(m, f))
         except Exception as e:
             print(f+': <error>')
-    studs = InstVerificationStudent.objects.filter(doc_rec__doc_rec_id=doc_rec).order_by('id')
+    studs = InstLetterStudent.objects.filter(doc_rec__doc_rec_id=doc_rec).order_by('id')
     print('\nstudents count:', studs.count())
     for s in studs:
         try:
@@ -30,4 +30,4 @@ for m in qs:
             print('student read error', e)
 
 if qs.count() == 0:
-    print('\nNo InstVerificationMain found for iv_record_no', iv)
+    print('\nNo InstLetterMain found for iv_record_no', iv)

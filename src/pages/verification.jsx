@@ -21,6 +21,7 @@ const MailBadge = ({ text }) => (
   </span>
 );
 
+
 import useEnrollmentLookup from '../hooks/useEnrollmentLookup';
 
 export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar, onToggleChatbox }) {
@@ -62,29 +63,40 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
   });
 
   // Centralized enrollment lookup for enrollment field
-  // Auto-fetch student name when enrollment_no is typed
+  // Auto-fetch student name when enrollment_no is typed or updated
   useEnrollmentLookup(form.enrollment_no, (enr) => {
     setForm((prev) => {
       if (!enr) {
         if (!prev.enrollment_id && prev.name === "") return prev;
         return { ...prev, enrollment_id: null, name: "" };
       }
-      if (
-        prev.enrollment_id === enr.id &&
-        prev.name === enr.student_name
-      ) {
-        return prev;
-      }
+      // Always update enrollment_id and name if enrollment_no changes
       return {
         ...prev,
         enrollment_id: enr.id,
-        name: enr.student_name || "",
+        name: enr.student_name || enr.name || "",
       };
     });
   });
+
+  // When switching to edit mode, if enrollment_no is set but name is missing or mismatched, trigger lookup
+  useEffect(() => {
+    if (form.enrollment_no && (!form.name || form.name === form.enrollment_no)) {
+      // This will trigger the useEnrollmentLookup above
+      setForm((prev) => ({ ...prev, enrollment_no: form.enrollment_no }));
+    }
+    // Only run when enrollment_no or name changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.enrollment_no]);
   // Wrapper for service: always passes correct state setters
   const loadRecords = async () => {
-    await loadRecordsService(q, setLoading, setErrorMsg, setRecords);
+    try {
+      await loadRecordsService(q, setLoading, setErrorMsg, setRecords);
+    } catch (e) {
+      console.error("Failed to load verification records:", e);
+      setErrorMsg("An unexpected error occurred. Please check the server logs.");
+      setLoading(false);
+    }
   };
 
  
@@ -734,13 +746,17 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                   return (
                     <tr key={r.id || idx} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => {
                       setCurrentRow(r);
+                      // Always use the enrollment_no from the record or nested enrollment object
+                      const enrollmentNo = r.enrollment_no || (r.enrollment && r.enrollment.enrollment_no) || "";
+                      // Always use the student name from the record or nested enrollment object
+                      const studentName = r.student_name || (r.enrollment && (r.enrollment.student_name || r.enrollment.name)) || "";
                       setForm({
-                        // ensure date inputs use ISO (yyyy-mm-dd) for <input type="date">
                         date: (dmyToISO(r.date) || r.date) || "",
                         vr_done_date: (dmyToISO(r.vr_done_date) || r.vr_done_date) || "",
-                        enrollment_id: r.enrollment?.id || r.enrollment_id || r.enrollment_no || "",
+                        enrollment_no: enrollmentNo,
+                        enrollment_id: r.enrollment?.id || r.enrollment_id || enrollmentNo || "",
                         second_enrollment_id: r.second_enrollment?.id || r.second_enrollment_id || r.second_enrollment_no || "",
-                        name: r.student_name || "",
+                        name: studentName,
                         tr: r.tr_count || 0,
                         ms: r.ms_count || 0,
                         dg: r.dg_count || 0,
@@ -757,7 +773,6 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                         eca_resubmit_date: r.eca?.eca_resubmit_date || r.eca_resubmit_date || "",
                         doc_remark: r.doc_remark || r.doc_rec?.doc_remark || "",
                         pay_rec_no: r.pay_rec_no || "",
-                        // Prefer explicit doc_rec_id, then numeric id, then the human DocRec key
                         doc_rec_id: r.doc_rec_id || r.doc_rec?.id || r.doc_rec_key || (r.doc_rec && (r.doc_rec.doc_rec_id || r.doc_rec.id)) || "",
                         doc_rec_key: r.doc_rec_key || r.doc_rec?.doc_rec_id || "",
                       });

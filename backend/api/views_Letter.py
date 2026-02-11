@@ -15,27 +15,81 @@ from collections import OrderedDict
 from .serializers_Letter import InstLetterMainSerializer, InstLetterStudentSerializer
 from .search_utils import apply_fts_search
 
-# --- REPORTLAB IMPORTS (add once) ---
-try:
-    from io import BytesIO
-    from reportlab.lib.pagesizes import A4  # type: ignore
-    from reportlab.lib.units import mm, inch  # type: ignore
-    from reportlab.platypus import (  # type: ignore
-        SimpleDocTemplate,
-        Paragraph,
-        Spacer,
-        Table,
-        TableStyle,
-        PageBreak,
-        Flowable,
-    )
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle  # type: ignore
-    from reportlab.lib import colors  # type: ignore
-    from reportlab.graphics.barcode import qr  # type: ignore
-    from reportlab.graphics.shapes import Drawing  # type: ignore
+logger = logging.getLogger('api')
+
+# --- REPORTLAB IMPORTS (lazy so we can recover if it was installed later) ---
+REPORTLAB_AVAILABLE = False
+
+# Placeholders so static analyzers know these names exist even before reportlab loads.
+BytesIO = None  # type: ignore
+A4 = None  # type: ignore
+mm = None  # type: ignore
+inch = None  # type: ignore
+SimpleDocTemplate = None  # type: ignore
+Paragraph = None  # type: ignore
+Spacer = None  # type: ignore
+Table = None  # type: ignore
+TableStyle = None  # type: ignore
+PageBreak = None  # type: ignore
+Flowable = None  # type: ignore
+getSampleStyleSheet = None  # type: ignore
+ParagraphStyle = None  # type: ignore
+colors = None  # type: ignore
+qr = None  # type: ignore
+Drawing = None  # type: ignore
+
+
+def ensure_reportlab_available():
+    """(Re)load reportlab lazily so a later pip install does not require restart."""
+    global REPORTLAB_AVAILABLE
+    if REPORTLAB_AVAILABLE:
+        return True
+
+    try:
+        from io import BytesIO as _BytesIO
+        from reportlab.lib.pagesizes import A4 as _A4  # type: ignore
+        from reportlab.lib.units import mm as _mm, inch as _inch  # type: ignore
+        from reportlab.platypus import (  # type: ignore
+            SimpleDocTemplate as _SimpleDocTemplate,
+            Paragraph as _Paragraph,
+            Spacer as _Spacer,
+            Table as _Table,
+            TableStyle as _TableStyle,
+            PageBreak as _PageBreak,
+            Flowable as _Flowable,
+        )
+        from reportlab.lib.styles import getSampleStyleSheet as _getSampleStyleSheet, ParagraphStyle as _ParagraphStyle  # type: ignore
+        from reportlab.lib import colors as _colors  # type: ignore
+        from reportlab.graphics.barcode import qr as _qr  # type: ignore
+        from reportlab.graphics.shapes import Drawing as _Drawing  # type: ignore
+    except Exception:
+        REPORTLAB_AVAILABLE = False
+        return False
+
+    globals().update({
+        'BytesIO': _BytesIO,
+        'A4': _A4,
+        'mm': _mm,
+        'inch': _inch,
+        'SimpleDocTemplate': _SimpleDocTemplate,
+        'Paragraph': _Paragraph,
+        'Spacer': _Spacer,
+        'Table': _Table,
+        'TableStyle': _TableStyle,
+        'PageBreak': _PageBreak,
+        'Flowable': _Flowable,
+        'getSampleStyleSheet': _getSampleStyleSheet,
+        'ParagraphStyle': _ParagraphStyle,
+        'colors': _colors,
+        'qr': _qr,
+        'Drawing': _Drawing,
+    })
     REPORTLAB_AVAILABLE = True
-except Exception:
-    REPORTLAB_AVAILABLE = False
+    return True
+
+
+# Attempt to load once at import time; failures will be retried on demand.
+ensure_reportlab_available()
 
 # --- Begin migrated logic from view_inst_verification.py ---
 
@@ -62,41 +116,115 @@ class InstLetterPDF(APIView):
         # DEBUG: log incoming payload and user to help diagnose missing header data during PDF generation
         try:
             if getattr(settings, 'DEBUG', False):
-                logging.getLogger('api').info('InstLetterPDF called by=%s payload=%s', getattr(request, 'user', None), payload)
+                logger.info('InstLetterPDF called by=%s payload=%s', getattr(request, 'user', None), payload)
         except Exception:
             pass
 
         # Allow callers to provide doc_recs (doc_rec IDs) OR iv_record_no / iv_record_nos
-        doc_recs = payload.get('doc_recs') or payload.get('doc_rec') or []
+        raw_doc_recs = payload.get('doc_recs') or payload.get('doc_rec') or []
+        doc_rec_ids = []
+        if isinstance(raw_doc_recs, str):
+            raw_doc_recs = raw_doc_recs.strip()
+            if raw_doc_recs:
+                doc_rec_ids.append(raw_doc_recs)
+        elif isinstance(raw_doc_recs, (list, tuple, set)):
+            for entry in raw_doc_recs:
+                if entry is None:
+                    continue
+                value = str(entry).strip()
+                if value:
+                    doc_rec_ids.append(value)
+        elif raw_doc_recs:
+            value = str(raw_doc_recs).strip()
+            if value:
+                doc_rec_ids.append(value)
+
+        iv_numbers = []
+        iv_single = payload.get('iv_record_no')
+        if iv_single not in (None, ''):
+            iv_numbers.append(iv_single)
+        iv_multi = payload.get('iv_record_nos') or []
+        if isinstance(iv_multi, (list, tuple, set)):
+            iv_numbers.extend(iv_multi)
+        elif iv_multi not in (None, ''):
+            iv_numbers.append(iv_multi)
+
+        normalized_iv_numbers = []
+        for raw_iv in iv_numbers:
+            try:
+                normalized_iv_numbers.append(int(str(raw_iv).strip()))
+            except Exception:
+                continue
+        iv_requested = bool(normalized_iv_numbers)
+
+        if normalized_iv_numbers:
+            iv_map = {}
+            qs = InstLetterMain.objects.filter(iv_record_no__in=normalized_iv_numbers).select_related('doc_rec')
+            for main in qs:
+                doc_rec = getattr(main, 'doc_rec', None)
+                doc_id = getattr(doc_rec, 'doc_rec_id', None) or getattr(doc_rec, 'id', None)
+                if not doc_id:
+                    continue
+                iv_map.setdefault(main.iv_record_no, []).append(str(doc_id))
+            for iv_no in normalized_iv_numbers:
+                for resolved in iv_map.get(iv_no, []):
+                    doc_rec_ids.append(resolved)
+
+        doc_rec_ids = [key for key in OrderedDict.fromkeys([val for val in doc_rec_ids if val])]
+        try:
+            if getattr(settings, 'DEBUG', False):
+                logger.info('InstLetterPDF resolved %s doc_rec_ids (iv_requested=%s)', len(doc_rec_ids), iv_requested)
+        except Exception:
+            pass
+
+        if not doc_rec_ids:
+            if iv_requested:
+                return JsonResponse({
+                    'error': 'No records found',
+                    'detail': 'Unable to resolve the provided iv_record_no values to DocRec IDs'
+                }, status=404)
+            return JsonResponse({
+                'error': 'Missing document references',
+                'detail': 'Provide at least one doc_rec / doc_recs or iv_record_no(s) entry to generate the letter'
+            }, status=400)
 
         # Fetch records and group by inst_veri_number
         groups = OrderedDict()
-        if doc_recs:
-            if isinstance(doc_recs, str):
-                doc_recs = [doc_recs]
-            
-            for doc_rec in doc_recs:
-                try:
-                    main = InstLetterMain.objects.filter(doc_rec=doc_rec).first()
-                    if main:
-                        main_data = InstLetterMainSerializer(main).data
-                        key = main_data.get('inst_veri_number', doc_rec)
-                        if key not in groups:
-                            groups[key] = {'mains': [], 'students': []}
-                        groups[key]['mains'].append(main_data)
-                        
-                        students = InstLetterStudent.objects.filter(doc_rec=doc_rec)
-                        for student in students:
-                            student_data = InstLetterStudentSerializer(student).data
-                            student_data['_source_doc_rec'] = doc_rec
-                            groups[key]['students'].append(student_data)
-                except Exception as e:
-                    logging.getLogger('api').exception('Error fetching record %s: %s', doc_rec, e)
+        for doc_rec in doc_rec_ids:
+            try:
+                main = InstLetterMain.objects.filter(doc_rec__doc_rec_id=doc_rec).first()
+                if main:
+                    main_data = InstLetterMainSerializer(main).data
+                    key = main_data.get('inst_veri_number', doc_rec)
+                    if key not in groups:
+                        groups[key] = {'mains': [], 'students': []}
+                    groups[key]['mains'].append(main_data)
+                    
+                    students = InstLetterStudent.objects.filter(doc_rec__doc_rec_id=doc_rec)
+                    for student in students:
+                        student_data = InstLetterStudentSerializer(student).data
+                        student_data['_source_doc_rec'] = doc_rec
+                        groups[key]['students'].append(student_data)
+            except Exception as e:
+                logging.getLogger('api').exception('Error fetching record %s: %s', doc_rec, e)
+
+        if not groups:
+            return JsonResponse({
+                'error': 'No records found',
+                'detail': 'Ensure the supplied doc_rec or iv_record_no values exist and have associated InstLetterMain data'
+            }, status=404)
+        try:
+            if getattr(settings, 'DEBUG', False):
+                logger.info('InstLetterPDF grouped records: keys=%s', list(groups.keys()))
+        except Exception:
+            pass
 
         # ---------- REPORTLAB-BASED PDF GENERATION (FIXED) ----------
-        if REPORTLAB_AVAILABLE:
+        reportlab_ready = ensure_reportlab_available()
+        if reportlab_ready:
+            PAGE_WIDTH, PAGE_HEIGHT = A4
             HEADER_FROM_TOP = 2.25 * inch  # 2.25 inch from top for Ref/Date
-            HEADER_BLOCK_HEIGHT = 40 * mm  # Height of header block (issuer etc)
+            HEADER_BLOCK_HEIGHT = 40 * mm  # Height of header block (issuer etc) - mm is available after ensure_reportlab_available()
 
             def build_qr_payload(main, students):
                 try:
@@ -115,7 +243,6 @@ class InstLetterPDF(APIView):
 
             def draw_header_footer_factory(main, qr_text):
                 def draw_header_footer(canvas, doc):
-                    PAGE_WIDTH, PAGE_HEIGHT = A4
                     canvas.saveState()
 
                     y_top = PAGE_HEIGHT - HEADER_FROM_TOP
@@ -131,7 +258,7 @@ class InstLetterPDF(APIView):
 
                     # Date (right)
                     if main.get("inst_veri_date"):
-                        canvas.setFont("Helvetica", 11)
+                        canvas.setFont("Helvetica-Bold", 11)
                         canvas.drawRightString(
                             PAGE_WIDTH - doc.rightMargin,
                             y_top,
@@ -140,7 +267,7 @@ class InstLetterPDF(APIView):
 
                     # Issuer block (right aligned)
                     canvas.setFont("Helvetica-Bold", 11)
-                    y = y_top - 8 * mm
+                    y = y_top - 8 * mm if 'mm' in globals() else y_top - 22.4
                     for line in [
                         "Office of the Registrar,",
                         "Kadi Sarva Vishwavidyalaya,",
@@ -148,7 +275,7 @@ class InstLetterPDF(APIView):
                         "Gandhinagar- 382015",
                     ]:
                         canvas.drawRightString(PAGE_WIDTH - doc.rightMargin, y, line)
-                        y -= 4 * mm
+                        y -= 4 * mm if 'mm' in globals() else 11.2
 
                     # QR code (bottom right)
                     if qr_text:
@@ -170,7 +297,7 @@ class InstLetterPDF(APIView):
                                 10 * mm
                             )
                         except Exception:
-                            logging.getLogger('api').exception('QR draw failed')
+                            logger.exception('QR draw failed')
 
                     # Footer
                     canvas.setFont("Helvetica", 9)
@@ -204,7 +331,7 @@ class InstLetterPDF(APIView):
                         pagesize=A4,
                         leftMargin=15 * mm,
                         rightMargin=10 * mm,
-                        topMargin=(2.25 * inch) + 40 * mm,  # body starts just below header
+                        topMargin=(2.25 * inch) + 29 * mm,  # body starts just below header
                         bottomMargin=25 * mm,
                     )
                     story = []
@@ -243,13 +370,13 @@ class InstLetterPDF(APIView):
                         story.append(Paragraph(f"<b>{rep_main.get('rec_inst_name')}</b>", normal))
                     if rep_main.get('rec_inst_address_1'):
                         story.append(Paragraph(rep_main.get('rec_inst_address_1'), normal))
-                    story.append(Spacer(1, 2 * mm))  # tighter spacing
+                    story.append(Spacer(1, 1 * mm))
 
                     # Subject & Ref
                     doc_types = rep_main.get('doc_types') or "Certificate"
                     doc_label = doc_types if 'certificate' in str(doc_types).lower() else f"{doc_types} Certificate"
-                    story.append(Paragraph(f"Sub: Educational Verification of <b>{doc_label}</b>.", sub_ref_style))
-                    ref_frag = "Ref: Your Ref "
+                    story.append(Paragraph(f"<strong>Sub:</strong> Educational Verification of <b>{doc_label}</b>.", sub_ref_style))
+                    ref_frag = "<strong>Ref:</strong> Your Ref "
                     if rep_main.get('inst_ref_no'):
                         ref_frag += f"<strong>{rep_main.get('inst_ref_no')}</strong> "
                     if rep_main.get('rec_by'):
@@ -273,7 +400,7 @@ class InstLetterPDF(APIView):
                         if val and str(val).strip():
                             credential_header = str(val).strip()
                             break
-                    headers = ["Sr. No.", "Candidate Name", "Enrollment Number", "Branch", credential_header]
+                    headers = ["No.", "Candidate Name", "Enrollment Number", "Branch", credential_header]
                     table_data.append(headers)
                     if merged:
                         for i, s in enumerate(merged):
@@ -285,13 +412,14 @@ class InstLetterPDF(APIView):
                     else:
                         table_data.append(['', 'No student records found', '', '', ''])
 
-                    col_widths = [16*mm, 70*mm, 40*mm, 40*mm, 34*mm]
+                    col_widths = [12*mm, 70*mm, 40*mm, 40*mm, 29*mm]
                     tbl = Table(table_data, colWidths=col_widths, repeatRows=1)
                     tbl.setStyle(TableStyle([
                         ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
                         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#e8e8e8')),
                         ('ALIGN', (0,0), (-1,0), 'CENTER'),
                         ('VALIGN', (0,0), (-1,-1), 'TOP'),
+                        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'), 
                         ('ALIGN', (0,1), (0,-1), 'CENTER'),
                         ('ALIGN', (2,1), (2,-1), 'LEFT'),
                         ('LEFTPADDING', (1,1), (1,-1), 6),
@@ -305,14 +433,14 @@ class InstLetterPDF(APIView):
                     story.append(Spacer(1, 12))
                     story.append(Paragraph("Should you require any additional information or have further inquiries, please do not hesitate to reach out to us.", normal))
                     story.append(Spacer(1, 36))
-                    story.append(Paragraph("Registrar", ParagraphStyle('sign', parent=styles['Normal'], fontSize=10)))
-
+                    sign_style = ParagraphStyle('sign', parent=styles['Normal'], fontSize=10)
+                    story.append(Paragraph("<b>Registrar<br/>Kadi Sarva Vishwavidyalaya</b>", sign_style))
                     # Build document
                     doc.build(story, onFirstPage=header_cb, onLaterPages=header_cb)
                     pdf_bytes = buffer.getvalue()
                     buffer.close()
             except Exception as e:
-                logging.getLogger('api').exception('ReportLab generation failed: %s', e)
+                logger.exception('ReportLab generation failed: %s', e)
                 pdf_bytes = None
 
             if pdf_bytes:
@@ -322,13 +450,38 @@ class InstLetterPDF(APIView):
                         single_key = next(iter(groups))
                         filename = f"Verification_{single_key}.pdf"
                     else:
-                        filename = f"Verification_Multiple_Records_{doc_recs[0] if doc_recs else 'batch'}.pdf"
+                        filename = f"Verification_Multiple_Records_{doc_rec_ids[0] if doc_rec_ids else 'batch'}.pdf"
                 except Exception:
-                    filename = f"Verification_Multiple_Records_{doc_recs[0] if doc_recs else 'batch'}.pdf"
+                    filename = f"Verification_Multiple_Records_{doc_rec_ids[0] if doc_rec_ids else 'batch'}.pdf"
 
                 response = HttpResponse(pdf_bytes, content_type='application/pdf')
                 response['Content-Disposition'] = f'attachment; filename="{filename}"'
                 return response
+            else:
+                try:
+                    logger.error('InstLetterPDF produced no PDF bytes despite reportlab_ready, doc_rec_ids=%s', doc_rec_ids)
+                except Exception:
+                    pass
+                return JsonResponse({
+                    'error': 'Failed to generate PDF',
+                    'detail': 'PDF generation failed or no data available'
+                }, status=500)
+        else:
+            try:
+                logger.error('InstLetterPDF requested but ReportLab unavailable')
+            except Exception:
+                pass
+            return JsonResponse({
+                'error': 'ReportLab not available',
+                'detail': 'PDF generation library is not installed'
+            }, status=500)
+
+        # Fallback safety net: should not reach this point, but return a JSON error instead of None
+        logger.error('InstLetterPDF reached unexpected fallthrough (doc_rec_ids=%s, groups=%s)', doc_rec_ids, list(groups.keys()))
+        return JsonResponse({
+            'error': 'Unexpected PDF generation failure',
+            'detail': 'An unexpected state prevented PDF generation. Please retry or contact support.'
+        }, status=500)
 
 
 # ========== VIEWSETS ==========
@@ -507,3 +660,50 @@ class InstLetterStudentViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         return Response(serializer.data)
+
+
+class SuggestDocRec(APIView):
+    """Suggest next doc_rec ID for institutional letters based on year/number."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        year = request.GET.get('year', '')
+        number = request.GET.get('number', '')
+        
+        # Simple suggestion logic - find the latest IV record and increment
+        try:
+            from django.db.models import Max
+            latest = InstLetterMain.objects.filter(
+                inst_veri_number__isnull=False
+            ).exclude(
+                inst_veri_number=''
+            ).aggregate(Max('iv_record_no'))
+            
+            max_record_no = latest.get('iv_record_no__max') or 0
+            suggested = f"IV{year}{int(number or max_record_no + 1):06d}"
+            
+            return JsonResponse({
+                'suggested_doc_rec': suggested,
+                'year': year,
+                'number': number or (max_record_no + 1)
+            })
+        except Exception as e:
+            return JsonResponse({
+                'error': str(e),
+                'suggested_doc_rec': f"IV{year}{number or '000001'}"
+            }, status=400)
+
+
+class DebugInstLetter(APIView):
+    """Debug endpoint for institutional letter data (development only)."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not settings.DEBUG:
+            return JsonResponse({'error': 'Debug endpoint only available in DEBUG mode'}, status=403)
+        
+        return JsonResponse({
+            'message': 'Debug endpoint for institutional letters',
+            'total_records': InstLetterMain.objects.count(),
+            'total_students': InstLetterStudent.objects.count(),
+        })

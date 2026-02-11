@@ -3,8 +3,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 import django
 django.setup()
-from api.models import InstVerificationMain, InstVerificationStudent
-from api.serializers import InstVerificationMainSerializer, InstVerificationStudentSerializer
+from api.domain_letter import InstLetterMain, InstLetterStudent
+from api.serializers_Letter import InstLetterMainSerializer, InstLetterStudentSerializer
 import re
 
 def fmt_date(v):
@@ -41,7 +41,7 @@ def sanitize_field(val):
 
 iv = int(os.environ.get('IV', '25002'))
 results = []
-qs = InstVerificationMain.objects.filter(iv_record_no=iv)
+qs = InstLetterMain.objects.filter(iv_record_no=iv)
 for main_obj in qs:
     actual_doc_rec = getattr(getattr(main_obj, 'doc_rec', None), 'doc_rec_id', None) or ''
     main_ser = InstVerificationMainSerializer(main_obj).data
@@ -87,7 +87,7 @@ for main_obj in qs:
             main_ser['rec_inst_name'] = ''
     except Exception:
         pass
-    students_qs = InstVerificationStudent.objects.filter(doc_rec=getattr(main_obj, 'doc_rec', None)).order_by('id')
+    students_qs = InstLetterStudent.objects.filter(doc_rec=getattr(main_obj, 'doc_rec', None)).order_by('id')
     students_ser = InstVerificationStudentSerializer(students_qs, many=True).data
     results.append({
         'requested': str(iv),

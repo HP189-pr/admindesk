@@ -3,8 +3,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 import django
 django.setup()
-from api.models import InstVerificationMain, InstVerificationStudent
-from api.serializers import InstVerificationMainSerializer, InstVerificationStudentSerializer
+from api.domain_letter import InstLetterMain, InstLetterStudent
+from api.serializers_Letter import InstLetterMainSerializer, InstLetterStudentSerializer
 from django.template.loader import render_to_string
 import re
 
@@ -42,9 +42,9 @@ def sanitize_field(val):
 
 DOC = os.environ.get('DOC_REC', 'iv_00_021')
 print('Looking up doc_rec:', DOC)
-main_qs = InstVerificationMain.objects.filter(doc_rec__doc_rec_id=DOC)
+main_qs = InstLetterMain.objects.filter(doc_rec__doc_rec_id=DOC)
 if not main_qs.exists():
-    print('No InstVerificationMain found for doc_rec', DOC)
+    print('No InstLetterMain found for doc_rec', DOC)
     sys.exit(0)
 for main_obj in main_qs:
     actual_doc_rec = getattr(getattr(main_obj, 'doc_rec', None), 'doc_rec_id', None) or ''
@@ -86,7 +86,7 @@ for main_obj in main_qs:
             main_ser['rec_inst_name'] = ''
     except Exception:
         pass
-    students_qs = InstVerificationStudent.objects.filter(doc_rec__doc_rec_id=actual_doc_rec).order_by('id')
+    students_qs = InstLetterStudent.objects.filter(doc_rec__doc_rec_id=actual_doc_rec).order_by('id')
     students_ser = InstVerificationStudentSerializer(students_qs, many=True).data
     out = {'doc_rec': DOC, 'actual_doc_rec': actual_doc_rec, 'main': main_ser, 'students_count': len(students_ser), 'students': students_ser}
     print(json.dumps(out, indent=2, default=str))

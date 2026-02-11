@@ -10,7 +10,7 @@ from django.db.models.functions import Lower, Replace
 from django.db.models import Q
 from .models import (
     DocRec, Verification, VerificationStatus, MigrationRecord, ProvisionalRecord,
-    InstVerificationMain, InstVerificationStudent, Eca, Enrollment
+    InstLetterMain, InstLetterStudent, Eca, Enrollment
 )
 
 __all__ = [
@@ -180,7 +180,7 @@ class InstLetterMainSerializer(serializers.ModelSerializer):
     doc_rec = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
     doc_remark = serializers.CharField(source='doc_remark', required=False, allow_blank=True)
     class Meta:
-        model = InstVerificationMain
+        model = InstLetterMain
         fields = '__all__'
 
     def to_representation(self, instance):
@@ -255,7 +255,7 @@ class InstLetterstudentSerializer(serializers.ModelSerializer):
     doc_rec_key = serializers.SlugRelatedField(slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False)
     doc_rec = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
     class Meta:
-        model = InstVerificationStudent
+        model = InstLetterStudent
         fields = '__all__'
 
 # Backward-compatible aliases

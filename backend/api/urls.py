@@ -25,8 +25,9 @@ try:
     from .views import (
         DocRecViewSet, VerificationViewSet, MigrationRecordViewSet,
         ProvisionalRecordViewSet, StudentProfileViewSet,
-        EcaViewSet, BulkUploadView, DataAnalysisView,
+        EcaViewSet, DataAnalysisView,
     )
+    from .view_bulkupload import BulkUploadView
 
     from .inventory import (
         InventoryItemViewSet, InventoryInwardViewSet,

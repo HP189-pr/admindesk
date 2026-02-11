@@ -5,7 +5,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 import json
 
-from .models import DocRec, Verification, MigrationRecord, ProvisionalRecord, InstVerificationMain, InstVerificationStudent, Enrollment, Institute, MainBranch, SubBranch
+from .models import DocRec, Verification, MigrationRecord, ProvisionalRecord, InstLetterMain, InstLetterStudent, Enrollment, Institute, MainBranch, SubBranch
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -90,8 +90,8 @@ class UploadDocRecView(View):
                             mg_number=r.get('mg_number') or None,
                         )
                     elif st == 'inst_verification' or st == 'inst-verification':
-                        # Create or update InstVerificationMain (one-per-doc_rec)
-                        main = InstVerificationMain.objects.filter(doc_rec=docrec).first()
+                        # Create or update InstLetterMain (one-per-doc_rec)
+                        main = InstLetterMain.objects.filter(doc_rec=docrec).first()
                         main_fields = dict(
                             inst_veri_number = r.get('inst_veri_number') or None,
                             inst_veri_date = r.get('inst_veri_date') or None,
@@ -113,7 +113,7 @@ class UploadDocRecView(View):
                             institute_id = r.get('institute_id') or None,
                         )
                         if not main:
-                            main = InstVerificationMain.objects.create(doc_rec=docrec, **main_fields)
+                            main = InstLetterMain.objects.create(doc_rec=docrec, **main_fields)
                             created = main
                         else:
                             # update provided fields on existing main
@@ -144,11 +144,11 @@ class UploadDocRecView(View):
                                         if not enr_obj:
                                             enr_text = str(s.get('enrollment')).strip()
                                         else:
-                                            exists = InstVerificationStudent.objects.filter(doc_rec=docrec, enrollment=enr_obj).first()
+                                            exists = InstLetterStudent.objects.filter(doc_rec=docrec, enrollment=enr_obj).first()
                                     else:
                                         exists = None
                                     if not exists and s.get('sr_no') is not None:
-                                        exists = InstVerificationStudent.objects.filter(doc_rec=docrec, sr_no=s.get('sr_no')).first()
+                                        exists = InstLetterStudent.objects.filter(doc_rec=docrec, sr_no=s.get('sr_no')).first()
                                     if exists:
                                         # update some fields if provided
                                         changed = False
@@ -214,7 +214,7 @@ class UploadDocRecView(View):
                                                     sub_obj = SubBranch.objects.filter(pk=s.get('sub_course')).first()
                                                 except Exception:
                                                     sub_obj = None
-                                        InstVerificationStudent.objects.create(
+                                        InstLetterStudent.objects.create(
                                             doc_rec=docrec,
                                             sr_no = s.get('sr_no') or None,
                                             student_name = s.get('student_name') or None,
@@ -269,7 +269,7 @@ class UploadDocRecView(View):
                                                 sub_obj = SubBranch.objects.filter(pk=r.get('sub_course')).first()
                                             except Exception:
                                                 sub_obj = None
-                                    InstVerificationStudent.objects.create(
+                                    InstLetterStudent.objects.create(
                                         doc_rec=docrec,
                                         sr_no = r.get('sr_no') or None,
                                         student_name = r.get('student_name') or None,

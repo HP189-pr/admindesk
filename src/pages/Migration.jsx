@@ -13,6 +13,7 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [q, setQ] = useState("");
+  const [error, setError] = useState(null);
   const [currentRow, setCurrentRow] = useState(null);
 
   const [form, setForm] = useState({
@@ -51,13 +52,18 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
 
   const loadList = async () => {
     setLoading(true);
+    setError(null);
     try {
       const url = q ? `/api/migration/?search=${encodeURIComponent(q)}` : `/api/migration/`;
       const res = await fetch(url, { headers: { ...authHeaders() } });
+      if (!res.ok) {
+        throw new Error(`Server error: ${res.status} ${res.statusText}`);
+      }
       const data = await res.json();
       setList(Array.isArray(data) ? data : data.results || []);
     } catch (e) {
       console.error(e);
+      setError("Failed to load records. Please check the server logs.");
     } finally {
       setLoading(false);
     }
@@ -261,6 +267,9 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
 
       {/* Records Section */}
       <div className="bg-white shadow rounded-2xl p-4 h-[calc(100vh-260px)] overflow-auto">
+        {error && (
+          <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 border border-red-200 rounded-lg">{error}</div>
+        )}
         <div className="overflow-auto">
           <table className="min-w-[1100px] w-full text-sm">
             <thead className="bg-gray-50">

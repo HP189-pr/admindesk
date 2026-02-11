@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from api.models import DocRec, Verification, InstVerificationMain
+from api.models import DocRec, Verification, InstLetterMain
 
 
 class Command(BaseCommand):
@@ -47,16 +47,16 @@ class Command(BaseCommand):
                         created += 1
                         self.stdout.write(self.style.SUCCESS(f'Created Verification for {docid}'))
                 elif docid.lower().startswith('iv'):
-                    exists = InstVerificationMain.objects.filter(doc_rec__doc_rec_id=docid).exists()
+                    exists = InstLetterMain.objects.filter(doc_rec__doc_rec_id=docid).exists()
                     if not exists:
-                        iv = InstVerificationMain(doc_rec=dr)
+                        iv = InstLetterMain(doc_rec=dr)
                         try:
                             iv.full_clean()
                         except Exception:
                             pass
                         iv.save()
                         created += 1
-                        self.stdout.write(self.style.SUCCESS(f'Created InstVerificationMain for {docid}'))
+                        self.stdout.write(self.style.SUCCESS(f'Created InstLetterMain for {docid}'))
             except Exception as e:
                 self.stdout.write(self.style.WARNING(f'Failed for {docid}: {e}'))
 
