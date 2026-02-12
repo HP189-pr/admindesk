@@ -30,3 +30,4 @@ https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#troubleshooting
 [api.urls] Import error: invalid decimal literal (view_inst_verification.py, line 746)
 [api.urls] Import error: cannot import name 'Replace' from 'django.db.models' (C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\__init__.py)
 [api.urls] Import error: unexpected indent (views_courses.py, line 36)
+[api.urls] Import error: unexpected indent (views_Letter.py, line 387)

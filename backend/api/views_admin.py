@@ -91,6 +91,23 @@ class UploadDocRecView(View):
                         )
                     elif st == 'inst_verification' or st == 'inst-verification':
                         # Create or update InstLetterMain (one-per-doc_rec)
+                        def _normalize_study_mode(val):
+                            if val is None:
+                                return None
+                            try:
+                                s = str(val).strip()
+                            except Exception:
+                                return None
+                            if not s:
+                                return None
+                            sl = s.lower()
+                            if sl in ("r", "reg", "regular", "regular mode"):
+                                return "Regular"
+                            if sl in ("p", "pt", "part", "part time", "part-time"):
+                                return "Part Time"
+                            return s
+
+                        row_study_mode = _normalize_study_mode(r.get('study_mode'))
                         main = InstLetterMain.objects.filter(doc_rec=docrec).first()
                         main_fields = dict(
                             inst_veri_number = r.get('inst_veri_number') or None,
@@ -102,9 +119,9 @@ class UploadDocRecView(View):
                             rec_inst_city = r.get('rec_inst_city') or None,
                             rec_inst_pin = r.get('rec_inst_pin') or None,
                             rec_inst_email = r.get('rec_inst_email') or None,
+                            rec_inst_phone = r.get('rec_inst_phone') or None,
                             doc_types = r.get('doc_types') or None,
                             rec_inst_sfx_name = r.get('rec_inst_sfx_name') or None,
-                            study_mode = r.get('study_mode') or None,
                             iv_status = r.get('iv_status') or None,
                             rec_by = r.get('rec_by') or None,
                             doc_rec_date = r.get('doc_rec_date') or None,
@@ -152,9 +169,12 @@ class UploadDocRecView(View):
                                     if exists:
                                         # update some fields if provided
                                         changed = False
-                                        for fld in ('student_name','type_of_credential','month_year','verification_status'):
-                                            if s.get(fld) is not None:
-                                                val = s.get(fld)
+                                        for fld in ('student_name','type_of_credential','month_year','verification_status','study_mode'):
+                                            raw_val = s.get(fld) if fld != 'study_mode' else (s.get('study_mode') if s.get('study_mode') is not None else row_study_mode)
+                                            if raw_val is not None:
+                                                val = raw_val
+                                                if fld == 'study_mode':
+                                                    val = _normalize_study_mode(val)
                                                 if getattr(exists, fld, None) != val:
                                                     setattr(exists, fld, val)
                                                     changed = True
@@ -226,6 +246,7 @@ class UploadDocRecView(View):
                                             institute = inst_obj,
                                             main_course = main_obj,
                                             sub_course = sub_obj,
+                                            study_mode = _normalize_study_mode(s.get('study_mode')) or row_study_mode,
                                         )
                                         student_created = True
                                 except Exception:
@@ -281,6 +302,7 @@ class UploadDocRecView(View):
                                         institute = inst_obj,
                                         main_course = main_obj,
                                         sub_course = sub_obj,
+                                        study_mode = row_study_mode,
                                     )
                                     student_created = True
                                 except Exception:

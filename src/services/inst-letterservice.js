@@ -34,7 +34,11 @@ const jsonFetch = async (path, { method = "GET", body, apiBase = "/api", headers
   const payload = isJson ? await res.json().catch(() => null) : null;
 
   if (!res.ok) {
-    const detail = payload?.detail || payload?.error || payload?.message;
+    const detail =
+      payload?.detail ||
+      payload?.error ||
+      payload?.message ||
+      (payload && typeof payload === 'object' ? JSON.stringify(payload) : null);
     throw new Error(detail || `Request failed (${res.status})`);
   }
 
@@ -73,7 +77,23 @@ export const fetchInstLetterStudents = async ({ docRec, apiBase = "/api", header
 export const saveInstLetterStudent = async (payload, { id = null, apiBase = "/api", headersFn = defaultHeaders } = {}) => {
   const path = id ? `/inst-verification-student/${id}/` : `/inst-verification-student/`;
   const method = id ? "PUT" : "POST";
-  return jsonFetch(path, { method, body: payload, apiBase, headersFn });
+  const sanitized = { ...(payload || {}) };
+  // No need to strip removed fields
+  // Debug logs for browser console
+  console.log("======== STUDENT SAVE DEBUG ========");
+  console.log("Original Payload:", payload);
+  console.log("Sanitized Payload:", sanitized);
+  console.log("Request URL:", `${apiBase}${path}`);
+  console.log("Method:", method);
+  console.log("====================================");
+  try {
+    const response = await jsonFetch(path, { method, body: sanitized, apiBase, headersFn });
+    console.log("Student Save Response:", response);
+    return response;
+  } catch (err) {
+    console.error("Student Save Error:", err);
+    throw err;
+  }
 };
 
 export const deleteInstLetterStudent = async (id, { apiBase = "/api", headersFn = defaultHeaders } = {}) => {

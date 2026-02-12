@@ -1,9 +1,22 @@
 import axios from 'axios';
 
-// Prefer explicit backend origin when provided, otherwise fall back to local backend for dev
-// This avoids accidental proxying to the Vite preview server when a standalone backend is on 127.0.0.1:8000
-const rawApiBase = import.meta?.env?.VITE_API_BASE_URL?.trim() || 'http://127.0.0.1:8000';
-const apiBaseUrl = rawApiBase.replace(/\/$/, '');
+// Resolve backend origin with sensible fallbacks for prod and dev
+const resolveApiBase = () => {
+  const envBase = import.meta?.env?.VITE_API_BASE_URL?.trim();
+  if (envBase) return envBase.replace(/\/$/, '');
+
+  if (typeof window === 'undefined') return 'http://127.0.0.1:8000';
+
+  const url = new URL(window.location.href);
+  // If frontend runs on 8081, assume backend on same host port 8000
+  if (url.port === '8081') {
+    url.port = '8000';
+    return url.origin;
+  }
+  return url.origin;
+};
+
+const apiBaseUrl = resolveApiBase();
 
 // NOTE: API calls across the app already include the `/api/*` path.
 // Keep baseURL as the backend origin to avoid duplicating `/api` in requests.

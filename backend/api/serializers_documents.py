@@ -209,7 +209,7 @@ class InstLetterMainSerializer(serializers.ModelSerializer):
 
         data = super().to_representation(instance)
         # sanitize the fields used in templates
-        for k in ('rec_inst_sfx_name','rec_inst_name','rec_inst_address_1','rec_inst_address_2','rec_inst_location','rec_inst_city','rec_inst_pin','rec_inst_email','doc_types','inst_ref_no','rec_by'):
+        for k in ('rec_inst_sfx_name','rec_inst_name','rec_inst_address_1','rec_inst_address_2','rec_inst_location','rec_inst_city','rec_inst_pin','rec_inst_email','rec_inst_phone','doc_types','inst_ref_no','rec_by'):
             if k in data:
                 data[k] = _sanitize(data.get(k))
         # format date fields consistently

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { dmyToISO, isoToDMY, pad2 } from "../utils/date";
 import PageTopbar from "../components/PageTopbar";
 import useEnrollmentLookup from '../hooks/useEnrollmentLookup';
@@ -19,6 +19,37 @@ const PAY_BY = [
   { value: "UPI", label: "UPI" },
   { value: "NA", label: "Not Applicable" },
 ];
+
+// Format IV doc_rec_id for display as IVYY + 4+ digit sequence (strip extra zeros)
+const formatDocRecId = (docRecId, applyFor) => {
+  if (!docRecId) return '';
+  const raw = String(docRecId);
+  const isIV = (applyFor || '').toUpperCase() === 'IV' || raw.toUpperCase().startsWith('IV');
+  if (!isIV) return raw;
+  const m = raw.match(/^(IV)(\d{2})(\d+)$/i);
+  if (!m) return raw.toUpperCase();
+  const [, prefix, yy, seqRaw] = m;
+  const seqNum = parseInt(seqRaw, 10);
+  if (Number.isNaN(seqNum) || seqNum <= 0) return raw.toUpperCase();
+  const seqStr = String(seqNum).padStart(4, '0');
+  return `${prefix.toUpperCase()}${yy}${seqStr}`;
+};
+
+// Map apply_for selection to the corresponding service filter used by the list
+const serviceForApply = (applyFor) => {
+  switch (applyFor) {
+    case "IV":
+      return "inst-verification";
+    case "PR":
+      return "provisional";
+    case "MG":
+      return "migration";
+    case "VR":
+      return "verification";
+    default:
+      return "all";
+  }
+};
 
 export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
   // Flash message state
@@ -252,7 +283,12 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
   const [recentLoading, setRecentLoading] = useState(false);
   const [selectedRec, setSelectedRec] = useState(null); // store the selected recent record (raw + type)
   const [searchTerm, setSearchTerm] = useState('');
-  const [serviceFilter, setServiceFilter] = useState('all'); // all | docrec | migration | provisional | verification
+  const [serviceFilter, setServiceFilter] = useState(serviceForApply('VR')); // all | docrec | migration | provisional | verification
+  const recInstSearchTimer = useRef(null);
+
+  useEffect(() => () => {
+    if (recInstSearchTimer.current) clearTimeout(recInstSearchTimer.current);
+  }, []);
 
   const fetchRecentRecords = async (term = '', service = 'all') => {
     setRecentLoading(true);
@@ -302,7 +338,14 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
   };
 
   // initial load
-  useEffect(()=>{ fetchRecentRecords('', 'all'); }, []);
+  useEffect(()=>{ fetchRecentRecords('', serviceFilter); }, []);
+
+  // When apply_for changes, align the service filter and refresh the list
+  useEffect(()=>{
+    const svc = serviceForApply(form.apply_for);
+    setServiceFilter(svc);
+    fetchRecentRecords('', svc);
+  }, [form.apply_for]);
 
   const resolvePayment = (r) => {
     return {
@@ -314,12 +357,15 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
   };
 
   const resolveDocRecId = (r) => {
-    return (
+    const raw = (
       r.doc_rec_key ||     // Verification (NEW)
       r.doc_rec_id ||      // DocRec / Provisional
       (typeof r.doc_rec === 'string' ? r.doc_rec : '') ||
       ''
     );
+    // For display, format IV IDs; keep raw elsewhere
+    const applyFor = r.apply_for || (r.type === 'inst-verification' ? 'IV' : null);
+    return formatDocRecId(raw, applyFor);
   };
 
   const onRecordClick = (rec) => {
@@ -330,7 +376,8 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
 
     const type = rec.type || 'docrec';
     // Some records have doc_rec or doc_rec_id or id
-    const docRecId = r.doc_rec_key || r.doc_rec_id || r.doc_rec || '';
+    const docRecIdRaw = r.doc_rec_key || r.doc_rec_id || r.doc_rec || '';
+    const docRecId = docRecIdRaw; // keep raw for fetches
 
     const studentName = r.student_name || r.student || r.name || '';
     const enrollmentNo = r.enrollment_no || r.enrollment_no_string || r.enrollment || '';
@@ -431,6 +478,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     }catch(e){ /* ignore broadcast errors */ }
     // locally refresh recent records and related lists so the UI updates immediately
     try{ fetchRecentRecords('', 'all'); }catch(_){ }
+    try{ fetchRecentRecords('', serviceForApply(form.apply_for)); }catch(_){ }
     try{ fetchRelatedForDocRec(row.doc_rec_id || row.doc_rec || row.id); }catch(_){ }
     // If this DocRec is for Verification and user provided enrollment or student_name,
     // automatically create the linked Verification so the DocRec immediately shows a verification row.
@@ -568,6 +616,9 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
 
     // Reset form for new entry after save
     setForm({ ...initialForm, doc_rec_date: todayDMY() });
+
+    // Refresh recent list to show the newly created record for the selected service
+    try { fetchRecentRecords('', serviceForApply(form.apply_for)); } catch (_) {}
   };
 
   // Update an existing DocRec and related Verification atomically
@@ -697,7 +748,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
             {/* doc_rec_id preview */}
             <div>
               <label className="text-sm">Doc Rec ID (next)</label>
-              <input className="w-full border rounded-lg p-2" value={form.doc_rec_id} readOnly />
+              <input className="w-full border rounded-lg p-2" value={formatDocRecId(form.doc_rec_id, form.apply_for)} readOnly />
             </div>
 
             {/* pay_by */}
@@ -792,23 +843,31 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
                       onChange={async (e)=>{
                         const v = e.target.value;
                         handleChange("rec_inst_name", v);
-                        if ((v||"").trim().length >= 3) {
-                          try {
-                            const res = await fetch(`/api/inst-verification-main/search-rec-inst?q=${encodeURIComponent(
-v.trim())}`, { headers: { ...authHeaders() } });                                                                                                    if (res.ok) {
-                              const items = await res.json();
-                              handleChange("rec_inst_suggestions", items || []);
-                            }
-                          } catch {}
-                        } else {
+                        if (recInstSearchTimer.current) clearTimeout(recInstSearchTimer.current);
+                        if ((v||"").trim().length < 3) {
                           handleChange("rec_inst_suggestions", []);
+                          return;
                         }
+                        recInstSearchTimer.current = setTimeout(async () => {
+                          try {
+                            const res = await fetch(`/api/inst-verification-main/search-rec-inst/?q=${encodeURIComponent(v.trim())}`, {
+                              headers: { ...authHeaders(), Accept: "application/json" },
+                              credentials: "include",
+                            });
+                            if (!res.ok) throw new Error("search failed");
+                            const items = await res.json();
+                            const names = Array.from(new Set((items || []).map((x) => (x?.name || "").trim()).filter(Boolean)));
+                            handleChange("rec_inst_suggestions", names.map((name) => ({ name })));
+                          } catch {
+                            handleChange("rec_inst_suggestions", []);
+                          }
+                        }, 300);
                       }}
                     />
                     {Array.isArray(form.rec_inst_suggestions) && form.rec_inst_suggestions.length > 0 && (
                       <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg max-h-60 overflow-auto shadow">
                         {form.rec_inst_suggestions.map((s)=> (
-                          <div key={s.id} className="px-3 py-2 hover:bg-gray-50 cursor-pointer" onClick={()=>{
+                          <div key={s.name} className="px-3 py-2 hover:bg-gray-50 cursor-pointer" onClick={()=>{
                             handleChange("rec_inst_name", s.name);
                             handleChange("rec_inst_suggestions", []);
                           }}>{s.name}</div>

@@ -23,9 +23,9 @@ class InstLetterMain(models.Model):
     rec_inst_city = models.CharField(max_length=255, null=True, blank=True, db_column='rec_inst_city')
     rec_inst_pin = models.CharField(max_length=20, null=True, blank=True, db_column='rec_inst_pin')
     rec_inst_email = models.EmailField(null=True, blank=True, db_column='rec_inst_email')
+    rec_inst_phone = models.CharField(max_length=50, null=True, blank=True, db_column='rec_inst_phone')
     doc_types = models.CharField(max_length=255, null=True, blank=True, db_column='doc_types')
     rec_inst_sfx_name = models.CharField(max_length=255, null=True, blank=True, db_column='rec_inst_sfx_name')
-    study_mode = models.CharField(max_length=1, null=True, blank=True, db_column='study_mode')
     class InstVerificationStatus(models.TextChoices):
         PENDING = 'Pending', 'Pending'
         DONE = 'Done', 'Done'
@@ -93,19 +93,18 @@ class InstLetterStudent(models.Model):
     enrollment = models.ForeignKey(Enrollment, to_field='enrollment_no', db_column='enrollment_no', on_delete=models.SET_NULL, related_name='inst_verification_students', null=True, blank=True)
     enrollment_no_text = models.CharField(max_length=64, null=True, blank=True, db_column='enrollment_no_text')
     student_name = models.CharField(max_length=255, null=True, blank=True, db_column='student_name')
-    institute = models.ForeignKey(Institute, on_delete=models.SET_NULL, db_column='institute_id', related_name='inst_verification_students', null=True, blank=True)
-    sub_course = models.ForeignKey(SubBranch, to_field='subcourse_id', db_column='sub_course', on_delete=models.SET_NULL, related_name='inst_verification_students', null=True, blank=True)
-    main_course = models.ForeignKey(MainBranch, to_field='maincourse_id', db_column='main_course', on_delete=models.SET_NULL, related_name='inst_verification_students', null=True, blank=True)
+    # Removed institute, sub_course, and main_course fields as requested
     type_of_credential = models.CharField(max_length=50, null=True, blank=True, db_column='type_of_credential')
     month_year = models.CharField(max_length=20, null=True, blank=True, db_column='month_year')
     verification_status = models.CharField(max_length=100, null=True, blank=True, db_column='verification_status')
     iv_degree_name = models.CharField(max_length=255, null=True, blank=True, db_column='iv_degree_name')
+    study_mode = models.CharField(max_length=20, null=True, blank=True, db_column='study_mode')
     class Meta:
         db_table = 'inst_verification_student'
         indexes = [
             models.Index(fields=['doc_rec'], name='idx_ivs_doc_rec'),
             models.Index(fields=['enrollment'], name='idx_ivs_enrollment'),
-            models.Index(fields=['institute'], name='idx_ivs_institute'),
+            # Removed index for 'institute'
         ]
     def __str__(self):
         return f"IVS {self.sr_no or '-'} - {getattr(self.doc_rec, 'doc_rec_id', None) or '-'}"

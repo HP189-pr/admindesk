@@ -18,6 +18,7 @@ from .view_bulkupload import BulkUploadView, BulkService
 import logging
 import re
 import datetime
+from django.utils.dateparse import parse_date
 from django.utils import timezone
 from django.db import models
 from django.db.models import Q, Value, F
@@ -737,13 +738,22 @@ class DocRecViewSet(viewsets.ModelViewSet):
             else:
                 doc_date = timezone.localdate()
 
-            yy = doc_date.year % 100
+            # For Inst-Verification use calendar year; others use fiscal year (Apr-Mar)
+            if doc_date.month >= 4:
+                fy_start = doc_date.year
+            else:
+                fy_start = doc_date.year - 1
+
+            doc_year = doc_date.year if str(apply_for).upper() == ApplyFor.INST_VERIFICATION else fy_start
+
+            yy = doc_year % 100
             prefix = tmp._prefix_for_apply()
             year_str = f"{yy:02d}"
             base = f"{prefix}{year_str}"
+            pad_len = 4 if str(apply_for).upper() == ApplyFor.INST_VERIFICATION else 6
             last = (
                 DocRec.objects
-                .filter(doc_rec_id__startswith=base)
+                .filter(doc_rec_id__istartswith=base)
                 .order_by("-doc_rec_id")
                 .first()
             )
@@ -753,7 +763,7 @@ class DocRecViewSet(viewsets.ModelViewSet):
                     next_num = int(last.doc_rec_id[len(base):]) + 1
                 except Exception:
                     next_num = 1
-            return Response({"next_id": f"{base}{next_num:06d}"})
+            return Response({"next_id": f"{base}{next_num:0{pad_len}d}"})
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -771,6 +781,18 @@ class DocRecViewSet(viewsets.ModelViewSet):
         
         if not doc_rec_id:
             return Response({"detail": "doc_rec_id is required"}, status=400)
+
+        def _coerce_date(val):
+            if val is None:
+                return None
+            if isinstance(val, datetime.datetime):
+                return val.date()
+            if isinstance(val, datetime.date):
+                return val
+            if isinstance(val, str):
+                parsed = parse_date(val.strip())
+                return parsed
+            return None
         
         try:
             with transaction.atomic():
@@ -781,8 +803,11 @@ class DocRecViewSet(viewsets.ModelViewSet):
                 
                 # Update DocRec fields
                 for key, value in doc_rec_data.items():
-                    if hasattr(doc_rec, key):
-                        setattr(doc_rec, key, value)
+                    if not hasattr(doc_rec, key):
+                        continue
+                    if key == "doc_rec_date":
+                        value = _coerce_date(value)
+                    setattr(doc_rec, key, value)
                 doc_rec.save()
                 
                 # Fetch related Verification

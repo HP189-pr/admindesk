@@ -3,12 +3,13 @@ from django.template.loader import render_to_string
 from django.http import HttpResponse, JsonResponse
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, serializers as drf_serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from pathlib import Path
 import json
 import re, logging
+from django.db.models.functions import Lower
 from .domain_letter import InstLetterMain, InstLetterStudent
 from .models import Enrollment, MainBranch, SubBranch, Institute
 from collections import OrderedDict
@@ -331,7 +332,7 @@ class InstLetterPDF(APIView):
                         pagesize=A4,
                         leftMargin=15 * mm,
                         rightMargin=10 * mm,
-                        topMargin=(2.25 * inch) + 29 * mm,  # body starts just below header
+                        topMargin=(2.25 * inch) + 20 * mm,  # body starts just below header
                         bottomMargin=25 * mm,
                     )
                     story = []
@@ -365,17 +366,73 @@ class InstLetterPDF(APIView):
                     qr_text = build_qr_payload(rep_main, merged)
                     header_cb = draw_header_footer_factory(rep_main, qr_text)
 
-                    # Recipient block
-                    if rep_main.get('rec_inst_name'):
-                        story.append(Paragraph(f"<b>{rep_main.get('rec_inst_name')}</b>", normal))
-                    if rep_main.get('rec_inst_address_1'):
-                        story.append(Paragraph(rep_main.get('rec_inst_address_1'), normal))
-                    story.append(Spacer(1, 1 * mm))
+                    # --- Address block ---
+                    story.append(Spacer(1, -2 * mm))
+                    address_lines = []
+                    # rec_inst_name (bold)
+                    rec_inst_name = str(rep_main.get('rec_inst_name') or '').strip()
+                    if rec_inst_name:
+                        address_lines.append(f"<b>{rec_inst_name}</b>")
+                    # Address 1
+                    addr1 = str(rep_main.get('rec_inst_address_1') or '').strip()
+                    if addr1:
+                        address_lines.append(addr1)
+
+                    # Address 2
+                    addr2 = str(rep_main.get('rec_inst_address_2') or '').strip()
+                    if addr2:
+                        address_lines.append(addr2)
+
+                    # Location + City + Pin formatting
+                    # DEBUG: Log the value of rec_inst_pin for troubleshooting
+                    try:
+                        logger.info('DEBUG rec_inst_pin value: %r', rep_main.get('rec_inst_pin'))
+                    except Exception:
+                        pass
+                    location = str(rep_main.get('rec_inst_location') or '').strip()
+                    city = str(rep_main.get('rec_inst_city') or '').strip() 
+                    # Fix: Sometimes pin is not fetched due to key or type issues
+                    pin = ''
+                    # Try both 'rec_inst_pin' and 'rec_inst_pin_code' as possible keys
+                    for pin_key in ('rec_inst_pin', 'rec_inst_pin_code'):
+                        pin_val = rep_main.get(pin_key)
+                        if pin_val is not None and str(pin_val).strip():
+                            pin = str(pin_val).strip()
+                            break
+        
+                    loc_city_part = ""
+
+                    if location and city:
+                        loc_city_part = f"{location}, {city}"
+                    elif location:
+                        loc_city_part = location
+                    elif city:
+                        loc_city_part = city
+
+                    if pin:  
+                        if loc_city_part:
+                            loc_city_part = f"{loc_city_part}-{pin}"
+                        else:
+                            loc_city_part = pin
+
+                    if loc_city_part:
+                        address_lines.append(loc_city_part)
+
+                    # Render without blank rows
+                    # Use a ParagraphStyle with no spaceAfter and tight leading for address lines
+                    address_style = ParagraphStyle('Address', parent=normal, spaceAfter=0, fontSize=11, leading=11)
+                    for line in address_lines:
+                        story.append(Paragraph(line, address_style))
+                    # Add extra space after address block (city-pin line) before subject
+                    story.append(Spacer(1, 6 * mm))  # Adjust 6*mm as needed for more/less space
+
+
 
                     # Subject & Ref
                     doc_types = rep_main.get('doc_types') or "Certificate"
                     doc_label = doc_types if 'certificate' in str(doc_types).lower() else f"{doc_types} Certificate"
                     story.append(Paragraph(f"<strong>Sub:</strong> Educational Verification of <b>{doc_label}</b>.", sub_ref_style))
+
                     ref_frag = "<strong>Ref:</strong> Your Ref "
                     if rep_main.get('inst_ref_no'):
                         ref_frag += f"<strong>{rep_main.get('inst_ref_no')}</strong> "
@@ -541,12 +598,51 @@ class InstLetterMainViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="search-rec-inst")
     def search_rec_inst(self, request):
-        """Autocomplete for rec_inst_name by prefix (min 3 chars)."""
+        """
+        Autocomplete for rec_inst_name by prefix (min 3 chars).
+
+        - Returns unique names (case-insensitive)
+        - If an exact (iexact) match is found, include the latest address fields for that name
+        Response shape: [{"name": "ABC Institute", "address": {..}} | {"name": "Another"}, ...]
+        """
         q = request.query_params.get('q', '').strip()
         if len(q) < 3:
             return Response([], status=200)
-        qs = self.queryset.filter(rec_inst_name__icontains=q)[:20]
-        return Response([{ 'id': x.id, 'name': x.rec_inst_name } for x in qs], status=200)
+
+        base_qs = self.queryset.exclude(rec_inst_name__isnull=True).exclude(rec_inst_name="")
+
+        # Exact match (latest record wins for address fields)
+        exact_record = (
+            base_qs.filter(rec_inst_name__iexact=q)
+            .order_by('-id')
+            .first()
+        )
+
+        # Unique names containing the query (case-insensitive distinct)
+        names_qs = (
+            base_qs.filter(rec_inst_name__icontains=q)
+            .annotate(name_lower=Lower('rec_inst_name'))
+            .order_by('name_lower')
+            .distinct('name_lower')
+        )[:20]
+
+        results = []
+        for row in names_qs:
+            name = row.rec_inst_name
+            if not name:
+                continue
+            item = {"name": name}
+            if exact_record and name.lower() == exact_record.rec_inst_name.lower():
+                item["address"] = {
+                    "rec_inst_address_1": exact_record.rec_inst_address_1 or "",
+                    "rec_inst_address_2": exact_record.rec_inst_address_2 or "",
+                    "rec_inst_location": exact_record.rec_inst_location or "",
+                    "rec_inst_city": exact_record.rec_inst_city or "",
+                    "rec_inst_pin": exact_record.rec_inst_pin or "",
+                }
+            results.append(item)
+
+        return Response(results, status=200)
 
     @action(detail=False, methods=["post"], url_path="update-service-only")
     def update_service_only(self, request):
@@ -588,9 +684,39 @@ class InstLetterStudentViewSet(viewsets.ModelViewSet):
     Handles CRUD operations for students linked to institutional verification letters.
     Frontend URLs use 'inst-verification-student' for backward compatibility.
     """
-    queryset = InstLetterStudent.objects.select_related('doc_rec', 'enrollment', 'institute', 'sub_course', 'main_course').order_by('-id')
+    queryset = InstLetterStudent.objects.select_related('doc_rec', 'enrollment').order_by('-id')
     serializer_class = InstLetterStudentSerializer
     permission_classes = [IsAuthenticated]
+
+    # Some older frontend builds (and some integrations) send redundant/legacy FK fields.
+    # These are non-editable for this endpoint and should never block save operations.
+    FK_TRIM_KEYS = (
+        # Institute
+        "institute",
+        "institute_id",
+        # Main course
+        "main_course",
+        "main_course_id",
+        "maincourse",
+        "maincourse_id",
+        # Sub course
+        "sub_course",
+        "sub_course_id",
+        "subcourse",
+        "subcourse_id",
+    )
+
+    # Keys that may appear in serializer validation errors that we treat as non-fatal.
+    FK_VALIDATION_FIELDS = tuple(
+        key for key in (
+            "institute_id",
+            "main_course_id",
+            "sub_course_id",
+            "maincourse_id",
+            "subcourse_id",
+        )
+        if key is not None
+    )
     
     def get_queryset(self):
         """Allow filtering students by the parent doc_rec identifier.
@@ -609,56 +735,101 @@ class InstLetterStudentViewSet(viewsets.ModelViewSet):
             # doc_rec is a FK to DocRec using to_field='doc_rec_id', so filter via the related field
             return qs.filter(doc_rec__doc_rec_id=doc_rec_param)
         return qs
+
+    def _serializer_with_fk_fallback(self, data, instance=None, partial=False):
+        """
+        Always strip foreign key fields before validation.
+        Never allow invalid FK IDs to break student save.
+        """
+        cleaned = data.copy()
+        for key in self.FK_TRIM_KEYS:
+            cleaned.pop(key, None)
+        serializer = self.get_serializer(instance, data=cleaned, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        return serializer
+
+    def _normalize_payload(self, request):
+        raw_data = request.data.copy() if hasattr(request, 'data') else {}
+        if hasattr(raw_data, 'dict'):
+            data = raw_data.dict()
+        elif hasattr(raw_data, 'items'):
+            data = {k: raw_data[k] for k in raw_data}
+        else:
+            data = dict(raw_data or {})
+        for key in self.FK_TRIM_KEYS:
+            data.pop(key, None)
+        return data
+
+    def _resolve_enrollment_from_data(self, data):
+        enr_key = data.get('enrollment') or data.get('enrollment_no') or data.get('enrollment_no_text')
+        if not enr_key:
+            return None
+        typed = str(enr_key).strip()
+        if not typed:
+            return None
+        try:
+            return Enrollment.objects.filter(
+                enrollment_no__iexact=typed
+            ).select_related('institute', 'maincourse', 'subcourse').first()
+        except Exception:
+            return None
+
+    def _apply_enrollment_relations(self, instance, enrollment_obj):
+        if not instance or not enrollment_obj:
+            return
+
+        update_fields = []
+
+        # Institute (safe)
+        if enrollment_obj.institute_id:
+            instance.institute_id = enrollment_obj.institute_id
+            update_fields.append('institute')
+
+        # Main course (use MainBranch object, not numeric ID)
+        if enrollment_obj.maincourse:
+            instance.main_course = enrollment_obj.maincourse
+            update_fields.append('main_course')
+
+        # Sub course (use SubBranch object, not numeric ID)
+        if enrollment_obj.subcourse:
+            instance.sub_course = enrollment_obj.subcourse
+            update_fields.append('sub_course')
+
+        if update_fields:
+            instance.save(update_fields=update_fields)
     
     def create(self, request, *args, **kwargs):
-        """Create student record with enrollment field resolution.
-        
-        If an enrollment identifier is provided, attempt to resolve the Enrollment
-        and copy institute/main/subcourse fields onto the student record so that
-        data created via API matches the behaviour of the bulk importer.
-        """
-        data = request.data.copy() if hasattr(request, 'data') else {}
-        enr_key = data.get('enrollment') or data.get('enrollment_no') or data.get('enrollment_no_text')
+        data = self._normalize_payload(request)
         try:
-            if enr_key:
-                enr_obj = Enrollment.objects.filter(enrollment_no__iexact=str(enr_key).strip()).first()
-                if enr_obj:
-                    if getattr(enr_obj, 'institute', None):
-                        data['institute'] = getattr(enr_obj.institute, 'id', None) or getattr(enr_obj.institute, 'pk', None)
-                    if getattr(enr_obj, 'maincourse', None):
-                        data['main_course'] = getattr(enr_obj.maincourse, 'id', None) or getattr(enr_obj.maincourse, 'pk', None)
-                    if getattr(enr_obj, 'subcourse', None):
-                        data['sub_course'] = getattr(enr_obj.subcourse, 'id', None) or getattr(enr_obj.subcourse, 'pk', None)
-        except Exception:
-            # best-effort: do not fail creation if sync fails
-            pass
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+            serializer = self._serializer_with_fk_fallback(data)
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        except drf_serializers.ValidationError as exc:
+            return Response(exc.detail, status=status.HTTP_400_BAD_REQUEST)
 
     def update(self, request, *args, **kwargs):
         """Update student record with enrollment field resolution."""
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
-        data = request.data.copy() if hasattr(request, 'data') else {}
-        enr_key = data.get('enrollment') or data.get('enrollment_no') or data.get('enrollment_no_text')
+        data = self._normalize_payload(request)
         try:
-            if enr_key:
-                enr_obj = Enrollment.objects.filter(enrollment_no__iexact=str(enr_key).strip()).first()
-                if enr_obj:
-                    if getattr(enr_obj, 'institute', None):
-                        data['institute'] = getattr(enr_obj.institute, 'id', None) or getattr(enr_obj.institute, 'pk', None)
-                    if getattr(enr_obj, 'maincourse', None):
-                        data['main_course'] = getattr(enr_obj.maincourse, 'id', None) or getattr(enr_obj.maincourse, 'pk', None)
-                    if getattr(enr_obj, 'subcourse', None):
-                        data['sub_course'] = getattr(enr_obj.subcourse, 'id', None) or getattr(enr_obj.subcourse, 'pk', None)
+            logger.info("InstLetterStudent update payload_keys=%s", sorted(list(data.keys())))
         except Exception:
             pass
-        serializer = self.get_serializer(instance, data=data, partial=partial)
-        serializer.is_valid(raise_exception=True)
+        enr_obj = self._resolve_enrollment_from_data(data)
+        try:
+            serializer = self._serializer_with_fk_fallback(data, instance=instance, partial=partial)
+        except drf_serializers.ValidationError as exc:
+            if getattr(settings, 'DEBUG', False):
+                detail = exc.detail if isinstance(exc.detail, dict) else {"detail": exc.detail}
+                detail["_payload_keys"] = sorted(list(data.keys()))
+                detail["_debug_marker"] = "inst_letter_student_update"
+                return Response(detail, status=status.HTTP_400_BAD_REQUEST)
+            raise
         self.perform_update(serializer)
+        enrollment_source = enr_obj or getattr(serializer.instance, 'enrollment', None)
+        self._apply_enrollment_relations(serializer.instance, enrollment_source)
         return Response(serializer.data)
 
 

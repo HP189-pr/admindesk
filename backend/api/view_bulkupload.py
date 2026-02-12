@@ -1781,6 +1781,24 @@ class BulkUploadView(APIView):
                             else:
                                 _log(idx, doc_rec_id_raw or row.get('inst_veri_number'), 'Missing or invalid doc_rec_id', False); _cache_progress(idx+1); continue
 
+                        def _normalize_study_mode(val):
+                            if val is None:
+                                return None
+                            try:
+                                s = str(val).strip()
+                            except Exception:
+                                return None
+                            if not s:
+                                return None
+                            sl = s.lower()
+                            if sl in ("r", "reg", "regular", "regular mode"):
+                                return "Regular"
+                            if sl in ("p", "pt", "part", "part time", "part-time"):
+                                return "Part Time"
+                            return s
+
+                        row_study_mode = _normalize_study_mode(row.get('study_mode'))
+
                         # Upsert main record (one per doc_rec)
                         main = InstLetterMain.objects.filter(doc_rec=doc_rec).first()
                         main_fields = dict(
@@ -1793,9 +1811,9 @@ class BulkUploadView(APIView):
                             rec_inst_city = row.get('rec_inst_city') or None,
                             rec_inst_pin = row.get('rec_inst_pin') or None,
                             rec_inst_email = row.get('rec_inst_email') or None,
+                            rec_inst_phone = row.get('rec_inst_phone') or None,
                             doc_types = row.get('doc_types') or None,
                             rec_inst_sfx_name = row.get('rec_inst_sfx_name') or None,
-                            study_mode = row.get('study_mode') or None,
                             iv_status = row.get('iv_status') or None,
                             rec_by = row.get('rec_by') or None,
                             doc_rec_date = _parse_excel_date_safe(row.get('doc_rec_date')) or None,
@@ -1840,21 +1858,24 @@ class BulkUploadView(APIView):
                                             exists = InstLetterStudent.objects.filter(doc_rec=doc_rec, enrollment_no_text=str(s.get('enrollment')).strip()).first()
                                     if not exists and s.get('sr_no') is not None:
                                         exists = InstLetterStudent.objects.filter(doc_rec=doc_rec, sr_no=s.get('sr_no')).first()
-                                    if exists:
-                                        # update fields
-                                        changed = False
-                                        for fld in ('student_name','type_of_credential','month_year','verification_status','iv_degree_name'):
-                                            if s.get(fld) is not None:
-                                                val = s.get(fld)
-                                                # normalize month_year via helper
-                                                if fld == 'month_year':
-                                                    val = _normalize_month_year(val)
-                                                # ensure varchar(20) limits are respected
-                                                if isinstance(val, str) and len(val) > 20:
-                                                    val = val[:20]
-                                                if getattr(exists, fld, None) != val:
-                                                    setattr(exists, fld, val)
-                                                    changed = True
+                                        if exists:
+                                            # update fields
+                                            changed = False
+                                            for fld in ('student_name','type_of_credential','month_year','verification_status','iv_degree_name','study_mode'):
+                                                raw_val = s.get(fld) if fld != 'study_mode' else (s.get('study_mode') if s.get('study_mode') is not None else row_study_mode)
+                                                if raw_val is not None:
+                                                    val = raw_val
+                                                    # normalize month_year via helper
+                                                    if fld == 'month_year':
+                                                        val = _normalize_month_year(val)
+                                                    if fld == 'study_mode':
+                                                        val = _normalize_study_mode(val)
+                                                    # ensure varchar(20) limits are respected
+                                                    if isinstance(val, str) and len(val) > 20:
+                                                        val = val[:20]
+                                                    if getattr(exists, fld, None) != val:
+                                                        setattr(exists, fld, val)
+                                                        changed = True
                                         if changed:
                                             exists.save()
 
@@ -1928,6 +1949,7 @@ class BulkUploadView(APIView):
                                             institute = (enr_obj.institute if enr_obj and getattr(enr_obj, 'institute', None) else (Institute.objects.filter(pk=s.get('institute_id')).first() if s.get('institute_id') else None)),
                                             main_course = (enr_obj.maincourse if enr_obj and getattr(enr_obj, 'maincourse', None) else (MainBranch.objects.filter(pk=s.get('maincourse_id')).first() if s.get('maincourse_id') else None)),
                                             sub_course = (enr_obj.subcourse if enr_obj and getattr(enr_obj, 'subcourse', None) else (SubBranch.objects.filter(pk=s.get('subcourse_id')).first() if s.get('subcourse_id') else None)),
+                                            study_mode = _normalize_study_mode(s.get('study_mode')) or row_study_mode,
                                         )
                                         student_created = True
                                 except Exception as e:
@@ -1974,11 +1996,14 @@ class BulkUploadView(APIView):
                                         exists = InstLetterStudent.objects.filter(doc_rec=doc_rec, sr_no=row.get('sr_no')).first()
                                     if exists:
                                         changed = False
-                                        for fld in ('student_name','type_of_credential','month_year','verification_status','iv_degree_name'):
-                                            val = row.get(fld)
-                                            if val is not None:
+                                        for fld in ('student_name','type_of_credential','month_year','verification_status','iv_degree_name','study_mode'):
+                                            raw_val = row.get(fld) if fld != 'study_mode' else (row.get('study_mode') if row.get('study_mode') is not None else row_study_mode)
+                                            if raw_val is not None:
+                                                val = raw_val
                                                 if fld == 'month_year':
                                                     val = _normalize_month_year(val)
+                                                if fld == 'study_mode':
+                                                    val = _normalize_study_mode(val)
                                                 # enforce varchar(20) limit for short fields
                                                 if fld in ('month_year','verification_status') and isinstance(val, str) and len(val) > 20:
                                                     val = val[:20]
@@ -2039,6 +2064,7 @@ class BulkUploadView(APIView):
                                             institute = (enr.institute if enr and getattr(enr, 'institute', None) else (Institute.objects.filter(pk=row.get('institute_id')).first() if row.get('institute_id') else None)),
                                             main_course = (enr.maincourse if enr and getattr(enr, 'maincourse', None) else (MainBranch.objects.filter(pk=row.get('maincourse_id')).first() if row.get('maincourse_id') else None)),
                                             sub_course = (enr.subcourse if enr and getattr(enr, 'subcourse', None) else (SubBranch.objects.filter(pk=row.get('subcourse_id')).first() if row.get('subcourse_id') else None)),
+                                            study_mode = _normalize_study_mode(row.get('study_mode')) or row_study_mode,
                                         )
                                         student_created = True
                                 except Exception as e:

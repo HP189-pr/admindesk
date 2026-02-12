@@ -1613,7 +1613,7 @@ class EcaAdmin(admin.ModelAdmin):
 
 @admin.register(InstLetterMain)
 class InstLetterMainAdmin(admin.ModelAdmin):
-    list_display = ("id", "doc_rec", "inst_veri_number", "inst_veri_date", "institute", "rec_inst_city", "doc_types", 'rec_inst_sfx_name', 'study_mode', 'iv_status')
+    list_display = ("id", "doc_rec", "inst_veri_number", "inst_veri_date", "institute", "rec_inst_city", "doc_types", 'rec_inst_sfx_name', 'rec_inst_phone', 'iv_status')
     list_filter = ("inst_veri_date", "institute", 'iv_status')
 
 @admin.register(MigrationRecord)
@@ -1811,10 +1811,10 @@ class EnrollmentAdmin(CommonAdminMixin):
 
 @admin.register(InstLetterStudent)
 class InstLetterStudentAdmin(admin.ModelAdmin):
-    list_display = ("id", "doc_rec", "sr_no", "enrollment", "student_name", "institute", "verification_status")
-    list_filter = ("verification_status", "institute")
+    list_display = ("id", "doc_rec", "sr_no", "enrollment", "student_name",  "study_mode", "verification_status")
+    list_filter = ("verification_status",  "study_mode")
     search_fields = ("doc_rec__doc_rec_id", "enrollment__enrollment_no", "student_name")
-    autocomplete_fields = ("doc_rec", "enrollment", "institute", "sub_course", "main_course")
+    autocomplete_fields = ("doc_rec", "enrollment")
 
 @admin.register(StudentProfile)
 class StudentProfileAdmin(CommonAdminMixin):

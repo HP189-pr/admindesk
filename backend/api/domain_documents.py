@@ -73,12 +73,12 @@ class DocRec(models.Model):
         return f"{self.doc_rec_id}"
     def _prefix_for_apply(self) -> str:
         return {
-            ApplyFor.VERIFICATION: 'vr',
-            ApplyFor.INST_VERIFICATION: 'iv',
-            ApplyFor.PROVISIONAL: 'pr',
-            ApplyFor.MIGRATION: 'mg',
-            ApplyFor.GRADE_TRANS: 'gt',
-        }.get(self.apply_for, 'vr')
+            ApplyFor.VERIFICATION: 'VR',
+            ApplyFor.INST_VERIFICATION: 'IV',
+            ApplyFor.PROVISIONAL: 'PR',
+            ApplyFor.MIGRATION: 'MG',
+            ApplyFor.GRADE_TRANS: 'GT',
+        }.get(self.apply_for, 'VR')
     def _pay_prefix_for_payby(self, yy: int, yyyy: int) -> str:
         year_str = f"{yy:02d}"
         try:
@@ -111,6 +111,14 @@ class DocRec(models.Model):
         if self.pay_amount is not None and self.pay_amount < 0:
             raise ValidationError({'pay_amount': 'Amount cannot be negative.'})
     def save(self, *args, **kwargs):
+        # Normalize apply_for to uppercase to avoid pad length mistakes (e.g., 'iv' vs 'IV')
+        if self.apply_for:
+            self.apply_for = str(self.apply_for).upper()
+        # Coerce doc_rec_date to a real date if a string slipped in
+        if isinstance(self.doc_rec_date, str):
+            from django.utils.dateparse import parse_date
+            parsed = parse_date(self.doc_rec_date.strip()) if self.doc_rec_date else None
+            self.doc_rec_date = parsed
         # Use doc_rec_date if provided, else fallback to today
         base_date = self.doc_rec_date or timezone.localdate()
 
@@ -120,8 +128,10 @@ class DocRec(models.Model):
         else:
             fy_start = base_date.year - 1
 
-        yy = fy_start % 100
-        yyyy = fy_start
+        # For Inst-Verification, doc_rec_id should follow calendar year (doc_rec_date.year)
+        doc_year = base_date.year if self.apply_for == ApplyFor.INST_VERIFICATION else fy_start
+        yy = doc_year % 100
+        yyyy = doc_year
 
         # Handle payment prefix
         if self.pay_by == PayBy.NA:
@@ -136,12 +146,13 @@ class DocRec(models.Model):
             prefix = self._prefix_for_apply()
             year_str = f"{yy:02d}"
             base = f"{prefix}{year_str}"
+            pad_len = 4 if str(self.apply_for).upper() == ApplyFor.INST_VERIFICATION else 6
 
             with transaction.atomic():
                 last = (
                     DocRec.objects
                     .select_for_update(skip_locked=True)
-                    .filter(doc_rec_id__startswith=base)
+                    .filter(doc_rec_id__istartswith=base)
                     .order_by('-doc_rec_id')
                     .first()
                 )
@@ -153,7 +164,7 @@ class DocRec(models.Model):
                     except Exception:
                         next_num = 1
 
-                self.doc_rec_id = f"{prefix}{year_str}{next_num:06d}"
+                self.doc_rec_id = f"{prefix}{year_str}{next_num:0{pad_len}d}"
 
         # Ensure doc_rec_date is stored
         if not self.doc_rec_date:
