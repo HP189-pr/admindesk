@@ -122,14 +122,8 @@ class DocRec(models.Model):
         # Use doc_rec_date if provided, else fallback to today
         base_date = self.doc_rec_date or timezone.localdate()
 
-        # Financial year logic based on doc_rec_date
-        if base_date.month >= 4:
-            fy_start = base_date.year
-        else:
-            fy_start = base_date.year - 1
-
-        # For Inst-Verification, doc_rec_id should follow calendar year (doc_rec_date.year)
-        doc_year = base_date.year if self.apply_for == ApplyFor.INST_VERIFICATION else fy_start
+        # Always use calendar year for doc_rec_id
+        doc_year = base_date.year
         yy = doc_year % 100
         yyyy = doc_year
 

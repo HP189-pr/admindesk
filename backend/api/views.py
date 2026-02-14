@@ -530,36 +530,29 @@ class DocRecViewSet(viewsets.ModelViewSet):
         can be resolved (by numeric id or enrollment_no). Failures are
         swallowed to avoid blocking the primary DocRec creation flow.
         """
-        # Fix: Generate doc_rec_id manually if not provided, using doc_rec_date
-        # to ensure the ID year matches the selected date (not server time).
+        import logging
+        logger = logging.getLogger("docrec")
         save_kwargs = {}
         req_data = self.request.data if hasattr(self.request, 'data') else {}
-        
-        if not req_data.get('doc_rec_id'):
+
+
+        # Always set doc_rec_date if provided, let model handle doc_rec_id logic
+        doc_date_str = req_data.get('doc_rec_date')
+        doc_date = None
+        if doc_date_str:
             try:
-                apply_for = req_data.get('apply_for', 'VR')
-                doc_date_str = req_data.get('doc_rec_date')
-                if doc_date_str:
-                    doc_date = datetime.datetime.strptime(doc_date_str, "%Y-%m-%d").date()
-                else:
-                    doc_date = timezone.localdate()
-                
-                yy = doc_date.year % 100
-                tmp = DocRec(apply_for=apply_for, pay_by=PayBy.NA)
-                prefix = tmp._prefix_for_apply()
-                year_str = f"{yy:02d}"
-                base = f"{prefix}{year_str}"
-                
-                last = DocRec.objects.filter(doc_rec_id__startswith=base).order_by("-doc_rec_id").first()
-                next_num = 1
-                if last and last.doc_rec_id:
-                    try:
-                        next_num = int(last.doc_rec_id[len(base):]) + 1
-                    except Exception:
-                        next_num = 1
-                save_kwargs['doc_rec_id'] = f"{base}{next_num:06d}"
-            except Exception:
-                pass
+                # Accept both YYYY-MM-DD and DD-MM-YYYY for robustness
+                if '-' in doc_date_str:
+                    parts = doc_date_str.split('-')
+                    if len(parts[0]) == 4:
+                        doc_date = datetime.datetime.strptime(doc_date_str, "%Y-%m-%d").date()
+                    elif len(parts[2]) == 4:
+                        doc_date = datetime.datetime.strptime(doc_date_str, "%d-%m-%Y").date()
+            except Exception as e:
+                logger.warning(f"Could not parse doc_rec_date '{doc_date_str}': {e}")
+                doc_date = None
+        if doc_date:
+            save_kwargs['doc_rec_date'] = doc_date
 
         docrec = serializer.save(**save_kwargs)
         try:
@@ -738,13 +731,8 @@ class DocRecViewSet(viewsets.ModelViewSet):
             else:
                 doc_date = timezone.localdate()
 
-            # For Inst-Verification use calendar year; others use fiscal year (Apr-Mar)
-            if doc_date.month >= 4:
-                fy_start = doc_date.year
-            else:
-                fy_start = doc_date.year - 1
-
-            doc_year = doc_date.year if str(apply_for).upper() == ApplyFor.INST_VERIFICATION else fy_start
+            # Always use calendar year
+            doc_year = doc_date.year
 
             yy = doc_year % 100
             prefix = tmp._prefix_for_apply()
