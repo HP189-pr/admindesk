@@ -232,6 +232,7 @@ const NoAccessState = () => (
 const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbox }) => {
 	const [selectedAction, setSelectedAction] = useState("➕");
 	const [mform, setMForm] = useState(createMainForm());
+	const [nextDocRecId, setNextDocRecId] = useState("");
 	const [sform, setSForm] = useState(() => createStudentForm("1"));
 	const [editingStudentId, setEditingStudentId] = useState(null);
 	const [list, setList] = useState([]);
@@ -497,6 +498,36 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 		},
 		[rights.can_create, mform, authHeaders, setStatus]
 	);
+
+	useEffect(() => {
+		let isActive = true;
+		const controller = new AbortController();
+		const run = async () => {
+			if (!rights.can_create || mform.doc_rec) {
+				setNextDocRecId("");
+				return;
+			}
+			try {
+				const todayIso = new Date().toISOString().slice(0, 10);
+				const effectiveIso = mform.doc_rec_date ? dmyToISO(mform.doc_rec_date) || todayIso : todayIso;
+				const headers = authHeaders();
+				const res = await fetch(
+					`${apiBase}/docrec/next-id/?apply_for=${encodeURIComponent(DOCREC_APPLY_FOR)}&doc_rec_date=${encodeURIComponent(effectiveIso)}`,
+					{ headers, credentials: "include", signal: controller.signal }
+				);
+				if (!res.ok) return;
+				const data = await res.json();
+				if (isActive) setNextDocRecId((data?.next_id || "").toUpperCase());
+			} catch (err) {
+				if (err?.name !== "AbortError") console.warn("next-id preview", err);
+			}
+		};
+		run();
+		return () => {
+			isActive = false;
+			controller.abort();
+		};
+	}, [mform.doc_rec, mform.doc_rec_date, rights.can_create, authHeaders]);
 
 	const loadList = useCallback(
 		async (queryOverride = "") => {
@@ -1000,8 +1031,12 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 								className="input"
 								value={mform.doc_rec}
 								onChange={(e) => setMForm((prev) => ({ ...prev, doc_rec: e.target.value.trim() }))}
-								placeholder="iv_25_0001"
+								placeholder={nextDocRecId || "Auto"}
 							/>
+						</div>
+						<div className="md:col-span-2">
+							<label className="label">Doc Rec ID (next)</label>
+							<input className="input" value={nextDocRecId} readOnly />
 						</div>
 						<div className="md:col-span-2">
 							<label className="label">Doc Rec Date</label>

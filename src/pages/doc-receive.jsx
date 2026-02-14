@@ -552,7 +552,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
               dg_count: clamp3(form.dg),
               moi_count: clamp3(form.moi),
               backlog_count: clamp3(form.backlog),
-              doc_rec_remark: form.doc_rec_remark || null,
+              doc_rec_remark: form.doc_remark || null,
               status: 'IN_PROGRESS',
             };
             
@@ -584,7 +584,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
         passing_year: form.passing_year,
         prv_status: "Pending",
         pay_rec_no: rec.pay_rec_no || "",
-        doc_rec_remark: form.doc_rec_remark || null,
+        doc_rec_remark: form.doc_remark || null,
       };
       await fetch("/api/provisional/", {
         method: "POST",
@@ -605,7 +605,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
         admission_year: form.admission_year,
         mg_status: "Pending",
         pay_rec_no: rec.pay_rec_no || "",
-        doc_rec_remark: form.doc_rec_remark || null,
+        doc_rec_remark: form.doc_remark || null,
       };
       await fetch("/api/migration/", {
         method: "POST",
@@ -634,7 +634,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
       pay_amount: +form.pay_amount || 0,
       pay_rec_no: form.pay_by === 'NA' ? null : (form.pay_rec_no || null),
       doc_rec_date: form.doc_rec_date ? dmyToISO(form.doc_rec_date) : null,
-      doc_rec_remark: form.doc_rec_remark || null,
+      doc_remark: form.doc_remark || null,
     };
 
     const verification_data = {
@@ -647,7 +647,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
       moi_count: clamp3(form.moi),
       backlog_count: clamp3(form.backlog),
       pay_rec_no: form.pay_rec_no || null,
-      doc_rec_remark: form.doc_rec_remark || null,
+      doc_rec_remark: form.doc_remark || null,
     };
 
     const payload = {
@@ -926,7 +926,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
                       doc_rec_id: "",
                       pay_rec_no_pre: "",
                       pay_rec_no: "",
-                      doc_rec_remark: "",
+                      doc_remark: "",
                       enrollment: "",
                       enrollment_id: null,
                       second_enrollment: "",
