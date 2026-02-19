@@ -202,7 +202,7 @@ class LeaveAllocationSerializer(serializers.ModelSerializer):
         return lt.leave_name if lt else None
 
     def get_profile_name(self, obj):
-        if obj.apply_to == "ALL":
+        if str(obj.apply_to).upper() == "ALL":
             return "All"
         profile = EmpProfile.objects.filter(emp_id=obj.emp_id).first()
         return profile.emp_name if profile else None

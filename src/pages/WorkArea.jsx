@@ -15,6 +15,7 @@ import StudentSearch from "./student-search";
 import AuthInventory from "../hooks/AuthInventory";
 import AuthDocRegister from "../hooks/AuthDocRegister";
 import AuthFees from "../hooks/AuthFees";
+import AuthCCTV from "../hooks/AuthCCTV";
 import Record from "./Record";
 
 
@@ -93,6 +94,7 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
   else if (l.includes("fee type")) key = "fee_type_master";
   else if (l.includes("inventory")) key = "inventory";
   else if (l.includes("record")) key = "record";
+  else if (l.includes("cctv")) key = "cctv_monitoring";
   else if (l.includes("leave management")) key = "emp_leave";
   else if (l.includes("leave report")) key = "emp_leave_report";
   else if (l.includes("balance certificate")) key = "emp_balance_certificate";
@@ -200,6 +202,13 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
         );
       case "record":
         return <Record />;
+      case "cctv_monitoring":
+        return (
+          <AuthCCTV
+            onToggleSidebar={onToggleSidebar}
+            onToggleChatbox={onToggleChatbox}
+          />
+        );
       case "emp_leave":
         return <EmpLeavePage />;
       case "emp_leave_report":

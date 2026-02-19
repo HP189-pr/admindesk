@@ -270,7 +270,7 @@ class LeaveAllocation(models.Model):
         unique_together = ("leave_code", "period", "emp")
 
     def save(self, *args, **kwargs):
-        if self.apply_to == "All":
+        if str(self.apply_to).upper() == "ALL":
             self.emp = None
         super().save(*args, **kwargs)
 

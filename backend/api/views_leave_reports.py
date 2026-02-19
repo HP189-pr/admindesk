@@ -64,7 +64,6 @@ from datetime import datetime
 from decimal import Decimal
 
 from .domain_emp import EmpProfile, LeavePeriod, LeaveType
-from .domain_leave_balance import computeLeaveBalances
 
 def _parse_date(s):
     if not s:

@@ -86,7 +86,7 @@ class LeaveAllocationAdmin(admin.ModelAdmin):
     def emp_id_field(self, obj):
         """Display emp_id for employee-specific allocations, or 'ALL' for global"""
         try:
-            if obj.apply_to == 'ALL':
+            if str(obj.apply_to).upper() == 'ALL':
                 return 'ALL'
             return obj.emp.emp_id if obj.emp else 'N/A'
         except Exception:

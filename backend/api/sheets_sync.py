@@ -14,6 +14,8 @@ from django.utils import timezone
 from datetime import datetime
 
 from .domain_transcript_generate import TranscriptRequest
+from .cctv.domain_cctv import CCTVExam, CCTVCentreEntry, CCTVDVD
+from django.db.models import Max
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +59,35 @@ TRANSCRIPT_FIELD_ALIASES: Dict[str, tuple[str, ...]] = {
         "pdf_generated",
         "pdf generate",
         "pdf",
+    ),
+}
+
+# =====================================
+# CCTV FIELD ALIASES (NEW - SAFE ADD)
+# =====================================
+
+CCTV_FIELD_ALIASES: Dict[str, tuple[str, ...]] = {
+    "start_label": (
+        "startdvd",
+        "start dvd",
+        "start",
+    ),
+    "end_label": (
+        "enddvd",
+        "end dvd",
+        "end",
+    ),
+    "cc_start_label": (
+        "ccstart",
+        "cc start",
+    ),
+    "cc_end_label": (
+        "ccend",
+        "cc end",
+    ),
+    "objection_found": (
+        "objection",
+        "objection_found",
     ),
 }
 
@@ -128,6 +159,18 @@ def _get_worksheet(sheet_id: str, worksheet_gid: Optional[int]) -> gspread.Works
     if worksheet is None:
         raise RuntimeError(f"Sheet {sheet_id!r} does not contain any worksheets.")
     return worksheet
+
+
+# =====================================
+# CCTV DYNAMIC WORKSHEET ACCESS
+# =====================================
+
+def _get_worksheet_by_name(sheet_id: str, sheet_name: str) -> gspread.Worksheet:
+    sheet = _open_sheet(sheet_id)
+    try:
+        return sheet.worksheet(sheet_name)
+    except Exception:
+        raise RuntimeError(f"Worksheet {sheet_name!r} not found in sheet {sheet_id}")
 
 
 @lru_cache(maxsize=None)
@@ -785,4 +828,319 @@ def import_transcript_requests_from_sheet(sheet_id: Optional[str] = None, worksh
         "pruned": pruned,
         "created_trs": created_trs,
         "updated_trs": updated_trs,
+    }
+
+
+# =====================================
+# CCTV SYNC FUNCTION (NEW - SAFE ADD)
+# =====================================
+
+def sync_cctv_centre_to_sheet(instance, changed_fields: Mapping[str, object]) -> None:
+    """Sync CCTV centre updates to Google Sheet.
+
+    Uses dynamic worksheet name (exam_year_session).
+    Does NOT interfere with mail or transcript sync.
+    """
+
+    sheet_id = _get_setting("GOOGLE_CCTV_SPREADSHEET_ID")
+    if not sheet_id:
+        return
+
+    # Use dynamic worksheet like "2026-1"
+    sheet_name = getattr(instance.exam, "exam_year_session", None)
+    if not sheet_name:
+        return
+
+    try:
+        worksheet = _get_worksheet_by_name(sheet_id, sheet_name)
+    except Exception as exc:
+        logger.warning("CCTV worksheet not found: %s", exc)
+        return
+
+    # Try locating row using subject_code + place
+    try:
+        search_key = f"{instance.exam.subject_code}"
+        cell = worksheet.find(search_key)
+        row_number = cell.row if cell else None
+    except Exception:
+        row_number = None
+
+    if not row_number:
+        logger.debug("CCTV sync skipped: row not found for %s", instance.exam.subject_code)
+        return
+
+    # Build header map dynamically
+    headers = worksheet.row_values(1)
+    header_map = {
+        header.strip().lower(): index + 1
+        for index, header in enumerate(headers)
+        if header
+    }
+
+    updates = {}
+
+    for field in changed_fields:
+        aliases = CCTV_FIELD_ALIASES.get(field)
+        if not aliases:
+            continue
+
+        col_index = _resolve_column(header_map, aliases)
+        if not col_index:
+            continue
+
+        cell_ref = rowcol_to_a1(row_number, col_index)
+        updates[cell_ref] = _coerce_value(getattr(instance, field))
+
+    if not updates:
+        return
+
+    try:
+        batch_data = [
+            {
+                "range": cell,
+                "values": [[value]],
+            }
+            for cell, value in updates.items()
+        ]
+
+        if len(batch_data) == 1:
+            worksheet.update(batch_data[0]["range"], batch_data[0]["values"])
+        else:
+            worksheet.batch_update(batch_data)
+
+    except Exception as exc:
+        logger.warning("Failed to push CCTV updates %s: %s", updates, exc)
+
+
+def import_cctv_centres_from_sheet(
+    sheet_name: str,
+    sheet_id: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> Dict[str, int]:
+    """Import CCTV centre rows from a Google Sheet into the database.
+
+    The sheet name is expected to match CCTVExam.exam_year_session.
+    Rows are matched by (exam_year_session + subject_code + place + session).
+    The function is conservative and will only create missing entries.
+    """
+    sheet_id = sheet_id or _get_setting("GOOGLE_CCTV_SPREADSHEET_ID")
+    if not sheet_id or not sheet_name:
+        return {"created": 0, "updated": 0, "total": 0, "skipped": 0}
+
+    worksheet = _get_worksheet_by_name(sheet_id, sheet_name)
+    try:
+        records = worksheet.get_all_records()
+    except Exception:
+        values = worksheet.get_all_values()
+        if not values or len(values) < 2:
+            return {"created": 0, "updated": 0, "total": 0, "skipped": 0}
+        headers = [h.strip().lower() for h in values[0]]
+        records = []
+        for row in values[1:]:
+            rec = {headers[i]: (row[i] if i < len(row) else "") for i in range(len(headers))}
+            records.append(rec)
+
+    created = 0
+    updated = 0
+    total = 0
+    skipped = 0
+
+    def pick(norm_row, *keys):
+        for k in keys:
+            if k and k in norm_row:
+                v = norm_row.get(k)
+                if v is not None and str(v).strip() != "":
+                    return v
+        return None
+
+    def to_int(value: object) -> Optional[int]:
+        if value is None:
+            return None
+        try:
+            return int(str(value).strip())
+        except Exception:
+            return None
+
+    def to_bool(value: object) -> bool:
+        if value is None:
+            return False
+        txt = str(value).strip().lower()
+        return txt in {"yes", "y", "true", "1", "on"}
+
+    for raw in records:
+        if limit and total >= limit:
+            break
+        total += 1
+
+        norm_row = {str(k).strip().lower(): v for k, v in (raw.items() if isinstance(raw, Mapping) else {})}
+
+        subject_code = pick(norm_row, "subject_code", "subject code", "subject", "sub code")
+        place = pick(norm_row, "place", "centre", "center")
+        session = pick(norm_row, "session")
+        no_of_cd_raw = pick(norm_row, "no_of_cd", "no of cd", "no of dvd", "no_of_dvd", "dvd", "cd")
+
+        if not (subject_code and place and session and no_of_cd_raw):
+            skipped += 1
+            continue
+
+        no_of_cd = to_int(no_of_cd_raw)
+        if not no_of_cd or no_of_cd <= 0:
+            skipped += 1
+            continue
+
+        exam = CCTVExam.objects.filter(
+            exam_year_session__iexact=str(sheet_name).strip(),
+            subject_code__iexact=str(subject_code).strip(),
+        ).first()
+        if not exam:
+            skipped += 1
+            continue
+
+        place_str = str(place).strip()
+        session_str = str(session).strip()
+
+        centre = CCTVCentreEntry.objects.filter(
+            exam=exam,
+            place__iexact=place_str,
+            session__iexact=session_str,
+        ).first()
+
+        if centre:
+            updated += 1
+            continue
+
+        centre = CCTVCentreEntry.objects.create(
+            exam=exam,
+            place=place_str,
+            session=session_str,
+            no_of_cd=no_of_cd,
+        )
+
+        if centre.start_number is not None and centre.end_number is not None:
+            for i in range(centre.start_number, centre.end_number + 1):
+                CCTVDVD.objects.create(
+                    centre=centre,
+                    number=i,
+                    label=f"{session_str}-{i}",
+                )
+
+        created += 1
+
+    return {
+        "created": created,
+        "updated": updated,
+        "total": total,
+        "skipped": skipped,
+    }
+
+
+def import_cctv_exams_from_sheet(
+    sheet_name: str,
+    sheet_id: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> Dict[str, int]:
+    """Import CCTV exams from a Google Sheet (header-driven)."""
+    sheet_id = sheet_id or _get_setting("GOOGLE_CCTV_SPREADSHEET_ID")
+    if not sheet_id or not sheet_name:
+        return {"created": 0, "updated": 0, "total": 0, "skipped": 0}
+
+    worksheet = _get_worksheet_by_name(sheet_id, sheet_name)
+    try:
+        records = worksheet.get_all_records()
+    except Exception:
+        values = worksheet.get_all_values()
+        if not values or len(values) < 2:
+            return {"created": 0, "updated": 0, "total": 0, "skipped": 0}
+        headers = [h.strip().lower() for h in values[0]]
+        records = []
+        for row in values[1:]:
+            rec = {headers[i]: (row[i] if i < len(row) else "") for i in range(len(headers))}
+            records.append(rec)
+
+    created = 0
+    updated = 0
+    total = 0
+    skipped = 0
+
+    def pick(norm_row, *keys):
+        for k in keys:
+            if k and k in norm_row:
+                v = norm_row.get(k)
+                if v is not None and str(v).strip() != "":
+                    return v
+        return None
+
+    def to_int(value: object) -> int:
+        try:
+            return int(str(value).strip())
+        except Exception:
+            return 0
+
+    for raw in records:
+        if limit and total >= limit:
+            break
+        total += 1
+        norm_row = {str(k).strip().lower(): v for k, v in (raw.items() if isinstance(raw, Mapping) else {})}
+
+        exam_date = pick(norm_row, "exam date", "exam_date", "date")
+        exam_time = pick(norm_row, "exam time", "exam_time", "time")
+        course = pick(norm_row, "course")
+        sem = pick(norm_row, "sem", "semester")
+        subject_code = pick(norm_row, "subject code", "subject_code", "subject")
+        subject_name = pick(norm_row, "subject name", "subject_name")
+        no_of_students = pick(norm_row, "no of students", "no_of_students", "students")
+        institute_remarks = pick(
+            norm_row,
+            "institute remarks",
+            "institute remark",
+            "inst remarks",
+            "inst remark",
+            "institute_remarks",
+            "instituteremarks",
+            "remarks",
+            "remark",
+        )
+
+        if not (exam_date and subject_code):
+            skipped += 1
+            continue
+
+        payload = {
+            "exam_date": str(exam_date).strip(),
+            "exam_time": str(exam_time or "").strip(),
+            "course": str(course or "").strip(),
+            "sem": str(sem or "").strip(),
+            "subject_code": str(subject_code).strip(),
+            "subject_name": str(subject_name or "").strip(),
+            "no_of_students": to_int(no_of_students),
+            "institute_remarks": str(institute_remarks or "").strip() or None,
+            "exam_year_session": str(sheet_name).strip(),
+            "raw_row": dict(raw) if isinstance(raw, Mapping) else {},
+        }
+
+        instance = CCTVExam.objects.filter(
+            exam_year_session__iexact=str(sheet_name).strip(),
+            subject_code__iexact=str(subject_code).strip(),
+            exam_date=str(exam_date).strip(),
+        ).first()
+
+        if instance:
+            changed = False
+            for key, val in payload.items():
+                if getattr(instance, key) != val:
+                    setattr(instance, key, val)
+                    changed = True
+            if changed:
+                instance.save()
+                updated += 1
+            continue
+
+        CCTVExam.objects.create(**payload)
+        created += 1
+
+    return {
+        "created": created,
+        "updated": updated,
+        "total": total,
+        "skipped": skipped,
     }

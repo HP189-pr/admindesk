@@ -85,12 +85,16 @@ function EmpLeavePage() {
       .catch(() => setProfiles([]));
   }, []);
 
-  // Load leave entries
+  // Load leave entries (filtered by selected period)
   useEffect(() => {
-    axios.get('/api/leaveentry/?page_size=9999')
+    const params = { page_size: 9999 };
+    if (selectedPeriod) {
+      params.period = selectedPeriod;
+    }
+    axios.get('/api/leaveentry/', { params })
       .then(r => setLeaveEntries(normalize(r.data)))
       .catch(() => setLeaveEntries([]));
-  }, []);
+  }, [selectedPeriod]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -192,47 +196,10 @@ function EmpLeavePage() {
     }
   };
   // ...existing return statement and JSX...
-  // Filter by period date range
+  // Filter by search only (period filtering is handled by the API)
   const filteredEntries = useMemo(() => {
-    const selectedPeriodObj = periods.find(p => String(p.id) === String(selectedPeriod));
-    
     return (leaveEntries || [])
       .filter(le => {
-        // PERIOD FILTER (date range)
-        if (selectedPeriod && selectedPeriodObj) {
-          // Parse leave start date - try ISO format first, then DD-MM-YYYY
-          let leaveStart;
-          if (/^\d{4}-\d{2}-\d{2}$/.test(le.start_date)) {
-            leaveStart = new Date(le.start_date);
-          } else {
-            leaveStart = parseDMY(le.start_date);
-          }
-          
-          if (!leaveStart || isNaN(leaveStart.getTime())) {
-            return false;
-          }
-          
-          // Parse period dates - try ISO format first, then DD-MM-YYYY
-          let periodStart, periodEnd;
-          
-          // Check if dates are in ISO format (YYYY-MM-DD)
-          if (/^\d{4}-\d{2}-\d{2}$/.test(selectedPeriodObj.start_date)) {
-            periodStart = new Date(selectedPeriodObj.start_date);
-            periodEnd = new Date(selectedPeriodObj.end_date);
-          } else {
-            // Try DD-MM-YYYY format
-            periodStart = parseDMY(selectedPeriodObj.start_date);
-            periodEnd = parseDMY(selectedPeriodObj.end_date);
-          }
-          
-          if (!periodStart || !periodEnd || isNaN(periodStart.getTime()) || isNaN(periodEnd.getTime())) {
-            return true; // Don't filter if period dates are invalid
-          }
-          
-          // Check if leave start date falls within period range
-          if (leaveStart < periodStart || leaveStart > periodEnd) return false;
-        }
-
         // SEARCH
         if (recordSearch.trim()) {
           const q = recordSearch.trim().toLowerCase();
@@ -259,7 +226,7 @@ function EmpLeavePage() {
         const dateB = parseDMY(b.start_date)?.getTime() || 0;
         return dateB - dateA;
       });
-  }, [leaveEntries, selectedPeriod, periods, recordSearch]);
+  }, [leaveEntries, recordSearch]);
 
   const PANEL_LABELS = {
     'Entry Leave': 'Add',
@@ -323,25 +290,6 @@ function EmpLeavePage() {
                 </div>
 
                 <form onSubmit={handleApply} className="mt-4 space-y-4">
-                  {/* Period Selector */}
-                  <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded">
-                    <label className="font-medium text-gray-700">Period:</label>
-                    <select 
-                      value={selectedPeriod} 
-                      onChange={e => setSelectedPeriod(e.target.value)} 
-                      className="border border-gray-300 p-2 rounded text-sm min-w-[300px] focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                      required
-                    >
-                      <option value="">-- Select Period --</option>
-                      {periods.map(p => (
-                        <option key={p.id} value={p.id}>
-                          {p.period_name} ({p.start_date} to {p.end_date})
-                        </option>
-                      ))}
-                    </select>
-                    <span className="text-sm text-gray-600">⚠️ Leave dates must fall within selected period</span>
-                  </div>
-
                   <div className="flex flex-col gap-3 md:flex-row">
                     <div className="flex flex-col gap-1 md:w-28">
                       <label className="text-xs text-gray-600">Report No</label>

@@ -274,6 +274,34 @@ class ReceiptNumberService:
             "receipt_no_full": receipt_no_full,
         }
 
+    @classmethod
+    def next_numbers_latest(cls, payment_mode: str, *, lock: bool = False, bank_base: Optional[str] = None, fallback_date: Optional[date] = None) -> Dict[str, Any]:
+        qs = Receipt.objects.filter(payment_mode=payment_mode)
+        if payment_mode == "BANK" and bank_base:
+            qs = qs.filter(rec_ref__startswith=f"{bank_base}/")
+
+        if lock:
+            qs = qs.select_for_update()
+
+        last_receipt = qs.order_by("-created_at", "-id").first()
+        if last_receipt and (last_receipt.rec_ref or last_receipt.receipt_no_full):
+            rec_ref = last_receipt.rec_ref or ""
+            rec_no = last_receipt.rec_no
+            if rec_no is None and last_receipt.receipt_no_full:
+                _, parsed = split_receipt(last_receipt.receipt_no_full)
+                rec_no = parsed
+            if rec_ref and rec_no:
+                seq = int(rec_no) + 1
+                receipt_no_full = normalize_receipt_no(f"{rec_ref}{seq:06d}")
+                return {
+                    "rec_ref": rec_ref,
+                    "rec_no": seq,
+                    "receipt_no_full": receipt_no_full,
+                }
+
+        entry_date = fallback_date or timezone.now().date()
+        return cls.next_numbers(payment_mode, entry_date, lock=lock, bank_base=bank_base)
+
 
 
 class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
@@ -411,7 +439,10 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
             raw_base = (self.request.data.get("bank_prefix") or self.request.data.get("rec_ref_base") or "").strip()
             if raw_base in _BANK_PREFIX_CHOICES:
                 bank_base = raw_base
-        next_numbers = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=True, bank_base=bank_base)
+        if payment_mode in {"UPI", "BANK"}:
+            next_numbers = ReceiptNumberService.next_numbers_latest(payment_mode, lock=True, bank_base=bank_base, fallback_date=entry_date)
+        else:
+            next_numbers = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=True, bank_base=bank_base)
         serializer.save(
             created_by=self.request.user,
             rec_ref=next_numbers["rec_ref"],
@@ -437,7 +468,10 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
             raw_base = (request.query_params.get("bank_prefix") or request.query_params.get("rec_ref_base") or "").strip()
             if raw_base in _BANK_PREFIX_CHOICES:
                 bank_base = raw_base
-        next_numbers = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=False, bank_base=bank_base)
+        if payment_mode in {"UPI", "BANK"}:
+            next_numbers = ReceiptNumberService.next_numbers_latest(payment_mode, lock=False, bank_base=bank_base, fallback_date=entry_date)
+        else:
+            next_numbers = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=False, bank_base=bank_base)
         return Response({
             "rec_ref": next_numbers["rec_ref"],
             "rec_no": next_numbers["rec_no"],

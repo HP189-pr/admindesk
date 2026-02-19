@@ -105,6 +105,7 @@ const EmptyState = ({ title, message }) => (
 const DEFAULT_RIGHTS = { can_view: true, can_create: true, can_edit: true, can_delete: true };
 
 const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbox }) => {
+  const navigate = useNavigate();
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const formatReceiptDisplay = useCallback((full) => {
     if (!full) return '--';
@@ -295,7 +296,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
 
       const sameDayEntries = entries.filter((entry) => {
         if (entry.payment_mode?.toUpperCase() !== normalizedMode) return false;
-        if (entry.date !== date) return false;
+        if (normalizedMode === 'CASH' && entry.date !== date) return false;
         if (normalizedMode === 'BANK' && bankBase) {
           const prefix = extractReferencePrefix(entry);
           return prefix?.startsWith(`${bankBase}/`);
@@ -639,8 +640,6 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
       />
     );
   }
-
-  const navigate = useNavigate();
 
   return (
     <div className="p-4 md:p-6 space-y-4 h-full bg-slate-100">

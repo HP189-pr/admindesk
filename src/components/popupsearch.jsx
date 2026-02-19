@@ -222,6 +222,10 @@ const PopupSearch = () => {
                             label="Convocation Month-Year"
                             value={firstDegree?.convocation_period}
                         />
+                        <Field
+                          label="Class Obtain"
+                          value={firstDegree?.class_obtain}
+                        />
                         </Card>
                     </div>
 

@@ -19,6 +19,7 @@ from .domain_courses import *  # noqa: F401,F403
 from .domain_enrollment import *  # noqa: F401,F403
 from .domain_documents import *  # noqa: F401,F403
 from .domain_verification import *  # noqa: F401,F403
+from .cctv.domain_cctv import *  # noqa: F401,F403
 from django.contrib.auth.models import User as DjangoAuthUser  # Export default auth user for serializers expecting it.
 
 # Optional: define __all__ explicitly to aggregate from submodules
@@ -28,7 +29,8 @@ from .domain_enrollment import __all__ as _enroll_all  # type: ignore
 from .domain_documents import __all__ as _docs_all  # type: ignore
 from .domain_verification import __all__ as _ver_all  # type: ignore
 from .domain_emp import __all__ as _ver_all  # type: ignore
-__all__ = [*_core_all, *_courses_all, *_enroll_all, *_docs_all, *_ver_all, 'User']
+from .cctv.domain_cctv import __all__ as _cctv_all  # type: ignore
+__all__ = [*_core_all, *_courses_all, *_enroll_all, *_docs_all, *_ver_all, *_cctv_all, 'User']
 
 # Backward compatibility: expose Django's default User model under expected name
 User = DjangoAuthUser

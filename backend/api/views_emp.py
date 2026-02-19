@@ -22,7 +22,7 @@ from .serializers_emp import (
     LeaveAllocationSerializer,
 )
 
-from .domain_leave_balance import computeLeaveBalances
+from .leave_engine import compute_leave_balances
 
 # ---------------------------
 # User / profile helpers
@@ -142,7 +142,7 @@ class LeaveAllocationListView(generics.ListCreateAPIView):
         data = request.data
         leave_code = data.get("leave_code")
         period_id = data.get("period")
-        apply_to = data.get("apply_to", "ALL")
+        apply_to = str(data.get("apply_to", "ALL")).upper()
         allocated = data.get("allocated")
         emp_id = data.get("emp_id")
 
@@ -247,15 +247,43 @@ class LeaveEntryViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         qs = super().get_queryset()
-        if user.is_staff or user.is_superuser or IsLeaveManager().has_permission(self.request, self):
-            return qs
-        ids = _user_identifiers(user)
-        if not ids:
-            return qs.none()
-        q = Q()
-        for ident in ids:
-            q |= Q(emp__username__iexact=ident) | Q(emp__usercode__iexact=ident) | Q(emp__emp_id__iexact=ident)
-        return qs.filter(q)
+
+        # Role-based filter
+        if not (user.is_staff or user.is_superuser or IsLeaveManager().has_permission(self.request, self)):
+            ids = _user_identifiers(user)
+            if not ids:
+                return qs.none()
+            q = Q()
+            for ident in ids:
+                q |= Q(emp__username__iexact=ident) | Q(emp__usercode__iexact=ident) | Q(emp__emp_id__iexact=ident)
+            qs = qs.filter(q)
+
+        # Period filter (overlap)
+        period_id = self.request.query_params.get("period")
+        if period_id:
+            try:
+                period = LeavePeriod.objects.get(id=int(period_id))
+            except (ValueError, LeavePeriod.DoesNotExist):
+                return qs.none()
+            qs = qs.filter(start_date__lte=period.end_date, end_date__gte=period.start_date)
+
+        # Optional date range filter
+        start_gte = self.request.query_params.get("start_date__gte")
+        start_lte = self.request.query_params.get("start_date__lte")
+        if start_gte:
+            try:
+                start_gte = date.fromisoformat(start_gte)
+            except ValueError:
+                return qs.none()
+            qs = qs.filter(start_date__gte=start_gte)
+        if start_lte:
+            try:
+                start_lte = date.fromisoformat(start_lte)
+            except ValueError:
+                return qs.none()
+            qs = qs.filter(start_date__lte=start_lte)
+
+        return qs
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -290,7 +318,7 @@ class MyLeaveBalanceView(generics.GenericAPIView):
         if not period:
             return Response({"detail": "No leave periods found"}, status=404)
 
-        result = computeLeaveBalances(leaveCalculationDate=None, selectedPeriodId=period.id)
+        result = compute_leave_balances(employee_ids=[str(profile.emp_id)], leave_calculation_date=None)
         emp_data = next(
             (e for e in result["employees"] if str(e["emp_id"]) == str(profile.emp_id)),
             None
@@ -340,7 +368,7 @@ class LeaveReportView(APIView):
         except:
             return Response({"detail": "Invalid period id"}, status=400)
 
-        payload = computeLeaveBalances(selectedPeriodId=period_id)
+        payload = compute_leave_balances()
 
         rows = []
         if payload and 'employees' in payload:

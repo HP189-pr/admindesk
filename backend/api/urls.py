@@ -82,6 +82,13 @@ try:
         InstLetterMainViewSet, InstLetterStudentViewSet,
     )
 
+    from .cctv.views_cctv import (
+        CCTVExamViewSet,
+        CCTVCentreEntryViewSet,
+        CCTVDVDViewSet,
+        CCTVOutwardViewSet,
+    )
+
 
     router = DefaultRouter()
     # Core router registrations
@@ -123,6 +130,10 @@ try:
     router.register(r'leavetype', LeaveTypeViewSet, basename='leavetype')
     router.register(r'leave-periods', LeavePeriodViewSet, basename='leave-periods')
     router.register(r'leaveentry', LeaveEntryViewSet, basename='leaveentry')
+    router.register(r"exam", CCTVExamViewSet, basename="cctv-exam")
+    router.register(r"centre", CCTVCentreEntryViewSet, basename="cctv-centre")
+    router.register(r"dvd", CCTVDVDViewSet, basename="cctv-dvd")
+    router.register(r"outward", CCTVOutwardViewSet, basename="cctv-outward")
 
     urlpatterns = [
 

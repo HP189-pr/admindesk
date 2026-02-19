@@ -3,9 +3,8 @@
  */
 import axiosInstance from '../api/axiosInstance';
 
-// axiosInstance already has baseURL '/api', so we only need
-// the relative path segment for this resource.
-const BASE_URL = '/fee-types/';
+// axiosInstance baseURL is the backend origin, so include /api here.
+const BASE_URL = '/api/fee-types/';
 
 export const fetchFeeTypes = async (params = {}) => {
   const response = await axiosInstance.get(BASE_URL, { params });
