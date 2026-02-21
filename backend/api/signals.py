@@ -45,20 +45,8 @@ def docrec_post_save(sender, instance: DocRec, created, **kwargs):
             except Exception:
                 pass
         elif svc == 'IV':
-            try:
-                exists = InstLetterMain.objects.filter(doc_rec__doc_rec_id=doc_rec_id).exists()
-                if not exists:
-                    iv = InstLetterMain(doc_rec=instance)
-                    try:
-                        iv.full_clean()
-                    except Exception:
-                        pass
-                    try:
-                        iv.save()
-                    except Exception:
-                        pass
-            except Exception:
-                pass
+            # Do not auto-create InstLetterMain; it is created on explicit save from the IV form.
+            pass
         # MG/PR/GT auto-creation skipped because models require unique identifiers (mg_number/prv_number)
     except Exception:
         pass

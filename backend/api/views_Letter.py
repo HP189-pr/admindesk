@@ -596,6 +596,29 @@ class InstLetterMainViewSet(viewsets.ModelViewSet):
             )
         return qs
 
+    def create(self, request, *args, **kwargs):
+        inst_no = (request.data.get("inst_veri_number") or "").strip()
+        iv_record_raw = request.data.get("iv_record_no")
+        iv_record_no = None
+        try:
+            iv_record_no = int(str(iv_record_raw).strip()) if iv_record_raw is not None else None
+        except Exception:
+            iv_record_no = None
+
+        existing = None
+        if inst_no:
+            existing = InstLetterMain.objects.filter(inst_veri_number=inst_no).order_by("-id").first()
+        if not existing and iv_record_no is not None:
+            existing = InstLetterMain.objects.filter(iv_record_no=iv_record_no).order_by("-id").first()
+
+        if existing and not existing.doc_rec:
+            serializer = self.get_serializer(existing, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return super().create(request, *args, **kwargs)
+
     @action(detail=False, methods=["get"], url_path="search-rec-inst")
     def search_rec_inst(self, request):
         """

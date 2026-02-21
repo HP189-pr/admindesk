@@ -47,16 +47,16 @@ export const assignCcNumbers = (data) =>
 // =========================
 
 export const getOutward = () =>
-  API.get(`${API_BASE}/outward/`);
+  API.get(`${API_BASE}/cctv-outward/`);
 
 export const createOutward = (data) =>
-  API.post(`${API_BASE}/outward/`, data);
+  API.post(`${API_BASE}/cctv-outward/`, data);
 
 export const updateOutward = (id, data) =>
-  API.patch(`${API_BASE}/outward/${id}/`, data);
+  API.patch(`${API_BASE}/cctv-outward/${id}/`, data);
 
 export const deleteOutward = (id) =>
-  API.delete(`${API_BASE}/outward/${id}/`);
+  API.delete(`${API_BASE}/cctv-outward/${id}/`);
 
 export const syncCctvFromSheet = (sheetName) =>
   API.post(`${API_BASE}/centre/sync-from-sheet/`, {

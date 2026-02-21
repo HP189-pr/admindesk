@@ -44,16 +44,21 @@ const CCTVMonitoring = ({
   });
 
   const [outwardForm, setOutwardForm] = useState({
-    exam: "",
-    centre: "",
     outward_date: "",
+    cctv_record_no: "",
+    college_name: "",
+    centre_name: "",
+    exam_on: "",
+    last_date: "",
     cc_start_label: "",
     cc_end_label: "",
-    no_of_cc: "",
+    no_of_dvd: "",
+    no_of_report: "",
     return_received: false,
     case_found: false,
     case_type: "",
     case_details: "",
+    remark: "",
     id: null,
   });
 
@@ -274,16 +279,20 @@ const CCTVMonitoring = ({
     }
 
     const payload = {
-      exam: outwardForm.exam,
-      centre: outwardForm.centre,
       outward_date: outwardForm.outward_date,
+      college_name: outwardForm.college_name,
+      centre_name: outwardForm.centre_name,
+      exam_on: outwardForm.exam_on,
+      last_date: outwardForm.last_date,
       cc_start_label: outwardForm.cc_start_label,
       cc_end_label: outwardForm.cc_end_label,
-      no_of_cc: outwardForm.no_of_cc,
+      no_of_dvd: outwardForm.no_of_dvd,
+      no_of_report: outwardForm.no_of_report,
       return_received: outwardForm.return_received,
       case_found: outwardForm.case_found,
       case_type: outwardForm.case_found ? outwardForm.case_type : "",
       case_details: outwardForm.case_found ? outwardForm.case_details : "",
+      remark: outwardForm.remark,
     };
 
     if (isEdit) {
@@ -295,16 +304,21 @@ const CCTVMonitoring = ({
     }
 
     setOutwardForm({
-      exam: "",
-      centre: "",
       outward_date: "",
+      cctv_record_no: "",
+      college_name: "",
+      centre_name: "",
+      exam_on: "",
+      last_date: "",
       cc_start_label: "",
       cc_end_label: "",
-      no_of_cc: "",
+      no_of_dvd: "",
+      no_of_report: "",
       return_received: false,
       case_found: false,
       case_type: "",
       case_details: "",
+      remark: "",
       id: null,
     });
     fetchOutwards();
@@ -314,16 +328,21 @@ const CCTVMonitoring = ({
     setSelectedAction(ACTIONS[1]);
     setOutwardForm({
       id: row.id,
-      exam: row.exam || "",
-      centre: row.centre || "",
       outward_date: row.outward_date || "",
+      cctv_record_no: row.cctv_record_no || "",
+      college_name: row.college_name || "",
+      centre_name: row.centre_name || "",
+      exam_on: row.exam_on || "",
+      last_date: row.last_date || "",
       cc_start_label: row.cc_start_label || "",
       cc_end_label: row.cc_end_label || "",
-      no_of_cc: row.no_of_cc || "",
+      no_of_dvd: row.no_of_dvd || "",
+      no_of_report: row.no_of_report || "",
       return_received: !!row.return_received,
       case_found: !!row.case_found,
       case_type: row.case_type || "",
       case_details: row.case_details || "",
+      remark: row.remark || "",
     });
   };
 
@@ -701,21 +720,36 @@ const CCTVMonitoring = ({
 
       {selectedAction === ACTIONS[1] && (
         <div className="border p-4 rounded space-y-4">
-          <h2 className="font-semibold">CCTV Outward</h2>
+          <div className="flex justify-between items-center">
+            <h2 className="font-semibold">CCTV Outward</h2>
+            <button
+              type="button"
+              onClick={() => {
+                if (!outwards.length) {
+                  alert("No outward record available.");
+                  return;
+                }
+                const latest = outwards[0];
+                window.open(`/api/cctv-outward/${latest.id}/generate-pdf/`, "_blank");
+              }}
+              className="px-4 py-2 rounded bg-green-600 text-white text-sm hover:bg-green-700"
+            >
+              Generate Latest Letter
+            </button>
+          </div>
 
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead className="bg-gray-100 text-gray-700 uppercase text-xs">
                 <tr>
                   <th className="px-3 py-2 text-left">Date</th>
+                  <th className="px-3 py-2 text-left">Record No.</th>
                   <th className="px-3 py-2 text-left">Outward No.</th>
-                  <th className="px-3 py-2 text-left">College Name</th>
-                  <th className="px-3 py-2 text-left">Place</th>
-                  <th className="px-3 py-2 text-left">CD No</th>
-                  <th className="px-3 py-2 text-left">No of CD</th>
-                  <th className="px-3 py-2 text-left">Last Date</th>
-                  <th className="px-3 py-2 text-left">Rep No</th>
-                  <th className="px-3 py-2 text-left">No of Rep</th>
+                  <th className="px-3 py-2 text-left">College</th>
+                  <th className="px-3 py-2 text-left">Centre</th>
+                  <th className="px-3 py-2 text-left">CC Range</th>
+                  <th className="px-3 py-2 text-left">Total DVD</th>
+                  <th className="px-3 py-2 text-left">Reports</th>
                   <th className="px-3 py-2 text-left">Return</th>
                   <th className="px-3 py-2 text-left">Case</th>
                   <th className="px-3 py-2 text-left">Actions</th>
@@ -724,28 +758,25 @@ const CCTVMonitoring = ({
               <tbody>
                 {outwards.length === 0 && (
                   <tr>
-                    <td colSpan={12} className="px-4 py-6 text-center text-gray-500">
+                    <td colSpan={11} className="px-4 py-6 text-center text-gray-500">
                       No outward entries found.
                     </td>
                   </tr>
                 )}
                 {outwards.map((row) => {
-                  const exam = exams.find((e) => String(e.id) === String(row.exam));
-                  const centre = centres.find((c) => String(c.id) === String(row.centre));
                   const cdLabel = [row.cc_start_label, row.cc_end_label]
                     .filter(Boolean)
                     .join(" - ");
                   return (
                     <tr key={row.id} className="border-b last:border-b-0">
                       <td className="px-3 py-2 align-top">{row.outward_date || "—"}</td>
+                      <td className="px-3 py-2 align-top">{row.cctv_record_no || "—"}</td>
                       <td className="px-3 py-2 align-top">{row.outward_no || "—"}</td>
-                      <td className="px-3 py-2 align-top">{exam?.course || "—"}</td>
-                      <td className="px-3 py-2 align-top">{centre?.place || "—"}</td>
+                      <td className="px-3 py-2 align-top">{row.college_name || "—"}</td>
+                      <td className="px-3 py-2 align-top">{row.centre_name || "—"}</td>
                       <td className="px-3 py-2 align-top">{cdLabel || "—"}</td>
-                      <td className="px-3 py-2 align-top">{row.no_of_cc || "—"}</td>
-                      <td className="px-3 py-2 align-top">—</td>
-                      <td className="px-3 py-2 align-top">—</td>
-                      <td className="px-3 py-2 align-top">—</td>
+                      <td className="px-3 py-2 align-top">{row.no_of_dvd || "—"}</td>
+                      <td className="px-3 py-2 align-top">{row.no_of_report || "—"}</td>
                       <td className="px-3 py-2 align-top">
                         {row.return_received ? "Yes" : "No"}
                       </td>
@@ -770,6 +801,13 @@ const CCTVMonitoring = ({
                           >
                             Delete
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => window.open(`/api/cctv-outward/${row.id}/generate-pdf/`, "_blank")}
+                            className="px-3 py-1.5 rounded bg-green-600 text-white text-xs hover:bg-green-700"
+                          >
+                            Generate Letter
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -781,40 +819,54 @@ const CCTVMonitoring = ({
 
           <div className="border p-4 rounded">
             <h3 className="font-semibold mb-4">{outwardForm.id ? "Edit Outward" : "Create Outward"}</h3>
-            <form onSubmit={handleOutwardSubmit} className="grid gap-3">
-              <select
-                value={outwardForm.exam}
-                onChange={(e) =>
-                  setOutwardForm({ ...outwardForm, exam: e.target.value })
-                }
-              >
-                <option value="">Select Exam</option>
-                {exams.map((exam) => (
-                  <option key={exam.id} value={exam.id}>
-                    {exam.subject_code}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={outwardForm.centre}
-                onChange={(e) =>
-                  setOutwardForm({ ...outwardForm, centre: e.target.value })
-                }
-              >
-                <option value="">Select Centre</option>
-                {centres.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.place}
-                  </option>
-                ))}
-              </select>
-
+            <form onSubmit={handleOutwardSubmit} className="grid md:grid-cols-2 gap-4">
               <input
                 type="date"
                 value={outwardForm.outward_date}
                 onChange={(e) =>
                   setOutwardForm({ ...outwardForm, outward_date: e.target.value })
+                }
+              />
+
+              <input
+                type="text"
+                placeholder="Record No"
+                value={outwardForm.cctv_record_no || ""}
+                disabled
+              />
+
+              <input
+                type="text"
+                placeholder="College Name"
+                value={outwardForm.college_name || ""}
+                onChange={(e) =>
+                  setOutwardForm({ ...outwardForm, college_name: e.target.value })
+                }
+              />
+
+              <input
+                type="text"
+                placeholder="Centre Name"
+                value={outwardForm.centre_name || ""}
+                onChange={(e) =>
+                  setOutwardForm({ ...outwardForm, centre_name: e.target.value })
+                }
+              />
+
+              <input
+                type="text"
+                placeholder="Exam On (e.g. March 2026)"
+                value={outwardForm.exam_on || ""}
+                onChange={(e) =>
+                  setOutwardForm({ ...outwardForm, exam_on: e.target.value })
+                }
+              />
+
+              <input
+                type="date"
+                value={outwardForm.last_date || ""}
+                onChange={(e) =>
+                  setOutwardForm({ ...outwardForm, last_date: e.target.value })
                 }
               />
 
@@ -838,10 +890,19 @@ const CCTVMonitoring = ({
 
               <input
                 type="number"
-                placeholder="No of CC"
-                value={outwardForm.no_of_cc}
+                placeholder="No of DVD"
+                value={outwardForm.no_of_dvd}
                 onChange={(e) =>
-                  setOutwardForm({ ...outwardForm, no_of_cc: e.target.value })
+                  setOutwardForm({ ...outwardForm, no_of_dvd: e.target.value })
+                }
+              />
+
+              <input
+                type="number"
+                placeholder="No of Report"
+                value={outwardForm.no_of_report || ""}
+                onChange={(e) =>
+                  setOutwardForm({ ...outwardForm, no_of_report: e.target.value })
                 }
               />
 
@@ -902,8 +963,17 @@ const CCTVMonitoring = ({
                 </>
               )}
 
+              <textarea
+                placeholder="Remark"
+                value={outwardForm.remark || ""}
+                onChange={(e) =>
+                  setOutwardForm({ ...outwardForm, remark: e.target.value })
+                }
+                className="md:col-span-2"
+              />
+
               <button
-                className="bg-green-600 text-white p-2 rounded"
+                className="bg-green-600 text-white p-2 rounded md:col-span-2"
                 disabled={outwardForm.id ? !rights.can_edit : !rights.can_create}
               >
                 {outwardForm.id ? "Update Outward" : "Create Outward"}

@@ -9,6 +9,12 @@ from rest_framework.permissions import IsAuthenticated
 from django.db import OperationalError, ProgrammingError
 from django.db import transaction
 from django.db.models import Max
+from django.http import HttpResponse
+
+from reportlab.lib.units import inch
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 
 from .domain_cctv import (
     CCTVExam,
@@ -263,10 +269,87 @@ class CCTVOutwardViewSet(CctvPermissionMixin, viewsets.ModelViewSet):
     serializer_class = CCTVOutwardSerializer
     permission_classes = [IsAuthenticated]
 
+    @action(detail=True, methods=["get"], url_path="generate-pdf")
+    def generate_pdf(self, request, pk=None):
+        outward = self.get_object()
+
+        response = HttpResponse(content_type="application/pdf")
+        response["Content-Disposition"] = f"attachment; filename=\"{outward.cctv_record_no}.pdf\""
+
+        doc = SimpleDocTemplate(response, pagesize=A4)
+        styles = getSampleStyleSheet()
+        elements = []
+
+        elements.append(Paragraph("KADI SARVA VISHWAVIDYALAYA", styles["Heading2"]))
+        elements.append(Paragraph("Examination Department", styles["Normal"]))
+        elements.append(Spacer(1, 0.3 * inch))
+
+        elements.append(Paragraph(f"Record No: {outward.cctv_record_no}", styles["Normal"]))
+        elements.append(Paragraph(f"Outward No: {outward.outward_no}", styles["Normal"]))
+        elements.append(Paragraph(f"Date: {outward.outward_date}", styles["Normal"]))
+        elements.append(Spacer(1, 0.3 * inch))
+
+        elements.append(Paragraph("To,", styles["Normal"]))
+        elements.append(Paragraph("The Principal,", styles["Normal"]))
+        elements.append(Paragraph(outward.college_name, styles["Normal"]))
+        elements.append(Paragraph(outward.centre_name, styles["Normal"]))
+        elements.append(Spacer(1, 0.3 * inch))
+
+        elements.append(
+            Paragraph(
+                "Subject: Submission of CCTV Observation Report and CD for Verification",
+                styles["Normal"],
+            )
+        )
+        elements.append(Spacer(1, 0.3 * inch))
+
+        body_text = (
+            "With reference to the above subject, we have received the CCTV observation "
+            "report for your institution regarding the examination conducted in "
+            f"{outward.exam_on}. "
+            f"Submit the signed letter along with report to university by {outward.last_date}."
+        )
+
+        elements.append(Paragraph(body_text, styles["Normal"]))
+        elements.append(Spacer(1, 0.3 * inch))
+
+        elements.append(
+            Paragraph(
+                f"CD No.: {outward.cc_start_label} - {outward.cc_end_label}",
+                styles["Normal"],
+            )
+        )
+        elements.append(
+            Paragraph(
+                f"No. of DVD: {outward.no_of_dvd}",
+                styles["Normal"],
+            )
+        )
+        elements.append(
+            Paragraph(
+                f"CCTV Observation Report No.: {outward.no_of_report}",
+                styles["Normal"],
+            )
+        )
+
+        doc.build(elements)
+        return response
+
     def perform_create(self, serializer):
-        last = CCTVOutward.objects.order_by("-id").first()
-        next_no = (int(last.outward_no.split("-")[-1]) + 1) if last else 1
+        last_outward = CCTVOutward.objects.order_by("-id").first()
+        next_outward = (
+            int(last_outward.outward_no.split("-")[-1]) + 1
+            if last_outward
+            else 1
+        )
+        outward_no = f"KSV-SE-CCTV-{str(next_outward).zfill(3)}"
 
-        outward_no = f"KSV-SE-CCTV-{str(next_no).zfill(3)}"
+        last_record = CCTVOutward.objects.order_by("-id").first()
+        next_record = (
+            int(last_record.cctv_record_no.split("-")[-1]) + 1
+            if last_record
+            else 1
+        )
+        cctv_record_no = f"CCTV-REC-{str(next_record).zfill(4)}"
 
-        serializer.save(outward_no=outward_no)
+        serializer.save(outward_no=outward_no, cctv_record_no=cctv_record_no)

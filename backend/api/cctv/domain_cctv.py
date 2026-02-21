@@ -120,17 +120,22 @@ class CCTVDVD(models.Model):
 # ============================
 
 class CCTVOutward(models.Model):
-    outward_no = models.CharField(max_length=50, unique=True)
+    cctv_record_no = models.CharField(max_length=50, unique=True, null=True, blank=True)
 
+    outward_no = models.CharField(max_length=50, unique=True)
     outward_date = models.DateField()
 
-    exam = models.ForeignKey(CCTVExam, on_delete=models.CASCADE)
-    centre = models.ForeignKey(CCTVCentreEntry, on_delete=models.CASCADE)
+    college_name = models.CharField(max_length=200)
+    centre_name = models.CharField(max_length=200)
+
+    exam_on = models.CharField(max_length=200)
+    last_date = models.DateField()
 
     cc_start_label = models.CharField(max_length=20)
     cc_end_label = models.CharField(max_length=20)
 
-    no_of_cc = models.IntegerField()
+    no_of_dvd = models.IntegerField(default=0)
+    no_of_report = models.IntegerField(default=0)
 
     return_received = models.BooleanField(default=False)
 
@@ -149,6 +154,7 @@ class CCTVOutward(models.Model):
     )
 
     case_details = models.TextField(blank=True)
+    remark = models.TextField(blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -156,4 +162,5 @@ class CCTVOutward(models.Model):
         ordering = ["-outward_date"]
 
     def __str__(self):
-        return self.outward_no
+        return f"{self.cctv_record_no} - {self.outward_no}"
+

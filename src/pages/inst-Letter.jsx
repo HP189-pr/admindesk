@@ -182,6 +182,7 @@ const formatMainRecord = (record) => {
 };
 
 const buildMainPayload = (form) => ({
+	doc_rec_key: form.doc_rec?.trim() || null,
 	doc_rec: form.doc_rec?.trim() || null,
 	doc_rec_date: form.doc_rec_date ? dmyToISO(form.doc_rec_date) : null,
 	inst_veri_number: form.inst_veri_number?.trim() || "",
@@ -233,6 +234,7 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 	const [selectedAction, setSelectedAction] = useState("➕");
 	const [mform, setMForm] = useState(createMainForm());
 	const [nextDocRecId, setNextDocRecId] = useState("");
+	const [docRecIsPreview, setDocRecIsPreview] = useState(false);
 	const [sform, setSForm] = useState(() => createStudentForm("1"));
 	const [editingStudentId, setEditingStudentId] = useState(null);
 	const [list, setList] = useState([]);
@@ -270,6 +272,7 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 	const docTypeDropdownRef = useRef(null);
 	const recInstPrefetchAbort = useRef(null);
 	const autoDocRecRef = useRef({ created: false, creating: false });
+	const autoInstVerSourceRef = useRef("");
 	const selectedRecordId = mform.id;
 	const [savingMain, setSavingMain] = useState(false);
 	const [savingStudent, setSavingStudent] = useState(false);
@@ -399,10 +402,11 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 	}, []);
 
 	const ensureDocRec = useCallback(
-		async (formOverride = null) => {
+		async (formOverride = null, options = {}) => {
 			const snapshot = formOverride || mform;
 			const existing = snapshot.doc_rec?.trim();
-			if (existing) return existing;
+			const shouldForce = Boolean(options.forceCreate);
+			if (existing && !shouldForce) return existing;
 			if (!rights.can_create) {
 				setStatus("Doc Rec ID is required before saving.");
 				return null;
@@ -447,7 +451,7 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 			};
 
 			try {
-				let nextId = await fetchNextDocRecId();
+				let nextId = existing || (await fetchNextDocRecId());
 				let res = await tryCreate(nextId || undefined);
 				if (!res.ok) {
 					const txt = await res.text().catch(() => "");
@@ -466,7 +470,7 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 				const docRecId = row.doc_rec_id || row.doc_rec || row.id || nextId || "";
 				const docRecDate = row.doc_rec_date || effectiveIso;
 				setMForm((prev) => {
-					if (prev.doc_rec) return prev;
+					if (prev.doc_rec && !shouldForce) return prev;
 					return {
 						...prev,
 						doc_rec: docRecId,
@@ -474,6 +478,7 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 					};
 				});
 				autoDocRecRef.current.created = true;
+				setDocRecIsPreview(false);
 				try {
 					if (typeof BroadcastChannel !== "undefined") {
 						const bc = new BroadcastChannel("admindesk-updates");
@@ -528,6 +533,14 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 			controller.abort();
 		};
 	}, [mform.doc_rec, mform.doc_rec_date, rights.can_create, authHeaders]);
+
+	useEffect(() => {
+		if (mform.doc_rec) return;
+		const previewId = nextDocRecId?.trim();
+		if (!previewId) return;
+		setMForm((prev) => (prev.doc_rec ? prev : { ...prev, doc_rec: previewId }));
+		setDocRecIsPreview(true);
+	}, [mform.doc_rec, nextDocRecId]);
 
 	const loadList = useCallback(
 		async (queryOverride = "") => {
@@ -655,12 +668,16 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 
 	useEffect(() => {
 		const docRecId = mform.doc_rec?.trim();
-		if (!docRecId) return;
-		const autoInstVerNo = deriveInstVeriNumberFromDocRec(docRecId);
+		const autoSource = docRecId || nextDocRecId?.trim();
+		if (!autoSource) return;
+		const autoInstVerNo = deriveInstVeriNumberFromDocRec(autoSource);
 		if (!autoInstVerNo) return;
+		const prevAuto = autoInstVerSourceRef.current
+			? deriveInstVeriNumberFromDocRec(autoInstVerSourceRef.current)
+			: "";
+		const canUpdate = !mform.inst_veri_number || mform.inst_veri_number === prevAuto;
+		if (!canUpdate) return;
 		setMForm((prev) => {
-			if (prev.doc_rec !== docRecId) return prev;
-			if (prev.inst_veri_number) return prev;
 			const derivedIvRecord = computeIvRecordNumber(autoInstVerNo);
 			return {
 				...prev,
@@ -668,7 +685,8 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 				iv_record_no: prev.iv_record_no || derivedIvRecord,
 			};
 		});
-	}, [mform.doc_rec]);
+		autoInstVerSourceRef.current = autoSource;
+	}, [mform.doc_rec, mform.inst_veri_number, nextDocRecId]);
 
 	useEffect(() => {
 		const name = mform.rec_inst_name?.trim();
@@ -783,8 +801,12 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 		setSavingMain(true);
 		try {
 			let docRecId = mform.doc_rec?.trim() || "";
-			if (!docRecId) {
-				docRecId = await ensureDocRec(mform);
+			if (!docRecId || docRecIsPreview) {
+				const nextId = docRecId || nextDocRecId?.trim() || "";
+				docRecId = await ensureDocRec(
+					nextId ? { ...mform, doc_rec: nextId } : mform,
+					{ forceCreate: true }
+				);
 			}
 			if (!docRecId) {
 				setStatus("Doc Rec ID is required before saving.");
@@ -820,11 +842,21 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 				inst_veri_number: instVerNo,
 				iv_record_no: ivRecordNo,
 			});
-			if (!payload.doc_rec) {
+			if (!payload.doc_rec_key) {
 				setStatus("Doc Rec ID is required.");
 				return;
 			}
-			const data = await saveInstLetterMain(payload, { id: mform.id, apiBase });
+			let existingId = mform.id;
+			if (!existingId) {
+				try {
+					const matches = await fetchInstLetterMains({ instVeriNumber: instVerNo, limit: 5, apiBase });
+					const orphan = matches.find((row) => !row?.doc_rec);
+					if (orphan?.id) existingId = orphan.id;
+				} catch (err) {
+					console.warn("inst letter dedupe", err);
+				}
+			}
+			const data = await saveInstLetterMain(payload, { id: existingId, apiBase });
 			setMForm(formatMainRecord(data));
 			setStatus("Main record saved successfully.");
 			loadList(q);
@@ -947,7 +979,8 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 		setNextStudentSr("1");
 		setSForm(createStudentForm("1"));
 		setEditingStudentId(null);
-		autoDocRecRef.current = { created: false, creating: false };
+			autoDocRecRef.current = { created: false, creating: false };
+			setDocRecIsPreview(false);
 		setSelectedAction("➕");
 	};
 
@@ -1030,13 +1063,12 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 							<input
 								className="input"
 								value={mform.doc_rec}
-								onChange={(e) => setMForm((prev) => ({ ...prev, doc_rec: e.target.value.trim() }))}
+								onChange={(e) => {
+									setDocRecIsPreview(false);
+									setMForm((prev) => ({ ...prev, doc_rec: e.target.value.trim() }));
+								}}
 								placeholder={nextDocRecId || "Auto"}
 							/>
-						</div>
-						<div className="md:col-span-2">
-							<label className="label">Doc Rec ID (next)</label>
-							<input className="input" value={nextDocRecId} readOnly />
 						</div>
 						<div className="md:col-span-2">
 							<label className="label">Doc Rec Date</label>

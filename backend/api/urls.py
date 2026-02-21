@@ -133,7 +133,7 @@ try:
     router.register(r"exam", CCTVExamViewSet, basename="cctv-exam")
     router.register(r"centre", CCTVCentreEntryViewSet, basename="cctv-centre")
     router.register(r"dvd", CCTVDVDViewSet, basename="cctv-dvd")
-    router.register(r"outward", CCTVOutwardViewSet, basename="cctv-outward")
+    router.register(r"cctv-outward", CCTVOutwardViewSet, basename="cctv-outward")
 
     urlpatterns = [
 
