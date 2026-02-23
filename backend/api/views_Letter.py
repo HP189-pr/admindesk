@@ -33,6 +33,10 @@ Table = None  # type: ignore
 TableStyle = None  # type: ignore
 PageBreak = None  # type: ignore
 Flowable = None  # type: ignore
+BaseDocTemplate = None  # type: ignore
+PageTemplate = None  # type: ignore
+Frame = None  # type: ignore
+NextPageTemplate = None  # type: ignore
 getSampleStyleSheet = None  # type: ignore
 ParagraphStyle = None  # type: ignore
 colors = None  # type: ignore
@@ -58,6 +62,10 @@ def ensure_reportlab_available():
             TableStyle as _TableStyle,
             PageBreak as _PageBreak,
             Flowable as _Flowable,
+            BaseDocTemplate as _BaseDocTemplate,
+            PageTemplate as _PageTemplate,
+            Frame as _Frame,
+            NextPageTemplate as _NextPageTemplate,
         )
         from reportlab.lib.styles import getSampleStyleSheet as _getSampleStyleSheet, ParagraphStyle as _ParagraphStyle  # type: ignore
         from reportlab.lib import colors as _colors  # type: ignore
@@ -79,6 +87,10 @@ def ensure_reportlab_available():
         'TableStyle': _TableStyle,
         'PageBreak': _PageBreak,
         'Flowable': _Flowable,
+        'BaseDocTemplate': _BaseDocTemplate,
+        'PageTemplate': _PageTemplate,
+        'Frame': _Frame,
+        'NextPageTemplate': _NextPageTemplate,
         'getSampleStyleSheet': _getSampleStyleSheet,
         'ParagraphStyle': _ParagraphStyle,
         'colors': _colors,
@@ -324,19 +336,32 @@ class InstLetterPDF(APIView):
                 )
                 pdf_bytes = None
 
+                left_margin = 15 * mm
+                right_margin = 10 * mm
+                top_margin = (2.25 * inch) + 20 * mm
+                bottom_margin = 25 * mm
+
+                buffer = BytesIO()
+                page_width, page_height = A4
+                frame = Frame(
+                    left_margin,
+                    bottom_margin,
+                    page_width - left_margin - right_margin,
+                    page_height - top_margin - bottom_margin,
+                    id='inst_letter_body'
+                )
+                doc = BaseDocTemplate(
+                    buffer,
+                    pagesize=A4,
+                    leftMargin=left_margin,
+                    rightMargin=right_margin,
+                    topMargin=top_margin,
+                    bottomMargin=bottom_margin,
+                )
+                story = []
+
                 group_items = list(groups.items())
                 for idx, (gk, gval) in enumerate(group_items):
-                    buffer = BytesIO()
-                    doc = SimpleDocTemplate(
-                        buffer,
-                        pagesize=A4,
-                        leftMargin=15 * mm,
-                        rightMargin=10 * mm,
-                        topMargin=(2.25 * inch) + 20 * mm,  # body starts just below header
-                        bottomMargin=25 * mm,
-                    )
-                    story = []
-
                     # pick representative main
                     rep_main = None
                     for m in gval['mains']:
@@ -365,6 +390,13 @@ class InstLetterPDF(APIView):
 
                     qr_text = build_qr_payload(rep_main, merged)
                     header_cb = draw_header_footer_factory(rep_main, qr_text)
+
+                    template_id = f"inst_letter_{idx}"
+                    doc.addPageTemplates([PageTemplate(id=template_id, frames=[frame], onPage=header_cb)])
+
+                    if idx > 0:
+                        story.append(NextPageTemplate(template_id))
+                        story.append(PageBreak())
 
                     # --- Address block ---
                     story.append(Spacer(1, -2 * mm))
@@ -399,7 +431,7 @@ class InstLetterPDF(APIView):
                         if pin_val is not None and str(pin_val).strip():
                             pin = str(pin_val).strip()
                             break
-        
+
                     loc_city_part = ""
 
                     if location and city:
@@ -492,10 +524,10 @@ class InstLetterPDF(APIView):
                     story.append(Spacer(1, 36))
                     sign_style = ParagraphStyle('sign', parent=styles['Normal'], fontSize=10)
                     story.append(Paragraph("<b>Registrar<br/>Kadi Sarva Vishwavidyalaya</b>", sign_style))
-                    # Build document
-                    doc.build(story, onFirstPage=header_cb, onLaterPages=header_cb)
-                    pdf_bytes = buffer.getvalue()
-                    buffer.close()
+
+                doc.build(story)
+                pdf_bytes = buffer.getvalue()
+                buffer.close()
             except Exception as e:
                 logger.exception('ReportLab generation failed: %s', e)
                 pdf_bytes = None

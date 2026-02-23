@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageTopbar from '../components/PageTopbar';
-import { FaChevronDown, FaChevronUp } from 'react-icons/fa';
+import { FaChevronDown, FaChevronUp, FaEdit, FaTrash } from 'react-icons/fa';
 import {
     getDegrees,
     createDegree,
@@ -729,16 +729,15 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="bg-indigo-50 text-indigo-900 uppercase text-[11px] tracking-wide">
-                                    <th className="p-3 text-left font-semibold">DG SR No</th>
                                     <th className="p-3 text-left font-semibold">Enrollment</th>
-                                    <th className="p-3 text-left font-semibold">Student Name</th>
-                                    <th className="p-3 text-left font-semibold">Contact</th>
+                                    <th className="p-3 text-left font-semibold w-64">Student Name</th>
                                     <th className="p-3 text-left font-semibold">Degree</th>
                                     <th className="p-3 text-left font-semibold">Specialisation</th>
-                                    <th className="p-3 text-left font-semibold">Year</th>
+                                    <th className="p-3 text-left font-semibold">Last Exam</th>
                                     <th className="p-3 text-left font-semibold">Class</th>
-                                    <th className="p-3 text-left font-semibold">Conv</th>
-                                    <th className="p-3 text-left font-semibold">Convocation Month-Year</th>
+                                    <th className="p-3 text-left font-semibold">Conv.No</th>
+                                    <th className="p-3 text-left font-semibold">Conv-On</th>
+                                    <th className="p-3 text-left font-semibold">Seat No</th>
                                     <th className="p-3 text-left font-semibold">Actions</th>
                                 </tr>
                             </thead>
@@ -757,29 +756,36 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
                                         key={degree.id}
                                         className={`border-b border-indigo-100 text-gray-700 ${idx % 2 === 0 ? 'bg-white' : 'bg-indigo-50/40'} hover:bg-indigo-50 transition-colors`}
                                     >
-                                        <td className="p-3 font-semibold text-gray-900">{degree.dg_sr_no || '-'}</td>
                                         <td className="p-3">{degree.enrollment_no}</td>
-                                        <td className="p-3">{degree.student_name_dg || '-'}</td>
-                                        <td className="p-3">{degree.dg_contact || '-'}</td>
+                                        <td className="p-3 w-64">{degree.student_name_dg || '-'}</td>
                                         <td className="p-3">{degree.degree_name || '-'}</td>
                                         <td className="p-3">{degree.specialisation || '-'}</td>
-                                        <td className="p-3">{degree.last_exam_year || '-'}</td>
+                                        <td className="p-3">
+                                            {degree.last_exam_month && degree.last_exam_year
+                                                ? `${degree.last_exam_month}-${degree.last_exam_year}`
+                                                : degree.last_exam_month || degree.last_exam_year || '-'}
+                                        </td>
                                         <td className="p-3">{degree.class_obtain || '-'}</td>
                                         <td className="p-3">{degree.convocation_no || '-'}</td>
                                         <td className="p-3">{degree.convocation_month_year || '-'}</td>
+                                        <td className="p-3">{degree.seat_last_exam || '-'}</td>
                                         <td className="p-3">
-                                            <button
-                                                onClick={() => handleEdit(degree)}
-                                                className="px-3 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700 hover:bg-amber-200 mr-2"
-                                            >
-                                                Edit
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(degree.id)}
-                                                className="px-3 py-1 text-xs font-semibold rounded-full bg-rose-100 text-rose-700 hover:bg-rose-200"
-                                            >
-                                                Delete
-                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    title="Edit"
+                                                    className="w-5 h-5 flex items-center justify-center bg-yellow-500 text-white hover:bg-yellow-600 shadow-md rounded"
+                                                    onClick={() => handleEdit(degree)}
+                                                >
+                                                    <FaEdit size={12} />
+                                                </button>
+                                                <button
+                                                    title="Delete"
+                                                    className="w-5 h-5 flex items-center justify-center bg-red-600 text-white hover:bg-red-700 shadow-md rounded"
+                                                    onClick={() => handleDelete(degree.id)}
+                                                >
+                                                    <FaTrash size={12} />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -833,18 +839,22 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
                                             <td className="p-3">{conv.convocation_date || '-'}</td>
                                             <td className="p-3">{conv.month_year || '-'}</td>
                                             <td className="p-3">
-                                                <button
-                                                    onClick={() => handleEditConvocation(conv)}
-                                                    className="px-3 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-700 hover:bg-indigo-200 mr-2"
-                                                >
-                                                    Edit
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteConvocation(conv)}
-                                                    className="px-3 py-1 text-xs font-semibold rounded-full bg-rose-100 text-rose-700 hover:bg-rose-200"
-                                                >
-                                                    Delete
-                                                </button>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        title="Edit"
+                                                        className="w-5 h-5 flex items-center justify-center bg-yellow-500 text-white hover:bg-yellow-600 shadow-md rounded"
+                                                        onClick={() => handleEditConvocation(conv)}
+                                                    >
+                                                        <FaEdit size={12} />
+                                                    </button>
+                                                    <button
+                                                        title="Delete"
+                                                        className="w-5 h-5 flex items-center justify-center bg-red-600 text-white hover:bg-red-700 shadow-md rounded"
+                                                        onClick={() => handleDeleteConvocation(conv)}
+                                                    >
+                                                        <FaTrash size={12} />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))

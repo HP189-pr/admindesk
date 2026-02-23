@@ -278,7 +278,7 @@ const InstVerReport = ({
             {`
               @page { size: A4; margin: 2in 5mm 10mm 10mm; }
               body { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; color: #000; font-size: 11pt; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-              .letter { page-break-after: always; }
+              .letter { page-break-after: always; padding-top: 40.8mm; }
               .letter:last-child { page-break-after: auto; }
               .header { margin-bottom: 8px; }
               .letter-meta { display: flex; justify-content: space-between; align-items: flex-start; font-weight: bold; font-size: 13pt; }
@@ -300,9 +300,6 @@ const InstVerReport = ({
               .footer { position: fixed; bottom: 10mm; left: 0; right: 0; text-align: center; font-size: 10pt; }
             `}
           </style>
-
-          {/* Spacer to reach ~2in top margin after print host padding (10mm) */}
-          <div style={{ height: "40.8mm" }} />
 
           {printableRecords.map((rec, idx) => {
             const refNo = rec?.inst_veri_number ? `KSV/${rec.inst_veri_number}` : "";
