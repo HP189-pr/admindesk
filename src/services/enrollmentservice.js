@@ -101,8 +101,11 @@ export const getDatabaseFields = () => [
 export const validateEnrollmentData = (data) => {
     const errors = {};
 
-    if (!data.enrollment_no?.trim()) {
-        errors.enrollment_no = "Enrollment number is required";
+    const enrollmentNo = (data.enrollment_no || '').trim();
+    const tempEnrollNo = (data.temp_enroll_no || '').trim();
+    if (!enrollmentNo && !tempEnrollNo) {
+        errors.enrollment_no = "Enrollment number or Temporary number is required";
+        errors.temp_enroll_no = "Enrollment number or Temporary number is required";
     }
     if (!data.student_name?.trim()) {
         errors.student_name = "Student name is required";

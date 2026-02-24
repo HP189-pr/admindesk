@@ -302,7 +302,7 @@ const Degree = ({ onToggleSidebar, onToggleChatbox }) => {
         
         try {
             if (editingDegree) {
-                await updateDegree(editingDegree.dg_sr_no, formData);
+                await updateDegree(editingDegree.id, formData);
                 toast.success('Degree updated successfully');
             } else {
                 await createDegree(formData);

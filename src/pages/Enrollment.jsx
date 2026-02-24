@@ -18,6 +18,7 @@ import {
   getEnrollmentByNumber,
   resolveEnrollment,
 } from "../services/enrollmentservice";
+import { fetchInstituteCodes, fetchCourseCodes, fetchSubcourseNames } from "../services/provisionalservice";
 import { useAuth } from "../hooks/AuthContext";
 import API from "../api/axiosInstance";
 import { toast } from 'react-toastify';
@@ -34,6 +35,7 @@ const CANCEL_STATUS_OPTIONS = [
 ];
 
 const CANCEL_ACTION = "Cancel Admission";
+const BATCH_OPTIONS = [2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024];
 
 const buildCancelFormState = () => {
   const todayIso = new Date().toISOString().slice(0, 10);
@@ -95,10 +97,13 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
       admission_date: '',
       subcourse_id: '',
       maincourse_id: '',
-      temp_no: ''
+      temp_enroll_no: ''
     },
     isEditing: false
   });
+  const [instOptions, setInstOptions] = useState([]);
+  const [courseOptions, setCourseOptions] = useState([]);
+  const [subcourseOptions, setSubcourseOptions] = useState([]);
   const [statusFilter, setStatusFilter] = useState('active');
   const [activeTab, setActiveTab] = useState('list');
   const [cancelRecords, setCancelRecords] = useState([]);
@@ -124,6 +129,23 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
         // Graceful fallback
         setRights({ can_view: true, can_create: true, can_edit: true, can_delete: true });
       });
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [inst, courses, subs] = await Promise.all([
+          fetchInstituteCodes(),
+          fetchCourseCodes(),
+          fetchSubcourseNames(),
+        ]);
+        setInstOptions(inst || []);
+        setCourseOptions(courses || []);
+        setSubcourseOptions(subs || []);
+      } catch (error) {
+        console.error("Failed to load enrollment dropdown options:", error);
+      }
+    })();
   }, []);
 
   // Memoized database fields
@@ -316,8 +338,25 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
       setState(prev => ({ ...prev, validationErrors: {} }));
       loadEnrollments();
     } catch (error) {
-      console.error("Error saving enrollment:", error);
-      toast.error(error.message || "Failed to save enrollment");
+      const apiData = error?.response?.data;
+      let message = error.message || "Failed to save enrollment";
+      if (apiData) {
+        if (typeof apiData === 'string') {
+          message = apiData;
+        } else if (apiData.detail) {
+          message = apiData.detail;
+        } else if (apiData.non_field_errors?.length) {
+          message = apiData.non_field_errors.join(' ');
+        } else {
+          const firstKey = Object.keys(apiData)[0];
+          if (firstKey) {
+            const firstVal = apiData[firstKey];
+            message = Array.isArray(firstVal) ? firstVal.join(' ') : String(firstVal);
+          }
+        }
+      }
+      console.error("Error saving enrollment:", error?.response || error);
+      toast.error(message);
     }
   };
 
@@ -413,6 +452,16 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
     }
   };
 
+  const getHydratedEnrollment = (enr) => ({
+    ...enr,
+    admission_date: isoToDMY(enr.admission_date) || '',
+    enrollment_date: isoToDMY(enr.enrollment_date) || '',
+    institute_id: enr.institute?.id || enr.institute?.institute_id || enr.institute_id || '',
+    maincourse_id: enr.maincourse?.id || enr.maincourse_id || '',
+    subcourse_id: enr.subcourse?.id || enr.subcourse_id || '',
+    temp_enroll_no: enr.temp_enroll_no || '',
+  });
+
   // Optimized render methods
   const renderSearchView = () => (
     <div>
@@ -456,33 +505,40 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
               </thead>
               <tbody>
                 {state.filteredEnrollments.map((enr) => (
-                  <tr key={enr.enrollment_no}>
-                    <td className="border p-2">{enr.enrollment_no}</td>
-                    <td className="border p-2">{enr.student_name}</td>
-                    <td className="border p-2">{enr.institute?.institute_code || enr.institute_id}</td>
-                    <td className="border p-2">{enr.subcourse?.name || enr.subcourse_id}</td>
-                    <td className="border p-2">{enr.batch}</td>
+                  <tr
+                    key={enr.enrollment_no}
+                    className="cursor-pointer hover:bg-slate-50"
+                    onClick={() => {
+                      const hydrated = getHydratedEnrollment(enr);
+                      setFormState({ data: hydrated, isEditing: true });
+                      setSelectedAction("➕");
+                      if (!panelOpen) setPanelOpen(true);
+                    }}
+                  >
+                    <td className="border px-2 py-0.5">{enr.enrollment_no}</td>
+                    <td className="border px-2 py-0.5">{enr.student_name}</td>
+                    <td className="border px-2 py-0.5 text-sm">{enr.institute?.institute_code || enr.institute_id}</td>
+                    <td className="border px-2 py-0.5 text-sm">{enr.subcourse?.name || enr.subcourse_id}</td>
+                    <td className="border px-2 py-0.5">{enr.batch}</td>
                     
-                    <td className="border p-2">
+                    <td className="border px-2 py-0.5">
                       <span className={`px-2 py-1 rounded-full text-xs font-semibold ${enr.cancel ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700'}`}>
                         {enr.cancel ? 'Cancelled' : 'Active'}
                       </span>
                     </td>
                     {(rights.can_edit || rights.can_delete) && (
-                      <td className="border p-2">
+                      <td className="border px-2 py-0.5">
                         <div className="flex items-center gap-2">
                           {rights.can_edit && (
                             <button
                               title="Edit"
                               className="w-5 h-5 flex items-center justify-center bg-yellow-500 text-white hover:bg-yellow-600 shadow-md rounded"
-                              onClick={() => {
-                                const hydrated = {
-                                  ...enr,
-                                  admission_date: isoToDMY(enr.admission_date) || '',
-                                  enrollment_date: isoToDMY(enr.enrollment_date) || '',
-                                };
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const hydrated = getHydratedEnrollment(enr);
                                 setFormState({ data: hydrated, isEditing: true });
-                                setSelectedTopbarMenu && setSelectedTopbarMenu("➕");
+                                setSelectedAction("➕");
+                                if (!panelOpen) setPanelOpen(true);
                               }}
                             >
                               <FaEdit size={12} />
@@ -493,7 +549,8 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
                             <button
                               title="Delete"
                               className="w-5 h-5 flex items-center justify-center bg-red-600 text-white hover:bg-red-700 shadow-md rounded"
-                              onClick={async () => {
+                              onClick={async (e) => {
+                                e.stopPropagation();
                                 try {
                                   await deleteEnrollment(enr.id);
                                   toast.success("Deleted");
@@ -592,17 +649,144 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
         <p className="text-sm text-red-600 mb-2">You do not have rights to edit enrollments.</p>
       )}
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {databaseFields.map(field => (
-            <FormField 
-              key={field.field}
-              field={field}
-              formData={formState.data}
-              error={state.validationErrors[field.field]}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block mb-1">Enrollment Number</label>
+            <input
+              type="text"
+              name="enrollment_no"
+              value={formState.data.enrollment_no}
               onChange={handleInputChange}
-              disabled={formState.isEditing && field.field === 'enrollment_no'}
+              className={`border rounded px-3 py-2 w-full ${state.validationErrors.enrollment_no ? 'border-red-500' : ''}`}
+              disabled={formState.isEditing}
             />
-          ))}
+            {state.validationErrors.enrollment_no && (
+              <p className="text-red-500 text-sm">{state.validationErrors.enrollment_no}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block mb-1">Temporary Number</label>
+            <input
+              type="text"
+              name="temp_enroll_no"
+              value={formState.data.temp_enroll_no}
+              onChange={handleInputChange}
+              className={`border rounded px-3 py-2 w-full ${state.validationErrors.temp_enroll_no ? 'border-red-500' : ''}`}
+            />
+            {state.validationErrors.temp_enroll_no && (
+              <p className="text-red-500 text-sm">{state.validationErrors.temp_enroll_no}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block mb-1">Student Name *</label>
+            <input
+              type="text"
+              name="student_name"
+              value={formState.data.student_name}
+              onChange={handleInputChange}
+              className={`border rounded px-3 py-2 w-full ${state.validationErrors.student_name ? 'border-red-500' : ''}`}
+              required
+            />
+            {state.validationErrors.student_name && (
+              <p className="text-red-500 text-sm">{state.validationErrors.student_name}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className="block mb-1">Institute Code *</label>
+            <select
+              name="institute_id"
+              value={formState.data.institute_id}
+              onChange={handleInputChange}
+              className={`border rounded px-3 py-2 w-full ${state.validationErrors.institute_id ? 'border-red-500' : ''}`}
+              required
+            >
+              <option value="">Select institute</option>
+              {instOptions.map((inst) => {
+                const value = inst.institute_id ?? inst.id ?? '';
+                const label = inst.institute_code ? `${inst.institute_code}${inst.institute_name ? ` - ${inst.institute_name}` : ''}` : (inst.institute_name || value);
+                return (
+                  <option key={value || inst.institute_code} value={value}>{label}</option>
+                );
+              })}
+            </select>
+            {state.validationErrors.institute_id && (
+              <p className="text-red-500 text-sm">{state.validationErrors.institute_id}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block mb-1">Course Code *</label>
+            <select
+              name="maincourse_id"
+              value={formState.data.maincourse_id}
+              onChange={handleInputChange}
+              className={`border rounded px-3 py-2 w-full ${state.validationErrors.maincourse_id ? 'border-red-500' : ''}`}
+              required
+            >
+              <option value="">Select main course</option>
+              {courseOptions.map((course) => {
+                const value = course.id ?? course.maincourse_id ?? '';
+                const label = course.course_code
+                  ? `${course.course_code}${course.course_name ? ` - ${course.course_name}` : ''}`
+                  : (course.course_name || course.maincourse_id || value);
+                return (
+                  <option key={value || course.maincourse_id} value={value}>{label}</option>
+                );
+              })}
+            </select>
+            {state.validationErrors.maincourse_id && (
+              <p className="text-red-500 text-sm">{state.validationErrors.maincourse_id}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block mb-1">Subcourse Name *</label>
+            <select
+              name="subcourse_id"
+              value={formState.data.subcourse_id}
+              onChange={handleInputChange}
+              className={`border rounded px-3 py-2 w-full ${state.validationErrors.subcourse_id ? 'border-red-500' : ''}`}
+              required
+            >
+              <option value="">Select subcourse</option>
+              {subcourseOptions.map((subcourse) => {
+                const value = subcourse.id ?? subcourse.subcourse_id ?? '';
+                const label = subcourse.subcourse_name
+                  ? `${subcourse.subcourse_name}${subcourse.subcourse_id ? ` (${subcourse.subcourse_id})` : ''}`
+                  : (subcourse.subcourse_id || value);
+                return (
+                  <option key={value || subcourse.subcourse_id} value={value}>{label}</option>
+                );
+              })}
+            </select>
+            {state.validationErrors.subcourse_id && (
+              <p className="text-red-500 text-sm">{state.validationErrors.subcourse_id}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block mb-1">Batch *</label>
+            <select
+              name="batch"
+              value={formState.data.batch}
+              onChange={handleInputChange}
+              className={`border rounded px-3 py-2 w-full ${state.validationErrors.batch ? 'border-red-500' : ''}`}
+              required
+            >
+              <option value="">Select batch</option>
+              {BATCH_OPTIONS.map((batch) => (
+                <option key={batch} value={batch}>{batch}</option>
+              ))}
+            </select>
+            {state.validationErrors.batch && (
+              <p className="text-red-500 text-sm">{state.validationErrors.batch}</p>
+            )}
+          </div>
         </div>
         <div className="flex justify-end space-x-2">
           <button
@@ -859,9 +1043,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
           <div className="p-4">
             {selectedAction === "➕" && renderFormView()}
             {selectedAction === "🔍" && (
-              <div className="space-y-4">
-                {renderSearchView()}
-              </div>
+              <div className="text-sm text-gray-600">Use the search table below.</div>
             )}
             {selectedAction === "📊 Excel Upload" && renderExcelUpload()}
             {selectedAction === "📄 Report" && (
@@ -873,22 +1055,20 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
       </div>
 
       {/* Records section */}
-      {selectedAction !== "➕" && (
-        <div className="bg-white shadow rounded-2xl p-4 h-[calc(100vh-220px)] overflow-auto">
-          <div className="flex flex-wrap gap-2 mb-4">
-            {TAB_OPTIONS.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`px-4 py-2 rounded-full text-sm font-semibold transition ${activeTab === tab.key ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-          {activeTab === 'list' ? renderSearchView() : renderCancellationView()}
+      <div className="bg-white shadow rounded-2xl p-4 h-[calc(100vh-220px)] overflow-auto">
+        <div className="flex flex-wrap gap-2 mb-4">
+          {TAB_OPTIONS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition ${activeTab === tab.key ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
-      )}
+        {activeTab === 'list' ? renderSearchView() : renderCancellationView()}
+      </div>
     </div>
   );
 };

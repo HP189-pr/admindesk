@@ -121,6 +121,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
   // Use service for updating a record
   const updateRecord = async (id) => {
     await updateRecordService(id, form, syncDocRecRemark);
+    await loadRecords();
   };
 
   const [currentRow, setCurrentRow] = useState(null);

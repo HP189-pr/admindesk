@@ -60,10 +60,20 @@ class EnrollmentSerializer(serializers.ModelSerializer):
             'status'
         ]
         extra_kwargs = {
-            'enrollment_no': {'required': True},
+            'enrollment_no': {'required': False, 'allow_blank': True, 'allow_null': True},
+            'temp_enroll_no': {'required': False, 'allow_blank': True, 'allow_null': True},
             'student_name': {'required': True},
             'batch': {'required': True},
         }
+
+    def validate(self, attrs):
+        enrollment_no = (attrs.get('enrollment_no') or '').strip()
+        temp_enroll_no = (attrs.get('temp_enroll_no') or '').strip()
+        if not enrollment_no and not temp_enroll_no:
+            raise serializers.ValidationError(
+                "Either Enrollment Number or Temporary Number is required."
+            )
+        return super().validate(attrs)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

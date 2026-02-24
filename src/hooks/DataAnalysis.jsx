@@ -75,6 +75,14 @@ export default function DataAnalysis() {
 
   const isDegree = service && String(service).toUpperCase() === 'DEGREE';
   const isEnrollment = service && String(service).toUpperCase() === 'ENROLLMENT';
+  const DEGREE_GROUP_TYPES = new Set([
+    'DUPLICATE_ENROLL_NAME_MONTH_YEAR',
+    'ENROLLMENT_SAME_NAME_DIFFER',
+    'ENROLLMENT_NAME_DIFF_YEARS',
+    'ENROLLMENT_NAME_DIFF_MONTHS',
+    'NAME_SAME_DIFFERENT_ENROLLMENT',
+    'DUPLICATE_DG_SR_NO',
+  ]);
 
   const getSelectedAnalysisKeys = () => Object.entries(analysisOptions)
     .filter(([, enabled]) => enabled)
@@ -202,13 +210,18 @@ export default function DataAnalysis() {
         await deleteSelected([id]);
       };
 
-      const deleteDuplicatesKeepOne = async (key) => {
+      const deleteDuplicatesKeepOne = async (key, groupTypeOverride = null) => {
         if (!confirm(`Delete duplicate records for '${key}', keeping one record?`)) return;
         try {
           const endpointRoot = isDegree ? 'degrees' : isEnrollment ? 'enrollments' : 'provisional';
           let rows = [];
           if (isDegree) {
-            const res = await authFetch(`${apiBase}/data-analysis/?service=Degree&group_type=${encodeURIComponent(currentGroupType || '')}&group_key=${encodeURIComponent(key)}`);
+            const groupTypeToUse = groupTypeOverride || currentGroupType || '';
+            if (!groupTypeToUse) {
+              alert('Select a valid analysis group before deleting duplicates.');
+              return;
+            }
+            const res = await authFetch(`${apiBase}/data-analysis/?service=Degree&group_type=${encodeURIComponent(groupTypeToUse)}&group_key=${encodeURIComponent(key)}`);
             const j = await res.json();
             rows = j.records || [];
           } else {
@@ -373,9 +386,20 @@ export default function DataAnalysis() {
                               <button onClick={() => deleteDuplicatesKeepOne(it.key)} className="px-2 py-0.5 bg-red-600 text-white rounded text-xs">Delete dup (keep 1)</button>
                             </div>
                           )}
-                          {service === 'DEGREE' && (
+                          {service === 'DEGREE' && DEGREE_GROUP_TYPES.has(it.type) && (
                             <div className="flex gap-2">
-                              <button onClick={() => deleteDuplicatesKeepOne(it.key)} className="px-2 py-0.5 bg-red-600 text-white rounded text-xs">Delete dup (keep 1)</button>
+                              <button
+                                onClick={() => loadRecordsForKey(it.key, it.type)}
+                                className="px-2 py-0.5 bg-green-600 text-white rounded text-xs"
+                              >
+                                View
+                              </button>
+                              <button
+                                onClick={() => deleteDuplicatesKeepOne(it.key, it.type)}
+                                className="px-2 py-0.5 bg-red-600 text-white rounded text-xs"
+                              >
+                                Delete dup (keep 1)
+                              </button>
                             </div>
                           )}
                         </td>
@@ -387,57 +411,7 @@ export default function DataAnalysis() {
             </div>
           )}
 
-          {isDegree && report?.issues?.some((issue) => Array.isArray(issue.records) && issue.records.length > 0) && (
-            <div className="space-y-4">
-              <div className="text-base font-semibold">Duplicate Records</div>
-              {(report.issues || []).filter((issue) => Array.isArray(issue.records) && issue.records.length > 0).map((issue) => (
-                <div key={`${issue.type}-${issue.key}`} className="bg-white border border-gray-200 rounded shadow-sm">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 px-4 py-3 border-b border-gray-100">
-                    <div>
-                      <div className="font-semibold text-sm text-gray-800">{issue.key}</div>
-                      <div className="text-xs text-gray-500">{issue.message}</div>
-                    </div>
-                    <div className="text-xs text-gray-600">Convocation(s): {getConvocationText(issue)}</div>
-                  </div>
-                  <div className="overflow-auto">
-                    <table className="min-w-full text-xs text-black">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="p-2 text-left border-b border-gray-200">#</th>
-                          <th className="p-2 text-left border-b border-gray-200">Enrollment No</th>
-                          <th className="p-2 text-left border-b border-gray-200">Name</th>
-                          <th className="p-2 text-left border-b border-gray-200">Convocation</th>
-                          <th className="p-2 text-left border-b border-gray-200">Exam Month</th>
-                          <th className="p-2 text-left border-b border-gray-200">Exam Year</th>
-                          <th className="p-2 text-left border-b border-gray-200">Degree</th>
-                          <th className="p-2 text-left border-b border-gray-200">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {issue.records.map((row, idx) => (
-                          <tr key={row.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                            <td className="p-2 border-b border-gray-100">{idx + 1}</td>
-                            <td className="p-2 border-b border-gray-100 font-semibold">{row.enrollment_no}</td>
-                            <td className="p-2 border-b border-gray-100">{row.student_name_dg || row.student_name || '--'}</td>
-                            <td className="p-2 border-b border-gray-100">{row.convocation_no || '--'}</td>
-                            <td className="p-2 border-b border-gray-100">{row.last_exam_month || '--'}</td>
-                            <td className="p-2 border-b border-gray-100">{row.last_exam_year || '--'}</td>
-                            <td className="p-2 border-b border-gray-100">{row.degree_name || '--'}</td>
-                            <td className="p-2 border-b border-gray-100">
-                              <div className="flex gap-2">
-                                <button onClick={() => editRecord(row)} className="px-2 py-0.5 bg-yellow-600 text-white rounded">Edit</button>
-                                <button onClick={() => deleteSingleRecord(row.id)} className="px-2 py-0.5 bg-red-600 text-white rounded">Delete</button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+
 
           {duplicates && (
             <div className="mt-4 space-y-2">

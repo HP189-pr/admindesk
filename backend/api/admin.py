@@ -1807,7 +1807,6 @@ class EnrollmentAdmin(CommonAdminMixin):
     search_fields = ("student_name", "enrollment_no", "temp_enroll_no")
     list_filter = ("institute", "batch", "maincourse", "subcourse", "enrollment_date", "admission_date")
     readonly_fields = ("created_at", "updated_at")
-    autocomplete_fields = ("institute", "subcourse", "maincourse")
 
 @admin.register(InstLetterStudent)
 class InstLetterStudentAdmin(admin.ModelAdmin):

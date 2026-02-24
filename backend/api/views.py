@@ -119,6 +119,7 @@ class DataAnalysisView(APIView):
     def _degree_analysis(self, request):
         qs = StudentDegree.objects.all()
         student_name_field = 'student_name_dg'
+        include_records = str(request.query_params.get('include_records') or '').lower() in ('1', 'true', 'yes')
 
         def build_group_queryset(base_qs, issue_type, key):
             gt = (issue_type or '').strip().upper()
@@ -209,6 +210,15 @@ class DataAnalysisView(APIView):
                 payload.update(extra)
             return payload
 
+        def build_issue(issue_type, key, message, count=None):
+            if include_records:
+                extra = {'count': count} if count is not None else None
+                return serialize_group(issue_type, key, message, extra)
+            payload = {'type': issue_type, 'key': key, 'message': message}
+            if count is not None:
+                payload['count'] = count
+            return payload
+
         group_key = request.query_params.get('group_key')
         group_type = request.query_params.get('group_type')
         if group_key:
@@ -251,11 +261,11 @@ class DataAnalysisView(APIView):
         for g in dup_exact:
             key = f"{g['enrollment_no']}|{g.get(student_name_field) or ''}|{g.get('last_exam_month') or ''}|{g.get('last_exam_year') or ''}"
             issues.append(
-                serialize_group(
+                build_issue(
                     'DUPLICATE_ENROLL_NAME_MONTH_YEAR',
                     key,
                     f"{g['cnt']} records with same enrollment+name+exam month+exam year",
-                    {'count': g['cnt']},
+                    g['cnt'],
                 )
             )
 
@@ -266,11 +276,11 @@ class DataAnalysisView(APIView):
         )
         for g in dup_enr_names:
             issues.append(
-                serialize_group(
+                build_issue(
                     'ENROLLMENT_SAME_NAME_DIFFER',
                     g['enrollment_no'],
                     f"Enrollment {g['enrollment_no']} has {g['distinct_names']} different student names across {g['total']} records",
-                    {'count': g['total']},
+                    g['total'],
                 )
             )
 
@@ -282,11 +292,11 @@ class DataAnalysisView(APIView):
         for g in dup_enr_name_year:
             key = f"{g['enrollment_no']}|{g.get(student_name_field) or ''}"
             issues.append(
-                serialize_group(
+                build_issue(
                     'ENROLLMENT_NAME_DIFF_YEARS',
                     key,
                     f"Enrollment+Name {key} appears in multiple exam years ({g['distinct_years']})",
-                    {'count': g['total']},
+                    g['total'],
                 )
             )
 
@@ -298,11 +308,11 @@ class DataAnalysisView(APIView):
         for g in dup_enr_name_months:
             key = f"{g['enrollment_no']}|{g.get(student_name_field) or ''}"
             issues.append(
-                serialize_group(
+                build_issue(
                     'ENROLLMENT_NAME_DIFF_MONTHS',
                     key,
                     f"Enrollment+Name {key} appears in multiple exam months ({g['distinct_months']})",
-                    {'count': g['total']},
+                    g['total'],
                 )
             )
 
@@ -314,11 +324,11 @@ class DataAnalysisView(APIView):
         for g in dup_name_diff_enr:
             key = g.get(student_name_field) or ''
             issues.append(
-                serialize_group(
+                build_issue(
                     'NAME_SAME_DIFFERENT_ENROLLMENT',
                     key,
                     f"Student name '{key}' appears across {g['distinct_enrollments']} different enrollment numbers",
-                    {'count': g['total']},
+                    g['total'],
                 )
             )
 
@@ -356,11 +366,11 @@ class DataAnalysisView(APIView):
         for g in dup_dg_sr:
             key = g.get('dg_sr_no') or ''
             issues.append(
-                serialize_group(
+                build_issue(
                     'DUPLICATE_DG_SR_NO',
                     key,
                     f"{g['cnt']} records share the same degree serial number '{key}'",
-                    {'count': g['cnt']},
+                    g['cnt'],
                 )
             )
             
