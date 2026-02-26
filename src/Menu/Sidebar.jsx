@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/AuthContext';
 import API from '../api/axiosInstance';
+import { DEFAULT_PROFILE_PIC, normalizeMediaUrl } from '../utils/mediaUrl';
 
 // Styled Sidebar with static modules, adapted to labels used in this app
 const staticModules = [
@@ -48,7 +49,7 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
 
   const [selectedModule, setSelectedModule] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [profilePic, setProfilePic] = useState('/profilepic/default-profile.png');
+  const [profilePic, setProfilePic] = useState(DEFAULT_PROFILE_PIC);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [securePage, setSecurePage] = useState(null);
   const [password, setPassword] = useState('');
@@ -59,9 +60,9 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
 
   useEffect(() => {
     if (user) {
-      setProfilePic(profilePicture || '/profilepic/default-profile.png');
+      setProfilePic(normalizeMediaUrl(profilePicture) || DEFAULT_PROFILE_PIC);
     } else {
-      setProfilePic('/profilepic/default-profile.png');
+      setProfilePic(DEFAULT_PROFILE_PIC);
     }
   }, [user, profilePicture]);
 
@@ -197,7 +198,7 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
 
   const handleLogout = () => {
     logout(navigate);
-    setProfilePic('/profilepic/default-profile.png');
+    setProfilePic(DEFAULT_PROFILE_PIC);
   };
 
   const handleSecurePageAccess = async (menuItem) => {

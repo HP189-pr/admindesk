@@ -353,7 +353,7 @@ class CheckAdminAccessView(APIView):
                 or getattr(user, "is_superuser", False)
                 or user.groups.filter(name__iexact="Admin").exists()
             )
-            return Response({"is_admin": is_admin}, status=200 if is_admin else 403)
+            return Response({"is_admin": is_admin}, status=200)
         except Exception as e:  # pragma: no cover
             return Response({"error": "Internal Server Error", "details": str(e)}, status=500)
 

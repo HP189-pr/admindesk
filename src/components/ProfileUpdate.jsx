@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import API from "../api/axiosInstance";
 import { useAuth } from "../hooks/AuthContext";
+import { DEFAULT_PROFILE_PIC, normalizeMediaUrl } from "../utils/mediaUrl";
 
 const ProfileUpdate = ({ setWorkArea }) => {
     const { user, fetchUserProfile } = useAuth();  // fetchUserProfile to refresh after update
@@ -74,7 +75,7 @@ const ProfileUpdate = ({ setWorkArea }) => {
         try {
             // IMPORTANT: do NOT set the Content-Type header manually for multipart/form-data.
             // Let axios/browser set the proper Content-Type with boundary.
-            const response = await axios.patch(`/api/profile/`, formData, {
+            const response = await API.patch(`/api/profile/`, formData, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -82,29 +83,18 @@ const ProfileUpdate = ({ setWorkArea }) => {
 
             alert("Profile updated successfully!");
             await fetchUserProfile();  // Refresh profile data after update
-            setWorkArea(null);
+            if (typeof setWorkArea === "function") {
+                setWorkArea(null);
+            }
         } catch (error) {
             console.error("❌ Error updating profile:", error.response?.data || error.message);
         }
     };
 
-    const normalizeMediaUrl = (value) => {
-        if (!value) return value;
-        try {
-            const url = new URL(value, window.location.origin);
-            if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
-                return url.pathname + url.search + url.hash;
-            }
-        } catch {
-            // keep as-is for relative paths
-        }
-        return value;
-    };
-
     // Choose displayed picture (uploaded file preview or backend URL)
     const displayedProfilePicture = profile.profile_picture_file
         ? URL.createObjectURL(profile.profile_picture_file)
-        : (normalizeMediaUrl(profile.profile_picture_url) || "/default-profile.png");
+        : (normalizeMediaUrl(profile.profile_picture_url) || DEFAULT_PROFILE_PIC);
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">

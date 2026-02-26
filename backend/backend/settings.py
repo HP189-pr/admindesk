@@ -205,6 +205,8 @@ CORS_ALLOWED_ORIGINS = [
 
     "http://ksvoffice",
     "http://160.160.160.130",
+    "http://160.160.160.130:8081",
+    "http://160.160.160.130:8000",
 ]
 
 # Allow additional local dev ports used during debugging (Vite on 3002, Django dev on 8001)
@@ -247,7 +249,9 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8081",
     "http://127.0.0.1:8081",
     "http://ksvoffice",
-    "http://160.160.160.130"
+    "http://160.160.160.130",
+    "http://160.160.160.130:8081",
+    "http://160.160.160.130:8000",
 ]
 
 # REST framework settings (leave settings dict in place; it's safe even if package absent)

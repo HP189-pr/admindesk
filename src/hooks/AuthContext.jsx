@@ -1,15 +1,17 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import API from "../api/axiosInstance";
+import { DEFAULT_PROFILE_PIC, normalizeMediaUrl } from "../utils/mediaUrl";
 
 const AuthContext = createContext({
     user: null,
     token: null,
     isAdmin: false,
-    profilePicture: "/profilepic/default-profile.png",
+    profilePicture: DEFAULT_PROFILE_PIC,
     loading: true,
     login: async () => ({ success: false, error: "Auth not initialized" }),
     logout: () => {},
     refreshToken: async () => false,
+    fetchUserProfile: async () => {},
     verifyPassword: async () => ({ success: false }),
     verifyAdminPanelPassword: async () => ({ success: false }),
     isAdminPanelVerified: false,
@@ -29,28 +31,12 @@ export function AuthProvider({ children }) {
         localStorage.getItem("access_token")
     );
 
-    const [profilePicture, setProfilePicture] = useState(
-        "/profilepic/default-profile.png"
-    );
+    const [profilePicture, setProfilePicture] = useState(DEFAULT_PROFILE_PIC);
 
     const [loading, setLoading] = useState(true);
     const [isAdmin, setIsAdmin] = useState(false);
 
     /* ==================== HELPERS ==================== */
-
-    const normalizeMediaUrl = (value) => {
-        if (!value) return value;
-        try {
-            const url = new URL(value, window.location.origin);
-            // If backend returned absolute URL with localhost/127.0.0.1, strip origin
-            if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
-                return url.pathname + url.search + url.hash;
-            }
-        } catch {
-            // if value is already a relative path, just return it
-        }
-        return value;
-    };
 
     const authHeader = () => ({
         Authorization: `Bearer ${localStorage.getItem("access_token")}`,
@@ -101,12 +87,12 @@ export function AuthProvider({ children }) {
                 bio: data.bio || "",
                 social_links: data.social_links || {},
                 profile_picture:
-                    normalizeMediaUrl(data.profile_picture) || "/profilepic/default-profile.png",
+                    normalizeMediaUrl(data.profile_picture) || DEFAULT_PROFILE_PIC,
                 is_admin: !!data.is_admin,
             });
 
             setProfilePicture(
-                normalizeMediaUrl(data.profile_picture) || "/profilepic/default-profile.png"
+                normalizeMediaUrl(data.profile_picture) || DEFAULT_PROFILE_PIC
             );
 
             // 3️⃣ Admin check (server-authoritative)
@@ -149,7 +135,7 @@ export function AuthProvider({ children }) {
                 await fetchUserProfile();
             } else {
                 setUser(null);
-                setProfilePicture("/profilepic/default-profile.png");
+                setProfilePicture(DEFAULT_PROFILE_PIC);
                 setLoading(false);
             }
         };
@@ -324,7 +310,7 @@ export function AuthProvider({ children }) {
         setUser(null);
         setToken(null);
         setIsAdmin(false);
-        setProfilePicture("/profilepic/default-profile.png");
+        setProfilePicture(DEFAULT_PROFILE_PIC);
         if (navigate) navigate("/login");
     };
 
@@ -339,6 +325,7 @@ export function AuthProvider({ children }) {
                 login,
                 logout,
                 refreshToken,
+                fetchUserProfile,
                 verifyPassword,
                 verifyAdminPanelPassword,
                 isAdminPanelVerified,

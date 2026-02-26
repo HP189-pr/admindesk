@@ -8,6 +8,6 @@ REM Ensure GTK runtime (for WeasyPrint) is on PATH; adjust if installed elsewher
 set "PATH=D:\Program Files\GTK3-Runtime Win64\bin;%PATH%"
 
 waitress-serve ^
-  --host=127.0.0.1 ^
+  --host=0.0.0.0 ^
   --port=8000 ^
   backend.wsgi:application

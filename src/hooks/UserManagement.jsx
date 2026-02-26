@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import axios from "../api/axiosInstance";
+import { DEFAULT_PROFILE_PIC, normalizeMediaUrl } from "../utils/mediaUrl";
 
 const UserManagement = ({ selectedTopbarMenu }) => {
   const { fetchUsers, fetchUserDetail } = useAuth();
@@ -111,10 +112,10 @@ const UserManagement = ({ selectedTopbarMenu }) => {
                       <tr key={(user.id ?? user.username ?? user.usercode)} className="text-center">
                         <td className="px-4 py-2 border">
                           <img
-                            src={user.profile_picture || "/profilepic/default-profile.png"}
+                            src={normalizeMediaUrl(user.profile_picture) || DEFAULT_PROFILE_PIC}
                             alt="Profile"
                             className="w-14 h-14 rounded-full object-cover"
-                            onError={(e) => (e.target.src = "/profilepic/default-profile.png")}
+                            onError={(e) => (e.target.src = DEFAULT_PROFILE_PIC)}
                           />
                         </td>
                           <td className="px-4 py-2 border">{user.username}</td>

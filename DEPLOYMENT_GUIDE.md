@@ -202,6 +202,10 @@ Browser → Nginx/Apache → Frontend (dist/)
    // Use: src={config.getMediaUrl('media/profile_pictures/user.jpg')}
    ```
 
+   **If frontend and backend are on different ports/hosts** (e.g., frontend :8081, backend :8000), make sure `/media/` requests go to the backend. Options:
+   - Serve `/media/` from the same origin as the frontend (nginx alias), or
+   - Use absolute media URLs that point to the backend host.
+
 3. **Deploy with nginx** (see nginx config above)
 
 4. **No media copying needed** - nginx serves directly from Django
