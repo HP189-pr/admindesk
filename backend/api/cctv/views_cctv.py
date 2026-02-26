@@ -70,6 +70,9 @@ def _fetch_permission_from_db(user, menu_name: str) -> Optional[Dict[str, bool]]
         menu = None
         if menu_name:
             menu = Menu.objects.filter(module=module, name__iexact=menu_name).first()
+            if not menu:
+                # Allow emoji/prefix variants like "📹 CCTV Monitoring"
+                menu = Menu.objects.filter(module=module, name__icontains=menu_name).first()
         if menu:
             record = UserPermission.objects.filter(user=user, module=module, menu=menu).first()
             if record:

@@ -15,10 +15,17 @@ const AddModule = () => {
 
   /* ==================== FETCH MODULES ==================== */
 
+  const normalizeModules = (data) => {
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.results)) return data.results;
+    if (Array.isArray(data?.data)) return data.data;
+    return [];
+  };
+
   const fetchModules = async () => {
     try {
       const res = await API.get("/api/modules/");
-      setModules(res.data);
+      setModules(normalizeModules(res.data));
     } catch (error) {
       console.error(
         "❌ Error fetching modules:",
@@ -160,7 +167,7 @@ const AddModule = () => {
               className="border p-2 rounded w-full"
             >
               <option value="">Select Module</option>
-              {modules.map((m) => (
+              {Array.isArray(modules) && modules.map((m) => (
                 <option key={m.moduleid} value={m.moduleid}>
                   {m.name}
                 </option>
@@ -189,7 +196,7 @@ const AddModule = () => {
       <h2 className="text-xl font-semibold mb-4">📋 Module List</h2>
 
       <ul className="border rounded p-4">
-        {modules.length ? (
+        {Array.isArray(modules) && modules.length ? (
           modules.map((module) => (
             <li key={module.moduleid} className="p-2 border-b">
               <div

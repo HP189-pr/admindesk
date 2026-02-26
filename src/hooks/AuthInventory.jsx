@@ -24,8 +24,8 @@ const AuthInventory = () => {
         return;
       }
 
-      // 🔹 Fetch permissions (RELATIVE PATH → DEV & PROD SAFE)
-      const response = await API.get('/api/userpermissions/');
+      // 🔹 Fetch navigation rights for the current user
+      const response = await API.get('/api/my-navigation/');
       const data = response.data;
 
       // 🔹 Admin shortcut
@@ -37,18 +37,14 @@ const AuthInventory = () => {
         return;
       }
 
-      // 🔹 Normalize permissions list
-      const permissions = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.results)
-        ? data.results
-        : [];
-
-      const hasInventoryAccess = permissions.some(
-        (perm) =>
-          perm.module?.module_name?.toLowerCase() === 'inventory' &&
-          perm.has_access === true
-      );
+      const modules = Array.isArray(data?.modules) ? data.modules : [];
+      const hasInventoryAccess = modules.some((mod) => {
+        const menus = Array.isArray(mod?.menus) ? mod.menus : [];
+        return menus.some((menu) => {
+          const name = (menu?.name || '').toLowerCase();
+          return name.includes('inventory') && !!menu?.rights?.can_view;
+        });
+      });
 
       if (hasInventoryAccess) {
         setHasAccess(true);

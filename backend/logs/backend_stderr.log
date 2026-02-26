@@ -22093,3 +22093,188 @@ WARNING:waitress.queue:Task queue depth is 1
 WARNING:waitress.queue:Task queue depth is 1
 WARNING:waitress.queue:Task queue depth is 1
 WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+Bad Request: /api/modules/
+WARNING:django.request:Bad Request: /api/modules/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+Unauthorized: /api/backlogin/
+WARNING:django.request:Unauthorized: /api/backlogin/
+Unauthorized: /api/backlogin/
+WARNING:django.request:Unauthorized: /api/backlogin/
+Unauthorized: /api/backlogin/
+WARNING:django.request:Unauthorized: /api/backlogin/
+Unauthorized: /api/backlogin/
+WARNING:django.request:Unauthorized: /api/backlogin/
+Forbidden: /api/check-admin-access/
+WARNING:django.request:Forbidden: /api/check-admin-access/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+Forbidden: /api/check-admin-access/
+WARNING:django.request:Forbidden: /api/check-admin-access/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+Unauthorized: /api/backlogin/
+WARNING:django.request:Unauthorized: /api/backlogin/
+Unauthorized: /api/backlogin/
+WARNING:django.request:Unauthorized: /api/backlogin/
+Forbidden: /api/check-admin-access/
+WARNING:django.request:Forbidden: /api/check-admin-access/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+Forbidden: /api/check-admin-access/
+WARNING:django.request:Forbidden: /api/check-admin-access/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+Forbidden: /api/fee-types/
+WARNING:django.request:Forbidden: /api/fee-types/
+Forbidden: /api/fee-types/
+WARNING:django.request:Forbidden: /api/fee-types/
+Forbidden: /api/fee-types/
+WARNING:django.request:Forbidden: /api/fee-types/
+Forbidden: /api/cash-register/next-receipt/
+WARNING:django.request:Forbidden: /api/cash-register/next-receipt/
+Forbidden: /api/fee-types/
+WARNING:django.request:Forbidden: /api/fee-types/
+Forbidden: /api/cash-register/next-receipt/
+WARNING:django.request:Forbidden: /api/cash-register/next-receipt/
+Forbidden: /api/cash-register/next-receipt/
+WARNING:django.request:Forbidden: /api/cash-register/next-receipt/
+Forbidden: /api/cash-register/next-receipt/
+WARNING:django.request:Forbidden: /api/cash-register/next-receipt/
+Forbidden: /api/fee-types/
+WARNING:django.request:Forbidden: /api/fee-types/
+Forbidden: /api/fee-types/
+WARNING:django.request:Forbidden: /api/fee-types/
+Forbidden: /api/fee-types/
+WARNING:django.request:Forbidden: /api/fee-types/
+Forbidden: /api/fee-types/
+WARNING:django.request:Forbidden: /api/fee-types/
+Forbidden: /api/fee-types/
+WARNING:django.request:Forbidden: /api/fee-types/
+Forbidden: /api/cash-register/next-receipt/
+WARNING:django.request:Forbidden: /api/cash-register/next-receipt/
+Forbidden: /api/fee-types/
+WARNING:django.request:Forbidden: /api/fee-types/
+Forbidden: /api/cash-register/next-receipt/
+WARNING:django.request:Forbidden: /api/cash-register/next-receipt/
+Forbidden: /api/cash-register/next-receipt/
+WARNING:django.request:Forbidden: /api/cash-register/next-receipt/
+Forbidden: /api/cash-register/next-receipt/
+WARNING:django.request:Forbidden: /api/cash-register/next-receipt/
+Forbidden: /api/check-admin-access/
+WARNING:django.request:Forbidden: /api/check-admin-access/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+Forbidden: /api/check-admin-access/
+WARNING:django.request:Forbidden: /api/check-admin-access/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+Forbidden: /api/fee-types/
+WARNING:django.request:Forbidden: /api/fee-types/
+Forbidden: /api/cash-register/next-receipt/
+WARNING:django.request:Forbidden: /api/cash-register/next-receipt/
+Forbidden: /api/cash-register/next-receipt/
+WARNING:django.request:Forbidden: /api/cash-register/next-receipt/
+Forbidden: /api/fee-types/
+WARNING:django.request:Forbidden: /api/fee-types/
+Forbidden: /api/fee-types/
+WARNING:django.request:Forbidden: /api/fee-types/
+Forbidden: /api/fee-types/
+WARNING:django.request:Forbidden: /api/fee-types/
+Forbidden: /api/cash-register/next-receipt/
+WARNING:django.request:Forbidden: /api/cash-register/next-receipt/
+Forbidden: /api/cash-register/next-receipt/
+WARNING:django.request:Forbidden: /api/cash-register/next-receipt/
+Forbidden: /api/fee-types/
+WARNING:django.request:Forbidden: /api/fee-types/
+Forbidden: /api/cash-register/next-receipt/
+WARNING:django.request:Forbidden: /api/cash-register/next-receipt/
+Unauthorized: /api/backlogin/
+WARNING:django.request:Unauthorized: /api/backlogin/
+Forbidden: /api/check-admin-access/
+WARNING:django.request:Forbidden: /api/check-admin-access/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+Forbidden: /api/centre/
+WARNING:django.request:Forbidden: /api/centre/
+Forbidden: /api/exam/
+WARNING:django.request:Forbidden: /api/exam/
+Forbidden: /api/cctv-outward/
+WARNING:django.request:Forbidden: /api/cctv-outward/
+Forbidden: /api/dvd/
+WARNING:django.request:Forbidden: /api/dvd/
+Forbidden: /api/fee-types/
+WARNING:django.request:Forbidden: /api/fee-types/
+Forbidden: /api/cash-register/next-receipt/
+WARNING:django.request:Forbidden: /api/cash-register/next-receipt/
+Forbidden: /api/cash-register/next-receipt/
+WARNING:django.request:Forbidden: /api/cash-register/next-receipt/
+Forbidden: /api/fee-types/
+WARNING:django.request:Forbidden: /api/fee-types/
+Forbidden: /api/fee-types/
+WARNING:django.request:Forbidden: /api/fee-types/
+INFO:waitress:Serving on http://127.0.0.1:8000
+INFO:waitress:Serving on http://127.0.0.1:8000
+INFO:waitress:Serving on http://127.0.0.1:8000
+INFO:waitress:Serving on http://127.0.0.1:8000

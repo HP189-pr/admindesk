@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/AuthContext';
+import API from '../api/axiosInstance';
 
 // Styled Sidebar with static modules, adapted to labels used in this app
-const modules = [
+const staticModules = [
   {
     id: 'student',
     name: 'Student Module',
@@ -53,6 +54,8 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [isAdminPanelFlow, setIsAdminPanelFlow] = useState(false);
+  const [navModules, setNavModules] = useState([]);
+  const [navLoading, setNavLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -61,6 +64,131 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
       setProfilePic('/profilepic/default-profile.png');
     }
   }, [user, profilePicture]);
+
+  const normalizeList = (data) =>
+    Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : [];
+
+  const normalizeModules = (data) =>
+    Array.isArray(data?.modules) ? data.modules : Array.isArray(data) ? data : [];
+
+  const ensureModulesAndMenus = async () => {
+    try {
+      const [modulesRes, menusRes] = await Promise.all([
+        API.get('/api/modules/'),
+        API.get('/api/menus/'),
+      ]);
+
+      const dbModules = normalizeList(modulesRes.data);
+      const dbMenus = normalizeList(menusRes.data);
+
+      const moduleByName = new Map(
+        dbModules.map((m) => [String(m.name || '').toLowerCase(), m])
+      );
+
+      const menusByModuleId = new Map();
+      dbMenus.forEach((m) => {
+        const moduleId = m.module ?? m.moduleid ?? m.module_id;
+        const key = String(moduleId || '');
+        if (!menusByModuleId.has(key)) menusByModuleId.set(key, new Set());
+        menusByModuleId.get(key).add(String(m.name || '').toLowerCase());
+      });
+
+      for (const mod of staticModules) {
+        const key = String(mod.name || '').toLowerCase();
+        let dbModule = moduleByName.get(key);
+
+        if (!dbModule) {
+          const created = await API.post('/api/modules/', { name: mod.name });
+          dbModule = created.data;
+          moduleByName.set(key, dbModule);
+        }
+
+        const moduleId = dbModule?.moduleid ?? dbModule?.id ?? dbModule?.pk;
+        const moduleKey = String(moduleId || '');
+        if (!menusByModuleId.has(moduleKey)) {
+          menusByModuleId.set(moduleKey, new Set());
+        }
+
+        for (const menuName of mod.menu || []) {
+          const menuKey = String(menuName || '').toLowerCase();
+          const set = menusByModuleId.get(moduleKey);
+          if (!set.has(menuKey)) {
+            await API.post('/api/menus/', { name: menuName, module: moduleId });
+            set.add(menuKey);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Sidebar: failed to sync modules/menus', error);
+    }
+  };
+
+  const fetchNavigation = async () => {
+    try {
+      const res = await API.get('/api/my-navigation/');
+      setNavModules(normalizeModules(res.data));
+    } catch (error) {
+      console.error('Sidebar: failed to fetch navigation', error);
+      setNavModules([]);
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+
+    const loadNavigation = async () => {
+      if (!user) {
+        setNavModules([]);
+        setNavLoading(false);
+        return;
+      }
+
+      setNavLoading(true);
+      await ensureModulesAndMenus();
+      if (!active) return;
+      await fetchNavigation();
+      if (active) setNavLoading(false);
+    };
+
+    loadNavigation();
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  const displayModules = useMemo(() => {
+    if (!user) return staticModules;
+
+    const navByName = new Map(
+      navModules.map((m) => [String(m.name || '').toLowerCase(), m])
+    );
+
+    return staticModules
+      .map((mod) => {
+        const navMod = navByName.get(String(mod.name || '').toLowerCase());
+        if (!navMod) {
+          return { ...mod, menu: [] };
+        }
+
+        const rightsByName = new Map(
+          (navMod.menus || []).map((m) => [String(m.name || '').toLowerCase(), m.rights || {}])
+        );
+
+        const visibleMenus = (mod.menu || []).filter((name) => {
+          const rights = rightsByName.get(String(name || '').toLowerCase());
+          return rights ? !!rights.can_view : false;
+        });
+
+        return { ...mod, menu: visibleMenus };
+      })
+      .filter((mod) => mod.menu && mod.menu.length > 0);
+  }, [navModules, user]);
+
+  useEffect(() => {
+    if (!selectedModule) return;
+    const exists = displayModules.some((mod) => mod.id === selectedModule);
+    if (!exists) setSelectedModule(null);
+  }, [displayModules, selectedModule]);
 
   const handleModuleSelect = (moduleId) => {
     setSelectedModule(moduleId);
@@ -175,16 +303,19 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
         <button
           onClick={() => setShowDropdown(!showDropdown)}
           className="w-full text-left px-4 py-2 rounded bg-gray-700 hover:bg-gray-600"
+          disabled={navLoading}
         >
           {isOpen
-            ? selectedModule
-              ? modules.find((m) => m.id === selectedModule)?.name
+            ? navLoading
+              ? '🗃️ Loading Modules...'
+              : selectedModule
+              ? displayModules.find((m) => m.id === selectedModule)?.name
               : '🗃️ Select Module'
             : '🗃️'}
         </button>
         {showDropdown && (
           <div className="absolute left-0 w-full bg-gray-700 rounded shadow-lg z-10">
-            {modules.map((mod) => (
+            {displayModules.map((mod) => (
               <button
                 key={mod.id}
                 onClick={() => handleModuleSelect(mod.id)}
@@ -202,7 +333,7 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
       {/* Module Menus */}
       {selectedModule && (
         <div className={`${isOpen ? 'block' : 'hidden'}`}>
-          {modules
+          {displayModules
             .find((mod) => mod.id === selectedModule)
             ?.menu.map((item) => (
               <button

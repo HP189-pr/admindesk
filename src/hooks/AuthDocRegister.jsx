@@ -23,8 +23,8 @@ const AuthDocRegister = () => {
                 return;
             }
 
-            // 🔹 Fetch permissions (RELATIVE PATH → works in DEV & PROD)
-            const response = await API.get('/api/userpermissions/');
+            // 🔹 Fetch navigation rights for the current user
+            const response = await API.get('/api/my-navigation/');
             const data = response.data;
 
             // 🔹 Admin shortcut
@@ -36,24 +36,13 @@ const AuthDocRegister = () => {
                 return;
             }
 
-            // 🔹 Normalize permissions list
-            const permissions = Array.isArray(data)
-                ? data
-                : Array.isArray(data?.results)
-                ? data.results
-                : [];
-
-            const hasDocRegisterAccess = permissions.some((perm) => {
-                const moduleName = perm.module?.module_name?.toLowerCase();
-                return (
-                    (
-                        moduleName === 'doc_register' ||
-                        moduleName === 'doc register' ||
-                        moduleName === 'office management' ||
-                        moduleName === 'office_management'
-                    ) &&
-                    perm.has_access === true
-                );
+            const modules = Array.isArray(data?.modules) ? data.modules : [];
+            const hasDocRegisterAccess = modules.some((mod) => {
+                const menus = Array.isArray(mod?.menus) ? mod.menus : [];
+                return menus.some((menu) => {
+                    const name = (menu?.name || '').toLowerCase();
+                    return name.includes('doc register') && !!menu?.rights?.can_view;
+                });
             });
 
             if (hasDocRegisterAccess) {
