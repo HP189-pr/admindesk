@@ -5,6 +5,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FaChevronDown, FaChevronUp, FaEdit, FaTrash } from 'react-icons/fa';
 import PageTopbar from '../components/PageTopbar';
+import StudentFeesReport from '../report/StudentFeesReport';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import {
@@ -23,7 +24,7 @@ const TERM_OPTIONS = [
     'Thesis', 'Exam', 'Enrollment', 'Registration',
 ];
 
-const BATCH_OPTIONS = [2023, 2024, 2025, 2026];
+const BATCH_OPTIONS = [2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026];
 
 const todayISO = () => new Date().toISOString().split('T')[0];
 const normalizeIsoDate = (value) => {
@@ -41,6 +42,7 @@ const StudentFees = ({ onToggleSidebar, onToggleChatbox, rights = { can_view: tr
     const actions = useMemo(() => ['➕', '🔍', '📄 Report'], []);
     const [selectedAction, setSelectedAction] = useState('➕');
     const [panelOpen, setPanelOpen] = useState(true);
+    const [showReport, setShowReport] = useState(false);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -131,6 +133,13 @@ const StudentFees = ({ onToggleSidebar, onToggleChatbox, rights = { can_view: tr
 
     // Handlers
     const handleTopbarSelect = (action) => {
+        if (action === '📄 Report') {
+            setShowReport(true);
+            setSelectedAction(action);
+            setPanelOpen(false);
+            return;
+        }
+        setShowReport(false);
         if (selectedAction === action) {
             setPanelOpen((o) => !o);
         } else {
@@ -307,6 +316,18 @@ const StudentFees = ({ onToggleSidebar, onToggleChatbox, rights = { can_view: tr
     useEffect(() => {
         loadFees('', 1);
     }, []);
+
+    if (showReport) {
+        return (
+            <StudentFeesReport
+                onBack={() => {
+                    setShowReport(false);
+                    setSelectedAction('🔍');
+                    setPanelOpen(true);
+                }}
+            />
+        );
+    }
 
     // Render helpers
     const renderEntryForm = () => (

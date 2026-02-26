@@ -122,17 +122,17 @@ class CCTVDVD(models.Model):
 class CCTVOutward(models.Model):
     cctv_record_no = models.CharField(max_length=50, unique=True, null=True, blank=True)
 
-    outward_no = models.CharField(max_length=50, unique=True)
-    outward_date = models.DateField()
+    outward_no = models.CharField(max_length=50, unique=True, null=True, blank=True)
+    outward_date = models.DateField(null=True, blank=True)
 
-    college_name = models.CharField(max_length=200)
-    centre_name = models.CharField(max_length=200)
+    college_name = models.CharField(max_length=200,default="",blank=True)
+    centre_name = models.CharField(max_length=200, null=True, blank=True, default="")
 
-    exam_on = models.CharField(max_length=200)
-    last_date = models.DateField()
+    exam_on = models.CharField(max_length=200,default="",blank=True)
+    last_date = models.DateField(null=True, blank=True)
 
-    cc_start_label = models.CharField(max_length=20)
-    cc_end_label = models.CharField(max_length=20)
+    cc_start_label = models.CharField(max_length=20, null=True, blank=True, default="")
+    cc_end_label = models.CharField(max_length=20, null=True, blank=True, default="")
 
     no_of_dvd = models.IntegerField(default=0)
     no_of_report = models.IntegerField(default=0)

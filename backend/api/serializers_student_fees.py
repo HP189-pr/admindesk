@@ -22,6 +22,7 @@ class StudentFeesLedgerSerializer(serializers.ModelSerializer):
     enrollment_no = serializers.CharField(source='enrollment.enrollment_no', read_only=True)
     temp_enroll_no = serializers.CharField(source='enrollment.temp_enroll_no', read_only=True)
     student_name = serializers.CharField(source='enrollment.student_name', read_only=True)
+    batch = serializers.IntegerField(source='enrollment.batch', read_only=True)
     created_by_username = serializers.CharField(source='created_by.username', read_only=True)
     
     class Meta:
@@ -32,6 +33,7 @@ class StudentFeesLedgerSerializer(serializers.ModelSerializer):
             'enrollment_no',  # read-only
             'temp_enroll_no',  # read-only
             'student_name',  # read-only
+            'batch',
             'receipt_no',
             'receipt_date',
             'term',
