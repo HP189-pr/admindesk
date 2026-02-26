@@ -319,7 +319,7 @@ class BulkUploadView(APIView):
                 "leave_report_no","emp_id","leave_code","start_date","end_date","total_days","reason","status","created_by","approved_by","approved_at"
             ],
             BulkService.STUDENT_FEES: [
-                "student_no","receipt_no","receipt_date","term","amount","remark"
+                "enrollment_no","temp_enroll_no","enrollment_id","receipt_no","receipt_date","term","amount","remark"
             ],
             BulkService.STUDENT_PROFILE: [
                 "enrollment_no","gender","birth_date","address1","address2","city1","city2","contact_no","email","fees","hostel_required","aadhar_no","abc_id","mobile_adhar","name_adhar","mother_name","category","photo_uploaded","is_d2d","program_medium"
@@ -340,6 +340,12 @@ class BulkUploadView(APIView):
                 lc = c.lower()
                 if 'student_no' in lc:
                     example[c] = 'ENR001'
+                elif 'enrollment_no' in lc:
+                    example[c] = 'ENR001'
+                elif 'temp_enroll_no' in lc:
+                    example[c] = 'TEMP001'
+                elif 'enrollment_id' in lc:
+                    example[c] = 1
                 elif 'receipt_no' in lc:
                     example[c] = 'RCPT-001'
                 elif 'receipt_date' in lc:
@@ -1462,53 +1468,127 @@ class BulkUploadView(APIView):
                 from decimal import Decimal, InvalidOperation
 
                 def _normalize_amount(val):
-                    amt = _safe_num(val, None)
-                    if amt is None:
+                    if val is None:
                         return None
                     try:
-                        return Decimal(str(amt)).quantize(Decimal('0.01'))
+                        if pd is not None and pd.isna(val):
+                            return None
+                    except Exception:
+                        pass
+                    cleaned = val
+                    if isinstance(val, str):
+                        s = val.strip()
+                        if s == "" or s.lower() in ("nan", "none", "<na>"):
+                            return None
+                        neg = False
+                        if s.startswith("(") and s.endswith(")"):
+                            neg = True
+                            s = s[1:-1].strip()
+                        s = s.replace(",", "")
+                        import re
+                        s = re.sub(r"[^0-9.\-]", "", s)
+                        if s in ("", "-", ".", "-."):
+                            return None
+                        if neg and not s.startswith("-"):
+                            s = f"-{s}"
+                        cleaned = s
+                    try:
+                        dec = Decimal(str(cleaned)).quantize(Decimal('0.01'))
+                        if dec <= 0:
+                            return None
+                        return dec
                     except (InvalidOperation, ValueError):
                         return None
 
                 for idx, row in df.iterrows():
                     try:
-                        student_key = _clean_cell(row.get("student_no") or row.get("enrollment_no") or row.get("temp_enroll_no"))
-                        if not student_key:
-                            _log(idx, row.get("receipt_no") or f"row_{idx+1}", "Missing student_no", False); _cache_progress(idx+1); continue
+                        student_key = _clean_cell(
+                            row.get("enrollment_no") or row.get("temp_enroll_no")
+                        )
+                        enrollment_id_raw = row.get("enrollment_id") or row.get("enrollment") or row.get("enrollment_pk")
+                        enrollment_id = _safe_num(enrollment_id_raw, None)
+                        enrollment_id = int(enrollment_id) if enrollment_id is not None else None
 
-                        enrollment = (Enrollment.objects.filter(enrollment_no__iexact=student_key).first() or
-                                      Enrollment.objects.filter(temp_enroll_no__iexact=student_key).first())
+                        if not student_key and not enrollment_id:
+                            _log(
+                                idx,
+                                row.get("receipt_no") or f"row_{idx+1}",
+                                "Missing enrollment_no/temp_enroll_no or enrollment_id",
+                                False,
+                            ); _cache_progress(idx+1); continue
+
+                        enrollment = None
+                        if student_key:
+                            enrollment = (
+                                Enrollment.objects.filter(enrollment_no__iexact=student_key).first()
+                                or Enrollment.objects.filter(temp_enroll_no__iexact=student_key).first()
+                            )
+                        if not enrollment and enrollment_id is not None:
+                            enrollment = Enrollment.objects.filter(id=enrollment_id).first()
                         if not enrollment:
-                            _log(idx, row.get("receipt_no") or student_key, f"Enrollment not found for '{student_key}'", False); _cache_progress(idx+1); continue
+                            display_key = student_key or str(enrollment_id)
+                            _log(
+                                idx,
+                                row.get("receipt_no") or display_key,
+                                f"Enrollment not found for '{display_key}'",
+                                False,
+                            ); _cache_progress(idx+1); continue
 
                         receipt_no = _clean_cell(row.get("receipt_no"))
-                        if not receipt_no:
-                            _log(idx, student_key, "Missing receipt_no", False); _cache_progress(idx+1); continue
-
-                        receipt_date = _parse_excel_date_safe(row.get("receipt_date"))
-                        if receipt_date is None:
-                            _log(idx, receipt_no, "Missing or invalid receipt_date", False); _cache_progress(idx+1); continue
+                        receipt_date_raw = row.get("receipt_date")
+                        receipt_date = _parse_excel_date_safe(receipt_date_raw)
+                        if receipt_date_raw not in (None, "") and receipt_date is None:
+                            _log(idx, receipt_no or student_key, "Invalid receipt_date", False); _cache_progress(idx+1); continue
 
                         term_val = _clean_cell(row.get("term"))
                         if not term_val:
                             _log(idx, receipt_no, "Missing term", False); _cache_progress(idx+1); continue
 
-                        amount_val = _normalize_amount(row.get("amount"))
-                        if amount_val is None or amount_val <= 0:
-                            _log(idx, receipt_no, "Invalid amount", False); _cache_progress(idx+1); continue
+                        amount_raw = row.get("amount")
+                        try:
+                            if pd is not None and pd.isna(amount_raw):
+                                amount_raw = None
+                        except Exception:
+                            pass
+                        if isinstance(amount_raw, float):
+                            try:
+                                import math
+                                if math.isnan(amount_raw):
+                                    amount_raw = None
+                            except Exception:
+                                pass
+                        if isinstance(amount_raw, str) and amount_raw.strip().lower() in ("", "nan", "none", "<na>"):
+                            amount_raw = None
+                        amount_val = _normalize_amount(amount_raw)
+                        if amount_raw not in (None, "") and amount_val is None:
+                            _log(idx, receipt_no or student_key, "Invalid amount", False); _cache_progress(idx+1); continue
+
+                        if not receipt_no and receipt_date is None and amount_val is None:
+                            _cache_progress(idx+1); continue
 
                         remark_val = _clean_cell(row.get("remark"))
 
-                        obj, created = StudentFeesLedger.objects.update_or_create(
-                            receipt_no=receipt_no,
-                            defaults={
-                                "enrollment": enrollment,
-                                "receipt_date": receipt_date,
-                                "term": term_val,
-                                "amount": amount_val,
-                                "remark": remark_val,
-                            }
-                        )
+                        if receipt_no:
+                            obj, created = StudentFeesLedger.objects.update_or_create(
+                                receipt_no=receipt_no,
+                                defaults={
+                                    "enrollment": enrollment,
+                                    "receipt_date": receipt_date,
+                                    "term": term_val,
+                                    "amount": amount_val,
+                                    "remark": remark_val,
+                                }
+                            )
+                        else:
+                            obj = StudentFeesLedger.objects.create(
+                                enrollment=enrollment,
+                                receipt_no=None,
+                                receipt_date=receipt_date,
+                                term=term_val,
+                                amount=amount_val,
+                                remark=remark_val,
+                            )
+                            created = True
                         # Only set created_by when record is first inserted or missing
                         try:
                             if created and getattr(obj, 'created_by', None) != user:
@@ -1520,9 +1600,17 @@ class BulkUploadView(APIView):
                         except Exception:
                             pass
 
-                        _log(idx, receipt_no, "Upserted", True)
+                        _log(idx, receipt_no or student_key, "Upserted", True)
                     except Exception as e:
-                        _log(idx, row.get("receipt_no") or row.get("student_no"), str(e), False)
+                        _log(
+                            idx,
+                            row.get("receipt_no")
+                            or row.get("enrollment_no")
+                            or row.get("temp_enroll_no")
+                            or row.get("enrollment_id"),
+                            str(e),
+                            False,
+                        )
                     _cache_progress(idx+1)
 
             elif service == BulkService.VERIFICATION:
@@ -2165,6 +2253,8 @@ class BulkUploadView(APIView):
                     'enrollment': 'enrollment_no',
                     'enrollment no': 'enrollment_no',
                     'enrollment_no': 'enrollment_no',
+                    'enrollment id': 'enrollment_id',
+                    'enrollment_id': 'enrollment_id',
                     'docrec': 'doc_rec_id',
                     'doc rec': 'doc_rec_id',
                     'doc_rec_id': 'doc_rec_id',
@@ -2241,7 +2331,7 @@ class BulkUploadView(APIView):
                     selected_cols = [sel]
             if selected_cols:
                 # Columns we should keep regardless if selected (useful ids used by processors)
-                force_keys = ['enrollment_no', 'doc_rec_id', 'prv_number', 'mg_number', 'final_no', 'student_no']
+                force_keys = ['enrollment_no', 'temp_enroll_no', 'enrollment_id', 'doc_rec_id', 'prv_number', 'mg_number', 'final_no', 'student_no']
                 # Canonicalize selected column names to match any renaming we applied to df.
                 def _canon_for_selected(name):
                     try:

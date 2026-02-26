@@ -11,20 +11,21 @@ class StudentFeesLedger(models.Model):
     # 🔗 Student Link (single source of truth)
     enrollment = models.ForeignKey(
         Enrollment,
-        to_field='enrollment_no',
-        db_column='enrollment_no',
         on_delete=models.CASCADE,
         related_name='fee_ledger',
-        db_constraint=False
+        null=True,
+        blank=True
     )
 
     # 📄 Receipt Info
     receipt_no = models.CharField(
         max_length=30,
         unique=True,
-        db_index=True
+        db_index=True,
+        null=True,
+        blank=True
     )
-    receipt_date = models.DateField(db_index=True)
+    receipt_date = models.DateField(db_index=True, null=True, blank=True)
 
     # 🏷️ Logical grouping (no rules enforced)
     term = models.CharField(
@@ -35,7 +36,9 @@ class StudentFeesLedger(models.Model):
     # 💰 Amount
     amount = models.DecimalField(
         max_digits=12,
-        decimal_places=2
+        decimal_places=2,
+        null=True,
+        blank=True
     )
 
     # 📝 Free text remark
@@ -64,4 +67,5 @@ class StudentFeesLedger(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.enrollment.enrollment_no} | {self.receipt_no} | {self.amount}"
+        enrollment_no = getattr(self.enrollment, 'enrollment_no', None)
+        return f"{enrollment_no or '-'} | {self.receipt_no} | {self.amount}"

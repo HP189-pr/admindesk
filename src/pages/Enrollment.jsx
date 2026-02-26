@@ -37,13 +37,13 @@ const CANCEL_STATUS_OPTIONS = [
 const CANCEL_ACTION = "Cancel Admission";
 const BATCH_OPTIONS = [2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024];
 
-const buildCancelFormState = () => {
-  const todayIso = new Date().toISOString().slice(0, 10);
-  return {
+  const buildCancelFormState = () => {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    return {
     enrollmentNoInput: '',
     enrollmentId: null,
     studentName: '',
-    cancel_date: isoToDMY(todayIso) || '',
+    cancel_date: todayIso || '',
     inward_no: '',
     inward_date: '',
     outward_no: '',
@@ -66,7 +66,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
     isLoading: false,
     pagination: {
       currentPage: 1,
-      pageSize: 10,
+      pageSize: 100,
       totalItems: 0
     },
     validationErrors: {}
@@ -431,11 +431,11 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
       const payload = {
         enrollment: cancelForm.enrollmentId,
         student_name: cancelForm.studentName,
-        cancel_date: dmyToISO(cancelForm.cancel_date) || null,
+        cancel_date: cancelForm.cancel_date || null,
         inward_no: cancelForm.inward_no || null,
-        inward_date: cancelForm.inward_date ? dmyToISO(cancelForm.inward_date) : null,
+        inward_date: cancelForm.inward_date || null,
         outward_no: cancelForm.outward_no || null,
-        outward_date: cancelForm.outward_date ? dmyToISO(cancelForm.outward_date) : null,
+        outward_date: cancelForm.outward_date || null,
         can_remark: cancelForm.can_remark || null,
         status: cancelForm.status,
       };
@@ -504,9 +504,9 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
                 </tr>
               </thead>
               <tbody>
-                {state.filteredEnrollments.map((enr) => (
+                {state.filteredEnrollments.map((enr, idx) => (
                   <tr
-                    key={enr.enrollment_no}
+                    key={enr.id || enr.enrollment_no || `enr-${idx}`}
                     className="cursor-pointer hover:bg-slate-50"
                     onClick={() => {
                       const hydrated = getHydratedEnrollment(enr);

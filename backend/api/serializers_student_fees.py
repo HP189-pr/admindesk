@@ -68,32 +68,51 @@ class StudentFeesLedgerSerializer(serializers.ModelSerializer):
     
     def validate_receipt_no(self, value):
         """
-        Validate receipt number is unique
+        Validate receipt number is unique when provided
         """
-        if not value or not value.strip():
-            raise serializers.ValidationError("Receipt number is required.")
-        
+        if value in (None, ""):
+            return value
+
         value = value.strip()
-        
+        if not value:
+            return None
+
         # Check uniqueness (exclude current instance during update)
         queryset = StudentFeesLedger.objects.filter(receipt_no=value)
         if self.instance:
             queryset = queryset.exclude(pk=self.instance.pk)
-        
+
         if queryset.exists():
             raise serializers.ValidationError(
                 f"Receipt number '{value}' already exists."
             )
-        
+
         return value
     
     def validate_amount(self, value):
         """
-        Validate amount is positive
+        Validate amount is positive when provided
         """
+        if value is None:
+            return value
         if value <= 0:
             raise serializers.ValidationError("Amount must be greater than zero.")
         return value
+
+    def validate(self, attrs):
+        """
+        Require at least one of receipt_no, receipt_date, or amount
+        """
+        receipt_no = attrs.get("receipt_no", getattr(self.instance, "receipt_no", None))
+        receipt_date = attrs.get("receipt_date", getattr(self.instance, "receipt_date", None))
+        amount = attrs.get("amount", getattr(self.instance, "amount", None))
+
+        if not receipt_no and not receipt_date and amount in (None, ""):
+            raise serializers.ValidationError(
+                "Provide at least one of receipt_no, receipt_date, or amount."
+            )
+
+        return attrs
     
     def create(self, validated_data):
         """

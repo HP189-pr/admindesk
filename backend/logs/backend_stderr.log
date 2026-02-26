@@ -20917,3 +20917,1171 @@ Not Found: /api/degrees/2460602/
 WARNING:django.request:Not Found: /api/degrees/2460602/
 Not Found: /api/degrees/2460602/
 WARNING:django.request:Not Found: /api/degrees/2460602/
+INFO:waitress:Serving on http://127.0.0.1:8000
+Unauthorized: /api/token/verify/
+WARNING:django.request:Unauthorized: /api/token/verify/
+Unauthorized: /api/token/verify/
+WARNING:django.request:Unauthorized: /api/token/verify/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+Bad Request: /api/verify-admin-panel-password/
+WARNING:django.request:Bad Request: /api/verify-admin-panel-password/
+INFO:waitress:Serving on http://127.0.0.1:8000
+INFO:waitress:Serving on http://127.0.0.1:8000
+INFO:waitress:Serving on http://127.0.0.1:8000
+INFO:waitress:Serving on http://127.0.0.1:8000
+INFO:waitress:Serving on http://127.0.0.1:8000
+INFO:waitress:Serving on http://127.0.0.1:8000
+INFO:waitress:Serving on http://127.0.0.1:8000
+INFO:waitress:Serving on http://127.0.0.1:8000
+INFO:waitress:Serving on http://127.0.0.1:8000
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+INFO:waitress:Serving on http://127.0.0.1:8000
+INFO:waitress:Serving on http://127.0.0.1:8000
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /favicon.ico
+WARNING:django.request:Not Found: /favicon.ico
+Not Found: /static/admin/css/forms.css
+WARNING:django.request:Not Found: /static/admin/css/forms.css
+Not Found: /static/admin/js/calendar.js
+WARNING:django.request:Not Found: /static/admin/js/calendar.js
+Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+WARNING:django.request:Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+Not Found: /static/admin/js/prepopulate_init.js
+WARNING:django.request:Not Found: /static/admin/js/prepopulate_init.js
+Not Found: /static/admin/js/change_form.js
+WARNING:django.request:Not Found: /static/admin/js/change_form.js
+Not Found: /static/admin/img/icon-yes.svg
+WARNING:django.request:Not Found: /static/admin/img/icon-yes.svg
+Not Found: /static/admin/css/forms.css
+WARNING:django.request:Not Found: /static/admin/css/forms.css
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/js/prepopulate_init.js
+WARNING:django.request:Not Found: /static/admin/js/prepopulate_init.js
+Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+WARNING:django.request:Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+Not Found: /static/admin/js/calendar.js
+WARNING:django.request:Not Found: /static/admin/js/calendar.js
+Not Found: /static/admin/js/change_form.js
+WARNING:django.request:Not Found: /static/admin/js/change_form.js
+Not Found: /static/admin/css/forms.css
+WARNING:django.request:Not Found: /static/admin/css/forms.css
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/js/calendar.js
+WARNING:django.request:Not Found: /static/admin/js/calendar.js
+Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+WARNING:django.request:Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+Not Found: /static/admin/js/prepopulate_init.js
+WARNING:django.request:Not Found: /static/admin/js/prepopulate_init.js
+Not Found: /static/admin/js/change_form.js
+WARNING:django.request:Not Found: /static/admin/js/change_form.js
+Not Found: /static/admin/img/icon-yes.svg
+WARNING:django.request:Not Found: /static/admin/img/icon-yes.svg
+Not Found: /static/admin/css/forms.css
+WARNING:django.request:Not Found: /static/admin/css/forms.css
+Not Found: /static/admin/js/calendar.js
+WARNING:django.request:Not Found: /static/admin/js/calendar.js
+Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+WARNING:django.request:Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+Not Found: /static/admin/js/prepopulate_init.js
+WARNING:django.request:Not Found: /static/admin/js/prepopulate_init.js
+Not Found: /static/admin/js/change_form.js
+WARNING:django.request:Not Found: /static/admin/js/change_form.js
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/css/forms.css
+WARNING:django.request:Not Found: /static/admin/css/forms.css
+Not Found: /static/admin/js/prepopulate_init.js
+WARNING:django.request:Not Found: /static/admin/js/prepopulate_init.js
+Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+WARNING:django.request:Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+Not Found: /static/admin/js/calendar.js
+WARNING:django.request:Not Found: /static/admin/js/calendar.js
+Not Found: /static/admin/js/change_form.js
+WARNING:django.request:Not Found: /static/admin/js/change_form.js
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/img/icon-yes.svg
+WARNING:django.request:Not Found: /static/admin/img/icon-yes.svg
+Not Found: /static/admin/css/forms.css
+WARNING:django.request:Not Found: /static/admin/css/forms.css
+Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+WARNING:django.request:Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+Not Found: /static/admin/js/calendar.js
+WARNING:django.request:Not Found: /static/admin/js/calendar.js
+Not Found: /static/admin/js/prepopulate_init.js
+WARNING:django.request:Not Found: /static/admin/js/prepopulate_init.js
+Not Found: /static/admin/js/change_form.js
+WARNING:django.request:Not Found: /static/admin/js/change_form.js
+Not Found: /static/admin/img/icon-yes.svg
+WARNING:django.request:Not Found: /static/admin/img/icon-yes.svg
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/css/forms.css
+WARNING:django.request:Not Found: /static/admin/css/forms.css
+Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+WARNING:django.request:Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+Not Found: /static/admin/js/calendar.js
+WARNING:django.request:Not Found: /static/admin/js/calendar.js
+Not Found: /static/admin/js/prepopulate_init.js
+WARNING:django.request:Not Found: /static/admin/js/prepopulate_init.js
+Not Found: /static/admin/js/change_form.js
+WARNING:django.request:Not Found: /static/admin/js/change_form.js
+Not Found: /static/admin/img/icon-yes.svg
+WARNING:django.request:Not Found: /static/admin/img/icon-yes.svg
+Unauthorized: /api/token/verify/
+WARNING:django.request:Unauthorized: /api/token/verify/
+Unauthorized: /api/token/verify/
+WARNING:django.request:Unauthorized: /api/token/verify/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+Unauthorized: /api/institutes/
+WARNING:django.request:Unauthorized: /api/institutes/
+Unauthorized: /api/subbranch/
+WARNING:django.request:Unauthorized: /api/subbranch/
+Unauthorized: /api/mainbranch/
+WARNING:django.request:Unauthorized: /api/mainbranch/
+Unauthorized: /api/my-navigation/
+WARNING:django.request:Unauthorized: /api/my-navigation/
+Unauthorized: /api/institutes/
+WARNING:django.request:Unauthorized: /api/institutes/
+Unauthorized: /api/subbranch/
+WARNING:django.request:Unauthorized: /api/subbranch/
+Unauthorized: /api/mainbranch/
+WARNING:django.request:Unauthorized: /api/mainbranch/
+Unauthorized: /api/my-navigation/
+WARNING:django.request:Unauthorized: /api/my-navigation/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/css/login.css
+WARNING:django.request:Not Found: /static/admin/css/login.css
+Not Found: /static/admin/css/forms.css
+WARNING:django.request:Not Found: /static/admin/css/forms.css
+Not Found: /static/admin/js/calendar.js
+WARNING:django.request:Not Found: /static/admin/js/calendar.js
+Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+WARNING:django.request:Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+Not Found: /static/admin/js/prepopulate_init.js
+WARNING:django.request:Not Found: /static/admin/js/prepopulate_init.js
+Not Found: /static/admin/js/change_form.js
+WARNING:django.request:Not Found: /static/admin/js/change_form.js
+Not Found: /static/admin/img/icon-yes.svg
+WARNING:django.request:Not Found: /static/admin/img/icon-yes.svg
+Not Found: /static/admin/css/forms.css
+WARNING:django.request:Not Found: /static/admin/css/forms.css
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+WARNING:django.request:Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+Not Found: /static/admin/js/prepopulate_init.js
+WARNING:django.request:Not Found: /static/admin/js/prepopulate_init.js
+Not Found: /static/admin/js/calendar.js
+WARNING:django.request:Not Found: /static/admin/js/calendar.js
+Not Found: /static/admin/js/change_form.js
+WARNING:django.request:Not Found: /static/admin/js/change_form.js
+Not Found: /static/admin/img/icon-yes.svg
+WARNING:django.request:Not Found: /static/admin/img/icon-yes.svg
+Not Found: /static/admin/css/forms.css
+WARNING:django.request:Not Found: /static/admin/css/forms.css
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/js/calendar.js
+WARNING:django.request:Not Found: /static/admin/js/calendar.js
+Not Found: /static/admin/js/prepopulate_init.js
+WARNING:django.request:Not Found: /static/admin/js/prepopulate_init.js
+Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+WARNING:django.request:Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+Not Found: /static/admin/js/change_form.js
+WARNING:django.request:Not Found: /static/admin/js/change_form.js
+Not Found: /static/admin/img/icon-yes.svg
+WARNING:django.request:Not Found: /static/admin/img/icon-yes.svg
+Not Found: /static/admin/css/forms.css
+WARNING:django.request:Not Found: /static/admin/css/forms.css
+Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+WARNING:django.request:Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+Not Found: /static/admin/js/calendar.js
+WARNING:django.request:Not Found: /static/admin/js/calendar.js
+Not Found: /static/admin/js/prepopulate_init.js
+WARNING:django.request:Not Found: /static/admin/js/prepopulate_init.js
+Not Found: /static/admin/js/change_form.js
+WARNING:django.request:Not Found: /static/admin/js/change_form.js
+Not Found: /static/admin/css/forms.css
+WARNING:django.request:Not Found: /static/admin/css/forms.css
+Not Found: /static/admin/js/calendar.js
+WARNING:django.request:Not Found: /static/admin/js/calendar.js
+Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+WARNING:django.request:Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+Not Found: /static/admin/js/prepopulate_init.js
+WARNING:django.request:Not Found: /static/admin/js/prepopulate_init.js
+Not Found: /static/admin/js/change_form.js
+WARNING:django.request:Not Found: /static/admin/js/change_form.js
+Not Found: /static/admin/img/icon-yes.svg
+WARNING:django.request:Not Found: /static/admin/img/icon-yes.svg
+INFO:waitress:Serving on http://127.0.0.1:8000
+Unauthorized: /api/token/verify/
+WARNING:django.request:Unauthorized: /api/token/verify/
+Unauthorized: /api/token/verify/
+WARNING:django.request:Unauthorized: /api/token/verify/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /favicon.ico
+WARNING:django.request:Not Found: /favicon.ico
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/js/calendar.js
+WARNING:django.request:Not Found: /static/admin/js/calendar.js
+Not Found: /static/admin/css/forms.css
+WARNING:django.request:Not Found: /static/admin/css/forms.css
+Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+WARNING:django.request:Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+Not Found: /static/admin/js/prepopulate_init.js
+WARNING:django.request:Not Found: /static/admin/js/prepopulate_init.js
+Not Found: /static/admin/js/change_form.js
+WARNING:django.request:Not Found: /static/admin/js/change_form.js
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/css/forms.css
+WARNING:django.request:Not Found: /static/admin/css/forms.css
+Not Found: /static/admin/js/prepopulate_init.js
+WARNING:django.request:Not Found: /static/admin/js/prepopulate_init.js
+Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+WARNING:django.request:Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+Not Found: /static/admin/js/calendar.js
+WARNING:django.request:Not Found: /static/admin/js/calendar.js
+Not Found: /static/admin/js/change_form.js
+WARNING:django.request:Not Found: /static/admin/js/change_form.js
+Not Found: /static/admin/img/icon-yes.svg
+WARNING:django.request:Not Found: /static/admin/img/icon-yes.svg
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+WARNING:django.request:Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+Not Found: /static/admin/js/prepopulate_init.js
+WARNING:django.request:Not Found: /static/admin/js/prepopulate_init.js
+Not Found: /static/admin/css/forms.css
+WARNING:django.request:Not Found: /static/admin/css/forms.css
+Not Found: /static/admin/js/calendar.js
+WARNING:django.request:Not Found: /static/admin/js/calendar.js
+Not Found: /static/admin/js/change_form.js
+WARNING:django.request:Not Found: /static/admin/js/change_form.js
+Not Found: /static/admin/img/icon-yes.svg
+WARNING:django.request:Not Found: /static/admin/img/icon-yes.svg
+Internal Server Error: /api/student-fees/
+Traceback (most recent call last):
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 107, in list
+    queryset = self.get_queryset()
+               ^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 63, in get_queryset
+    enrollment = _with_norm(Enrollment.objects.all()).filter(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 52, in _with_norm
+    return qs.annotate(
+           ^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1649, in annotate
+    return self._annotate(args, kwargs, select=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1701, in _annotate
+    clone.query.add_annotation(
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1218, in add_annotation
+    annotation = annotation.resolve_expression(self, allow_joins=True, reuse=None)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  [Previous line repeated 1 more time]
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 902, in resolve_expression
+    return query.resolve_ref(self.name, allow_joins, reuse, summarize)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 2049, in resolve_ref
+    join_info = self.setup_joins(
+                ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1900, in setup_joins
+    path, final_field, targets, rest = self.names_to_path(
+                                       ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1805, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'enrollment' into field. Choices are: admission_date, batch, cancel, cancellation, created_at, enrollment_date, enrollment_no, fee_ledger, id, inst_verification_students, institute, institute_id, maincourse, maincourse_id, migration_records, provisional_records, search_vector, student_name, student_profile, subcourse, subcourse_id, temp_enroll_no, updated_at, updated_by, updated_by_id
+ERROR:django.request:Internal Server Error: /api/student-fees/
+Traceback (most recent call last):
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 107, in list
+    queryset = self.get_queryset()
+               ^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 63, in get_queryset
+    enrollment = _with_norm(Enrollment.objects.all()).filter(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 52, in _with_norm
+    return qs.annotate(
+           ^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1649, in annotate
+    return self._annotate(args, kwargs, select=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1701, in _annotate
+    clone.query.add_annotation(
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1218, in add_annotation
+    annotation = annotation.resolve_expression(self, allow_joins=True, reuse=None)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  [Previous line repeated 1 more time]
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 902, in resolve_expression
+    return query.resolve_ref(self.name, allow_joins, reuse, summarize)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 2049, in resolve_ref
+    join_info = self.setup_joins(
+                ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1900, in setup_joins
+    path, final_field, targets, rest = self.names_to_path(
+                                       ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1805, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'enrollment' into field. Choices are: admission_date, batch, cancel, cancellation, created_at, enrollment_date, enrollment_no, fee_ledger, id, inst_verification_students, institute, institute_id, maincourse, maincourse_id, migration_records, provisional_records, search_vector, student_name, student_profile, subcourse, subcourse_id, temp_enroll_no, updated_at, updated_by, updated_by_id
+Internal Server Error: /api/student-fees/
+Traceback (most recent call last):
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 107, in list
+    queryset = self.get_queryset()
+               ^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 63, in get_queryset
+    enrollment = _with_norm(Enrollment.objects.all()).filter(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 52, in _with_norm
+    return qs.annotate(
+           ^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1649, in annotate
+    return self._annotate(args, kwargs, select=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1701, in _annotate
+    clone.query.add_annotation(
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1218, in add_annotation
+    annotation = annotation.resolve_expression(self, allow_joins=True, reuse=None)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  [Previous line repeated 1 more time]
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 902, in resolve_expression
+    return query.resolve_ref(self.name, allow_joins, reuse, summarize)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 2049, in resolve_ref
+    join_info = self.setup_joins(
+                ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1900, in setup_joins
+    path, final_field, targets, rest = self.names_to_path(
+                                       ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1805, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'enrollment' into field. Choices are: admission_date, batch, cancel, cancellation, created_at, enrollment_date, enrollment_no, fee_ledger, id, inst_verification_students, institute, institute_id, maincourse, maincourse_id, migration_records, provisional_records, search_vector, student_name, student_profile, subcourse, subcourse_id, temp_enroll_no, updated_at, updated_by, updated_by_id
+ERROR:django.request:Internal Server Error: /api/student-fees/
+Traceback (most recent call last):
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 107, in list
+    queryset = self.get_queryset()
+               ^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 63, in get_queryset
+    enrollment = _with_norm(Enrollment.objects.all()).filter(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 52, in _with_norm
+    return qs.annotate(
+           ^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1649, in annotate
+    return self._annotate(args, kwargs, select=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1701, in _annotate
+    clone.query.add_annotation(
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1218, in add_annotation
+    annotation = annotation.resolve_expression(self, allow_joins=True, reuse=None)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  [Previous line repeated 1 more time]
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 902, in resolve_expression
+    return query.resolve_ref(self.name, allow_joins, reuse, summarize)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 2049, in resolve_ref
+    join_info = self.setup_joins(
+                ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1900, in setup_joins
+    path, final_field, targets, rest = self.names_to_path(
+                                       ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1805, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'enrollment' into field. Choices are: admission_date, batch, cancel, cancellation, created_at, enrollment_date, enrollment_no, fee_ledger, id, inst_verification_students, institute, institute_id, maincourse, maincourse_id, migration_records, provisional_records, search_vector, student_name, student_profile, subcourse, subcourse_id, temp_enroll_no, updated_at, updated_by, updated_by_id
+Internal Server Error: /api/student-fees/
+Traceback (most recent call last):
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 107, in list
+    queryset = self.get_queryset()
+               ^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 63, in get_queryset
+    enrollment = _with_norm(Enrollment.objects.all()).filter(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 52, in _with_norm
+    return qs.annotate(
+           ^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1649, in annotate
+    return self._annotate(args, kwargs, select=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1701, in _annotate
+    clone.query.add_annotation(
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1218, in add_annotation
+    annotation = annotation.resolve_expression(self, allow_joins=True, reuse=None)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  [Previous line repeated 1 more time]
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 902, in resolve_expression
+    return query.resolve_ref(self.name, allow_joins, reuse, summarize)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 2049, in resolve_ref
+    join_info = self.setup_joins(
+                ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1900, in setup_joins
+    path, final_field, targets, rest = self.names_to_path(
+                                       ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1805, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'enrollment' into field. Choices are: admission_date, batch, cancel, cancellation, created_at, enrollment_date, enrollment_no, fee_ledger, id, inst_verification_students, institute, institute_id, maincourse, maincourse_id, migration_records, provisional_records, search_vector, student_name, student_profile, subcourse, subcourse_id, temp_enroll_no, updated_at, updated_by, updated_by_id
+ERROR:django.request:Internal Server Error: /api/student-fees/
+Traceback (most recent call last):
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 107, in list
+    queryset = self.get_queryset()
+               ^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 63, in get_queryset
+    enrollment = _with_norm(Enrollment.objects.all()).filter(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 52, in _with_norm
+    return qs.annotate(
+           ^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1649, in annotate
+    return self._annotate(args, kwargs, select=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1701, in _annotate
+    clone.query.add_annotation(
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1218, in add_annotation
+    annotation = annotation.resolve_expression(self, allow_joins=True, reuse=None)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  [Previous line repeated 1 more time]
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 902, in resolve_expression
+    return query.resolve_ref(self.name, allow_joins, reuse, summarize)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 2049, in resolve_ref
+    join_info = self.setup_joins(
+                ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1900, in setup_joins
+    path, final_field, targets, rest = self.names_to_path(
+                                       ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1805, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'enrollment' into field. Choices are: admission_date, batch, cancel, cancellation, created_at, enrollment_date, enrollment_no, fee_ledger, id, inst_verification_students, institute, institute_id, maincourse, maincourse_id, migration_records, provisional_records, search_vector, student_name, student_profile, subcourse, subcourse_id, temp_enroll_no, updated_at, updated_by, updated_by_id
+Internal Server Error: /api/student-fees/
+Traceback (most recent call last):
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 107, in list
+    queryset = self.get_queryset()
+               ^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 63, in get_queryset
+    enrollment = _with_norm(Enrollment.objects.all()).filter(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 52, in _with_norm
+    return qs.annotate(
+           ^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1649, in annotate
+    return self._annotate(args, kwargs, select=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1701, in _annotate
+    clone.query.add_annotation(
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1218, in add_annotation
+    annotation = annotation.resolve_expression(self, allow_joins=True, reuse=None)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  [Previous line repeated 1 more time]
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 902, in resolve_expression
+    return query.resolve_ref(self.name, allow_joins, reuse, summarize)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 2049, in resolve_ref
+    join_info = self.setup_joins(
+                ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1900, in setup_joins
+    path, final_field, targets, rest = self.names_to_path(
+                                       ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1805, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'enrollment' into field. Choices are: admission_date, batch, cancel, cancellation, created_at, enrollment_date, enrollment_no, fee_ledger, id, inst_verification_students, institute, institute_id, maincourse, maincourse_id, migration_records, provisional_records, search_vector, student_name, student_profile, subcourse, subcourse_id, temp_enroll_no, updated_at, updated_by, updated_by_id
+ERROR:django.request:Internal Server Error: /api/student-fees/
+Traceback (most recent call last):
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 107, in list
+    queryset = self.get_queryset()
+               ^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 63, in get_queryset
+    enrollment = _with_norm(Enrollment.objects.all()).filter(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 52, in _with_norm
+    return qs.annotate(
+           ^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1649, in annotate
+    return self._annotate(args, kwargs, select=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1701, in _annotate
+    clone.query.add_annotation(
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1218, in add_annotation
+    annotation = annotation.resolve_expression(self, allow_joins=True, reuse=None)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  [Previous line repeated 1 more time]
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 902, in resolve_expression
+    return query.resolve_ref(self.name, allow_joins, reuse, summarize)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 2049, in resolve_ref
+    join_info = self.setup_joins(
+                ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1900, in setup_joins
+    path, final_field, targets, rest = self.names_to_path(
+                                       ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1805, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'enrollment' into field. Choices are: admission_date, batch, cancel, cancellation, created_at, enrollment_date, enrollment_no, fee_ledger, id, inst_verification_students, institute, institute_id, maincourse, maincourse_id, migration_records, provisional_records, search_vector, student_name, student_profile, subcourse, subcourse_id, temp_enroll_no, updated_at, updated_by, updated_by_id
+Internal Server Error: /api/student-fees/
+Traceback (most recent call last):
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 107, in list
+    queryset = self.get_queryset()
+               ^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 63, in get_queryset
+    enrollment = _with_norm(Enrollment.objects.all()).filter(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 52, in _with_norm
+    return qs.annotate(
+           ^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1649, in annotate
+    return self._annotate(args, kwargs, select=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1701, in _annotate
+    clone.query.add_annotation(
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1218, in add_annotation
+    annotation = annotation.resolve_expression(self, allow_joins=True, reuse=None)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  [Previous line repeated 1 more time]
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 902, in resolve_expression
+    return query.resolve_ref(self.name, allow_joins, reuse, summarize)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 2049, in resolve_ref
+    join_info = self.setup_joins(
+                ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1900, in setup_joins
+    path, final_field, targets, rest = self.names_to_path(
+                                       ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1805, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'enrollment' into field. Choices are: admission_date, batch, cancel, cancellation, created_at, enrollment_date, enrollment_no, fee_ledger, id, inst_verification_students, institute, institute_id, maincourse, maincourse_id, migration_records, provisional_records, search_vector, student_name, student_profile, subcourse, subcourse_id, temp_enroll_no, updated_at, updated_by, updated_by_id
+ERROR:django.request:Internal Server Error: /api/student-fees/
+Traceback (most recent call last):
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 107, in list
+    queryset = self.get_queryset()
+               ^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 63, in get_queryset
+    enrollment = _with_norm(Enrollment.objects.all()).filter(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 52, in _with_norm
+    return qs.annotate(
+           ^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1649, in annotate
+    return self._annotate(args, kwargs, select=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1701, in _annotate
+    clone.query.add_annotation(
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1218, in add_annotation
+    annotation = annotation.resolve_expression(self, allow_joins=True, reuse=None)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  [Previous line repeated 1 more time]
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 902, in resolve_expression
+    return query.resolve_ref(self.name, allow_joins, reuse, summarize)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 2049, in resolve_ref
+    join_info = self.setup_joins(
+                ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1900, in setup_joins
+    path, final_field, targets, rest = self.names_to_path(
+                                       ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1805, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'enrollment' into field. Choices are: admission_date, batch, cancel, cancellation, created_at, enrollment_date, enrollment_no, fee_ledger, id, inst_verification_students, institute, institute_id, maincourse, maincourse_id, migration_records, provisional_records, search_vector, student_name, student_profile, subcourse, subcourse_id, temp_enroll_no, updated_at, updated_by, updated_by_id
+Internal Server Error: /api/student-fees/
+Traceback (most recent call last):
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 107, in list
+    if start_date:
+               ^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 63, in get_queryset
+    Replace(
+         ^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 52, in _with_norm
+    return qs.annotate(
+           ^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1649, in annotate
+    return self._annotate(args, kwargs, select=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1701, in _annotate
+    clone.query.add_annotation(
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1218, in add_annotation
+    annotation = annotation.resolve_expression(self, allow_joins=True, reuse=None)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  [Previous line repeated 1 more time]
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 902, in resolve_expression
+    return query.resolve_ref(self.name, allow_joins, reuse, summarize)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 2049, in resolve_ref
+    join_info = self.setup_joins(
+                ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1900, in setup_joins
+    path, final_field, targets, rest = self.names_to_path(
+                                       ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1805, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'enrollment' into field. Choices are: admission_date, batch, cancel, cancellation, created_at, enrollment_date, enrollment_no, fee_ledger, id, inst_verification_students, institute, institute_id, maincourse, maincourse_id, migration_records, provisional_records, search_vector, student_name, student_profile, subcourse, subcourse_id, temp_enroll_no, updated_at, updated_by, updated_by_id
+ERROR:django.request:Internal Server Error: /api/student-fees/
+Traceback (most recent call last):
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 107, in list
+    if start_date:
+               ^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 63, in get_queryset
+    Replace(
+         ^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 52, in _with_norm
+    return qs.annotate(
+           ^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1649, in annotate
+    return self._annotate(args, kwargs, select=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1701, in _annotate
+    clone.query.add_annotation(
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1218, in add_annotation
+    annotation = annotation.resolve_expression(self, allow_joins=True, reuse=None)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  [Previous line repeated 1 more time]
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 902, in resolve_expression
+    return query.resolve_ref(self.name, allow_joins, reuse, summarize)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 2049, in resolve_ref
+    join_info = self.setup_joins(
+                ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1900, in setup_joins
+    path, final_field, targets, rest = self.names_to_path(
+                                       ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1805, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'enrollment' into field. Choices are: admission_date, batch, cancel, cancellation, created_at, enrollment_date, enrollment_no, fee_ledger, id, inst_verification_students, institute, institute_id, maincourse, maincourse_id, migration_records, provisional_records, search_vector, student_name, student_profile, subcourse, subcourse_id, temp_enroll_no, updated_at, updated_by, updated_by_id
+Internal Server Error: /api/student-fees/
+Traceback (most recent call last):
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 107, in list
+    if start_date:
+               ^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 63, in get_queryset
+    Replace(
+         ^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 52, in _with_norm
+    return qs.annotate(
+           ^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1649, in annotate
+    return self._annotate(args, kwargs, select=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1701, in _annotate
+    clone.query.add_annotation(
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1218, in add_annotation
+    annotation = annotation.resolve_expression(self, allow_joins=True, reuse=None)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  [Previous line repeated 1 more time]
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 902, in resolve_expression
+    return query.resolve_ref(self.name, allow_joins, reuse, summarize)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 2049, in resolve_ref
+    join_info = self.setup_joins(
+                ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1900, in setup_joins
+    path, final_field, targets, rest = self.names_to_path(
+                                       ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1805, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'enrollment' into field. Choices are: admission_date, batch, cancel, cancellation, created_at, enrollment_date, enrollment_no, fee_ledger, id, inst_verification_students, institute, institute_id, maincourse, maincourse_id, migration_records, provisional_records, search_vector, student_name, student_profile, subcourse, subcourse_id, temp_enroll_no, updated_at, updated_by, updated_by_id
+ERROR:django.request:Internal Server Error: /api/student-fees/
+Traceback (most recent call last):
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 107, in list
+    if start_date:
+               ^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 63, in get_queryset
+    Replace(
+         ^^^^
+  File "E:\admindesk\backend\api\views_student_fees.py", line 52, in _with_norm
+    return qs.annotate(
+           ^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1649, in annotate
+    return self._annotate(args, kwargs, select=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 1701, in _annotate
+    clone.query.add_annotation(
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1218, in add_annotation
+    annotation = annotation.resolve_expression(self, allow_joins=True, reuse=None)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 300, in resolve_expression
+    expr.resolve_expression(query, allow_joins, reuse, summarize, for_save)
+  [Previous line repeated 1 more time]
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\expressions.py", line 902, in resolve_expression
+    return query.resolve_ref(self.name, allow_joins, reuse, summarize)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 2049, in resolve_ref
+    join_info = self.setup_joins(
+                ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1900, in setup_joins
+    path, final_field, targets, rest = self.names_to_path(
+                                       ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\sql\query.py", line 1805, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'enrollment' into field. Choices are: admission_date, batch, cancel, cancellation, created_at, enrollment_date, enrollment_no, fee_ledger, id, inst_verification_students, institute, institute_id, maincourse, maincourse_id, migration_records, provisional_records, search_vector, student_name, student_profile, subcourse, subcourse_id, temp_enroll_no, updated_at, updated_by, updated_by_id
+INFO:waitress:Serving on http://127.0.0.1:8000
+INFO:waitress:Serving on http://127.0.0.1:8000
+INFO:waitress:Serving on http://127.0.0.1:8000
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/css/forms.css
+WARNING:django.request:Not Found: /static/admin/css/forms.css
+Not Found: /static/admin/js/calendar.js
+WARNING:django.request:Not Found: /static/admin/js/calendar.js
+Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+WARNING:django.request:Not Found: /static/admin/js/admin/DateTimeShortcuts.js
+Not Found: /static/admin/js/prepopulate_init.js
+WARNING:django.request:Not Found: /static/admin/js/prepopulate_init.js
+Not Found: /static/admin/js/change_form.js
+WARNING:django.request:Not Found: /static/admin/js/change_form.js
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1

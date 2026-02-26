@@ -345,7 +345,7 @@ def get_import_spec(model) -> Dict[str, Any]:
     ProvisionalRecord: {"allowed_columns": ["doc_rec_id", "enrollment_no", "student_name", "institute_id", "maincourse_id", "subcourse_id", "prv_number", "prv_date", "class_obtain", "prv_degree_name", "passing_year", "prv_status", "pay_rec_no"], "required_keys": ["doc_rec_id"], "create_requires": ["doc_rec_id"]},
     Verification: {"allowed_columns": ["doc_rec_id", "date", "enrollment_no", "second_enrollment_no", "student_name", "no_of_transcript", "no_of_marksheet", "no_of_degree", "no_of_moi", "no_of_backlog", "status", "final_no", "pay_rec_no", "vr_done_date", "mail_status", "eca_required", "eca_name", "eca_ref_no", "eca_submit_date", "eca_remark", "doc_rec_remark"], "required_keys": ["doc_rec_id"], "create_requires": ["doc_rec_id"]},
     StudentDegree: {"allowed_columns": ["dg_sr_no", "enrollment_no", "student_name_dg", "dg_address", "institute_name_dg", "degree_name", "specialisation", "seat_last_exam", "last_exam_month", "last_exam_year", "class_obtain", "course_language", "dg_rec_no", "dg_gender", "convocation_no"], "required_keys": ["enrollment_no"], "create_requires": ["enrollment_no"]},
-    StudentFeesLedger: {"allowed_columns": ["student_no", "receipt_no", "receipt_date", "term", "amount", "remark"], "required_keys": ["student_no", "receipt_no", "receipt_date", "term", "amount"], "create_requires": ["student_no", "receipt_no", "receipt_date", "term", "amount"]},
+    StudentFeesLedger: {"allowed_columns": ["enrollment_no", "temp_enroll_no", "enrollment_id", "receipt_no", "receipt_date", "term", "amount", "remark"], "required_keys": [], "create_requires": []},
     }
     for klass, spec in specs.items():
         if issubclass(model, klass):
@@ -365,16 +365,14 @@ COLUMN_ALIAS_MAP: Dict[type, Dict[str, str]] = {
         "receipt no": "receipt_no_full",
     },
     StudentFeesLedger: {
-        "student": "student_no",
-        "student no": "student_no",
-        "student_number": "student_no",
-        "student number": "student_no",
-        "enrollment": "student_no",
-        "enrollment no": "student_no",
-        "enrollment_no": "student_no",
-        "temp_enroll_no": "student_no",
-        "temp enrollment": "student_no",
-        "temp enrollment no": "student_no",
+        "enrollment": "enrollment_no",
+        "enrollment no": "enrollment_no",
+        "enrollment_no": "enrollment_no",
+        "temp_enroll_no": "temp_enroll_no",
+        "temp enrollment": "temp_enroll_no",
+        "temp enrollment no": "temp_enroll_no",
+        "enrollment id": "enrollment_id",
+        "enrollment_id": "enrollment_id",
         "receipt": "receipt_no",
         "receipt no": "receipt_no",
         "receipt_no": "receipt_no",
@@ -1435,42 +1433,83 @@ class ExcelUploadMixin:
                                     return None
 
                             for i, (_, r) in enumerate(df.iterrows(), start=2):
-                                student_key = _clean_cell(r.get("student_no") or r.get("enrollment_no") or r.get("temp_enroll_no"))
-                                if not student_key:
-                                    counts["skipped"] += 1; add_log(i, "skipped", "Missing student_no"); continue
-                                enrollment = (Enrollment.objects.filter(enrollment_no__iexact=student_key).first() or
-                                              Enrollment.objects.filter(temp_enroll_no__iexact=student_key).first())
+                                student_key = _clean_cell(
+                                    r.get("enrollment_no") or r.get("temp_enroll_no")
+                                )
+                                enrollment_id_raw = r.get("enrollment_id") or r.get("enrollment") or r.get("enrollment_pk")
+                                enrollment_id = _safe_num(enrollment_id_raw, None)
+                                enrollment_id = int(enrollment_id) if enrollment_id is not None else None
+
+                                if not student_key and not enrollment_id:
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Missing enrollment_no/temp_enroll_no or enrollment_id"); continue
+
+                                enrollment = None
+                                if student_key:
+                                    enrollment = (
+                                        Enrollment.objects.filter(enrollment_no__iexact=student_key).first()
+                                        or Enrollment.objects.filter(temp_enroll_no__iexact=student_key).first()
+                                    )
+                                if not enrollment and enrollment_id is not None:
+                                    enrollment = Enrollment.objects.filter(id=enrollment_id).first()
                                 if not enrollment:
-                                    counts["skipped"] += 1; add_log(i, "skipped", f"Enrollment not found for '{student_key}'"); continue
+                                    display_key = student_key or str(enrollment_id)
+                                    counts["skipped"] += 1; add_log(i, "skipped", f"Enrollment not found for '{display_key}'"); continue
 
                                 receipt_no = _clean_cell(r.get("receipt_no"))
-                                if not receipt_no:
-                                    counts["skipped"] += 1; add_log(i, "skipped", "Missing receipt_no", student_key); continue
-
-                                receipt_date = parse_excel_date(r.get("receipt_date")) if "receipt_date" in eff else None
-                                if not receipt_date:
-                                    counts["skipped"] += 1; add_log(i, "skipped", "Invalid receipt_date", receipt_no); continue
+                                receipt_date_raw = r.get("receipt_date")
+                                receipt_date = parse_excel_date(receipt_date_raw) if "receipt_date" in eff else None
+                                if receipt_date_raw not in (None, "") and not receipt_date:
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Invalid receipt_date", receipt_no or student_key); continue
 
                                 term_val = _clean_cell(r.get("term"))
                                 if not term_val:
                                     counts["skipped"] += 1; add_log(i, "skipped", "Missing term", receipt_no); continue
 
-                                amount_val = _parse_amount(r.get("amount")) if "amount" in eff else None
-                                if amount_val is None:
-                                    counts["skipped"] += 1; add_log(i, "skipped", "Invalid amount", receipt_no); continue
+                                amount_raw = r.get("amount")
+                                try:
+                                    if pd is not None and pd.isna(amount_raw):
+                                        amount_raw = None
+                                except Exception:
+                                    pass
+                                if isinstance(amount_raw, float):
+                                    try:
+                                        import math
+                                        if math.isnan(amount_raw):
+                                            amount_raw = None
+                                    except Exception:
+                                        pass
+                                if isinstance(amount_raw, str) and amount_raw.strip().lower() in ("", "nan", "none", "<na>"):
+                                    amount_raw = None
+                                amount_val = _parse_amount(amount_raw) if "amount" in eff else None
+                                if amount_raw not in (None, "") and amount_val is None:
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Invalid amount", receipt_no or student_key); continue
+
+                                if not receipt_no and not receipt_date and amount_val is None:
+                                    counts["skipped"] += 1; continue
 
                                 remark_val = _clean_cell(r.get("remark")) if "remark" in eff else None
 
-                                obj, created = StudentFeesLedger.objects.update_or_create(
-                                    receipt_no=receipt_no,
-                                    defaults={
-                                        "enrollment": enrollment,
-                                        "receipt_date": receipt_date,
-                                        "term": term_val,
-                                        "amount": amount_val,
-                                        "remark": remark_val,
-                                    }
-                                )
+                                if receipt_no:
+                                    obj, created = StudentFeesLedger.objects.update_or_create(
+                                        receipt_no=receipt_no,
+                                        defaults={
+                                            "enrollment": enrollment,
+                                            "receipt_date": receipt_date,
+                                            "term": term_val,
+                                            "amount": amount_val,
+                                            "remark": remark_val,
+                                        }
+                                    )
+                                else:
+                                    obj = StudentFeesLedger.objects.create(
+                                        enrollment=enrollment,
+                                        receipt_no=None,
+                                        receipt_date=receipt_date,
+                                        term=term_val,
+                                        amount=amount_val,
+                                        remark=remark_val,
+                                    )
+                                    created = True
                                 try:
                                     if created and getattr(obj, 'created_by', None) != request.user:
                                         _assign_user_field(obj, request.user, 'created_by')
@@ -1481,8 +1520,9 @@ class ExcelUploadMixin:
                                 except Exception:
                                     pass
 
-                                if created: counts["created"] += 1; add_log(i, "created", "Created", receipt_no)
-                                else: counts["updated"] += 1; add_log(i, "updated", "Updated", receipt_no)
+                                ref_key = receipt_no or student_key
+                                if created: counts["created"] += 1; add_log(i, "created", "Created", ref_key)
+                                else: counts["updated"] += 1; add_log(i, "updated", "Updated", ref_key)
                         else:
                             return JsonResponse({"error": "Sheet name does not match expected for this model."}, status=400)
                     except Exception as e:

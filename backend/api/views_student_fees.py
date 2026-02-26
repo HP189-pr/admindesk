@@ -48,10 +48,26 @@ class StudentFeesViewSet(viewsets.ModelViewSet):
 
         def _norm(val: str | None):
             return re.sub(r'[^0-9a-z]+', '', str(val).lower()) if val is not None else ''
-        def _with_norm(qs):
+        def _with_norm(qs, enrollment_prefix: str = 'enrollment__'):
             return qs.annotate(
-                norm_en=Replace(Replace(Replace(Lower(F('enrollment__enrollment_no')), Value(' '), Value('')), Value('.'), Value('')), Value('-'), Value('')),
-                norm_temp=Replace(Replace(Replace(Lower(F('enrollment__temp_enroll_no')), Value(' '), Value('')), Value('.'), Value('')), Value('-'), Value('')),
+                norm_en=Replace(
+                    Replace(
+                        Replace(Lower(F(f'{enrollment_prefix}enrollment_no')), Value(' '), Value('')),
+                        Value('.'),
+                        Value('')
+                    ),
+                    Value('-'),
+                    Value('')
+                ),
+                norm_temp=Replace(
+                    Replace(
+                        Replace(Lower(F(f'{enrollment_prefix}temp_enroll_no')), Value(' '), Value('')),
+                        Value('.'),
+                        Value('')
+                    ),
+                    Value('-'),
+                    Value('')
+                ),
             )
         
         # Filter by student number (enrollment_no or temp_enroll_no)
@@ -60,7 +76,7 @@ class StudentFeesViewSet(viewsets.ModelViewSet):
             student_no = params.get('student_no') or params.get('enrollment_no') or params.get('temp_enroll_no')
         norm_student = _norm(student_no)
         if student_no:
-            enrollment = _with_norm(Enrollment.objects.all()).filter(
+            enrollment = _with_norm(Enrollment.objects.all(), enrollment_prefix='').filter(
                 Q(norm_en__contains=norm_student) | Q(norm_temp__contains=norm_student)
             ).first()
             if enrollment:
@@ -97,6 +113,15 @@ class StudentFeesViewSet(viewsets.ModelViewSet):
         receipt_no = params.get('receipt_no', None) if hasattr(params, 'get') else None
         if receipt_no:
             queryset = queryset.filter(receipt_no__icontains=receipt_no.strip())
+
+        # Filter by enrollment batch
+        batch = params.get('batch', None) if hasattr(params, 'get') else None
+        if batch not in (None, ''):
+            try:
+                batch_value = int(batch)
+                queryset = queryset.filter(enrollment__batch=batch_value)
+            except (TypeError, ValueError):
+                pass
         
         return queryset.order_by('-receipt_date', '-id')
     

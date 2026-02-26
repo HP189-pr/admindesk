@@ -101,25 +101,30 @@ export const getDatabaseFields = () => [
 export const validateEnrollmentData = (data) => {
     const errors = {};
 
-    const enrollmentNo = (data.enrollment_no || '').trim();
-    const tempEnrollNo = (data.temp_enroll_no || '').trim();
+    const toStr = (val) => {
+        if (val === null || val === undefined) return '';
+        return String(val);
+    };
+
+    const enrollmentNo = toStr(data.enrollment_no).trim();
+    const tempEnrollNo = toStr(data.temp_enroll_no).trim();
     if (!enrollmentNo && !tempEnrollNo) {
         errors.enrollment_no = "Enrollment number or Temporary number is required";
         errors.temp_enroll_no = "Enrollment number or Temporary number is required";
     }
-    if (!data.student_name?.trim()) {
+    if (!toStr(data.student_name).trim()) {
         errors.student_name = "Student name is required";
     }
-    if (!data.institute_id?.trim()) {
+    if (!toStr(data.institute_id).trim()) {
         errors.institute_id = "Institute ID is required";
     }
-    if (!data.batch?.trim()) {
+    if (!toStr(data.batch).trim()) {
         errors.batch = "Batch is required";
     }
-    if (!data.subcourse_id?.trim()) {
+    if (!toStr(data.subcourse_id).trim()) {
         errors.subcourse_id = "Subcourse ID is required";
     }
-    if (!data.maincourse_id?.trim()) {
+    if (!toStr(data.maincourse_id).trim()) {
         errors.maincourse_id = "Main course ID is required";
     }
 
