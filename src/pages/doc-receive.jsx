@@ -700,7 +700,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-sky-600 text-white text-xl">📥</div>       
   );
   return (
-    <div className="p-4 md:p-6 space-y-4 h-full">
+    <div className="p-2 md:p-3 space-y-4 h-full">
       {/* Flash message popup */}
       {flashMsg && (
         <div className="fixed top-4 right-4 z-50 bg-green-600 text-white px-4 py-2 rounded shadow-lg animate-fade-in-out">

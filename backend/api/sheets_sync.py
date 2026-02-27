@@ -107,6 +107,8 @@ def _render_transcript_status(value: object) -> str:
         return "In Progress"
     if normalized == TranscriptRequest.STATUS_PENDING:
         return "Pending"
+    if normalized == TranscriptRequest.STATUS_CANCEL:
+        return "Cancel"
     # otherwise return the raw text
     return text
 
@@ -591,10 +593,19 @@ def import_transcript_requests_from_sheet(sheet_id: Optional[str] = None, worksh
                 instance.submit_mail = new_submit_mail
                 changed['submit_mail'] = instance.submit_mail
             
-            # Normalize pdf_generate: nullable field, store 'Yes' or None
+            # Normalize pdf_generate: nullable field, store 'Yes', 'Cancel', or None
             pdf_val = None
-            if pdf_generate is not None and str(pdf_generate).strip().lower() == 'yes':
-                pdf_val = 'Yes'
+            if pdf_generate is not None:
+                pdf_text = str(pdf_generate).strip().lower()
+                if pdf_text == 'yes':
+                    pdf_val = 'Yes'
+                elif pdf_text in {'cancel', 'cancelled', 'canceled'}:
+                    pdf_val = 'Cancel'
+
+            if mail_status_raw is not None:
+                ms_text = str(mail_status_raw).strip().lower()
+                if ms_text in {'cancel', 'cancelled', 'canceled'}:
+                    pdf_val = 'Cancel'
             if (instance.pdf_generate or '') != (pdf_val or ''):
                 instance.pdf_generate = pdf_val
                 changed['pdf_generate'] = instance.pdf_generate
@@ -675,16 +686,21 @@ def import_transcript_requests_from_sheet(sheet_id: Optional[str] = None, worksh
                     except Exception:
                         tr_val = 0
 
-                # Normalize pdf_generate for storage: store 'Yes' when sheet
-                # contains a yes-like value (case-insensitive); otherwise store empty string or None
+                # Normalize pdf_generate for storage: store 'Yes', 'Cancel', or empty
                 pdf_val = ''
-                if pdf_generate is not None and str(pdf_generate).strip().lower() == 'yes':
-                    pdf_val = 'Yes'
+                if pdf_generate is not None:
+                    pdf_text = str(pdf_generate).strip().lower()
+                    if pdf_text == 'yes':
+                        pdf_val = 'Yes'
+                    elif pdf_text in {'cancel', 'cancelled', 'canceled'}:
+                        pdf_val = 'Cancel'
 
                 # Determine mail_status: store raw sheet value (default to 'pending' if empty)
                 ms = str(mail_status_raw).strip() if mail_status_raw is not None else ""
                 if not ms:
                     ms = TranscriptRequest.STATUS_PENDING
+                if ms.strip().lower() in {'cancel', 'cancelled', 'canceled'}:
+                    pdf_val = 'Cancel'
 
                 # Ensure required NOT NULL fields have valid values
                 enrollment_no_val = str(enrollment_no or '').strip()

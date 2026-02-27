@@ -352,7 +352,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
   }, [sortedRecords, statusFilter, mailFilter, ecaStatusFilter]);
 
   return (
-    <div className="p-4 md:p-6 space-y-4 h-full bg-slate-100 flex flex-col" style={{ minHeight: '100vh' }}>
+    <div className="p-2 md:p-3 space-y-4 h-full bg-slate-100 flex flex-col" style={{ minHeight: '100vh' }}>
       {/* Top bar via shared component */}
       <PageTopbar
         title="Verification"

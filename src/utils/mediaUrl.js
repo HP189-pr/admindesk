@@ -33,3 +33,19 @@ export const normalizeMediaUrl = (value) => {
 };
 
 export const DEFAULT_PROFILE_PIC = "/profilepic/default-profile.png";
+
+export const resolveProfilePicture = (source) => {
+  const raw =
+    source?.profile_picture ||
+    source?.profile_picture_url ||
+    source?.usrpic ||
+    source?.photoUrl ||
+    source?.avatar ||
+    source?.avatar_url ||
+    source?.user_profile?.profile_picture ||
+    source?.profile?.profile_picture ||
+    source?.profilePicture ||
+    "";
+
+  return normalizeMediaUrl(raw) || DEFAULT_PROFILE_PIC;
+};

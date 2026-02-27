@@ -631,7 +631,7 @@ const StudentFees = ({ onToggleSidebar, onToggleChatbox, rights = { can_view: tr
     );
 
     return (
-        <div className="p-4 md:p-6 space-y-4 h-full bg-slate-100">
+        <div className="p-2 md:p-3 space-y-4 h-full bg-slate-100">
             <PageTopbar
                 title="Student Fees"
                 actions={actions}

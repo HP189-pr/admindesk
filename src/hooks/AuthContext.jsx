@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import API from "../api/axiosInstance";
-import { DEFAULT_PROFILE_PIC, normalizeMediaUrl } from "../utils/mediaUrl";
+import { DEFAULT_PROFILE_PIC, resolveProfilePicture } from "../utils/mediaUrl";
 
 const AuthContext = createContext({
     user: null,
@@ -86,14 +86,11 @@ export function AuthProvider({ children }) {
                 country: data.country || "",
                 bio: data.bio || "",
                 social_links: data.social_links || {},
-                profile_picture:
-                    normalizeMediaUrl(data.profile_picture) || DEFAULT_PROFILE_PIC,
+                profile_picture: resolveProfilePicture(data),
                 is_admin: !!data.is_admin,
             });
 
-            setProfilePicture(
-                normalizeMediaUrl(data.profile_picture) || DEFAULT_PROFILE_PIC
-            );
+            setProfilePicture(resolveProfilePicture(data));
 
             // 3️⃣ Admin check (server-authoritative)
             let adminFlag = !!data.is_admin;

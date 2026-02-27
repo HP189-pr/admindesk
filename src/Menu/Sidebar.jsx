@@ -253,7 +253,7 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
   return (
     <div
       className={`h-screen bg-gray-800 text-white transition-all ${
-        isOpen ? 'w-64' : 'w-20'
+        isOpen ? 'w-60' : 'w-20'
       } duration-300 p-4 relative flex flex-col`}
     >
       {/* Profile Section */}
@@ -333,16 +333,17 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
 
       {/* Module Menus */}
       {selectedModule && (
-        <div className={`${isOpen ? 'block' : 'hidden'}`}>
+        <div className="block">
           {displayModules
             .find((mod) => mod.id === selectedModule)
             ?.menu.map((item) => (
               <button
                 key={item}
                 onClick={() => handleMenuClick(item)}
-                className="w-full text-left px-4 py-2 hover:bg-gray-700"
+                title={item}
+                className={`w-full px-4 py-2 hover:bg-gray-700 ${isOpen ? 'text-left' : 'text-center'}`}
               >
-                {isOpen ? item : '•'}
+                {isOpen ? item : String(item).split(' ')[0]}
               </button>
             ))}
         </div>

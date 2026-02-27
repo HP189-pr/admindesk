@@ -43,6 +43,17 @@ try:
 
     from .views_admin import UploadDocRecView
     from django.http import JsonResponse
+    from .chatbox.views import (
+        ChatPingView,
+        ChatPresenceView,
+        ChatSendView,
+        ChatHistoryView,
+        ChatFilesView,
+        ChatClearView,
+        ChatPendingFilesView,
+        ChatMarkDownloadedView,
+        ChatMarkSeenView,
+    )
 
 
     # EMPLOYEE / LEAVE MANAGEMENT (OPTION A) - main views
@@ -198,6 +209,17 @@ try:
 
         # INVENTORY REPORT
         path("inventory-stock-summary/", StockSummaryView.as_view(), name="inventory-stock-summary"),
+
+        # Chat / messaging
+        path("chat/ping/", ChatPingView.as_view(), name="chat-ping"),
+        path("chat/presence/", ChatPresenceView.as_view(), name="chat-presence"),
+        path("chat/send/", ChatSendView.as_view(), name="chat-send"),
+        path("chat/history/<int:userid>/", ChatHistoryView.as_view(), name="chat-history"),
+        path("chat/files/<int:userid>/", ChatFilesView.as_view(), name="chat-files"),
+        path("chat/clear/<int:userid>/", ChatClearView.as_view(), name="chat-clear"),
+        path("chat/pending-files/", ChatPendingFilesView.as_view(), name="chat-pending-files"),
+        path("chat/mark-downloaded/", ChatMarkDownloadedView.as_view(), name="chat-mark-downloaded"),
+        path("chat/mark-seen/", ChatMarkSeenView.as_view(), name="chat-mark-seen"),
 
         # ADMIN DOCREC UPLOAD
         path("admin/upload-docrec/", UploadDocRecView.as_view(), name="admin-upload-docrec"),

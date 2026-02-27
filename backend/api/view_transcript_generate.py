@@ -45,7 +45,8 @@ class TranscriptRequestViewSet(viewsets.ModelViewSet):
                     When(mail_status=TranscriptRequest.STATUS_DONE, then=Value(0)),
                     When(mail_status=TranscriptRequest.STATUS_PROGRESS, then=Value(1)),
                     When(mail_status=TranscriptRequest.STATUS_PENDING, then=Value(2)),
-                    default=Value(3),
+                    When(mail_status=TranscriptRequest.STATUS_CANCEL, then=Value(3)),
+                    default=Value(4),
                     output_field=IntegerField(),
                 )
             ).order_by('_status_rank', '-tr_request_no', '-requested_at')
@@ -120,10 +121,18 @@ class TranscriptRequestViewSet(viewsets.ModelViewSet):
             if item.mail_status == status_value:
                 continue
             item.mail_status = status_value
-            item.save(update_fields=["mail_status"])
+            update_fields = ["mail_status"]
+            if status_value == TranscriptRequest.STATUS_CANCEL:
+                if (item.pdf_generate or "") != "Cancel":
+                    item.pdf_generate = "Cancel"
+                    update_fields.append("pdf_generate")
+            item.save(update_fields=update_fields)
             updated += 1
             try:
-                sync_transcript_request_to_sheet(item, {"mail_status": item.mail_status})
+                changed_fields = {"mail_status": item.mail_status}
+                if "pdf_generate" in update_fields:
+                    changed_fields["pdf_generate"] = item.pdf_generate
+                sync_transcript_request_to_sheet(item, changed_fields)
             except Exception:  # pragma: no cover
                 logger.exception("Failed to sync transcript request %s during bulk status update", item.pk)
         return Response({"updated": updated}, status=status.HTTP_200_OK)
@@ -146,6 +155,11 @@ class TranscriptRequestViewSet(viewsets.ModelViewSet):
             changed["tr_request_no"] = instance.tr_request_no
         if instance.mail_status != original_status:
             changed["mail_status"] = instance.mail_status
+            if instance.mail_status == TranscriptRequest.STATUS_CANCEL:
+                if (instance.pdf_generate or "") != "Cancel":
+                    instance.pdf_generate = "Cancel"
+                    instance.save(update_fields=["pdf_generate"])
+                    changed["pdf_generate"] = instance.pdf_generate
         if (instance.transcript_remark or "") != (original_remark or ""):
             changed["transcript_remark"] = instance.transcript_remark
         if (instance.pdf_generate or "") != (original_pdf_generate or ""):

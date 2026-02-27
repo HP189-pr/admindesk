@@ -729,7 +729,7 @@ const InOutRegister = () => {
   const selectedAction = TAB_LABELS[activeTab];
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-2 md:p-3 space-y-4">
       <PageTopbar
         title="Document Register (Inward/Outward)"
         actions={topbarActions}

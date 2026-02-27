@@ -37,6 +37,7 @@ from .domain_mail_request import __all__ as _mail_req_all  # type: ignore
 from .domain_transcript_generate import __all__ as _transcript_all  # type: ignore
 from .domain_degree import __all__ as _degree_all  # type: ignore
 from .domain_cash_register import __all__ as _cash_register_all  # type: ignore
+from .chatbox.models import ChatMessage  # Chat models
 
 # Import leave management models directly
 from .domain_emp import EmpProfile, LeaveType, LeaveEntry
@@ -54,6 +55,7 @@ __all__ = [
   'EmpProfile',
   'LeaveType',
   'LeaveEntry',
+  'ChatMessage',
   'User',
 ]
 

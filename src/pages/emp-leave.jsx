@@ -243,7 +243,7 @@ function EmpLeavePage() {
   const topbarActions = Object.values(PANEL_LABELS);
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-2 md:p-3 space-y-4">
       <PageTopbar
         title="Leave Management"
         leftSlot={<FaUserTie className="text-indigo-700 text-2xl" />}

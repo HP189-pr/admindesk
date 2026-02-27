@@ -15,11 +15,13 @@ class TranscriptRequest(models.Model):
 
     STATUS_PENDING = "pending"
     STATUS_PROGRESS = "progress"
+    STATUS_CANCEL = "cancel"
     STATUS_DONE = "done"
 
     STATUS_CHOICES = [
         (STATUS_PENDING, "Pending"),
         (STATUS_PROGRESS, "In Progress"),
+        (STATUS_CANCEL, "Cancel"),
         (STATUS_DONE, "Done"),
     ]
 
@@ -36,6 +38,9 @@ class TranscriptRequest(models.Model):
         "processing": STATUS_PROGRESS,
         "progress": STATUS_PROGRESS,
         "pending": STATUS_PENDING,
+        "cancel": STATUS_CANCEL,
+        "canceled": STATUS_CANCEL,
+        "cancelled": STATUS_CANCEL,
     }
 
     requested_at = models.DateTimeField(db_column="trn_reqest_date")

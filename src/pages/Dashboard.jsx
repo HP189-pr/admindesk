@@ -323,7 +323,7 @@ export const CustomDashboard = ({ selectedMenuItem, setSelectedMenuItem, isSideb
     else if (selectedCount >= 4) gridClass = "grid grid-cols-1 sm:grid-cols-2";
 
     return (
-        <div className="flex flex-col bg-white" style={{ paddingRight: "var(--chat-rail-width, calc(4rem + 10px))" }}>
+        <div className="flex flex-col bg-white" style={{ paddingRight: "var(--chat-rail-width, 0px)" }}>
             <div className="h-[10px] bg-white" />
             <div className="p-4 overflow-auto">
                 <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white mb-6">

@@ -692,7 +692,7 @@ const Inventory = () => {
   );
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-2 md:p-3 space-y-4">
       <PageTopbar
         title="Inventory Management"
         actions={[

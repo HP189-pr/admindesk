@@ -236,11 +236,10 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
     }
   };
 
-  // Make the work area a column with internal scrolling only
+  // Keep a unified frame so all pages have consistent spacing from sidebar/chat and top edge.
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      {/* Page content (each page already renders its own topbar and panels). */}
-      <div className="flex-1 overflow-auto">
+    <div className="h-full flex flex-col overflow-hidden bg-gray-100">
+      <div className="flex-1 overflow-auto px-1 md:px-1 py-1">
         {renderPage()}
       </div>
     </div>
