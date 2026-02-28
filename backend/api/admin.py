@@ -9,6 +9,7 @@ from .domain_degree import StudentDegree, ConvocationMaster
 from .domain_fees_ledger import StudentFeesLedger
 import csv
 import io
+import re
 
 class ReceiptItemInline(admin.TabularInline):
     model = ReceiptItem
@@ -339,7 +340,15 @@ def get_import_spec(model) -> Dict[str, Any]:
             LeaveEntry: {"allowed_columns": ["leave_report_no", "emp_id", "leave_code", "start_date", "end_date", "total_days", "reason", "status", "created_by", "approved_by", "approved_at"], "required_keys": ["leave_report_no"], "create_requires": ["leave_report_no", "emp_id", "leave_code", "start_date"]},
         StudentProfile: {"allowed_columns": ["enrollment_no", "gender", "birth_date", "address1", "address2", "city1", "city2", "contact_no", "email", "fees", "hostel_required", "aadhar_no", "abc_id", "mobile_adhar", "name_adhar", "mother_name", "category", "photo_uploaded", "is_d2d", "program_medium"], "required_keys": ["enrollment_no"], "create_requires": ["enrollment_no"]},
     FeeType: {"allowed_columns": ["code", "name", "is_active"], "required_keys": ["code", "name"], "create_requires": ["code", "name"]},
-    Receipt: {"allowed_columns": ["receipt_no_full", "rec_ref", "rec_no", "date", "payment_mode", "total_amount", "remark"], "required_keys": ["date", "payment_mode"], "create_requires": ["date", "payment_mode"]},
+    Receipt: {
+        "allowed_columns": [
+            "receipt_no_full", "rec_ref", "rec_no", "date", "payment_mode",
+            "fee_type_code", "fee_type", "amount", "total_amount", "remark",
+            "is_cancelled", "cancel_reason", "cancelled_by"
+        ],
+        "required_keys": ["date", "payment_mode"],
+        "create_requires": ["date", "payment_mode"],
+    },
     DocRec: {"allowed_columns": ["apply_for", "doc_rec_id", "pay_by", "pay_rec_no_pre", "pay_rec_no", "pay_amount", "doc_rec_date", "doc_rec_remark"], "required_keys": ["apply_for", "doc_rec_id", "pay_by"], "create_requires": ["apply_for", "doc_rec_id", "pay_by"]},
     MigrationRecord: {"allowed_columns": ["doc_rec_id", "enrollment_no", "student_name", "institute_id", "maincourse_id", "subcourse_id", "mg_number", "mg_date", "exam_year", "admission_year", "exam_details", "mg_status", "pay_rec_no"], "required_keys": ["doc_rec_id"], "create_requires": ["doc_rec_id"]},
     ProvisionalRecord: {"allowed_columns": ["doc_rec_id", "enrollment_no", "student_name", "institute_id", "maincourse_id", "subcourse_id", "prv_number", "prv_date", "class_obtain", "prv_degree_name", "passing_year", "prv_status", "pay_rec_no"], "required_keys": ["doc_rec_id"], "create_requires": ["doc_rec_id"]},
@@ -358,11 +367,17 @@ COLUMN_ALIAS_MAP: Dict[type, Dict[str, str]] = {
         "fee_code": "fee_type_code",
         "feecode": "fee_type_code",
         "fee code": "fee_type_code",
+        "fee_type": "fee_type_code",
+        "fee type": "fee_type_code",
         "cash_rec_no": "receipt_no_full",
         "cash rec no": "receipt_no_full",
         "cashrecno": "receipt_no_full",
         "receipt_no": "receipt_no_full",
         "receipt no": "receipt_no_full",
+        "is cancelled": "is_cancelled",
+        "cancelled": "is_cancelled",
+        "cancel reason": "cancel_reason",
+        "cancelled by": "cancelled_by",
     },
     StudentFeesLedger: {
         "enrollment": "enrollment_no",
@@ -390,20 +405,40 @@ def _build_allowed_maps(model):
     spec = get_import_spec(model)
     allowed_set = set(spec["allowed_columns"])
     allowed_map = {str(col).lower(): col for col in allowed_set}
+    allowed_norm_map = {
+        re.sub(r"[^0-9a-zA-Z]", "", str(col).lower()): col
+        for col in allowed_set
+    }
     alias_map: Dict[str, str] = {}
+    alias_norm_map: Dict[str, str] = {}
     for klass, aliases in COLUMN_ALIAS_MAP.items():
         if issubclass(model, klass):
             for alias, target in aliases.items():
                 if target in allowed_set:
                     alias_map[alias.lower()] = target
-    return spec, allowed_set, allowed_map, alias_map
+                    alias_norm_map[re.sub(r"[^0-9a-zA-Z]", "", alias.lower())] = target
+    return spec, allowed_set, allowed_map, alias_map, allowed_norm_map, alias_norm_map
 
 
-def _resolve_column_name(raw, allowed_map, alias_map):
+def _resolve_column_name(raw, allowed_map, alias_map, allowed_norm_map=None, alias_norm_map=None):
     key = str(raw).strip().lower()
     if not key:
         return None
-    return allowed_map.get(key) or alias_map.get(key)
+    resolved = allowed_map.get(key) or alias_map.get(key)
+    if resolved:
+        return resolved
+    norm_key = re.sub(r"[^0-9a-zA-Z]", "", key)
+    if not norm_key:
+        return None
+    if allowed_norm_map:
+        resolved = allowed_norm_map.get(norm_key)
+        if resolved:
+            return resolved
+    if alias_norm_map:
+        resolved = alias_norm_map.get(norm_key)
+        if resolved:
+            return resolved
+    return None
 
 # ---------------------------------------------------------------------------
 # AJAX Excel Upload Mixin
@@ -469,7 +504,7 @@ class ExcelUploadMixin:
                     encoded = request.session.get("excel_data")
                     if not encoded:
                         return JsonResponse({"error": "Session expired"}, status=400)
-                    spec, allowed, allowed_map, alias_map = _build_allowed_maps(self.model)
+                    spec, allowed, allowed_map, alias_map, allowed_norm_map, alias_norm_map = _build_allowed_maps(self.model)
                     required_keys = spec["required_keys"]
 
                     # Try to detect the correct header row. Some Excel files include title rows
@@ -489,7 +524,7 @@ class ExcelUploadMixin:
                         if sheet not in frames_try:
                             continue
                         cols_try = [str(c).strip() for c in frames_try[sheet].columns]
-                        usable_try = [c for c in cols_try if _resolve_column_name(c, allowed_map, alias_map)]
+                        usable_try = [c for c in cols_try if _resolve_column_name(c, allowed_map, alias_map, allowed_norm_map, alias_norm_map)]
                         score = len(usable_try)
                         # prefer header with more usable allowed columns
                         if score > best_score:
@@ -517,7 +552,7 @@ class ExcelUploadMixin:
                     unrecognized: List[str] = []
                     mapped_seen = set()
                     for col in cols_present:
-                        resolved = _resolve_column_name(col, allowed_map, alias_map)
+                        resolved = _resolve_column_name(col, allowed_map, alias_map, allowed_norm_map, alias_norm_map)
                         if resolved:
                             usable.append(col)
                             mapped_seen.add(resolved)
@@ -626,11 +661,11 @@ class ExcelUploadMixin:
                         return JsonResponse({"error": f"Read error: {e}"}, status=400)
                     if sheet not in frames:
                         return JsonResponse({"error": "Sheet not found"}, status=404)
-                    spec, allowed, allowed_map, alias_map = _build_allowed_maps(self.model)
+                    spec, allowed, allowed_map, alias_map, allowed_norm_map, alias_norm_map = _build_allowed_maps(self.model)
                     required = set(spec["required_keys"])
                     normalized_selection: List[str] = []
                     for raw in selected:
-                        resolved = _resolve_column_name(raw, allowed_map, alias_map)
+                        resolved = _resolve_column_name(raw, allowed_map, alias_map, allowed_norm_map, alias_norm_map)
                         if resolved:
                             normalized_selection.append(resolved)
                     chosen = normalized_selection
@@ -645,7 +680,7 @@ class ExcelUploadMixin:
                         try:
                             rename_map = {}
                             for col in list(df.columns):
-                                resolved = _resolve_column_name(col, allowed_map, alias_map)
+                                resolved = _resolve_column_name(col, allowed_map, alias_map, allowed_norm_map, alias_norm_map)
                                 if resolved and resolved != col:
                                     rename_map[col] = resolved
                             if rename_map:

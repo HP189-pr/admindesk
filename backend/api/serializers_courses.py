@@ -36,7 +36,10 @@ class InstituteCourseOfferingSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at','updated_at','updated_by','institute','maincourse','subcourse']
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data['institute'] = {'id': instance.institute.id, 'name': str(instance.institute)} if instance.institute else None
+        data['institute'] = {
+            'id': instance.institute.institute_id,
+            'name': str(instance.institute),
+        } if instance.institute else None
         data['maincourse'] = {'id': instance.maincourse.id,'maincourse_id': instance.maincourse.maincourse_id,'name': instance.maincourse.course_name} if instance.maincourse else None
         data['subcourse'] = {'id': getattr(instance.subcourse,'id',None),'subcourse_id': getattr(instance.subcourse,'subcourse_id',None),'name': getattr(instance.subcourse,'subcourse_name',None)} if instance.subcourse else None
         if instance.updated_by:

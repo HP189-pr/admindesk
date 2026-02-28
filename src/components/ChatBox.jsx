@@ -108,7 +108,11 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
   };
 
   const userKey = (u) => u?.id || u?.userid || u?.user_id || u?.pk || u?.usercode;
-  const autoDownloadKey = 'chat:auto:common';
+  const preferenceUserId = useMemo(
+    () => userKey(user) || decodeUserId() || 'common',
+    [user, token]
+  );
+  const autoDownloadKey = `chat:auto:${preferenceUserId}`;
   const folderLabelKey = 'chat:folder-label:common';
   const folderHandleKey = 'chat:folder-handle:common';
   const isNumericOnly = (v) => /^\d+$/.test(String(v || '').trim());
@@ -125,6 +129,18 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
     if (emailName && !isNumericOnly(emailName)) return emailName;
     if (usercode && !isNumericOnly(usercode)) return usercode;
     return `User ${userKey(u) || ''}`.trim();
+  };
+  const getInitials = (name) => {
+    const safeName = String(name || '').trim();
+    if (!safeName) return 'U';
+
+    const words = safeName.split(/\s+/).filter(Boolean);
+    if (words.length >= 2) {
+      return `${words[0][0] || ''}${words[words.length - 1][0] || ''}`.toUpperCase();
+    }
+
+    const single = words[0] || '';
+    return single.slice(0, 2).toUpperCase() || 'U';
   };
   const userAvatar = (u) => {
     const raw =
@@ -346,9 +362,20 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
     const loadPersistedPrefs = async () => {
       try {
         prefsHydratedRef.current = false;
-        const savedAuto = localStorage.getItem(autoDownloadKey);
-        if (mounted && savedAuto !== null) {
-          setAutoDownload(savedAuto === '1');
+        const savedAuto = await getPrefHandle(autoDownloadKey);
+        if (mounted && typeof savedAuto === 'boolean') {
+          setAutoDownload(savedAuto);
+        }
+
+        if (savedAuto === null) {
+          const legacyAuto = localStorage.getItem('chat:auto:common');
+          if (legacyAuto !== null) {
+            const migrated = legacyAuto === '1';
+            if (mounted) setAutoDownload(migrated);
+            await setPrefHandle(autoDownloadKey, migrated);
+          } else if (mounted) {
+            setAutoDownload(false);
+          }
         }
 
         const savedLabel = localStorage.getItem(folderLabelKey);
@@ -372,13 +399,20 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
     return () => {
       mounted = false;
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, autoDownloadKey]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
     if (!prefsHydratedRef.current) return;
-    localStorage.setItem(autoDownloadKey, autoDownload ? '1' : '0');
-  }, [isAuthenticated, autoDownload]);
+    const persistAutoDownload = async () => {
+      try {
+        await setPrefHandle(autoDownloadKey, !!autoDownload);
+      } catch (e) {
+        console.warn('Failed to persist auto-save preference', e?.message || e);
+      }
+    };
+    persistAutoDownload();
+  }, [isAuthenticated, autoDownload, autoDownloadKey]);
 
   useEffect(() => {
     if (!selectedUser || !isAuthenticated) return;
@@ -703,7 +737,7 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
                     <img src={avatar} alt={code} className="w-10 h-10 rounded-full object-cover border border-gray-500" />
                   ) : (
                     <div className="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center text-sm font-semibold">
-                      {(code || 'U').slice(0, 2).toUpperCase()}
+                      {getInitials(code)}
                     </div>
                   )}
                   <div
@@ -775,7 +809,7 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
                                 isOnline ? 'bg-gray-600 border-2 border-sky-400' : 'bg-gray-500 border-2 border-gray-500'
                               }`}
                             >
-                              {(code || 'U').slice(0, 2).toUpperCase()}
+                              {getInitials(code)}
                             </div>
                           )}
                           <span
@@ -849,7 +883,7 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
                     />
                   ) : (
                     <div className="w-10 h-10 rounded-full bg-gray-500 flex items-center justify-center font-semibold">
-                      {formatName(selectedUser).slice(0, 2).toUpperCase()}
+                      {getInitials(formatName(selectedUser))}
                     </div>
                   )}
 

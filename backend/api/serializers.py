@@ -255,7 +255,10 @@ class InstituteCourseOfferingSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data["institute"] = {"id": instance.institute.id, "name": str(instance.institute)} if instance.institute else None
+        data["institute"] = {
+            "id": instance.institute.institute_id,
+            "name": str(instance.institute),
+        } if instance.institute else None
         data["maincourse"] = {
             "id": instance.maincourse.id,
             "maincourse_id": instance.maincourse.maincourse_id,

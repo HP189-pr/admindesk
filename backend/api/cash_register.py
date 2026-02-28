@@ -84,6 +84,17 @@ def _normalize(value: Optional[str]) -> str:
     return (value or "").strip().lower()
 
 
+def _parse_is_cancelled(value) -> Optional[bool]:
+    if value is None:
+        return None
+    text = str(value).strip().lower()
+    if text in {"", "null", "none", "nan"}:
+        return None
+    if text in {"yes", "y", "true", "1", "cancel", "cancelled", "canceled"}:
+        return True
+    return None
+
+
 def _user_is_admin(user) -> bool:
     return bool(
         getattr(user, "is_superuser", False)
@@ -250,7 +261,11 @@ class ReceiptNumberService:
         rec_ref = cls._prefix(payment_mode, entry_date, bank_base=bank_base)
         legacy_ref = rec_ref.rstrip('/')
 
-        qs = Receipt.objects.filter(payment_mode=payment_mode, rec_ref__startswith=rec_ref)
+        # Support both historical rec_ref styles:
+        # - PREFIX/YY/R/ (new)
+        # - PREFIX/YY/R  (legacy)
+        # Using legacy_ref in startswith safely matches both formats.
+        qs = Receipt.objects.filter(payment_mode=payment_mode, rec_ref__startswith=legacy_ref)
 
         if lock:
             qs = qs.select_for_update()
@@ -319,12 +334,20 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
     permission_action_map = {
         **FinancePermissionMixin.permission_action_map,
         "next_receipt": "can_create",
+        "cancel_receipt": "can_edit",
     }
 
     @action(detail=True, methods=["put"], url_path="update-with-items")
     @transaction.atomic
     def update_with_items(self, request, pk=None):
         receipt = self.get_object()
+        if receipt.is_cancelled:
+            return Response(
+                {"detail": "Cancelled receipt cannot be edited"},
+                status=400
+            )
+        if receipt.is_cancelled:
+            return Response({"detail": "Cancelled receipt cannot be edited"}, status=400)
 
         items = request.data.get("items", [])
         if not items:
@@ -367,6 +390,7 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
     permission_action_map = {
         **FinancePermissionMixin.permission_action_map,
         "next_receipt": "can_create",
+        "cancel_receipt": "can_edit",
     }
 
     def get_queryset(self) -> QuerySet[Receipt]:  # type: ignore[override]
@@ -427,6 +451,10 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
                 "rec_no": r.rec_no,
                 "total_amount": str(r.total_amount),
                 "remark": r.remark,
+                "is_cancelled": r.is_cancelled,
+                "cancel_reason": r.cancel_reason,
+                "cancelled_by": r.cancelled_by.id if getattr(r, "cancelled_by", None) else None,
+                "cancelled_by_name": r.cancelled_by.get_full_name().strip() if getattr(r, "cancelled_by", None) else None,
                 "created_by": r.created_by.id if r.created_by else None,
                 "created_by_name": r.created_by.get_full_name().strip() if r.created_by else None,
                 "items": items,
@@ -445,10 +473,7 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
             raw_base = (self.request.data.get("bank_prefix") or self.request.data.get("rec_ref_base") or "").strip()
             if raw_base in _BANK_PREFIX_CHOICES:
                 bank_base = raw_base
-        if payment_mode in {"UPI", "BANK"}:
-            next_numbers = ReceiptNumberService.next_numbers_latest(payment_mode, lock=True, bank_base=bank_base, fallback_date=entry_date)
-        else:
-            next_numbers = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=True, bank_base=bank_base)
+        next_numbers = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=True, bank_base=bank_base)
         serializer.save(
             created_by=self.request.user,
             rec_ref=next_numbers["rec_ref"],
@@ -474,15 +499,28 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
             raw_base = (request.query_params.get("bank_prefix") or request.query_params.get("rec_ref_base") or "").strip()
             if raw_base in _BANK_PREFIX_CHOICES:
                 bank_base = raw_base
-        if payment_mode in {"UPI", "BANK"}:
-            next_numbers = ReceiptNumberService.next_numbers_latest(payment_mode, lock=False, bank_base=bank_base, fallback_date=entry_date)
-        else:
-            next_numbers = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=False, bank_base=bank_base)
+        next_numbers = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=False, bank_base=bank_base)
         return Response({
             "rec_ref": next_numbers["rec_ref"],
             "rec_no": next_numbers["rec_no"],
             "receipt_no_full": next_numbers["receipt_no_full"],
         })
+
+    @action(detail=True, methods=["post"], url_path="cancel")
+    @transaction.atomic
+    def cancel_receipt(self, request, pk=None):
+        receipt = self.get_object()
+        if receipt.is_cancelled:
+            return Response({"detail": "Receipt already cancelled"}, status=400)
+        cancel_reason = (request.data.get("cancel_reason") or "").strip()
+        if not cancel_reason:
+            return Response({"detail": "cancel_reason is required"}, status=400)
+
+        receipt.is_cancelled = True
+        receipt.cancel_reason = cancel_reason
+        receipt.cancelled_by = request.user
+        receipt.save(update_fields=["is_cancelled", "cancel_reason", "cancelled_by", "updated_at"])
+        return Response({"detail": "Receipt cancelled successfully"})
 
 
 class UploadCashExcelView(APIView):
@@ -539,6 +577,8 @@ class UploadCashExcelView(APIView):
                         date_val = parse_excel_date(first.get(lower_cols.get("date") if "date" in lower_cols else "date"))
                         payment_mode = (first.get(lower_cols.get("payment_mode")) or "CASH").upper()
                         remark = first.get(lower_cols.get("remark")) if "remark" in lower_cols else ""
+                        is_cancelled = _parse_is_cancelled(first.get(lower_cols.get("is_cancelled"))) if "is_cancelled" in lower_cols else None
+                        cancel_reason = first.get(lower_cols.get("cancel_reason")) if "cancel_reason" in lower_cols else None
 
                         # Always use receipt_no_full, rec_ref, rec_no from Excel if present
                         receipt_full = normalize_receipt_no(first.get(lower_cols.get("receipt_no_full"))) if "receipt_no_full" in lower_cols else None
@@ -574,6 +614,9 @@ class UploadCashExcelView(APIView):
                             rec_no=int(float(rec_no)) if rec_no is not None else None,
                             receipt_no_full=receipt_full,
                             remark=remark,
+                            is_cancelled=True if is_cancelled else None,
+                            cancel_reason=cancel_reason if is_cancelled else None,
+                            cancelled_by=request.user if is_cancelled else None,
                             created_by=request.user,
                         )
 
@@ -623,6 +666,7 @@ class UploadCashExcelView(APIView):
                     standard_keys = {
                         "date", "payment_mode", "remark",
                         "rec_ref", "rec_no", "receipt_no_full",
+                        "is_cancelled", "cancel_reason", "cancelled_by",
                         "fee_type", "fee_type_code", "fee_code",  # <-- added fee_code
                         "amount",
                         "total", "TOTAL"
@@ -637,6 +681,8 @@ class UploadCashExcelView(APIView):
                         date_val = parse_excel_date(row.get(date_col) if date_col else None)
                         payment_mode = (row.get(payment_col) or "CASH").upper() if payment_col else "CASH"
                         remark = row.get(remark_col) if remark_col else ""
+                        is_cancelled = _parse_is_cancelled(row.get(lower_cols.get("is_cancelled"))) if lower_cols.get("is_cancelled") else None
+                        cancel_reason = row.get(lower_cols.get("cancel_reason")) if lower_cols.get("cancel_reason") else None
                         try:
                             numbers = ReceiptNumberService.next_numbers(payment_mode, date_val, lock=True)
                         except Exception as e:
@@ -653,6 +699,9 @@ class UploadCashExcelView(APIView):
                                 "date": (date_val or timezone.now().date()),
                                 "payment_mode": payment_mode,
                                 "remark": remark,
+                                "is_cancelled": True if is_cancelled else None,
+                                "cancel_reason": cancel_reason if is_cancelled else None,
+                                "cancelled_by": request.user if is_cancelled else None,
                                 "created_by": request.user,
                             }
                         )
@@ -731,6 +780,7 @@ class ReceiptItemSerializer(serializers.ModelSerializer):
 class ReceiptSerializer(serializers.ModelSerializer):
     items = ReceiptItemSerializer(many=True, read_only=True)
     created_by_name = serializers.SerializerMethodField()
+    cancelled_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Receipt
@@ -743,17 +793,27 @@ class ReceiptSerializer(serializers.ModelSerializer):
             "receipt_no_full",
             "total_amount",
             "remark",
+            "is_cancelled",
+            "cancel_reason",
+            "cancelled_by",
+            "cancelled_by_name",
             "created_by",
             "created_by_name",
             "items",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["rec_ref", "rec_no", "receipt_no_full", "created_by", "created_at", "updated_at"]
+        read_only_fields = ["rec_ref", "rec_no", "receipt_no_full", "created_by", "cancelled_by", "created_at", "updated_at"]
 
     def get_created_by_name(self, obj) -> str:
         full_name = obj.created_by.get_full_name().strip()
         return full_name or obj.created_by.username
+
+    def get_cancelled_by_name(self, obj) -> Optional[str]:
+        if not getattr(obj, "cancelled_by", None):
+            return None
+        full_name = obj.cancelled_by.get_full_name().strip()
+        return full_name or obj.cancelled_by.username
 
 
 # Keep the legacy `CashRegisterSerializer` name as an alias to the Receipt serializer
@@ -840,7 +900,7 @@ class ReceiptViewSet(FinancePermissionMixin, mixins.ListModelMixin, mixins.Retri
         payment_mode = request.query_params.get("payment_mode")
         report_by = request.query_params.get("report_by", "Daily")
 
-        qs = ReceiptItem.objects.select_related("receipt", "fee_type")
+        qs = ReceiptItem.objects.select_related("receipt", "fee_type").filter(receipt__is_cancelled__isnull=True)
         if date_from:
             qs = qs.filter(receipt__date__gte=date_from)
         if date_to:
@@ -876,10 +936,13 @@ class ReceiptViewSet(FinancePermissionMixin, mixins.ListModelMixin, mixins.Retri
         Return min/max receipt numbers per period (Daily, Monthly, Quarterly, Half-Yearly, Yearly).
         """
         report_by = request.query_params.get("report_by", "Daily")
+        payment_mode = request.query_params.get("payment_mode")
         date_from = parse_date(request.query_params.get("date_from"))
         date_to = parse_date(request.query_params.get("date_to"))
 
-        qs = Receipt.objects.all()
+        qs = Receipt.objects.filter(is_cancelled__isnull=True)
+        if payment_mode:
+            qs = qs.filter(payment_mode=payment_mode.upper())
         if date_from:
             qs = qs.filter(date__gte=date_from)
         if date_to:
@@ -955,6 +1018,10 @@ class ReceiptViewSet(FinancePermissionMixin, mixins.ListModelMixin, mixins.Retri
                     "receipt_no_full": receipt.receipt_no_full,
                     "rec_ref": receipt.rec_ref,
                     "rec_no": receipt.rec_no,
+                    "is_cancelled": receipt.is_cancelled,
+                    "cancel_reason": receipt.cancel_reason,
+                    "cancelled_by": receipt.cancelled_by.id if getattr(receipt, "cancelled_by", None) else None,
+                    "cancelled_by_name": (receipt.cancelled_by.get_full_name().strip() or receipt.cancelled_by.username) if getattr(receipt, "cancelled_by", None) else None,
                     "fee_type": item.fee_type.id,
                     "fee_type_code": item.fee_type.code,
                     "fee_type_name": item.fee_type.name,
@@ -1111,7 +1178,7 @@ class CashOnHandReportView(APIView):
         # 1️⃣ System cash
         system_cash = (
             Receipt.objects
-            .filter(date=report_date, payment_mode="CASH")
+            .filter(date=report_date, payment_mode="CASH", is_cancelled__isnull=True)
             .aggregate(total=Sum("total_amount"))["total"]
             or Decimal("0")
         )
@@ -1161,7 +1228,7 @@ class CloseCashDayView(APIView):
         # Calculate system values
         system_cash = (
             Receipt.objects
-            .filter(date=report_date, payment_mode="CASH")
+            .filter(date=report_date, payment_mode="CASH", is_cancelled__isnull=True)
             .aggregate(total=Sum("total_amount"))["total"]
             or Decimal("0")
         )

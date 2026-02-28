@@ -7,6 +7,7 @@ import {
   fetchNextReceiptNumber,
   createReceiptsBulk,
   updateReceiptWithItems,
+  cancelCashEntry,
 } from '../services/cashRegisterService';
 import { fetchFeeTypes } from '../services/feeTypeService';
 import PageTopbar from '../components/PageTopbar';
@@ -40,11 +41,12 @@ const fiscalYearCode = (dateStr) => {
   return String(year).slice(-2);
 };
 
-const TOPBAR_ACTIONS = ['➕ Add', '🔍 Search', '📄 Report','Closed Cash'];
+const TOPBAR_ACTIONS = ['➕ Add', '🔍 Search', '📄 Report', 'Cash on Hand'];
 const ACTION_DESCRIPTIONS = {
   '➕ Add': 'Capture new cash receipts for the selected day while seeing the live next number preview.',
   '🔍 Search': 'Filter totals by date and payment mode, then review every receipt in the ledger below.',
   '📄 Report': 'Use the day ledger to export or print official cash register summaries.',
+  'Cash on Hand': 'Review daily cash-on-hand count with receipt range, totals, deposit, expense, and balance.',
 };
 
 const extractSequenceFromFull = (full) => {
@@ -199,8 +201,10 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     filteredEntries.forEach((e) => {
       const key = e.receipt_no_full || `__${e.id}`;
       if (!grouped[key]) {
+        const receiptId = e.receipt_id || (typeof e.id === 'string' && e.id.includes('-') ? Number(e.id.split('-')[0]) : e.id);
         grouped[key] = {
           id: key,
+          receipt_id: receiptId,
           date: e.date,
           payment_mode: e.payment_mode,
           receipt_no_full: e.receipt_no_full,
@@ -210,6 +214,9 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
           fee_type_name: e.fee_type_name,
           amount: 0,
           remark: e.remark || '',
+          is_cancelled: e.is_cancelled,
+          cancel_reason: e.cancel_reason,
+          cancelled_by_name: e.cancelled_by_name,
           created_by: e.created_by,
           created_by_name: e.created_by_name,
           created_at: e.created_at,
@@ -231,6 +238,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     entries.forEach((entry) => {
       const key = entry.payment_mode?.toUpperCase();
       if (!key) return;
+      if (entry.is_cancelled) return;
       if (!base[key]) base[key] = { amount: 0, count: 0 };
       const amt = Number(entry.amount) || 0;
       base[key].amount += amt;
@@ -296,7 +304,6 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
 
       const sameDayEntries = entries.filter((entry) => {
         if (entry.payment_mode?.toUpperCase() !== normalizedMode) return false;
-        if (normalizedMode === 'CASH' && entry.date !== date) return false;
         if (normalizedMode === 'BANK' && bankBase) {
           const prefix = extractReferencePrefix(entry);
           return prefix?.startsWith(`${bankBase}/`);
@@ -555,6 +562,10 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
   };
 
   const startEdit = async (entry) => {
+    if (entry.is_cancelled) {
+      setFlash('error', 'Cancelled receipt cannot be edited.');
+      return;
+    }
     // Ensure feeTypes are loaded before setting feeItems
     if (!feeTypes.length) {
       await loadFeeTypes();
@@ -601,16 +612,51 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     if (!rights.can_delete) return;
     const displayNumber = formatReceiptDisplay(entry.receipt_no_full);
     if (!window.confirm(`Delete receipt ${displayNumber}?`)) return;
+    const targetId = entry.receipt_id || entry.id;
     setSaving(true);
     try {
-      await deleteCashEntry(entry.id);
+      await deleteCashEntry(targetId);
       setFlash('success', 'Entry deleted');
-      if (editingEntry?.id === entry.id) {
+      if (editingEntry?.id === targetId) {
         resetForm();
       }
       loadEntries();
     } catch (err) {
       setFlash('error', err?.response?.data?.detail || 'Unable to delete entry');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = async (entry) => {
+    if (!rights.can_edit) {
+      setFlash('error', 'You do not have permission to cancel entries.');
+      return;
+    }
+    if (entry.is_cancelled) {
+      setFlash('error', 'Receipt is already cancelled.');
+      return;
+    }
+    const displayNumber = formatReceiptDisplay(entry.receipt_no_full);
+    const reason = window.prompt(`Cancel receipt ${displayNumber}\nEnter cancel reason:`);
+    if (reason === null) return;
+    const cancelReason = String(reason).trim();
+    if (!cancelReason) {
+      setFlash('error', 'Cancel reason is required.');
+      return;
+    }
+    const targetId = entry.receipt_id || entry.id;
+
+    setSaving(true);
+    try {
+      await cancelCashEntry(targetId, { cancel_reason: cancelReason });
+      setFlash('success', 'Receipt cancelled successfully');
+      if (editingEntry?.id === targetId) {
+        resetForm();
+      }
+      loadEntries();
+    } catch (err) {
+      setFlash('error', err?.response?.data?.detail || 'Unable to cancel receipt');
     } finally {
       setSaving(false);
     }
@@ -633,7 +679,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
       />
     );
   }
-  if (selectedTopbarMenu === 'Closed Cash') {
+  if (selectedTopbarMenu === 'Cash on Hand') {
     return (
       <CashReport
         onBack={() => setSelectedTopbarMenu('➕ Add')}
@@ -971,17 +1017,34 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                         {receiptFeesMap[entry.receipt_no_full || entry.id] || (entry.fee_type_code ? `${entry.fee_type_code} - ${entry.fee_type_name}` : entry.fee_type_name || '--')}
                       </td>
                       <td className="px-4 py-2 text-right font-semibold text-gray-900">Rs. {Number(entry.amount).toFixed(2)}</td>
-                      <td className="px-4 py-2 text-gray-600">{entry.remark || '--'}</td>
+                      <td className="px-4 py-2 text-gray-600">
+                        {entry.is_cancelled ? (
+                          <span className="font-semibold text-red-700">
+                            CANCELLED{entry.cancel_reason ? ` - ${entry.cancel_reason}` : ''}
+                          </span>
+                        ) : (entry.remark || '--')}
+                      </td>
                       <td className="px-4 py-2 text-gray-700">{entry.created_by_name}</td>
                       <td className="px-4 py-2 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <button
                             type="button"
                             onClick={() => startEdit(entry)}
+                            disabled={entry.is_cancelled}
                             className="rounded border border-blue-200 px-3 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-50"
                           >
                             Edit
                           </button>
+                          {rights.can_edit && (
+                            <button
+                              type="button"
+                              onClick={() => handleCancel(entry)}
+                              disabled={entry.is_cancelled}
+                              className="rounded border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              Cancel
+                            </button>
+                          )}
                           {rights.can_delete && (
                             <button
                               type="button"

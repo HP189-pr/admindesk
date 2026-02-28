@@ -163,6 +163,9 @@ class Receipt(models.Model):
     receipt_no_full = models.CharField(max_length=64, editable=False, db_index=True)
     total_amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     remark = models.TextField(blank=True, null=True)
+    is_cancelled = models.BooleanField(null=True, blank=True, default=None, db_index=True)
+    cancelled_by = models.ForeignKey(User, on_delete=models.PROTECT, null=True, blank=True, related_name="cancelled_receipts")
+    cancel_reason = models.TextField(blank=True, null=True)
     created_by = models.ForeignKey(User, on_delete=models.PROTECT)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -173,6 +176,11 @@ class Receipt(models.Model):
 
     def save(self, *args, **kwargs):
         from django.utils import timezone
+        if self.rec_no is None:
+            _, parsed_no = split_receipt(self.receipt_no_full)
+            self.rec_no = parsed_no
+        if self.rec_no is None:
+            raise ValueError("rec_no is required")
         self.rec_no = int(float(self.rec_no))
         # Financial year logic for rec_ref: if month >= 4, year is current year, else previous year
         now = timezone.now()

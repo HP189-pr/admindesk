@@ -71,6 +71,14 @@ export const deleteCashEntry = async (id) => {
   return response.data;
 };
 
+export const cancelCashEntry = async (id, payload) => {
+  const response = await axiosInstance.post(
+    `${CASH_REGISTER_BASE}${id}/cancel/`,
+    payload
+  );
+  return response.data;
+};
+
 /* ----------------------------------------------------
    BULK CREATE (MULTI FEE RECEIPT)
 ---------------------------------------------------- */
@@ -165,6 +173,7 @@ export default {
   createCashEntry,
   updateReceiptWithItems,
   deleteCashEntry,
+  cancelCashEntry,
   createReceiptsBulk,
 
   // Reports
