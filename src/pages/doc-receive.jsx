@@ -284,6 +284,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
   const [selectedRec, setSelectedRec] = useState(null); // store the selected recent record (raw + type)
   const [searchTerm, setSearchTerm] = useState('');
   const [serviceFilter, setServiceFilter] = useState(serviceForApply('VR')); // all | docrec | migration | provisional | verification
+  const [serviceIssueError, setServiceIssueError] = useState('');
   const recInstSearchTimer = useRef(null);
 
   useEffect(() => () => {
@@ -346,6 +347,50 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     setServiceFilter(svc);
     fetchRecentRecords('', svc);
   }, [form.apply_for]);
+
+  // For PR/MG: show issued warning when enrollment already exists in the same service
+  useEffect(() => {
+    const enrollment = (form.enrollment || '').trim();
+    const service = form.apply_for === 'PR' ? 'provisional' : (form.apply_for === 'MG' ? 'migration' : null);
+
+    if (!service || !enrollment) {
+      setServiceIssueError('');
+      return;
+    }
+
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await fetch(`/api/${service}/?search=${encodeURIComponent(enrollment)}`, { headers, credentials: 'include' });
+        if (!res.ok) {
+          if (!cancelled) setServiceIssueError('');
+          return;
+        }
+        const data = await res.json();
+        const list = data && data.results ? data.results : Array.isArray(data) ? data : (data && data.objects ? data.objects : []);
+
+        const currentDocRec = String(form.doc_rec_id || '').trim();
+        const match = list.find((item) => {
+          const itemEnrollment = String(item.enrollment_no || item.enrollment || item.enrollment_no_string || '').trim().toLowerCase();
+          if (!itemEnrollment || itemEnrollment !== enrollment.toLowerCase()) return false;
+          if (!currentDocRec) return true;
+          const itemDocRec = String(item.doc_rec_key || item.doc_rec_id || item.doc_rec || '').trim();
+          return itemDocRec !== currentDocRec;
+        });
+
+        if (!cancelled) {
+          setServiceIssueError(match ? `${service === 'provisional' ? 'Provisional' : 'Migration'} already issued for this enrollment number.` : '');
+        }
+      } catch (_) {
+        if (!cancelled) setServiceIssueError('');
+      }
+    };
+
+    run();
+    return () => { cancelled = true; };
+  }, [form.apply_for, form.enrollment, form.doc_rec_id]);
 
   const resolvePayment = (r) => {
     return {
@@ -525,6 +570,10 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
   // basic UI only; backend integration of sub-flows to be completed per endpoint availability
 
   const submit = async () => {
+    if ((form.apply_for === 'PR' || form.apply_for === 'MG') && serviceIssueError) {
+      throw new Error(serviceIssueError);
+    }
+
     // 1) Create doc_rec
     const rec = await createDocRec();
 
@@ -790,36 +839,41 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
 
             {/* If VR show verification options (simplified UI as placeholder) */}
             {form.apply_for === 'VR' && (
-              <>
-                <div className="md:col-span-1">
+              <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-8 gap-3">
+                <div className="md:col-span-2">
                   <label className="text-sm">Enrollment No</label>
                   <input className="w-full border rounded-lg p-2" placeholder="e.g. 20MSCCHEM22184" value={form.enrollment} onChange={(e)=>handleChange("enrollment", e.target.value)} />
                 </div>
-                <div>
+                <div className="md:col-span-2">
                   <label className="text-sm">2nd Enrollment</label>
                   <input className="w-full border rounded-lg p-2" value={form.second_enrollment} onChange={(e)=>handleChange("second_enrollment", e.target.value)} />
                 </div>
-                <div className="md:col-span-2">
+                <div className="md:col-span-4">
                   <label className="text-sm">Student Name</label>
                   <input className="w-full border rounded-lg p-2" value={form.student_name} onChange={(e)=>handleChange("student_name", e.target.value)} />
                 </div>
 
                 <div>
                   <label className="text-sm">TR</label>
-                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.tr} onChange={(e)=>handleChange("tr", clamp3(e.target.value))} />                                                                                 </div>
+                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.tr} onChange={(e)=>handleChange("tr", clamp3(e.target.value))} />
+                </div>
                 <div>
                   <label className="text-sm">MS</label>
-                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.ms} onChange={(e)=>handleChange("ms", clamp3(e.target.value))} />                                                                                 </div>
+                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.ms} onChange={(e)=>handleChange("ms", clamp3(e.target.value))} />
+                </div>
                 <div>
                   <label className="text-sm">DG</label>
-                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.dg} onChange={(e)=>handleChange("dg", clamp3(e.target.value))} />                                                                                 </div>
+                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.dg} onChange={(e)=>handleChange("dg", clamp3(e.target.value))} />
+                </div>
                 <div>
                   <label className="text-sm">MOI</label>
-                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.moi} onChange={(e)=>handleChange("moi", clamp3(e.target.value))} />                                                                               </div>
+                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.moi} onChange={(e)=>handleChange("moi", clamp3(e.target.value))} />
+                </div>
                 <div>
                   <label className="text-sm">Backlog</label>
-                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.backlog} onChange={(e)=>handleChange("backlog", clamp3(e.target.value))} />                                                                       </div>
-              </>
+                  <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.backlog} onChange={(e)=>handleChange("backlog", clamp3(e.target.value))} />
+                </div>
+              </div>
             )}
 
             {/* If inst-verification, rec_by & rec_inst_name */}
@@ -881,37 +935,34 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
 
             {/* Provisional / Migration minimal UI */}
             {form.apply_for === 'PR' && (
-              <>
-                <div>
-                  <label className="text-sm">PRV No</label>
-                  <input className="w-full border rounded-lg p-2" value={form.prv_number} onChange={(e)=>handleChange("prv_number", e.target.value)} />                                                                                                         </div>
-                <div>
-                  <label className="text-sm">PRV Date</label>
-                  <input type="text" className="w-full border rounded-lg p-2" value={form.prv_date} onChange={(e)=>handleChange("prv_date", e.target.value)} placeholder="dd-mm-yyyy" />                                                                        </div>
-                <div>
-                  <label className="text-sm">Passing Year</label>
-                  <input className="w-full border rounded-lg p-2" value={form.passing_year} onChange={(e)=>handleChange("passing_year", e.target.value)} />                                                                                                     </div>
-              </>
+              <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-8 gap-3">
+                <div className="md:col-span-4">
+                  <label className="text-sm">Enrollment No</label>
+                  <input className="w-full border rounded-lg p-2" placeholder="e.g. 20MSCCHEM22184" value={form.enrollment} onChange={(e)=>handleChange("enrollment", e.target.value)} />
+                </div>
+                <div className="md:col-span-4">
+                  <label className="text-sm">Name</label>
+                  <input className="w-full border rounded-lg p-2 bg-gray-50" value={form.student_name} readOnly />
+                </div>
+                {serviceIssueError && <div className="md:col-span-8 text-sm text-red-600">{serviceIssueError}</div>}
+              </div>
             )}
 
             {form.apply_for === 'MG' && (
-              <>
-                <div>
-                  <label className="text-sm">MG No</label>
-                  <input className="w-full border rounded-lg p-2" value={form.mg_number} onChange={(e)=>handleChange("mg_number", e.target.value)} />                                                                                                           </div>
-                <div>
-                  <label className="text-sm">MG Date</label>
-                  <input type="text" className="w-full border rounded-lg p-2" value={form.mg_date} onChange={(e)=>handleChange("mg_date", e.target.value)} placeholder="dd-mm-yyyy" />                                                                          </div>
-                <div>
-                  <label className="text-sm">Exam Year</label>
-                  <input className="w-full border rounded-lg p-2" value={form.exam_year} onChange={(e)=>handleChange("exam_year", e.target.value)} />                                                                                                           </div>
-                <div>
-                  <label className="text-sm">Admission Year</label>
-                  <input className="w-full border rounded-lg p-2" value={form.admission_year} onChange={(e)=>handleChange("admission_year", e.target.value)} />                                                                                                 </div>
-              </>
+              <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-8 gap-3">
+                <div className="md:col-span-4">
+                  <label className="text-sm">Enrollment No</label>
+                  <input className="w-full border rounded-lg p-2" placeholder="e.g. 20MSCCHEM22184" value={form.enrollment} onChange={(e)=>handleChange("enrollment", e.target.value)} />
+                </div>
+                <div className="md:col-span-4">
+                  <label className="text-sm">Name</label>
+                  <input className="w-full border rounded-lg p-2 bg-gray-50" value={form.student_name} readOnly />
+                </div>
+                {serviceIssueError && <div className="md:col-span-8 text-sm text-red-600">{serviceIssueError}</div>}
+              </div>
             )}
 
-            <div className="md:col-span-4 flex justify-end space-x-2">
+            <div className="md:col-span-1 md:col-start-4 self-end flex justify-end space-x-2 mt-2 md:mt-0">
               {!selectedRec && (
                 <button className="px-4 py-2 rounded-lg bg-emerald-600 text-white" onClick={async()=>{
                   try { 
@@ -975,31 +1026,41 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
       </div>
 
       {/* Placeholder table of latest DocRecs could go below; wire as needed */}
-      <div className="border rounded-2xl p-3">
-        <div className="font-semibold mb-2">Recent Receipts</div>
-        <div className="card-body">
-            <h6 className="mt-0">Recent Receipts</h6>
-            <div className="mb-3 grid grid-cols-1 md:grid-cols-3 gap-2">
-              <input
-                className="form-input"
-                placeholder="Search by doc_rec_id, name, enrollment_no"
-                value={searchTerm}
-                onChange={(e)=>{ setSearchTerm(e.target.value); }}
-                onKeyDown={(e)=>{ if (e.key === 'Enter') fetchRecentRecords(searchTerm, serviceFilter); }}
-              />
-              <select className="form-select" value={serviceFilter} onChange={(e)=>{ setServiceFilter(e.target.value); fetchRecentRecords(searchTerm, e.target.value); }}>
-                <option value="all">All / DocRec</option>
-                <option value="docrec">DocRec</option>
-                <option value="migration">Migration</option>
-                <option value="provisional">Provisional</option>
-                <option value="verification">Verification</option>
-                <option value="inst-verification">Inst-Verification</option>
-              </select>
-              <div className="flex items-center">
-                <button className="btn btn-primary mr-2" onClick={()=>fetchRecentRecords(searchTerm, serviceFilter)} disabled={recentLoading}>Search</button>
-                <button className="btn" onClick={()=>{ setSearchTerm(''); setServiceFilter('all'); fetchRecentRecords('', 'all'); }}>Reset</button>
+      <div className="border rounded-2xl p-3 bg-white">
+        <div className="rounded-xl border bg-gray-50 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b bg-gray-100/80">
+            <div className="text-lg font-semibold text-gray-900">Recent Receipts</div>
+          </div>
+          <div className="p-4">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
+              <div className="lg:col-span-5">
+                <label className="text-sm font-medium text-gray-700">Search</label>
+                <input
+                  className="w-full border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-sky-200"
+                  placeholder="Search by doc_rec_id, name, enrollment_no"
+                  value={searchTerm}
+                  onChange={(e)=>{ setSearchTerm(e.target.value); }}
+                  onKeyDown={(e)=>{ if (e.key === 'Enter') fetchRecentRecords(searchTerm, serviceFilter); }}
+                />
+              </div>
+              <div className="lg:col-span-3">
+                <label className="text-sm font-medium text-gray-700">Record Type</label>
+                <select className="w-full border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-sky-200" value={serviceFilter} onChange={(e)=>{ setServiceFilter(e.target.value); fetchRecentRecords(searchTerm, e.target.value); }}>
+                  <option value="all">All / DocRec</option>
+                  <option value="docrec">DocRec</option>
+                  <option value="migration">Migration</option>
+                  <option value="provisional">Provisional</option>
+                  <option value="verification">Verification</option>
+                  <option value="inst-verification">Inst-Verification</option>
+                </select>
+              </div>
+              <div className="lg:col-span-4 flex items-end lg:justify-end gap-2">
+                <button className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-medium disabled:opacity-60" onClick={()=>fetchRecentRecords(searchTerm, serviceFilter)} disabled={recentLoading}>Search</button>
+                <button className="px-4 py-2 rounded-lg border border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 font-medium" onClick={()=>{ setSearchTerm(''); setServiceFilter('all'); fetchRecentRecords('', 'all'); }}>Reset</button>
               </div>
             </div>
+          </div>
+        </div>
 
             <div>
               {recentLoading && <div className="text-muted">Loading...</div>}
@@ -1042,7 +1103,6 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
               </div>
             </div>
           </div>
-      </div>
     </div>
   );
 }

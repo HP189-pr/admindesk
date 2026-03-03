@@ -13,7 +13,7 @@ const ProtectedRoute = ({ children }) => {
 
     if (loading) return <p>Loading...</p>;
 
-    return user ? children : <Navigate to="/login" />;
+    return user ? children : <Navigate to="/login" replace />;
 };
 
 // ✅ Layout component with Sidebar & WorkArea
@@ -61,9 +61,9 @@ const Layout = () => {
 const App = () => {
     return (
         <AuthProvider>
-            <Router>
+            <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <Routes>
-                    <Route path="/" element={<Navigate to="/login" />} />
+                    <Route path="/" element={<Navigate to="/login" replace />} />
                     <Route path="/login" element={<Login />} />
                     <Route
                         path="/dashboard"

@@ -21,6 +21,10 @@ export const normalizeMediaUrl = (value) => {
     return `${API_BASE_URL}${value}`;
   }
 
+  if (value.startsWith("/profile_pictures/")) {
+    return `${API_BASE_URL}/media${value}`;
+  }
+
   if (value.startsWith("media/")) {
     return `${API_BASE_URL}/${value}`;
   }
@@ -38,12 +42,18 @@ export const resolveProfilePicture = (source) => {
   const raw =
     source?.profile_picture ||
     source?.profile_picture_url ||
+    source?.profile_picture_path ||
     source?.usrpic ||
     source?.photoUrl ||
     source?.avatar ||
     source?.avatar_url ||
+    source?.profilePictureUrl ||
+    source?.picture ||
+    source?.image ||
     source?.user_profile?.profile_picture ||
+    source?.user_profile?.profile_picture_url ||
     source?.profile?.profile_picture ||
+    source?.profile?.profile_picture_url ||
     source?.profilePicture ||
     "";
 

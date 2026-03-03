@@ -13,6 +13,20 @@ export default defineConfig(({ mode }) => {
     }
   }
 
+  // Guardrail for local dev: avoid proxying API calls back to frontend ports.
+  // If .env points to localhost:3000/8081 by mistake, force Django backend target.
+  if (mode === 'development') {
+    try {
+      const parsed = new URL(apiBaseUrl);
+      const isLocalHost = ['127.0.0.1', 'localhost'].includes(parsed.hostname);
+      if (isLocalHost && ['3000', '8081'].includes(parsed.port)) {
+        apiBaseUrl = 'http://127.0.0.1:8000';
+      }
+    } catch (_) {
+      apiBaseUrl = 'http://127.0.0.1:8000';
+    }
+  }
+
   return {
     plugins: [react()],
     base: '/',

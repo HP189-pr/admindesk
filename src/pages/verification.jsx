@@ -103,6 +103,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
   const navigate = useNavigate();
   const formRef = useRef(null);
   const [flashMsg, setFlashMsg] = useState("");
+  const autoDocRecRef = useRef("");
   // Topbar actions and collapsible panel
   const [panelOpen, setPanelOpen] = useState(false);
   const [localSelected, setLocalSelected] = useState(null);
@@ -139,9 +140,11 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
     }
     // If new record, reset form
     if (action === "➕") {
+      const todayIso = new Date().toISOString().slice(0, 10);
       setForm({
-        date: "",
+        date: todayIso,
         vr_done_date: "",
+        enrollment_no: "",
         enrollment_id: "",
         second_enrollment_id: "",
         name: "",
@@ -165,8 +168,48 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
         doc_rec_key: "",
         eca_remark: ""
       });
+      autoDocRecRef.current = "";
     }
   };
+
+  useEffect(() => {
+    const selectedAction = typeof selectedTopbarMenu !== 'undefined' ? selectedTopbarMenu : localSelected;
+    if (selectedAction !== "➕") return;
+
+    const ctrl = new AbortController();
+    const run = async () => {
+      try {
+        const token = localStorage.getItem("access_token");
+        const effectiveIsoDate = form.date || new Date().toISOString().slice(0, 10);
+        const res = await fetch(
+          `/api/docrec/next-id/?apply_for=VR&doc_rec_date=${encodeURIComponent(effectiveIsoDate)}`,
+          {
+            headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            signal: ctrl.signal,
+          }
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        const nextId = (data?.next_id || "").toUpperCase();
+        if (!nextId) return;
+
+        setForm((prev) => {
+          const current = (prev.doc_rec_id || "").trim().toUpperCase();
+          const canOverwrite = !current || current === autoDocRecRef.current;
+          if (!canOverwrite) return prev;
+          return { ...prev, doc_rec_id: nextId, doc_rec_key: nextId };
+        });
+        autoDocRecRef.current = nextId;
+      } catch (e) {
+        if (e?.name !== "AbortError") {
+          console.warn("verification next-id preview failed", e);
+        }
+      }
+    };
+
+    run();
+    return () => ctrl.abort();
+  }, [form.date, selectedTopbarMenu, localSelected]);
 
   // Initial load
   useEffect(() => {
@@ -192,6 +235,9 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
       setQ((val || "").toString());
     } else if (["tr","ms","dg","moi","backlog"].includes(field)) {
       setForm((f) => ({ ...f, [field]: clamp3(val) }));
+    } else if (field === "doc_rec_id") {
+      const normalized = (val || "").toString().toUpperCase();
+      setForm((f) => ({ ...f, doc_rec_id: normalized, doc_rec_key: normalized }));
     } else if (field === "status" && val === "DONE") {
       setForm((f) => {
         let generatedNo = f.final_no || '';
@@ -722,6 +768,9 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                     <th
                       key={col.key}
                       className={
+                        col.key === "final_no"
+                          ? "text-left py-2 px-3 font-extrabold text-sm text-indigo-700 bg-indigo-50"
+                          :
                         col.key === "date" || col.key === "vr_done_date"
                           ? "text-left py-2 px-3 font-medium whitespace-nowrap text-xs w-28"
                           : "text-left py-2 px-3 font-medium"
@@ -799,7 +848,11 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                         <Badge text={r.status} />
                       </td>
                       <td className="py-2 px-3 whitespace-nowrap text-xs w-28" style={{ minWidth: 90, maxWidth: 120 }}>{r.vr_done_date || "-"}</td>
-                      <td className="py-2 px-3">{r.final_no || "-"}</td>
+                      <td className="py-2 px-3">
+                        <span className="inline-block px-2 py-0.5 rounded-md bg-indigo-50 text-orange-700 font-extrabold text-sm tracking-wide">
+                          {r.final_no || "-"}
+                        </span>
+                      </td>
                       <td className={highlightMail ? "py-2 px-3 bg-orange-50" : "py-2 px-3"}><MailBadge text={r.mail_status} /></td>
                       <td className="py-2 px-3">{r.doc_rec_key || r.doc_rec_id || (r.doc_rec && r.doc_rec.doc_rec_id) || '-'}</td>
                       <td className="py-2 px-3">{r.doc_remark || r.doc_rec?.doc_remark || "-"}</td>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import API from "../api/axiosInstance";
 import { useAuth } from "../hooks/AuthContext";
-import { DEFAULT_PROFILE_PIC, normalizeMediaUrl } from "../utils/mediaUrl";
+import { DEFAULT_PROFILE_PIC, resolveProfilePicture } from "../utils/mediaUrl";
 
 const ProfileUpdate = ({ setWorkArea }) => {
     const { user, fetchUserProfile } = useAuth();  // fetchUserProfile to refresh after update
@@ -22,7 +22,7 @@ const ProfileUpdate = ({ setWorkArea }) => {
     useEffect(() => {
         if (user) {
             // be permissive about where the profile picture URL may live in the user object
-            const picUrl = user.profile_picture || user.profile_picture_url || user.photoUrl || user.usrpic || "";
+            const picUrl = resolveProfilePicture(user);
             setProfile({
                 username: user.username || "",
                 first_name: user.first_name || "",
@@ -94,7 +94,7 @@ const ProfileUpdate = ({ setWorkArea }) => {
     // Choose displayed picture (uploaded file preview or backend URL)
     const displayedProfilePicture = profile.profile_picture_file
         ? URL.createObjectURL(profile.profile_picture_file)
-        : (normalizeMediaUrl(profile.profile_picture_url) || DEFAULT_PROFILE_PIC);
+        : (resolveProfilePicture({ profile_picture: profile.profile_picture_url }) || DEFAULT_PROFILE_PIC);
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -130,7 +130,16 @@ const ProfileUpdate = ({ setWorkArea }) => {
             <div>
                 <label>Profile Picture</label>
                 <input type="file" name="profile_picture" accept="image/*" onChange={handleFileChange} className="border p-2 w-full" />
-                <img src={displayedProfilePicture} alt="Profile" className="w-24 h-24 object-cover mt-2" />
+                <img
+                    src={displayedProfilePicture}
+                    alt="Profile"
+                    className="w-24 h-24 object-cover mt-2"
+                    onError={(e) => {
+                        if (e.target.src !== window.location.origin + DEFAULT_PROFILE_PIC) {
+                            e.target.src = DEFAULT_PROFILE_PIC;
+                        }
+                    }}
+                />
             </div>
 
             <button type="submit" className="bg-blue-500 text-white p-2 rounded">Save Changes</button>

@@ -46,6 +46,22 @@ const UserManagement = ({ selectedTopbarMenu }) => {
     }
   };
 
+  const handleToggleChat = async (user, enabled) => {
+    const userId = user.id ?? user.username ?? user.usercode;
+    const res = await updateUser(userId, { shotchat: enabled });
+    if (!res.success) {
+      alert('Chat update failed: ' + JSON.stringify(res.error));
+      return;
+    }
+    setUsers((prev) =>
+      prev.map((u) =>
+        (u.id ?? u.username ?? u.usercode) === userId
+          ? { ...u, shotchat: enabled, chat_enabled: enabled }
+          : u
+      )
+    );
+  };
+
   // 🔹 Handle Form Submit (Add/Edit User)
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -56,6 +72,8 @@ const UserManagement = ({ selectedTopbarMenu }) => {
       last_name: form.get('last_name'),
       email: form.get('email') || '',
       usr_birth_date: form.get('usr_birth_date') || null,
+      usercode: form.get('usercode') || null,
+      shotchat: form.get('shotchat') === 'on',
     };
     if (selectedUser) {
       const res = await updateUser(selectedUser.id, payload);
@@ -100,8 +118,10 @@ const UserManagement = ({ selectedTopbarMenu }) => {
                     <tr className="bg-gray-200">
                       <th className="px-4 py-2 border">Profile</th>
                       <th className="px-4 py-2 border">Username</th>
+                      <th className="px-4 py-2 border">User Code</th>
                       <th className="px-4 py-2 border">First Name</th>
                       <th className="px-4 py-2 border">Last Name</th>
+                      <th className="px-4 py-2 border">Chat</th>
                       <th className="px-4 py-2 border">Edit</th>
                       <th className="px-4 py-2 border">Password</th>
                       <th className="px-4 py-2 border">Delete</th>
@@ -122,9 +142,17 @@ const UserManagement = ({ selectedTopbarMenu }) => {
                             }}
                           />
                         </td>
-                          <td className="px-4 py-2 border">{user.username}</td>
+                        <td className="px-4 py-2 border">{user.username}</td>
+                        <td className="px-4 py-2 border">{user.usercode || '-'}</td>
                         <td className="px-4 py-2 border">{user.first_name}</td>
                         <td className="px-4 py-2 border">{user.last_name}</td>
+                        <td className="px-4 py-2 border">
+                          <input
+                            type="checkbox"
+                            checked={!!(user.shotchat ?? user.chat_enabled)}
+                            onChange={(e) => handleToggleChat(user, e.target.checked)}
+                          />
+                        </td>
                         <td className="px-4 py-2 border">
                           <button
                             onClick={() => handleEdit(user.id ?? user.username ?? user.usercode)}
@@ -187,6 +215,21 @@ const UserManagement = ({ selectedTopbarMenu }) => {
                     defaultValue={selectedUser?.email || ""}
                     className="block w-full p-2 border rounded mb-3"
                   />
+                  <input name="usercode"
+                    type="text"
+                    placeholder="User Code"
+                    defaultValue={selectedUser?.usercode || ""}
+                    className="block w-full p-2 border rounded mb-3"
+                  />
+                  <label className="inline-flex items-center mb-3">
+                    <input
+                      name="shotchat"
+                      type="checkbox"
+                      defaultChecked={!!(selectedUser?.shotchat ?? selectedUser?.chat_enabled ?? true)}
+                      className="mr-2"
+                    />
+                    Enable Chat
+                  </label>
                   <label className="block text-sm mb-1">Birth Date</label>
                   <input name="usr_birth_date"
                     type="date"

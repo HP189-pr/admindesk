@@ -1,11 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   FiChevronLeft,
-  FiChevronRight,
   FiSend,
   FiPaperclip,
-  FiFolder,
-  FiDownload,
   FiSmile,
 } from 'react-icons/fi';
 import { useAuth } from '../hooks/AuthContext';
@@ -91,12 +88,15 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
   const [autoDownload, setAutoDownload] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const EMOJIS = useMemo(() => ['😀', '😁', '😂', '🥰', '😍', '👍', '👏', '🙏', '🎉', '✅', '❌', '🔥', '⭐', '📝', '📎', '📁', '💬'], []);
+  const [isPageVisible, setIsPageVisible] = useState(() =>
+    typeof document !== 'undefined' ? !document.hidden : true
+  );
 
-  const historyTimer = useRef(null);
   const usersTimer = useRef(null);
-  const presenceTimer = useRef(null);
-  const latestSeenMessageRef = useRef({});
-  const latestUsersPollRef = useRef(null);
+  const wsRef = useRef(null);
+  const wsReconnectTimerRef = useRef(null);
+  const wsPingTimerRef = useRef(null);
+  const selectedUserRef = useRef(null);
   const bottomRef = useRef(null);
   const downloadedFilesRef = useRef({});
   const prefsHydratedRef = useRef(false);
@@ -107,6 +107,14 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
     else setInternalIsOpen(val);
   };
 
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      setIsPageVisible(!document.hidden);
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, []);
+
   const userKey = (u) => u?.id || u?.userid || u?.user_id || u?.pk || u?.usercode;
   const preferenceUserId = useMemo(
     () => userKey(user) || decodeUserId() || 'common',
@@ -116,6 +124,13 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
   const folderLabelKey = 'chat:folder-label:common';
   const folderHandleKey = 'chat:folder-handle:common';
   const isNumericOnly = (v) => /^\d+$/.test(String(v || '').trim());
+  const isChatEnabled = (u) => {
+    const raw = u?.shotchat ?? u?.chat_enabled;
+    if (raw === undefined || raw === null || raw === '') return true;
+    if (typeof raw === 'boolean') return raw;
+    const value = String(raw).trim().toLowerCase();
+    return ['1', 'true', 'yes', 'y', 'on', 'enable', 'enabled'].includes(value);
+  };
   const formatName = (u) => {
     const full = `${u?.first_name || ''} ${u?.last_name || ''}`.trim();
     const fullAlt = (u?.full_name || u?.name || '').trim();
@@ -186,7 +201,8 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
           ...u,
           id: userKey(u),
         }))
-        .filter((u) => !!u.id);
+        .filter((u) => !!u.id)
+        .filter((u) => isChatEnabled(u));
 
       setUsers(normalized.filter((u) => String(userKey(u)) !== String(selfId)));
     } catch (e) {
@@ -194,18 +210,31 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
     }
   };
 
-  const loadPresence = async () => {
-    if (!isAuthenticated) return;
+  const normalizeMessage = (m) => ({
+    id: m.id,
+    text: m.text,
+    fileUrl: m.file_url || (m.file_path ? `${API_BASE_URL}/media/${m.file_path}` : null),
+    fileName: m.file_name,
+    file_mime: m.file_mime,
+    delivered: !!m.delivered,
+    seen: !!m.seen,
+    senderName: m.sender_name,
+    fileDelivered: !!m.file_delivered,
+    fileDownloaded: !!m.file_downloaded,
+    from: m.from_userid,
+    to: m.to_userid,
+    time: m.createdat || m.created_at || m.time || null,
+  });
+
+  const getWsUrl = () => {
     try {
-      await ChatBoxService.ping();
-      const res = await ChatBoxService.presence();
-      const map = {};
-      for (const row of res.data?.presence || []) {
-        map[row.userid] = !!row.online;
-      }
-      setOnlineMap(map);
-    } catch (e) {
-      console.warn('Presence error', e?.message || e);
+      const tokenValue = token || localStorage.getItem('access_token');
+      if (!tokenValue) return null;
+      const base = new URL(API_BASE_URL);
+      const wsProto = base.protocol === 'https:' ? 'wss:' : 'ws:';
+      return `${wsProto}//${base.host}/ws/chat/?token=${encodeURIComponent(tokenValue)}`;
+    } catch {
+      return null;
     }
   };
 
@@ -213,25 +242,11 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
     if (!u) return;
     try {
       const res = await ChatBoxService.history(u.id, 200);
-      const list = (res.data?.messages || []).map((m) => ({
-        id: m.id,
-        text: m.text,
-        fileUrl: m.file_url || (m.file_path ? `${API_BASE_URL}/media/${m.file_path}` : null),
-        fileName: m.file_name,
-        file_mime: m.file_mime,
-        delivered: !!m.delivered,
-        seen: !!m.seen,
-        senderName: m.sender_name,
-        fileDelivered: !!m.file_delivered,
-        fileDownloaded: !!m.file_downloaded,
-        from: m.from_userid,
-        time: m.createdat || m.created_at || m.time || null,
-      }));
+      const list = (res.data?.messages || []).map((m) => normalizeMessage(m));
       setMessages((prev) => ({ ...prev, [u.id]: list }));
       const last = res.data?.messages?.[res.data.messages.length - 1];
       if (last) {
         setLastMessages((prev) => ({ ...prev, [u.id]: last }));
-        latestSeenMessageRef.current[u.id] = last.id;
       }
       setUnreadCounts((prev) => ({ ...prev, [u.id]: 0 }));
     } catch (e) {
@@ -254,101 +269,172 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
   useEffect(() => {
     if (!isAuthenticated) return undefined;
     loadUsers();
-    usersTimer.current = setInterval(loadUsers, 10000);
+    const intervalMs = isPageVisible ? 60000 : 180000;
+    usersTimer.current = setInterval(loadUsers, intervalMs);
     return () => {
       if (usersTimer.current) clearInterval(usersTimer.current);
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isPageVisible]);
 
   useEffect(() => {
-    if (!isAuthenticated) return undefined;
-    loadPresence();
-    presenceTimer.current = setInterval(loadPresence, 12000);
-    return () => {
-      if (presenceTimer.current) clearInterval(presenceTimer.current);
-    };
-  }, [isAuthenticated]);
+    selectedUserRef.current = selectedUser;
+  }, [selectedUser]);
 
   useEffect(() => {
     if (!selectedUser || !isAuthenticated) return undefined;
+    if (!isPageVisible && !isOpen) return undefined;
     loadHistory(selectedUser);
     loadFiles(selectedUser);
-
-    const tick = async () => {
-      await loadHistory(selectedUser);
-      await loadFiles(selectedUser);
-    };
-    historyTimer.current = setInterval(tick, 8000);
-    return () => {
-      if (historyTimer.current) clearInterval(historyTimer.current);
-    };
-  }, [selectedUser, isAuthenticated]);
+    return undefined;
+  }, [selectedUser, isAuthenticated, isPageVisible, isOpen]);
 
   useEffect(() => {
-    if (!isAuthenticated || users.length === 0) return undefined;
+    if (!isAuthenticated) return undefined;
+    const socketUrl = getWsUrl();
+    if (!socketUrl) return undefined;
 
-    let cancelled = false;
-    const tick = async () => {
-      const subset = users.slice(0, 40);
-      const results = await Promise.all(
-        subset.map(async (u) => {
-          try {
-            const r = await ChatBoxService.history(u.id, 200);
-            const list = r?.data?.messages || [];
-            const latest = list[list.length - 1];
-            return { uid: u.id, latest };
-          } catch {
-            return { uid: u.id, latest: null };
-          }
-        })
-      );
+    let closedByCleanup = false;
 
-      if (cancelled) return;
+    const applyMessageStatus = (withUserId, messageIds, mutate) => {
+      if (!withUserId || !Array.isArray(messageIds) || messageIds.length === 0) return;
+      setMessages((prev) => {
+        const key = String(withUserId);
+        const list = (prev[key] || []).map((msg) => (messageIds.includes(msg.id) ? mutate(msg) : msg));
+        if (!prev[key]) return prev;
+        return { ...prev, [key]: list };
+      });
+    };
 
-      const previewMap = {};
-      const unreadDelta = {};
-
-      for (const row of results) {
-        if (!row?.uid || !row.latest) continue;
-        previewMap[row.uid] = row.latest;
-
-        const prevId = latestSeenMessageRef.current[row.uid];
-        if (!prevId) {
-          latestSeenMessageRef.current[row.uid] = row.latest.id;
-          continue;
-        }
-
-        if (row.latest.id !== prevId) {
-          latestSeenMessageRef.current[row.uid] = row.latest.id;
-          const isIncoming = row.latest.from_userid !== selfId;
-          const isCurrentOpen = selectedUser?.id === row.uid;
-          if (isIncoming && !isCurrentOpen) {
-            unreadDelta[row.uid] = (unreadDelta[row.uid] || 0) + 1;
-          }
-        }
+    const onSocketMessage = async (event) => {
+      let packet;
+      try {
+        packet = JSON.parse(event.data || '{}');
+      } catch {
+        return;
       }
 
-      if (Object.keys(previewMap).length) {
-        setLastMessages((prev) => ({ ...prev, ...previewMap }));
+      const eventType = packet?.event;
+      const data = packet?.data || {};
+
+      if (eventType === 'presence_snapshot') {
+        const map = {};
+        for (const row of data?.presence || []) {
+          map[row.userid] = !!row.online;
+        }
+        setOnlineMap((prev) => ({ ...prev, ...map }));
+        return;
       }
-      if (Object.keys(unreadDelta).length) {
-        setUnreadCounts((prev) => {
-          const next = { ...prev };
-          for (const [uid, add] of Object.entries(unreadDelta)) {
-            next[uid] = (next[uid] || 0) + add;
-          }
-          return next;
+
+      if (eventType === 'presence_update') {
+        if (typeof data.userid !== 'undefined') {
+          setOnlineMap((prev) => ({ ...prev, [data.userid]: !!data.online }));
+        }
+        return;
+      }
+
+      if (eventType === 'new_message' && data?.id) {
+        const normalized = normalizeMessage(data);
+        const partnerId = String(normalized.from) === String(selfId) ? normalized.to : normalized.from;
+        setMessages((prev) => {
+          const key = String(partnerId);
+          const existing = prev[key] || [];
+          if (existing.some((row) => row.id === normalized.id)) return prev;
+          return { ...prev, [key]: [...existing, normalized] };
         });
+        setLastMessages((prev) => ({ ...prev, [partnerId]: data }));
+
+        const selectedPartner = selectedUserRef.current?.id;
+        const incoming = String(normalized.from) !== String(selfId);
+        if (incoming && String(selectedPartner) !== String(partnerId)) {
+          setUnreadCounts((prev) => ({ ...prev, [partnerId]: (prev[partnerId] || 0) + 1 }));
+        }
+
+        if (incoming && String(selectedPartner) === String(partnerId)) {
+          try {
+            await ChatBoxService.markSeen(partnerId);
+          } catch (e) {
+            console.warn('Auto mark seen failed', e?.message || e);
+          }
+        }
+
+        if (normalized.fileUrl) {
+          await autoDownloadFileIfNeeded({
+            id: normalized.id,
+            fileUrl: normalized.fileUrl,
+            fileName: normalized.fileName,
+            senderName: normalized.senderName,
+          });
+        }
+        return;
+      }
+
+      if (eventType === 'message_delivered') {
+        applyMessageStatus(data.with_userid, data.message_ids, (msg) => ({ ...msg, delivered: true }));
+        return;
+      }
+
+      if (eventType === 'message_seen') {
+        applyMessageStatus(data.with_userid, data.message_ids, (msg) => ({ ...msg, delivered: true, seen: true }));
+        return;
+      }
+
+      if (eventType === 'file_downloaded' && data.with_userid && data.message_id) {
+        applyMessageStatus(data.with_userid, [data.message_id], (msg) => ({
+          ...msg,
+          fileDelivered: true,
+          fileDownloaded: true,
+        }));
       }
     };
 
-    tick();
-    latestUsersPollRef.current = setInterval(tick, 12000);
-    return () => {
-      cancelled = true;
-      if (latestUsersPollRef.current) clearInterval(latestUsersPollRef.current);
+    const connect = () => {
+      const ws = new WebSocket(socketUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        if (wsReconnectTimerRef.current) {
+          clearTimeout(wsReconnectTimerRef.current);
+          wsReconnectTimerRef.current = null;
+        }
+        if (wsPingTimerRef.current) clearInterval(wsPingTimerRef.current);
+        wsPingTimerRef.current = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ event: 'ping' }));
+          }
+        }, isPageVisible ? 20000 : 60000);
+      };
+
+      ws.onmessage = onSocketMessage;
+
+      ws.onclose = () => {
+        if (wsPingTimerRef.current) {
+          clearInterval(wsPingTimerRef.current);
+          wsPingTimerRef.current = null;
+        }
+        if (!closedByCleanup) {
+          wsReconnectTimerRef.current = setTimeout(connect, 3000);
+        }
+      };
     };
-  }, [isAuthenticated, users, selectedUser, selfId]);
+
+    connect();
+
+    return () => {
+      closedByCleanup = true;
+      if (wsPingTimerRef.current) {
+        clearInterval(wsPingTimerRef.current);
+        wsPingTimerRef.current = null;
+      }
+      if (wsReconnectTimerRef.current) {
+        clearTimeout(wsReconnectTimerRef.current);
+        wsReconnectTimerRef.current = null;
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+    };
+  }, [isAuthenticated, token, selfId, isPageVisible]);
 
   useEffect(() => {
     if (!selectedUser) return;
@@ -450,10 +536,8 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
     };
 
     checkPendingFiles();
-    const id = setInterval(checkPendingFiles, 8000);
     return () => {
       mounted = false;
-      clearInterval(id);
     };
   }, [isAuthenticated, autoDownload, downloadDirHandle]);
 
@@ -473,22 +557,10 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
       );
 
       const m = res.data;
-      const msg = {
-        id: m.id,
-        text: m.text,
-        fileUrl: m.file_url || (m.file_path ? `${API_BASE_URL}/media/${m.file_path}` : null),
-        fileName: m.file_name,
-        file_mime: m.file_mime,
-        delivered: !!m.delivered,
-        seen: !!m.seen,
-        senderName: m.sender_name,
-        fileDelivered: !!m.file_delivered,
-        fileDownloaded: !!m.file_downloaded,
-        from: m.from_userid,
-        time: m.createdat || m.created_at || m.time || null,
-      };
+      const msg = normalizeMessage(m);
       setMessages((prev) => {
         const list = prev[selectedUser.id] ? [...prev[selectedUser.id]] : [];
+        if (list.some((row) => row.id === msg.id)) return prev;
         return { ...prev, [selectedUser.id]: [...list, msg] };
       });
       if (m.file_path) {

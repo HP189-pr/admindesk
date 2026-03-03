@@ -3,12 +3,19 @@
 
 import { isoToDMY, dmyToISO } from "../utils/date";
 
+const apiUrl = (path) => {
+  const envBase = import.meta?.env?.VITE_API_BASE_URL?.trim();
+  if (envBase) return `${envBase.replace(/\/$/, '')}${path}`;
+  if (import.meta.env.DEV) return `http://127.0.0.1:8001${path}`;
+  return path;
+};
+
 // Resolve enrollment number to enrollment object (for auto name fetch)
 export const resolveEnrollment = async (enrollmentNo) => {
   if (!enrollmentNo) return null;
   try {
     const res = await fetch(
-      `/api/enrollments/?search=${encodeURIComponent(enrollmentNo)}&limit=1`,
+      apiUrl(`/api/enrollments/?search=${encodeURIComponent(enrollmentNo)}&limit=1`),
       { headers: { ...authHeaders() } }
     );
     if (!res.ok) return null;
@@ -35,7 +42,7 @@ export const resolveDocRecIdentifier = async (form) => {
   if (/^(vr_|iv_|pr_|mg_|gt_)/i.test(idVal)) return idVal;
   if (/^\d+$/.test(idVal)) {
     try {
-      const res = await fetch(`/api/docrec/${idVal}/`, { headers: { ...authHeaders() } });
+      const res = await fetch(apiUrl(`/api/docrec/${idVal}/`), { headers: { ...authHeaders() } });
       if (res.ok) {
         const data = await res.json();
         if (data && data.doc_rec_id) return data.doc_rec_id;
@@ -56,7 +63,7 @@ export const syncDocRecRemark = async (form, remarkValue) => {
       doc_rec_data: { doc_remark: remarkValue || null },
       verification_data: { doc_remark: remarkValue || null },
     };
-    const res = await fetch('/api/docrec/update-with-verification/', {
+    const res = await fetch(apiUrl('/api/docrec/update-with-verification/'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify(payload),
@@ -82,7 +89,7 @@ export const loadRecords = async (q, setLoading, setErrorMsg, setRecords) => {
     } else {
       url = `/api/verification/?limit=200&include_pending=true`;
     }
-    const res = await fetch(url, { headers: { ...authHeaders() } });
+    const res = await fetch(apiUrl(url), { headers: { ...authHeaders() } });
     if (!res.ok) {
       let txt = '';
       try { txt = await res.text(); } catch (e) { txt = res.statusText || String(res.status); }
@@ -172,13 +179,47 @@ export const createRecord = async (form, syncDocRecRemark, loadRecords) => {
   const resolveDocRecPk = async (key) => {
     if (!key) return null;
     try {
-      const res = await fetch(`/api/docrec/?doc_rec_id=${encodeURIComponent(key)}`, { headers: { ...authHeaders() } });
+      const wanted = String(key).trim().toUpperCase();
+      const res = await fetch(apiUrl(`/api/docrec/?search=${encodeURIComponent(key)}`), { headers: { ...authHeaders() } });
       if (!res.ok) return null;
       const data = await res.json();
       const rows = Array.isArray(data) ? data : (data && Array.isArray(data.results) ? data.results : []);
-      if (rows.length > 0) return rows[0].id || null;
+      const exact = rows.find((row) => String(row?.doc_rec_id || '').trim().toUpperCase() === wanted);
+      if (exact) return exact.id || null;
     } catch (e) {
       console.warn('DocRec lookup failed', e);
+    }
+    return null;
+  };
+
+  const createDocRecForVerification = async (docRecKey, docRecDateIso) => {
+    if (!docRecKey) return null;
+    try {
+      const payload = {
+        apply_for: "VR",
+        pay_by: "NA",
+        pay_amount: 0,
+        doc_rec_date: docRecDateIso,
+        doc_rec_id: String(docRecKey).toUpperCase(),
+      };
+      const res = await fetch(apiUrl('/api/docrec/'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        return data?.id || null;
+      }
+
+      // If duplicate/exists, resolve PK from lookup and continue
+      const txt = await res.text().catch(() => '');
+      if (/duplicate|already exists|unique/i.test(txt || '')) {
+        return await resolveDocRecPk(docRecKey);
+      }
+    } catch (e) {
+      console.warn('DocRec auto-create failed', e);
     }
     return null;
   };
@@ -188,15 +229,23 @@ export const createRecord = async (form, syncDocRecRemark, loadRecords) => {
     // if numeric, use numeric; if string contains digits only, parse
     if (!Number.isNaN(Number(form.doc_rec_id)) && String(form.doc_rec_id).trim() !== '') docRecPk = Number(form.doc_rec_id);
   }
-  if (!docRecPk && form.doc_rec_key && String(form.doc_rec_key).trim() !== "") {
-    docRecPk = await resolveDocRecPk(form.doc_rec_key);
+  if (!docRecPk) {
+    const keyLikeValue = (form.doc_rec_key || form.doc_rec_id || '').toString().trim();
+    if (keyLikeValue !== '') {
+      docRecPk = await resolveDocRecPk(keyLikeValue);
+      if (!docRecPk) {
+        const effectiveDate = (function(s){ if(!s) return todayIso; if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return s; const x = dmyToISO(s); return x || todayIso; })(form.date);
+        docRecPk = await createDocRecForVerification(keyLikeValue, effectiveDate);
+      }
+    }
   }
 
+  const todayIso = new Date().toISOString().slice(0, 10);
   const body = {
-    doc_rec_date: (function(s){ if(!s) return null; if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return s; const x = dmyToISO(s); return x || null; })(form.date),
+    doc_rec_date: (function(s){ if(!s) return todayIso; if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return s; const x = dmyToISO(s); return x || todayIso; })(form.date),
     // Send the numeric DocRec PK where the API expects a PK value. If unresolved, send null
     doc_rec_id: docRecPk || null,
-    enrollment_no: form.enrollment_id || null,
+    enrollment_no: (form.enrollment_no || '').toString().trim() || null,
     second_enrollment_id: form.second_enrollment_id || null,
     student_name: form.name, // server can overwrite from Enrollment
     tr_count: +form.tr || 0,
@@ -216,7 +265,7 @@ export const createRecord = async (form, syncDocRecRemark, loadRecords) => {
     doc_remark: form.doc_remark || null,
     pay_rec_no: form.pay_rec_no || null,
   };
-  const res = await fetch(`/api/verification`, {
+  const res = await fetch(apiUrl(`/api/verification/`), {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(body),
@@ -227,7 +276,20 @@ export const createRecord = async (form, syncDocRecRemark, loadRecords) => {
     const t = await res.text();
     throw new Error(t || "Create failed");
   }
-  await syncDocRecRemark(form, form.doc_remark);
+  let created = null;
+  try {
+    created = await res.json();
+  } catch (_) {
+    created = null;
+  }
+
+  const syncForm = {
+    ...form,
+    doc_rec_key: (created && (created.doc_rec_key || (created.data && created.data.doc_rec_key))) || form.doc_rec_key,
+    doc_rec_id: (created && (created.doc_rec_id || (created.data && (created.data.doc_rec_id || created.data.doc_rec_key)))) || form.doc_rec_id,
+  };
+
+  await syncDocRecRemark(syncForm, form.doc_remark);
   await loadRecords();
 };
 
@@ -259,7 +321,7 @@ export const updateRecord = async (id, form, syncDocRecRemark) => {
     doc_remark: form.doc_remark || null,
     pay_rec_no: form.pay_rec_no || null,
   };
-  const res = await fetch(`/api/verification/${id}/`, {
+  const res = await fetch(apiUrl(`/api/verification/${id}/`), {
     method: "PATCH",
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(body),
