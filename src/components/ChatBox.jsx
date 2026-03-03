@@ -96,6 +96,7 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
   const wsRef = useRef(null);
   const wsReconnectTimerRef = useRef(null);
   const wsPingTimerRef = useRef(null);
+  const wsRetryAttemptRef = useRef(0);
   const selectedUserRef = useRef(null);
   const bottomRef = useRef(null);
   const downloadedFilesRef = useRef({});
@@ -230,8 +231,18 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
     try {
       const tokenValue = token || localStorage.getItem('access_token');
       if (!tokenValue) return null;
+      const envWsBase = import.meta?.env?.VITE_WS_BASE_URL?.trim();
+      if (envWsBase) {
+        const base = new URL(envWsBase);
+        const wsProto = base.protocol === 'https:' ? 'wss:' : base.protocol === 'http:' ? 'ws:' : base.protocol;
+        return `${wsProto}//${base.host}/ws/chat/?token=${encodeURIComponent(tokenValue)}`;
+      }
       const base = new URL(API_BASE_URL);
-      const wsProto = base.protocol === 'https:' ? 'wss:' : 'ws:';
+      const localHost = ['127.0.0.1', 'localhost'].includes(base.hostname);
+      if (localHost && base.port === '8000') {
+        base.port = '8001';
+      }
+      const wsProto = base.protocol === 'https:' ? 'wss:' : base.protocol === 'http:' ? 'ws:' : base.protocol;
       return `${wsProto}//${base.host}/ws/chat/?token=${encodeURIComponent(tokenValue)}`;
     } catch {
       return null;
@@ -388,10 +399,14 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
     };
 
     const connect = () => {
+      if (wsRef.current && [WebSocket.CONNECTING, WebSocket.OPEN].includes(wsRef.current.readyState)) {
+        return;
+      }
       const ws = new WebSocket(socketUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
+        wsRetryAttemptRef.current = 0;
         if (wsReconnectTimerRef.current) {
           clearTimeout(wsReconnectTimerRef.current);
           wsReconnectTimerRef.current = null;
@@ -401,7 +416,7 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ event: 'ping' }));
           }
-        }, isPageVisible ? 20000 : 60000);
+        }, 30000);
       };
 
       ws.onmessage = onSocketMessage;
@@ -412,12 +427,18 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
           wsPingTimerRef.current = null;
         }
         if (!closedByCleanup) {
-          wsReconnectTimerRef.current = setTimeout(connect, 3000);
+          if (ws.code === 4401) {
+            return;
+          }
+          const attempt = wsRetryAttemptRef.current;
+          const delayMs = Math.min(30000, 3000 * Math.pow(2, attempt));
+          wsRetryAttemptRef.current = attempt + 1;
+          wsReconnectTimerRef.current = setTimeout(connect, delayMs);
         }
       };
     };
 
-    connect();
+    wsReconnectTimerRef.current = setTimeout(connect, 0);
 
     return () => {
       closedByCleanup = true;
@@ -433,8 +454,9 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
         wsRef.current.close();
         wsRef.current = null;
       }
+      wsRetryAttemptRef.current = 0;
     };
-  }, [isAuthenticated, token, selfId, isPageVisible]);
+  }, [isAuthenticated, token, selfId]);
 
   useEffect(() => {
     if (!selectedUser) return;

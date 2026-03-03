@@ -123,6 +123,7 @@ class StudentSearchViewSet(viewsets.ViewSet):
     def _get_services_info(self, enrollment):
         """Extract all service records for the student"""
         enroll_no = enrollment.enrollment_no or enrollment.temp_enroll_no
+        match_keys = [k for k in [enrollment.enrollment_no, enrollment.temp_enroll_no] if k]
         
         # Verification records
         verifications = Verification.objects.filter(
@@ -181,23 +182,36 @@ class StudentSearchViewSet(viewsets.ViewSet):
             })
         
         # Institutional Verification records
-        inst_verifications = InstLetterStudent.objects.filter(
-            enrollment__enrollment_no__iexact=enroll_no
-        ).select_related('doc_rec').order_by('-id')
+        inst_q = Q()
+        for key in match_keys:
+            inst_q |= Q(enrollment__enrollment_no__iexact=key)
+            inst_q |= Q(enrollment_no_text__iexact=key)
+        if not inst_q:
+            inst_q = Q(enrollment__enrollment_no__iexact=enroll_no) | Q(enrollment_no_text__iexact=enroll_no)
+
+        inst_verifications = InstLetterStudent.objects.filter(inst_q).select_related('doc_rec').order_by('-id')
         
         inst_verification_list = []
         for iv in inst_verifications:
             # Get the main record from the doc_rec relationship
             main_record = None
             if iv.doc_rec:
-                main_record = InstLetterMain.objects.filter(
-                    doc_rec__doc_rec_id=iv.doc_rec.doc_rec_id
-                ).first()
+                main_record = (
+                    InstLetterMain.objects.filter(doc_rec=iv.doc_rec)
+                    .order_by('-id')
+                    .first()
+                )
+                if not main_record:
+                    main_record = InstLetterMain.objects.filter(
+                        doc_rec__doc_rec_id=iv.doc_rec.doc_rec_id
+                    ).order_by('-id').first()
             
             inst_verification_list.append({
                 'id': iv.id,
                 'doc_rec_id': iv.doc_rec.doc_rec_id if iv.doc_rec else '',
                 'date': main_record.inst_veri_date.strftime('%Y-%m-%d') if main_record and main_record.inst_veri_date else '',
+                'inst_veri_number': main_record.inst_veri_number if main_record and main_record.inst_veri_number else '',
+                'rec_inst_name': main_record.rec_inst_name if main_record and main_record.rec_inst_name else '',
                 'status': iv.verification_status or '',
                 'remark': '',
             })

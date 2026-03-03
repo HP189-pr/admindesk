@@ -13,6 +13,15 @@ export default defineConfig(({ mode }) => {
     }
   }
 
+  // WebSocket backend can be separate (ASGI/Daphne)
+  let wsBaseUrl = env.VITE_WS_BASE_URL;
+  if (!wsBaseUrl) {
+    wsBaseUrl = 'http://127.0.0.1:8001';
+    if (env.VITE_HOST) {
+      wsBaseUrl = `http://${env.VITE_HOST}:8001`;
+    }
+  }
+
   // Guardrail for local dev: avoid proxying API calls back to frontend ports.
   // If .env points to localhost:3000/8081 by mistake, force Django backend target.
   if (mode === 'development') {
@@ -42,6 +51,11 @@ export default defineConfig(({ mode }) => {
           target: apiBaseUrl,
           changeOrigin: true,
         },
+        '/ws': {
+          target: wsBaseUrl,
+          changeOrigin: true,
+          ws: true,
+        },
       },
     },
     preview: {
@@ -55,6 +69,11 @@ export default defineConfig(({ mode }) => {
         '/media': {
           target: apiBaseUrl,
           changeOrigin: true,
+        },
+        '/ws': {
+          target: wsBaseUrl,
+          changeOrigin: true,
+          ws: true,
         },
       },
     },
