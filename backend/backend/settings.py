@@ -81,6 +81,12 @@ except Exception:
     warnings.warn("django-cors-headers is not installed. Install it with: pip install django-cors-headers")
     HAS_CORS = False
 
+try:
+    importlib.import_module('channels')
+    INSTALLED_APPS.insert(len(INSTALLED_APPS), 'channels')
+except Exception:
+    warnings.warn("channels is not installed. Install it with: pip install channels")
+
 # middleware (always include security/session/etc.)
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -123,6 +129,24 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'backend.wsgi.application'
+ASGI_APPLICATION = 'backend.asgi.application'
+
+CHAT_CHANNEL_BACKEND = os.getenv("CHAT_CHANNEL_BACKEND", "memory").strip().lower()
+if CHAT_CHANNEL_BACKEND == "redis":
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [os.getenv("CHAT_REDIS_URL", "redis://127.0.0.1:6379/0")],
+            },
+        }
+    }
+else:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        }
+    }
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases

@@ -2,6 +2,9 @@
 Django
 djangorestframework
 djangorestframework-simplejwt
+channels
+channels-redis
+daphne
 pandas
 openpyxl
 psycopg2-binary

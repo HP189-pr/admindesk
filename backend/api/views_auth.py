@@ -50,6 +50,7 @@ from .models import (
     Module,
     Menu,
     User,
+    EmpProfile,
     DashboardPreference,
 )
 from .serializers import (
@@ -64,6 +65,133 @@ from .serializers import (
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
+
+
+def _parse_shotchat_flag(value):
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    if text in {"1", "true", "yes", "y", "on", "enable", "enabled"}:
+        return True
+    if text in {"0", "false", "no", "n", "off", "disable", "disabled"}:
+        return False
+    return None
+
+
+def _to_shotchat_db_value(value):
+    parsed = _parse_shotchat_flag(value)
+    if parsed is None:
+        return None
+    return "Yes" if parsed else "No"
+
+
+def _enrich_user_with_extra_fields(request, user_payload):
+    user_data = dict(user_payload)
+    user_id = user_data.get('id')
+    username = str(user_data.get('username') or '').strip().lower()
+
+    picture = None
+    try:
+        profile = UserProfile.objects.filter(user_id=user_id).only('profile_picture').first()
+        if profile and profile.profile_picture:
+            try:
+                picture = request.build_absolute_uri(profile.profile_picture.url)
+            except Exception:
+                picture = f"{settings.MEDIA_URL}{profile.profile_picture}"
+    except Exception:
+        picture = None
+
+    user_data['profile_picture'] = picture
+    user_data['profile_picture_url'] = picture
+    user_data['usrpic'] = picture
+
+    usr_birth_date = None
+    usercode = None
+    shotchat_raw = None
+    try:
+        with connection.cursor() as cur:
+            try:
+                cur.execute("SELECT usr_birth_date, usercode, shotchat FROM auth_user WHERE id=%s", [user_id])
+                row = cur.fetchone()
+                if row:
+                    usr_birth_date, usercode, shotchat_raw = row[0], row[1], row[2]
+            except Exception:
+                cur.execute("SELECT usr_birth_date, usercode FROM auth_user WHERE id=%s", [user_id])
+                row = cur.fetchone()
+                if row:
+                    usr_birth_date, usercode = row[0], row[1]
+    except Exception:
+        pass
+
+    emp_shotchat = None
+    if username or usercode:
+        try:
+            emp_qs = EmpProfile.objects.all()
+            if username:
+                emp_qs = emp_qs.filter(username__iexact=username)
+            elif usercode:
+                emp_qs = emp_qs.filter(usercode=usercode)
+            emp = emp_qs.only('shotchat').first()
+            if emp:
+                emp_shotchat = emp.shotchat
+        except Exception:
+            emp_shotchat = None
+
+    shotchat_value = _parse_shotchat_flag(shotchat_raw)
+    if shotchat_value is None:
+        shotchat_value = _parse_shotchat_flag(emp_shotchat)
+    if shotchat_value is None:
+        shotchat_value = True
+
+    user_data['usr_birth_date'] = usr_birth_date.isoformat() if usr_birth_date else None
+    user_data['usercode'] = usercode
+    user_data['shotchat'] = bool(shotchat_value)
+    user_data['chat_enabled'] = bool(shotchat_value)
+    return user_data
+
+
+def _persist_extra_user_fields(user_id, username, request_data):
+    birth_date = request_data.get('usr_birth_date', None)
+    usercode = request_data.get('usercode', None)
+    has_shotchat = ('shotchat' in request_data) or ('chat_enabled' in request_data)
+    shotchat_input = request_data.get('shotchat', request_data.get('chat_enabled', None))
+    shotchat_db = _to_shotchat_db_value(shotchat_input) if has_shotchat else None
+
+    try:
+        with connection.cursor() as cur:
+            if birth_date is not None:
+                if birth_date:
+                    cur.execute("UPDATE auth_user SET usr_birth_date = %s WHERE id = %s", [birth_date, user_id])
+                else:
+                    cur.execute("UPDATE auth_user SET usr_birth_date = NULL WHERE id = %s", [user_id])
+            if usercode is not None:
+                cur.execute("UPDATE auth_user SET usercode = %s WHERE id = %s", [usercode or None, user_id])
+            if has_shotchat:
+                try:
+                    cur.execute("UPDATE auth_user SET shotchat = %s WHERE id = %s", [1 if shotchat_db == 'Yes' else 0, user_id])
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+    if has_shotchat or usercode is not None:
+        try:
+            emp_updates = {}
+            if has_shotchat:
+                emp_updates['shotchat'] = shotchat_db
+            if usercode is not None:
+                emp_updates['usercode'] = usercode or None
+
+            if emp_updates:
+                updated = 0
+                if username:
+                    updated = EmpProfile.objects.filter(username__iexact=username).update(**emp_updates)
+                if not updated and usercode:
+                    EmpProfile.objects.filter(usercode=usercode).update(**emp_updates)
+        except Exception:
+            pass
 
 
 class HolidayViewSet(viewsets.ModelViewSet):
@@ -465,44 +593,32 @@ class UserAPIView(APIView):
     def get(self, request):
         users = User.objects.all()
         serializer = UserSerializer(users, many=True)
-        # Enrich serialized data with usr_birth_date (if column exists)
         out = []
-        from django.db import connection
         for u in serializer.data:
-            usr = dict(u)
-            try:
-                with connection.cursor() as cur:
-                    cur.execute("SELECT usr_birth_date FROM auth_user WHERE id=%s", [usr.get('id')])
-                    r = cur.fetchone()
-                    if r:
-                        usr['usr_birth_date'] = r[0].isoformat() if r[0] else None
-                    else:
-                        usr['usr_birth_date'] = None
-            except Exception:
-                usr['usr_birth_date'] = None
-            out.append(usr)
+            out.append(_enrich_user_with_extra_fields(request, u))
         return Response(out, status=200)
 
     def post(self, request):
-        serializer = UserSerializer(data=request.data)
+        payload = dict(request.data)
+        payload.pop('usr_birth_date', None)
+        payload.pop('usercode', None)
+        payload.pop('shotchat', None)
+        payload.pop('chat_enabled', None)
+        serializer = UserSerializer(data=payload)
         if serializer.is_valid():
             serializer.save()
-            # Persist usr_birth_date to auth_user if provided
+            created_id = serializer.data.get('id')
+            username = serializer.data.get('username')
+            _persist_extra_user_fields(created_id, username, request.data)
+
             b = request.data.get('usr_birth_date')
-            try:
-                if b:
-                    from django.db import connection
-                    with connection.cursor() as cur:
-                        cur.execute("UPDATE auth_user SET usr_birth_date = %s WHERE id = %s", [b, serializer.data.get('id')])
-            except Exception:
-                pass
 
             # If user has no usable password, set default password based on birthdate (ddmmyy)
             try:
                 from django.contrib.auth import get_user_model
                 from datetime import date
                 UserModel = get_user_model()
-                user_obj = UserModel.objects.filter(id=serializer.data.get('id')).first()
+                user_obj = UserModel.objects.filter(id=created_id).first()
                 if user_obj:
                     needs = False
                     try:
@@ -540,7 +656,8 @@ class UserAPIView(APIView):
             except Exception:
                 pass
 
-            return Response(serializer.data, status=201)
+            enriched = _enrich_user_with_extra_fields(request, serializer.data)
+            return Response(enriched, status=201)
         return Response(serializer.errors, status=400)
 
 
@@ -575,25 +692,23 @@ class UserDetailAPIView(APIView):
     def get(self, request, user_id):
         user = get_object_or_404(User, id=user_id)
         serializer = UserSerializer(user)
-        return Response(serializer.data, status=200)
+        enriched = _enrich_user_with_extra_fields(request, serializer.data)
+        return Response(enriched, status=200)
 
     def put(self, request, user_id):
         user = get_object_or_404(User, id=user_id)
-        serializer = UserSerializer(user, data=request.data, partial=True)
+        payload = dict(request.data)
+        payload.pop('usr_birth_date', None)
+        payload.pop('usercode', None)
+        payload.pop('shotchat', None)
+        payload.pop('chat_enabled', None)
+        serializer = UserSerializer(user, data=payload, partial=True)
         if serializer.is_valid():
             serializer.save()
-            # Persist usr_birth_date if provided
-            try:
-                b = request.data.get('usr_birth_date')
-                from django.db import connection
-                with connection.cursor() as cur:
-                    if b:
-                        cur.execute("UPDATE auth_user SET usr_birth_date = %s WHERE id = %s", [b, user_id])
-                    else:
-                        cur.execute("UPDATE auth_user SET usr_birth_date = NULL WHERE id = %s", [user_id])
-            except Exception:
-                pass
-            return Response(serializer.data, status=200)
+            updated_username = serializer.data.get('username') or user.username
+            _persist_extra_user_fields(user_id, updated_username, request.data)
+            enriched = _enrich_user_with_extra_fields(request, serializer.data)
+            return Response(enriched, status=200)
         return Response(serializer.errors, status=400)
 
     def delete(self, request, user_id):

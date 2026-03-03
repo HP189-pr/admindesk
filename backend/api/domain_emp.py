@@ -42,6 +42,7 @@ class EmpProfile(models.Model):
     emp_short = models.IntegerField(blank=True, null=True)
     username = models.CharField(max_length=150, blank=True, null=True, db_index=True)
     usercode = models.CharField(max_length=50, blank=True, null=True, db_index=True)
+    shotchat = models.CharField(max_length=3, blank=True, null=True, db_column="shotchat")
     status = models.CharField(max_length=20, default="Active")
 
     created_at = models.DateTimeField(default=timezone.now)

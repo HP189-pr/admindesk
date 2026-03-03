@@ -29776,3 +29776,2566 @@ WARNING:waitress.queue:Task queue depth is 2
 WARNING:waitress.queue:Task queue depth is 2
 WARNING:waitress.queue:Task queue depth is 1
 INFO:waitress:Serving on http://127.0.0.1:8000
+INFO:waitress:Serving on http://127.0.0.1:8000
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 4
+WARNING:waitress.queue:Task queue depth is 5
+WARNING:waitress.queue:Task queue depth is 4
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 4
+WARNING:waitress.queue:Task queue depth is 5
+WARNING:waitress.queue:Task queue depth is 6
+WARNING:waitress.queue:Task queue depth is 7
+WARNING:waitress.queue:Task queue depth is 7
+WARNING:waitress.queue:Task queue depth is 7
+WARNING:waitress.queue:Task queue depth is 7
+WARNING:waitress.queue:Task queue depth is 7
+WARNING:waitress.queue:Task queue depth is 7
+WARNING:waitress.queue:Task queue depth is 7
+WARNING:waitress.queue:Task queue depth is 5
+WARNING:waitress.queue:Task queue depth is 6
+WARNING:waitress.queue:Task queue depth is 7
+WARNING:waitress.queue:Task queue depth is 7
+WARNING:waitress.queue:Task queue depth is 7
+WARNING:waitress.queue:Task queue depth is 7
+WARNING:waitress.queue:Task queue depth is 8
+WARNING:waitress.queue:Task queue depth is 5
+WARNING:waitress.queue:Task queue depth is 6
+WARNING:waitress.queue:Task queue depth is 7
+WARNING:waitress.queue:Task queue depth is 7
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 4
+WARNING:waitress.queue:Task queue depth is 5
+WARNING:waitress.queue:Task queue depth is 6
+WARNING:waitress.queue:Task queue depth is 5
+WARNING:waitress.queue:Task queue depth is 4
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 4
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 4
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 4
+WARNING:waitress.queue:Task queue depth is 4
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+Internal Server Error: /api/verification
+Traceback (most recent call last):
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\utils\deprecation.py", line 122, in __call__
+    response = self.process_response(request, response)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\middleware\common.py", line 108, in process_response
+    return self.response_redirect_class(self.get_full_path_with_slash(request))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\middleware\common.py", line 87, in get_full_path_with_slash
+    raise RuntimeError(
+RuntimeError: You called this URL via POST, but the URL doesn't end in a slash and you have APPEND_SLASH set. Django can't redirect to the slash URL while maintaining POST data. Change your form to point to 127.0.0.1/api/verification/ (note the trailing slash), or set APPEND_SLASH=False in your Django settings.
+ERROR:django.request:Internal Server Error: /api/verification
+Traceback (most recent call last):
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\utils\deprecation.py", line 122, in __call__
+    response = self.process_response(request, response)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\middleware\common.py", line 108, in process_response
+    return self.response_redirect_class(self.get_full_path_with_slash(request))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\middleware\common.py", line 87, in get_full_path_with_slash
+    raise RuntimeError(
+RuntimeError: You called this URL via POST, but the URL doesn't end in a slash and you have APPEND_SLASH set. Django can't redirect to the slash URL while maintaining POST data. Change your form to point to 127.0.0.1/api/verification/ (note the trailing slash), or set APPEND_SLASH=False in your Django settings.
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+Unauthorized: /api/verification/
+WARNING:django.request:Unauthorized: /api/verification/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+INFO:waitress:Serving on http://127.0.0.1:8000
+INFO:waitress:Serving on http://127.0.0.1:8000
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+INFO:waitress:Serving on http://127.0.0.1:8000
+INFO:waitress:Serving on http://127.0.0.1:8000
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress:Canceling 1 pending task(s)
+INFO:waitress:Serving on http://127.0.0.1:8000
+INFO:waitress:Serving on http://127.0.0.1:8000
+INFO:waitress:Serving on http://127.0.0.1:8000
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 4
+WARNING:waitress.queue:Task queue depth is 4
+WARNING:waitress.queue:Task queue depth is 4
+WARNING:waitress.queue:Task queue depth is 4
+WARNING:waitress.queue:Task queue depth is 4
+WARNING:waitress.queue:Task queue depth is 5
+WARNING:waitress.queue:Task queue depth is 5
+WARNING:waitress.queue:Task queue depth is 5
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+WARNING:waitress.queue:Task queue depth is 2
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+Unauthorized: /api/token/verify/
+WARNING:django.request:Unauthorized: /api/token/verify/
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/

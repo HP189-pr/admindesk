@@ -20,7 +20,7 @@ import re
 import datetime
 from django.utils.dateparse import parse_date
 from django.utils import timezone
-from django.db import models
+from django.db import models, IntegrityError
 from django.db.models import Q, Value, F
 from django.db.models.functions import Replace, Lower
 
@@ -1024,12 +1024,62 @@ class VerificationViewSet(viewsets.ModelViewSet):
         # This ensures important records are always visible on page load
         include_pending = self.request.query_params.get('include_pending', '').lower() == 'true'
         if not search and not doc_rec_param and include_pending:
-            # Get latest records + all PENDING/IN_PROGRESS
-            pending_qs = Verification.objects.filter(status__in=['PENDING', 'IN_PROGRESS']).order_by('-id')
-            # Combine with latest records (union removes duplicates)
-            qs = (qs | pending_qs).distinct().order_by('-id')
+            qs = qs.annotate(
+                _status_rank=models.Case(
+                    models.When(status='IN_PROGRESS', then=models.Value(0)),
+                    models.When(status='PENDING', then=models.Value(1)),
+                    default=models.Value(2),
+                    output_field=models.IntegerField(),
+                )
+            ).order_by('_status_rank', '-id')
         
         return qs
+
+    def create(self, request, *args, **kwargs):
+        """Create Verification or update existing one for the same DocRec.
+
+        Business rule: one Verification per DocRec (unique_verification_doc_rec).
+        If a row already exists for the incoming doc_rec, treat this as an update.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        doc_rec = serializer.validated_data.get('doc_rec')
+        if doc_rec is not None:
+            existing = Verification.objects.filter(doc_rec=doc_rec).first()
+            if existing is not None:
+                update_serializer = self.get_serializer(existing, data=request.data, partial=True)
+                update_serializer.is_valid(raise_exception=True)
+                self.perform_update(update_serializer)
+                return Response(
+                    {
+                        "message": "Verification already exists for this DocRec; existing record updated.",
+                        "data": update_serializer.data,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+        try:
+            self.perform_create(serializer)
+        except IntegrityError:
+            if doc_rec is None:
+                raise
+            existing = Verification.objects.filter(doc_rec=doc_rec).first()
+            if existing is None:
+                raise
+            update_serializer = self.get_serializer(existing, data=request.data, partial=True)
+            update_serializer.is_valid(raise_exception=True)
+            self.perform_update(update_serializer)
+            return Response(
+                {
+                    "message": "Verification already exists for this DocRec; existing record updated.",
+                    "data": update_serializer.data,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     @action(detail=False, methods=["post"], url_path="update-service-only")
     def update_service_only(self, request):

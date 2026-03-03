@@ -16,6 +16,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .events import broadcast_presence, send_user_event
 from .models import ChatMessage
 from .serializers import ChatMessageSerializer
 
@@ -63,6 +64,7 @@ class ChatPingView(APIView):
 
     def post(self, request):
         _mark_online(request.user.id)
+        broadcast_presence(request.user.id, True, _now_ts())
         return Response({"ok": True, "now": _now_ts()})
 
 
@@ -123,6 +125,7 @@ class ChatSendView(APIView):
 
         payload = ChatMessageSerializer(row, context={"request": request}).data
         payload["recipient_online"] = any(p.get("userid") == to_user.id and p.get("online") for p in _presence_list())
+        send_user_event(to_user.id, "new_message", payload)
         return Response(payload, status=status.HTTP_201_CREATED)
 
 
@@ -139,11 +142,22 @@ class ChatHistoryView(APIView):
         offset = max(0, int(request.query_params.get("offset", 0)))
         me = request.user.id
 
-        ChatMessage.objects.filter(
+        delivered_qs = ChatMessage.objects.filter(
             from_user_id=other_id,
             to_user_id=me,
             delivered=False,
-        ).update(delivered=True)
+        )
+        delivered_ids = list(delivered_qs.values_list("id", flat=True))
+        if delivered_ids:
+            delivered_qs.update(delivered=True)
+            send_user_event(
+                other_id,
+                "message_delivered",
+                {
+                    "with_userid": me,
+                    "message_ids": delivered_ids,
+                },
+            )
 
         qs = ChatMessage.objects.filter(
             models.Q(from_user_id=me, to_user_id=other_id, hide_for_sender=False)
@@ -237,6 +251,14 @@ class ChatMarkDownloadedView(APIView):
         row.file_downloaded = True
         row.downloaded_at = timezone.now()
         row.save(update_fields=["file_delivered", "file_downloaded", "downloaded_at"])
+        send_user_event(
+            row.from_user_id,
+            "file_downloaded",
+            {
+                "with_userid": row.to_user_id,
+                "message_id": row.id,
+            },
+        )
         return Response({"ok": True})
 
 
@@ -253,10 +275,21 @@ class ChatMarkSeenView(APIView):
         except (TypeError, ValueError):
             return Response({"error": "Invalid sender_id"}, status=status.HTTP_400_BAD_REQUEST)
 
-        ChatMessage.objects.filter(
+        seen_qs = ChatMessage.objects.filter(
             from_user_id=sid,
             to_user_id=request.user.id,
             seen=False,
-        ).update(seen=True, delivered=True)
+        )
+        seen_ids = list(seen_qs.values_list("id", flat=True))
+        if seen_ids:
+            seen_qs.update(seen=True, delivered=True)
+            send_user_event(
+                sid,
+                "message_seen",
+                {
+                    "with_userid": request.user.id,
+                    "message_ids": seen_ids,
+                },
+            )
 
         return Response({"ok": True})
