@@ -126,6 +126,7 @@ def _enrich_user_with_extra_fields(request, user_payload):
         pass
 
     emp_shotchat = None
+    emp_usercode = None
     if username or usercode:
         try:
             emp_qs = EmpProfile.objects.all()
@@ -133,17 +134,22 @@ def _enrich_user_with_extra_fields(request, user_payload):
                 emp_qs = emp_qs.filter(username__iexact=username)
             elif usercode:
                 emp_qs = emp_qs.filter(usercode=usercode)
-            emp = emp_qs.only('shotchat').first()
+            emp = emp_qs.only('shotchat', 'usercode').first()
             if emp:
                 emp_shotchat = emp.shotchat
+                emp_usercode = emp.usercode
         except Exception:
             emp_shotchat = None
+            emp_usercode = None
+
+    if (not usercode) and emp_usercode:
+        usercode = emp_usercode
 
     shotchat_value = _parse_shotchat_flag(shotchat_raw)
     if shotchat_value is None:
         shotchat_value = _parse_shotchat_flag(emp_shotchat)
     if shotchat_value is None:
-        shotchat_value = True
+        shotchat_value = False
 
     user_data['usr_birth_date'] = usr_birth_date.isoformat() if usr_birth_date else None
     user_data['usercode'] = usercode

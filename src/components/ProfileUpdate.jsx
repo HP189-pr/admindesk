@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import API from "../api/axiosInstance";
 import { useAuth } from "../hooks/AuthContext";
-import { DEFAULT_PROFILE_PIC, resolveProfilePicture } from "../utils/mediaUrl";
+import { normalizeMediaUrl, resolveProfilePicture } from "../utils/mediaUrl";
 
 const ProfileUpdate = ({ setWorkArea }) => {
     const { user, fetchUserProfile } = useAuth();  // fetchUserProfile to refresh after update
+    const [imgBroken, setImgBroken] = useState(false);
 
     const [profile, setProfile] = useState({
         username: "",
@@ -34,6 +35,7 @@ const ProfileUpdate = ({ setWorkArea }) => {
                 profile_picture_url: picUrl,  // from backend (could be relative)
                 profile_picture_file: null  // no file initially
             });
+            setImgBroken(false);
         }
     }, [user]);
 
@@ -45,6 +47,17 @@ const ProfileUpdate = ({ setWorkArea }) => {
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         setProfile((prev) => ({ ...prev, profile_picture_file: file }));
+        setImgBroken(false);
+    };
+
+    const getInitials = () => {
+        const first = String(profile.first_name || "").trim();
+        const last = String(profile.last_name || "").trim();
+        const full = `${first} ${last}`.trim() || String(profile.username || "").trim();
+        if (!full) return "U";
+        const words = full.split(/\s+/).filter(Boolean);
+        if (words.length >= 2) return `${words[0][0] || ""}${words[words.length - 1][0] || ""}`.toUpperCase();
+        return words[0].slice(0, 2).toUpperCase();
     };
 
     const handleSubmit = async (e) => {
@@ -79,6 +92,7 @@ const ProfileUpdate = ({ setWorkArea }) => {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
+                timeout: 30000,
             });
 
             alert("Profile updated successfully!");
@@ -94,56 +108,134 @@ const ProfileUpdate = ({ setWorkArea }) => {
     // Choose displayed picture (uploaded file preview or backend URL)
     const displayedProfilePicture = profile.profile_picture_file
         ? URL.createObjectURL(profile.profile_picture_file)
-        : (resolveProfilePicture({ profile_picture: profile.profile_picture_url }) || DEFAULT_PROFILE_PIC);
+        : (normalizeMediaUrl(profile.profile_picture_url) || null);
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-                <label>Username (cannot change)</label>
-                <input type="text" name="username" value={profile.username} disabled className="border p-2 w-full" />
-            </div>
+        <div className="flex justify-center items-center min-h-screen bg-gray-100 p-4">
+            <form
+                onSubmit={handleSubmit}
+                className="bg-white shadow-xl rounded-2xl p-8 w-full max-w-3xl space-y-6"
+            >
+                <h2 className="text-2xl font-bold text-center text-gray-800">
+                    Update Profile
+                </h2>
 
-            <div><label>First Name</label>
-                <input type="text" name="first_name" value={profile.first_name} onChange={handleChange} className="border p-2 w-full" />
-            </div>
+                <div className="flex flex-col items-center space-y-4">
+                    <div className="relative">
+                        {displayedProfilePicture && !imgBroken ? (
+                            <img
+                                src={displayedProfilePicture}
+                                alt="Profile"
+                                className="w-32 h-32 rounded-full object-cover border-4 border-blue-500 shadow-md"
+                                onError={() => setImgBroken(true)}
+                            />
+                        ) : (
+                            <div className="w-32 h-32 rounded-full border-4 border-blue-500 shadow-md bg-blue-100 text-blue-700 flex items-center justify-center text-3xl font-bold">
+                                {getInitials()}
+                            </div>
+                        )}
+                    </div>
 
-            <div><label>Last Name</label>
-                <input type="text" name="last_name" value={profile.last_name} onChange={handleChange} className="border p-2 w-full" />
-            </div>
+                    <input
+                        type="file"
+                        name="profile_picture"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="text-sm text-gray-600"
+                    />
+                </div>
 
-            <div><label>Email</label>
-                <input type="email" name="email" value={profile.email} onChange={handleChange} className="border p-2 w-full" />
-            </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                        <label className="text-sm font-medium text-gray-600">
+                            Username (cannot change)
+                        </label>
+                        <input
+                            type="text"
+                            name="username"
+                            value={profile.username}
+                            disabled
+                            className="mt-1 border bg-gray-100 p-2 w-full rounded-lg"
+                        />
+                    </div>
 
-            <div><label>Phone</label>
-                <input type="text" name="phone" value={profile.phone} onChange={handleChange} className="border p-2 w-full" />
-            </div>
+                    <div>
+                        <label className="text-sm font-medium text-gray-600">First Name</label>
+                        <input
+                            type="text"
+                            name="first_name"
+                            value={profile.first_name}
+                            onChange={handleChange}
+                            className="mt-1 border p-2 w-full rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
+                        />
+                    </div>
 
-            <div><label>Address</label>
-                <input type="text" name="address" value={profile.address} onChange={handleChange} className="border p-2 w-full" />
-            </div>
+                    <div>
+                        <label className="text-sm font-medium text-gray-600">Last Name</label>
+                        <input
+                            type="text"
+                            name="last_name"
+                            value={profile.last_name}
+                            onChange={handleChange}
+                            className="mt-1 border p-2 w-full rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
+                        />
+                    </div>
 
-            <div><label>City</label>
-                <input type="text" name="city" value={profile.city} onChange={handleChange} className="border p-2 w-full" />
-            </div>
+                    <div>
+                        <label className="text-sm font-medium text-gray-600">Email</label>
+                        <input
+                            type="email"
+                            name="email"
+                            value={profile.email}
+                            onChange={handleChange}
+                            className="mt-1 border p-2 w-full rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
+                        />
+                    </div>
 
-            <div>
-                <label>Profile Picture</label>
-                <input type="file" name="profile_picture" accept="image/*" onChange={handleFileChange} className="border p-2 w-full" />
-                <img
-                    src={displayedProfilePicture}
-                    alt="Profile"
-                    className="w-24 h-24 object-cover mt-2"
-                    onError={(e) => {
-                        if (e.target.src !== window.location.origin + DEFAULT_PROFILE_PIC) {
-                            e.target.src = DEFAULT_PROFILE_PIC;
-                        }
-                    }}
-                />
-            </div>
+                    <div>
+                        <label className="text-sm font-medium text-gray-600">Phone</label>
+                        <input
+                            type="text"
+                            name="phone"
+                            value={profile.phone}
+                            onChange={handleChange}
+                            className="mt-1 border p-2 w-full rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
+                        />
+                    </div>
 
-            <button type="submit" className="bg-blue-500 text-white p-2 rounded">Save Changes</button>
-        </form>
+                    <div className="col-span-2">
+                        <label className="text-sm font-medium text-gray-600">Address</label>
+                        <input
+                            type="text"
+                            name="address"
+                            value={profile.address}
+                            onChange={handleChange}
+                            className="mt-1 border p-2 w-full rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
+                        />
+                    </div>
+
+                    <div className="col-span-2">
+                        <label className="text-sm font-medium text-gray-600">City</label>
+                        <input
+                            type="text"
+                            name="city"
+                            value={profile.city}
+                            onChange={handleChange}
+                            className="mt-1 border p-2 w-full rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
+                        />
+                    </div>
+                </div>
+
+                <div className="flex justify-center pt-4">
+                    <button
+                        type="submit"
+                        className="bg-blue-600 hover:bg-blue-700 transition text-white px-8 py-2 rounded-full shadow-md font-medium"
+                    >
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
     );
 };
 

@@ -126,7 +126,7 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
   const isNumericOnly = (v) => /^\d+$/.test(String(v || '').trim());
   const isChatEnabled = (u) => {
     const raw = u?.shotchat ?? u?.chat_enabled;
-    if (raw === undefined || raw === null || raw === '') return true;
+    if (raw === undefined || raw === null || raw === '') return false;
     if (typeof raw === 'boolean') return raw;
     const value = String(raw).trim().toLowerCase();
     return ['1', 'true', 'yes', 'y', 'on', 'enable', 'enabled'].includes(value);

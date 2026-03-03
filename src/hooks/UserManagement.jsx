@@ -13,6 +13,14 @@ const UserManagement = ({ selectedTopbarMenu }) => {
   const [changeUserId, setChangeUserId] = useState(null);
   const [newPassword, setNewPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [editChatEnabled, setEditChatEnabled] = useState(false);
+
+  const isChatChecked = (value) => {
+    if (value === undefined || value === null || value === "") return false;
+    if (typeof value === "boolean") return value;
+    const parsed = String(value).trim().toLowerCase();
+    return ["1", "true", "yes", "y", "on", "enable", "enabled"].includes(parsed);
+  };
 
   // 🔹 Fetch Users from API
   useEffect(() => {
@@ -27,6 +35,7 @@ const UserManagement = ({ selectedTopbarMenu }) => {
   const handleEdit = async (userId) => {
     const userDetails = await fetchUserDetail(userId);
     setSelectedUser(userDetails);
+    setEditChatEnabled(isChatChecked(userDetails?.shotchat ?? userDetails?.chat_enabled));
     setIsAddingUser(true);
   };
 
@@ -46,22 +55,6 @@ const UserManagement = ({ selectedTopbarMenu }) => {
     }
   };
 
-  const handleToggleChat = async (user, enabled) => {
-    const userId = user.id ?? user.username ?? user.usercode;
-    const res = await updateUser(userId, { shotchat: enabled });
-    if (!res.success) {
-      alert('Chat update failed: ' + JSON.stringify(res.error));
-      return;
-    }
-    setUsers((prev) =>
-      prev.map((u) =>
-        (u.id ?? u.username ?? u.usercode) === userId
-          ? { ...u, shotchat: enabled, chat_enabled: enabled }
-          : u
-      )
-    );
-  };
-
   // 🔹 Handle Form Submit (Add/Edit User)
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -73,7 +66,7 @@ const UserManagement = ({ selectedTopbarMenu }) => {
       email: form.get('email') || '',
       usr_birth_date: form.get('usr_birth_date') || null,
       usercode: form.get('usercode') || null,
-      shotchat: form.get('shotchat') === 'on',
+      shotchat: selectedUser ? editChatEnabled : false,
     };
     if (selectedUser) {
       const res = await updateUser(selectedUser.id, payload);
@@ -96,6 +89,7 @@ const UserManagement = ({ selectedTopbarMenu }) => {
     setUsers(userList);
     setIsAddingUser(false);
     setSelectedUser(null);
+    setEditChatEnabled(false);
   };
 
   // 🔹 Function to render content based on `selectedTopbarMenu`
@@ -105,7 +99,11 @@ const UserManagement = ({ selectedTopbarMenu }) => {
             {!isAddingUser && (
               <button
                 className="bg-green-500 text-white px-4 py-2 rounded mb-4"
-                onClick={() => setIsAddingUser(true)}
+                onClick={() => {
+                  setSelectedUser(null);
+                  setEditChatEnabled(false);
+                  setIsAddingUser(true);
+                }}
               >
                 ➕ Add User
               </button>
@@ -121,7 +119,6 @@ const UserManagement = ({ selectedTopbarMenu }) => {
                       <th className="px-4 py-2 border">User Code</th>
                       <th className="px-4 py-2 border">First Name</th>
                       <th className="px-4 py-2 border">Last Name</th>
-                      <th className="px-4 py-2 border">Chat</th>
                       <th className="px-4 py-2 border">Edit</th>
                       <th className="px-4 py-2 border">Password</th>
                       <th className="px-4 py-2 border">Delete</th>
@@ -146,13 +143,6 @@ const UserManagement = ({ selectedTopbarMenu }) => {
                         <td className="px-4 py-2 border">{user.usercode || '-'}</td>
                         <td className="px-4 py-2 border">{user.first_name}</td>
                         <td className="px-4 py-2 border">{user.last_name}</td>
-                        <td className="px-4 py-2 border">
-                          <input
-                            type="checkbox"
-                            checked={!!(user.shotchat ?? user.chat_enabled)}
-                            onChange={(e) => handleToggleChat(user, e.target.checked)}
-                          />
-                        </td>
                         <td className="px-4 py-2 border">
                           <button
                             onClick={() => handleEdit(user.id ?? user.username ?? user.usercode)}
@@ -221,15 +211,18 @@ const UserManagement = ({ selectedTopbarMenu }) => {
                     defaultValue={selectedUser?.usercode || ""}
                     className="block w-full p-2 border rounded mb-3"
                   />
-                  <label className="inline-flex items-center mb-3">
-                    <input
-                      name="shotchat"
-                      type="checkbox"
-                      defaultChecked={!!(selectedUser?.shotchat ?? selectedUser?.chat_enabled ?? true)}
-                      className="mr-2"
-                    />
-                    Enable Chat
-                  </label>
+                  {selectedUser && (
+                    <label className="inline-flex items-center mb-3">
+                      <input
+                        name="shotchat"
+                        type="checkbox"
+                        checked={editChatEnabled}
+                        onChange={(e) => setEditChatEnabled(e.target.checked)}
+                        className="mr-2"
+                      />
+                      Enable Chat
+                    </label>
+                  )}
                   <label className="block text-sm mb-1">Birth Date</label>
                   <input name="usr_birth_date"
                     type="date"
@@ -248,6 +241,7 @@ const UserManagement = ({ selectedTopbarMenu }) => {
                     onClick={() => {
                       setIsAddingUser(false);
                       setSelectedUser(null);
+                      setEditChatEnabled(false);
                     }}
                   >
                     Cancel
