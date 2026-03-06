@@ -7,6 +7,7 @@ channels-redis
 daphne
 pandas
 openpyxl
+xlrd
 psycopg2-binary
 python-dotenv
 weasyprint

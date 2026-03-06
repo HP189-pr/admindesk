@@ -19,6 +19,8 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
   const [serverUploadId, setServerUploadId] = useState(null);
   const progressTimerRef = useRef(null);
   const autoSwitchRef = useRef(null);
+  const pendingAutoSwitchStateRef = useRef(null);
+  const autoLoadAfterSwitchRef = useRef(false);
   const failRows = useMemo(() => {
     if (!result?.results) return [];
     return result.results.filter((r) => String(r.status || '').toUpperCase() === 'FAIL');
@@ -32,9 +34,48 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
 
   const detectServiceFromColumns = (cols = []) => {
     try {
-      const norm = new Set(cols.map((c) => String(c || '').trim().toLowerCase()));
-      // Prioritize Student Profile before Enrollment because both share enrollment_no
-      if (norm.has('enrollment_no') && (norm.has('gender') || norm.has('abc_id') || norm.has('aadhar_no') || norm.has('photo_uploaded'))) return 'STUDENT_PROFILE';
+      const alias = {
+        'roll no': 'enrollment_no',
+        'roll number': 'enrollment_no',
+        'temp student id': 'temp_enroll_no',
+        'student name': 'student_name',
+        'registration date': 'enrollment_date',
+        'admission date': 'admission_date',
+        'admission cast category': 'category',
+        'admission caste category': 'category',
+        'local address': 'address1',
+        'permanent address': 'address2',
+        'local city': 'city1',
+        'permanent city': 'city2',
+        'mobile no': 'contact_no',
+        'total fees': 'fees',
+        'abc id': 'abc_id',
+        'father name': 'father_name',
+        'aadhaar number': 'aadhar_no',
+        'name as per aadhar': 'name_adhar',
+        'name as per aadhaar': 'name_adhar',
+        'mobile no as per aadhar': 'mobile_adhar',
+        'mobile no as per aadhaar': 'mobile_adhar',
+        'mothername': 'mother_name',
+        'is d2d': 'is_d2d',
+        'program medium': 'program_medium',
+        'photo uploaded': 'photo_uploaded',
+        'use hostel': 'hostel_required',
+      };
+      const norm = new Set(
+        cols.map((c) => {
+          const k = String(c || '').trim().toLowerCase();
+          return alias[k] || k;
+        })
+      );
+      const hasProfileCols = norm.has('gender') || norm.has('abc_id') || norm.has('aadhar_no') || norm.has('photo_uploaded') || norm.has('mother_name') || norm.has('father_name');
+      const hasEnrollmentCols = norm.has('enrollment_no') && (
+        norm.has('student_name') || norm.has('batch') || norm.has('institute_id') || norm.has('subcourse_id') || norm.has('maincourse_id')
+      );
+
+      // Mixed sheet: keep ENROLLMENT so backend can upsert both enrollment and profile.
+      if (hasEnrollmentCols && hasProfileCols) return 'ENROLLMENT';
+      if (norm.has('enrollment_no') && hasProfileCols) return 'STUDENT_PROFILE';
       if (norm.has('receipt_no') && norm.has('student_no')) return 'STUDENT_FEES';
       if (norm.has('dg_sr_no')) return 'DEGREE';
       if (norm.has('prv_number')) return 'PROVISIONAL';
@@ -198,6 +239,32 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
 
   // Reset UI when service or preferred sheet changes (so user sees a fresh file selector)
   useEffect(()=>{
+    const isAutoSwitchedTarget = (
+      autoSwitchRef.current &&
+      autoSwitchRef.current === normalizedService &&
+      pendingAutoSwitchStateRef.current
+    );
+
+    if (isAutoSwitchedTarget) {
+      const preserved = pendingAutoSwitchStateRef.current;
+      setSheets(preserved.sheets || []);
+      setSheet(preserved.sheet || preferredSheetProp || '');
+      setColumns([]);
+      setFile(preserved.file || null);
+      setPreviewRows([]);
+      setUploadPct(0);
+      setResult(null);
+      setIsUploading(false);
+      resetProgressState();
+      setStep((preserved.sheets && preserved.sheets.length) ? 1 : 0);
+      setMessage(`Detected ${normalizedService} template. Service switched automatically.`);
+
+      autoLoadAfterSwitchRef.current = true;
+      autoSwitchRef.current = null;
+      pendingAutoSwitchStateRef.current = null;
+      return;
+    }
+
     setStep(0);
     setSheets([]);
     setSheet(preferredSheetProp || '');
@@ -208,12 +275,7 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
     setResult(null);
     setIsUploading(false);
     resetProgressState();
-    if (autoSwitchRef.current && autoSwitchRef.current === normalizedService) {
-      setMessage(`Detected ${normalizedService} template. Please reload columns.`);
-      autoSwitchRef.current = null;
-    } else {
-      setMessage('');
-    }
+    setMessage('');
     // if resetKey provided, also listen - resetting handled here
   }, [service, preferredSheetProp, resetKey, normalizedService]);
 
@@ -234,6 +296,11 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
       if (detected && detected !== normalizedService && typeof onServiceChange === 'function') {
         setMessage(`Detected ${detected} template. Switching service…`);
         autoSwitchRef.current = detected;
+        pendingAutoSwitchStateRef.current = {
+          file,
+          sheets,
+          sheet,
+        };
         onServiceChange(detected);
         return;
       }
@@ -241,6 +308,13 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
       setMessage('Columns loaded'); setStep(2);
     }catch(e){ setMessage('Load columns failed: '+String(e)); }
   };
+
+  useEffect(() => {
+    if (!autoLoadAfterSwitchRef.current) return;
+    if (!file || !sheet) return;
+    autoLoadAfterSwitchRef.current = false;
+    loadColumns();
+  }, [file, sheet, normalizedService]);
 
   const doPreview = async (selected) => {
     if (!file) return setMessage('Choose a file');

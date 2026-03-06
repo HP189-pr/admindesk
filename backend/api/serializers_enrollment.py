@@ -1,6 +1,5 @@
 """Enrollment-focused serializers."""
 from rest_framework import serializers
-from django.utils import timezone
 
 from .models import Institute, MainBranch, SubBranch, Enrollment, AdmissionCancel
 
@@ -112,7 +111,6 @@ class AdmissionCancelSerializer(serializers.ModelSerializer):
         model = AdmissionCancel
         fields = [
             'id',
-            'cancel_date',
             'enrollment',
             'enrollment_no',
             'student_name',
@@ -131,6 +129,4 @@ class AdmissionCancelSerializer(serializers.ModelSerializer):
         student_name = attrs.get('student_name')
         if not student_name and enrollment:
             attrs['student_name'] = enrollment.student_name
-        if not attrs.get('cancel_date'):
-            attrs['cancel_date'] = timezone.now().date()
         return super().validate(attrs)

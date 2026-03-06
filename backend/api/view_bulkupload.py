@@ -16,9 +16,10 @@ from django.db.models import Value, Q
 from django.db.models.functions import Replace, Lower
 from django.http import HttpResponse
 from rest_framework.parsers import MultiPartParser, FormParser
-from io import BytesIO
+from io import BytesIO, StringIO
 from decimal import Decimal
 import os, datetime, logging, uuid, threading, traceback, re
+import csv
 from django.conf import settings
 from django.core.cache import cache
 
@@ -322,7 +323,7 @@ class BulkUploadView(APIView):
                 "enrollment_no","temp_enroll_no","enrollment_id","receipt_no","receipt_date","term","amount","remark"
             ],
             BulkService.STUDENT_PROFILE: [
-                "enrollment_no","gender","birth_date","address1","address2","city1","city2","contact_no","email","fees","hostel_required","aadhar_no","abc_id","mobile_adhar","name_adhar","mother_name","category","photo_uploaded","is_d2d","program_medium"
+                "enrollment_no","gender","birth_date","address1","address2","city1","city2","contact_no","email","fees","hostel_required","aadhar_no","abc_id","mobile_adhar","name_adhar","mother_name","father_name","category","photo_uploaded","is_d2d","program_medium"
             ],
         }
         cols = columns_map.get(service)
@@ -624,6 +625,256 @@ class BulkUploadView(APIView):
                     logging.exception('Failed to cache bulk result for %s', track_id)
             return safe_payload
 
+        PROFILE_UPLOAD_COLS = {
+            "gender", "birth_date", "address1", "address2", "city1", "city2",
+            "contact_no", "email", "fees", "hostel_required", "aadhar_no", "abc_id",
+            "mobile_adhar", "name_adhar", "mother_name", "father_name", "category",
+            "photo_uploaded", "is_d2d", "program_medium",
+        }
+
+        ENROLLMENT_CORE_COLS = {
+            "student_name", "batch", "institute_id", "subcourse_id", "maincourse_id",
+            "temp_enroll_no", "enrollment_date", "admission_date",
+        }
+
+        def _to_bool(val):
+            if isinstance(val, bool):
+                return val
+            try:
+                s = str(val).strip().lower()
+            except Exception:
+                return False
+            return s in ('1', 'true', 'yes', 'y', 't')
+
+        def _to_int_or_none(val):
+            c = _clean_cell(val)
+            if c is None:
+                return None
+            try:
+                return int(float(c))
+            except Exception:
+                return None
+
+        def _row_has_any(row, cols):
+            row_cols = set(getattr(row, 'index', []))
+            return any(c in row_cols for c in cols)
+
+        def _lookup_enrollment(enr_key):
+            if not enr_key:
+                return None
+            enr = Enrollment.objects.filter(enrollment_no=enr_key).first()
+            if not enr:
+                try:
+                    enr = Enrollment.objects.filter(enrollment_no__iexact=enr_key).first()
+                except Exception:
+                    enr = None
+            if not enr:
+                try:
+                    norm = ''.join(str(enr_key).split()).lower()
+                    enr = (Enrollment.objects
+                           .annotate(_norm=Replace(Lower(models.F('enrollment_no')), Value(' '), Value('')))
+                           .filter(_norm=norm)
+                           .first())
+                except Exception:
+                    enr = None
+            return enr
+
+        def _resolve_enrollment_fk(row):
+            row_cols = set(getattr(row, 'index', []))
+            def _normalize_lookup_token(raw_val):
+                c = _clean_cell(raw_val)
+                if c is None:
+                    return None
+                s = str(c).strip()
+                if not s:
+                    return None
+                # Normalize Excel-style numeric IDs like "101.0" -> "101".
+                import re as _re
+                if _re.fullmatch(r"[0-9]+(?:\.0+)?", s):
+                    try:
+                        return str(int(float(s)))
+                    except Exception:
+                        return s
+                return s
+
+            def _resolve_institute(raw_val):
+                token = _normalize_lookup_token(raw_val)
+                if not token:
+                    return None, None
+                obj = None
+                try:
+                    obj = Institute.objects.filter(institute_id=int(token)).first()
+                except Exception:
+                    obj = None
+                if not obj:
+                    obj = Institute.objects.filter(institute_code__iexact=token).first()
+                if not obj:
+                    obj = Institute.objects.filter(institute_name__iexact=token).first()
+                return obj, token
+
+            def _resolve_maincourse(raw_val):
+                token = _normalize_lookup_token(raw_val)
+                if not token:
+                    return None, None
+                obj = MainBranch.objects.filter(maincourse_id__iexact=token).first()
+                if not obj:
+                    obj = MainBranch.objects.filter(course_code__iexact=token).first()
+                if not obj:
+                    obj = MainBranch.objects.filter(course_name__iexact=token).first()
+                return obj, token
+
+            def _resolve_subcourse(raw_val, main_obj=None):
+                token = _normalize_lookup_token(raw_val)
+                if not token:
+                    return None, None
+                obj = SubBranch.objects.filter(subcourse_id__iexact=token).first()
+                if not obj and main_obj is not None:
+                    obj = SubBranch.objects.filter(subcourse_name__iexact=token, maincourse=main_obj).first()
+                if not obj:
+                    obj = SubBranch.objects.filter(subcourse_name__iexact=token).first()
+                return obj, token
+
+            institute = None
+            subcourse = None
+            maincourse = None
+            missing_related = []
+
+            if "institute_id" in row_cols:
+                institute, inst_key = _resolve_institute(row.get("institute_id"))
+                if inst_key and not institute:
+                    missing_related.append("institute_id")
+            if "maincourse_id" in row_cols:
+                maincourse, main_key = _resolve_maincourse(row.get("maincourse_id"))
+                if main_key and not maincourse:
+                    missing_related.append("maincourse_id")
+            if "subcourse_id" in row_cols:
+                subcourse, sub_key = _resolve_subcourse(row.get("subcourse_id"), maincourse)
+                if sub_key and not subcourse:
+                    missing_related.append("subcourse_id")
+
+            return institute, subcourse, maincourse, missing_related
+
+        def _build_profile_defaults(row):
+            row_cols = set(getattr(row, 'index', []))
+            defaults = {"updated_by": user}
+
+            if "gender" in row_cols:
+                defaults["gender"] = _clean_cell(row.get("gender"))
+            if "birth_date" in row_cols:
+                defaults["birth_date"] = _parse_excel_date_safe(row.get("birth_date"))
+            if "address1" in row_cols:
+                defaults["address1"] = _clean_cell(row.get("address1"))
+            if "address2" in row_cols:
+                defaults["address2"] = _clean_cell(row.get("address2"))
+            if "city1" in row_cols:
+                defaults["city1"] = _clean_cell(row.get("city1"))
+            if "city2" in row_cols:
+                defaults["city2"] = _clean_cell(row.get("city2"))
+            if "contact_no" in row_cols:
+                defaults["contact_no"] = _clean_cell(row.get("contact_no"))
+            if "email" in row_cols:
+                defaults["email"] = _clean_cell(row.get("email"))
+            if "fees" in row_cols:
+                fees_val = row.get("fees")
+                try:
+                    defaults["fees"] = Decimal(str(fees_val)) if fees_val not in (None, "") else None
+                except Exception:
+                    defaults["fees"] = None
+            if "hostel_required" in row_cols:
+                defaults["hostel_required"] = _to_bool(row.get("hostel_required"))
+            if "aadhar_no" in row_cols:
+                defaults["aadhar_no"] = _clean_cell(row.get("aadhar_no"))
+            if "abc_id" in row_cols:
+                defaults["abc_id"] = _clean_cell(row.get("abc_id"))
+            if "mobile_adhar" in row_cols:
+                defaults["mobile_adhar"] = _clean_cell(row.get("mobile_adhar"))
+            if "name_adhar" in row_cols:
+                defaults["name_adhar"] = _clean_cell(row.get("name_adhar"))
+            if "mother_name" in row_cols:
+                defaults["mother_name"] = _clean_cell(row.get("mother_name"))
+            if "father_name" in row_cols:
+                defaults["father_name"] = _clean_cell(row.get("father_name"))
+            if "category" in row_cols:
+                defaults["category"] = _clean_cell(row.get("category"))
+            if "photo_uploaded" in row_cols:
+                defaults["photo_uploaded"] = _to_bool(row.get("photo_uploaded"))
+            if "is_d2d" in row_cols:
+                defaults["is_d2d"] = _to_bool(row.get("is_d2d"))
+            if "program_medium" in row_cols:
+                defaults["program_medium"] = _clean_cell(row.get("program_medium"))
+
+            return defaults
+
+        def _upsert_enrollment_from_row(row, enr_key):
+            row_cols = set(getattr(row, 'index', []))
+            if not enr_key:
+                return None, None, "Missing enrollment_no"
+
+            enr_existing = _lookup_enrollment(enr_key)
+            resolved_enr_key = (getattr(enr_existing, 'enrollment_no', None) or enr_key)
+
+            institute, subcourse, maincourse, missing_related = _resolve_enrollment_fk(row)
+            # Existing enrollment rows are allowed to continue even when FK columns are
+            # unresolved; we keep existing linked FK values in that case.
+            if enr_existing is None and missing_related:
+                return None, None, f"Related FK missing: {', '.join(missing_related)}"
+
+            student_name = _clean_cell(row.get("student_name")) if "student_name" in row_cols else None
+            batch_val = _to_int_or_none(row.get("batch")) if "batch" in row_cols else None
+            temp_enroll_no = _clean_cell(row.get("temp_enroll_no")) if "temp_enroll_no" in row_cols else None
+            enrollment_date = _parse_excel_date_safe(row.get("enrollment_date")) if "enrollment_date" in row_cols else None
+            admission_date = _parse_excel_date_safe(row.get("admission_date")) if "admission_date" in row_cols else None
+
+            defaults = {}
+            if student_name is not None:
+                defaults["student_name"] = student_name
+            if batch_val is not None:
+                defaults["batch"] = batch_val
+            if "institute_id" in row_cols and institute is not None:
+                defaults["institute"] = institute
+            if "subcourse_id" in row_cols and subcourse is not None:
+                defaults["subcourse"] = subcourse
+            if "maincourse_id" in row_cols and maincourse is not None:
+                defaults["maincourse"] = maincourse
+            if temp_enroll_no is not None:
+                defaults["temp_enroll_no"] = temp_enroll_no
+            if enrollment_date is not None:
+                defaults["enrollment_date"] = enrollment_date
+            if admission_date is not None:
+                defaults["admission_date"] = admission_date
+
+            if enr_existing is None:
+                missing = []
+                if not student_name:
+                    missing.append("student_name")
+                if batch_val is None:
+                    missing.append("batch")
+                if institute is None:
+                    missing.append("institute_id")
+                if subcourse is None:
+                    missing.append("subcourse_id")
+                if maincourse is None:
+                    missing.append("maincourse_id")
+                if missing:
+                    return None, None, f"Missing required enrollment fields for create: {', '.join(missing)}"
+
+                defaults["updated_by"] = user
+                enr_obj, enr_created = Enrollment.objects.update_or_create(
+                    enrollment_no=resolved_enr_key,
+                    defaults=defaults,
+                )
+                return enr_obj, enr_created, None
+
+            if not defaults:
+                return enr_existing, False, None
+
+            defaults["updated_by"] = user
+            enr_obj, _ = Enrollment.objects.update_or_create(
+                enrollment_no=resolved_enr_key,
+                defaults=defaults,
+            )
+            return enr_obj, False, None
+
         try:
             if service == BulkService.DOCREC:
                 for idx, row in df.iterrows():
@@ -673,101 +924,54 @@ class BulkUploadView(APIView):
             elif service == BulkService.ENROLLMENT:
                 for idx, row in df.iterrows():
                     try:
-                        institute = Institute.objects.filter(institute_id=row.get("institute_id")).first()
-                        subcourse = SubBranch.objects.filter(subcourse_id=row.get("subcourse_id")).first()
-                        maincourse = MainBranch.objects.filter(maincourse_id=row.get("maincourse_id")).first()
-                        if not (institute and subcourse and maincourse):
-                            _log(idx, row.get("enrollment_no"), "Missing related institute/subcourse/maincourse", False); _cache_progress(idx+1); continue
-                        enrollment_date = _parse_excel_date_safe(row.get("enrollment_date"))
-                        admission_date = _parse_excel_date_safe(row.get("admission_date"))
-                        Enrollment.objects.update_or_create(
-                            enrollment_no=row.get("enrollment_no"),
-                            defaults={
-                                "student_name": row.get("student_name"),
-                                "institute": institute,
-                                "batch": row.get("batch"),
-                                "enrollment_date": enrollment_date,
-                                "admission_date": admission_date,
-                                "subcourse": subcourse,
-                                "maincourse": maincourse,
-                                "temp_enroll_no": row.get("temp_enroll_no"),
-                                "updated_by": user
-                            }
-                        )
-                        _log(idx, row.get("enrollment_no"), "Upserted", True)
+                        enr_key = _clean_cell(row.get("enrollment_no")) or _clean_cell(row.get("enrollment"))
+                        enr_obj, enr_created, enr_err = _upsert_enrollment_from_row(row, enr_key)
+                        if enr_err:
+                            _log(idx, enr_key, enr_err, False); _cache_progress(idx+1); continue
+
+                        status_msg = "Created enrollment" if enr_created else "Updated enrollment"
+
+                        if _row_has_any(row, PROFILE_UPLOAD_COLS):
+                            profile_defaults = _build_profile_defaults(row)
+                            _, profile_created = StudentProfile.objects.update_or_create(
+                                enrollment=enr_obj,
+                                defaults=profile_defaults,
+                            )
+                            status_msg += " + " + ("Created profile" if profile_created else "Updated profile")
+
+                        _log(idx, getattr(enr_obj, 'enrollment_no', None) or enr_key, status_msg, True)
                     except Exception as e:
                         _log(idx, row.get("enrollment_no"), str(e), False)
                     _cache_progress(idx+1)
 
             elif service == BulkService.STUDENT_PROFILE:
-                def _to_bool(val):
-                    if isinstance(val, bool):
-                        return val
-                    try:
-                        s = str(val).strip().lower()
-                    except Exception:
-                        return False
-                    return s in ('1', 'true', 'yes', 'y', 't')
-
                 for idx, row in df.iterrows():
                     try:
                         enr_key = _clean_cell(row.get("enrollment_no")) or _clean_cell(row.get("enrollment"))
                         if not enr_key:
                             _log(idx, None, "Missing enrollment_no", False); _cache_progress(idx+1); continue
 
-                        enr = Enrollment.objects.filter(enrollment_no=enr_key).first()
-                        if not enr:
-                            try:
-                                enr = Enrollment.objects.filter(enrollment_no__iexact=enr_key).first()
-                            except Exception:
-                                enr = None
-                        if not enr:
-                            try:
-                                norm = ''.join(str(enr_key).split()).lower()
-                                enr = (Enrollment.objects
-                                       .annotate(_norm=Replace(Lower(models.F('enrollment_no')), Value(' '), Value('')))
-                                       .filter(_norm=norm)
-                                       .first())
-                            except Exception:
-                                enr = None
+                        enr_obj, enr_created, enr_err = _upsert_enrollment_from_row(row, enr_key)
+                        if enr_err:
+                            if _row_has_any(row, ENROLLMENT_CORE_COLS):
+                                _log(idx, enr_key, f"Enrollment not found and auto-create failed: {enr_err}", False)
+                            else:
+                                _log(idx, enr_key, "Enrollment not found", False)
+                            _cache_progress(idx+1)
+                            continue
 
-                        if not enr:
-                            _log(idx, enr_key, "Enrollment not found", False); _cache_progress(idx+1); continue
-
-                        fees_val = row.get("fees")
-                        try:
-                            fees = Decimal(str(fees_val)) if fees_val not in (None, "") else None
-                        except Exception:
-                            fees = None
-
-                        defaults = {
-                            "gender": _clean_cell(row.get("gender")),
-                            "birth_date": _parse_excel_date_safe(row.get("birth_date")),
-                            "address1": _clean_cell(row.get("address1")),
-                            "address2": _clean_cell(row.get("address2")),
-                            "city1": _clean_cell(row.get("city1")),
-                            "city2": _clean_cell(row.get("city2")),
-                            "contact_no": _clean_cell(row.get("contact_no")),
-                            "email": _clean_cell(row.get("email")),
-                            "fees": fees,
-                            "hostel_required": _to_bool(row.get("hostel_required")),
-                            "aadhar_no": _clean_cell(row.get("aadhar_no")),
-                            "abc_id": _clean_cell(row.get("abc_id")),
-                            "mobile_adhar": _clean_cell(row.get("mobile_adhar")),
-                            "name_adhar": _clean_cell(row.get("name_adhar")),
-                            "mother_name": _clean_cell(row.get("mother_name")),
-                            "category": _clean_cell(row.get("category")),
-                            "photo_uploaded": _to_bool(row.get("photo_uploaded")),
-                            "is_d2d": _to_bool(row.get("is_d2d")),
-                            "program_medium": _clean_cell(row.get("program_medium")),
-                            "updated_by": user,
-                        }
-
-                        obj, created = StudentProfile.objects.update_or_create(
-                            enrollment=enr,
+                        defaults = _build_profile_defaults(row)
+                        _, profile_created = StudentProfile.objects.update_or_create(
+                            enrollment=enr_obj,
                             defaults=defaults,
                         )
-                        _log(idx, getattr(enr, 'enrollment_no', None), "Created" if created else "Updated", True)
+
+                        if enr_created:
+                            msg = "Enrollment created + " + ("Profile created" if profile_created else "Profile updated")
+                        else:
+                            msg = "Profile created" if profile_created else "Profile updated"
+
+                        _log(idx, getattr(enr_obj, 'enrollment_no', None) or enr_key, msg, True)
                     except Exception as e:
                         _log(idx, row.get("enrollment_no"), str(e), False)
                     _cache_progress(idx+1)
@@ -2214,11 +2418,142 @@ class BulkUploadView(APIView):
         except Exception:
             return Response({"error": True, "detail": "pandas is required on server for Excel/CSV operations."}, status=500)
 
+        def _read_excel_sheets(file_obj, extension):
+            """Read all workbook sheets with deterministic engine fallbacks."""
+            raw = file_obj.read()
+            try:
+                file_obj.seek(0)
+            except Exception:
+                pass
+
+            if not raw:
+                raise ValueError("Uploaded file is empty")
+
+            def _read_delimited_as_sheet(raw_bytes):
+                """Fallback parser for text-delimited files uploaded with Excel extensions."""
+                # Only attempt this fallback when content looks delimiter-based.
+                head_bytes = raw_bytes[:4096]
+                has_delimiter_hint = any(d in head_bytes for d in (b'\t', b',', b';', b'|'))
+                has_utf16_bom = raw_bytes.startswith((b'\xff\xfe', b'\xfe\xff'))
+                if not has_delimiter_hint and not has_utf16_bom:
+                    return None
+
+                def _decode_delimited_text(data: bytes) -> str:
+                    # UTF BOM-aware decode first.
+                    if data.startswith(b'\xef\xbb\xbf'):
+                        try:
+                            return data.decode('utf-8-sig')
+                        except Exception:
+                            pass
+                    if data.startswith((b'\xff\xfe', b'\xfe\xff')):
+                        for enc in ('utf-16', 'utf-16-le', 'utf-16-be'):
+                            try:
+                                return data.decode(enc)
+                            except Exception:
+                                continue
+
+                    # Normal path: UTF-8, then utf-16 (if NUL-heavy), then latin-1.
+                    try:
+                        return data.decode('utf-8-sig')
+                    except Exception:
+                        pass
+
+                    if b'\x00' in data[:4096]:
+                        for enc in ('utf-16-le', 'utf-16-be', 'utf-16'):
+                            try:
+                                return data.decode(enc)
+                            except Exception:
+                                continue
+
+                    return data.decode('latin-1', errors='replace')
+
+                decoded_text = _decode_delimited_text(raw_bytes)
+                if not decoded_text or not decoded_text.strip():
+                    return None
+
+                sample = decoded_text[:8192]
+                lines = [ln for ln in sample.splitlines() if ln.strip()]
+                if not lines:
+                    return None
+
+                # Detect delimiter from sample text.
+                delimiter = None
+                try:
+                    sniff_sample = '\n'.join(lines[:20])
+                    dialect = csv.Sniffer().sniff(sniff_sample, delimiters='\t,;|')
+                    delimiter = dialect.delimiter
+                except Exception:
+                    probe = '\n'.join(lines[:20])
+                    counts = {
+                        '\t': probe.count('\t'),
+                        ',': probe.count(','),
+                        ';': probe.count(';'),
+                        '|': probe.count('|'),
+                    }
+                    delimiter = max(counts, key=counts.get)
+                    if counts[delimiter] == 0:
+                        delimiter = None
+
+                if not delimiter:
+                    return None
+
+                try:
+                    parse_kwargs = {
+                        'sep': delimiter,
+                        'engine': 'python',
+                        'on_bad_lines': 'skip',
+                    }
+                    try:
+                        df_text = pd.read_csv(StringIO(decoded_text), **parse_kwargs)
+                    except TypeError:
+                        # Backward compatibility for older pandas without `on_bad_lines`.
+                        parse_kwargs.pop('on_bad_lines', None)
+                        df_text = pd.read_csv(StringIO(decoded_text), **parse_kwargs)
+                    return {'Sheet1': df_text}
+                except Exception:
+                    return None
+
+            # Detect container type so we can try the right engine first even when
+            # users upload files with the wrong extension.
+            is_zip_container = raw[:4] == b'PK\x03\x04'  # .xlsx/.xlsm family
+            is_ole_container = raw[:8] == b'\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1'  # legacy .xls
+
+            if extension == '.xlsx':
+                engine_order = ('xlrd', 'openpyxl') if is_ole_container else ('openpyxl', 'xlrd')
+            elif extension == '.xls':
+                engine_order = ('openpyxl', 'xlrd') if is_zip_container else ('xlrd', 'openpyxl')
+            else:
+                engine_order = ('openpyxl', 'xlrd')
+
+            errors = []
+            for eng in engine_order:
+                try:
+                    bio = BytesIO(raw)
+                    return pd.read_excel(bio, sheet_name=None, engine=eng)
+                except Exception as exc:
+                    errors.append((eng, exc))
+                    continue
+
+            # If content is plain delimited text (for example TSV with .xls extension),
+            # parse it as a single sheet to keep upload UX smooth.
+            text_fallback = _read_delimited_as_sheet(raw)
+            if text_fallback is not None:
+                return text_fallback
+
+            if extension == '.xls':
+                for eng, exc in errors:
+                    msg = str(exc).lower()
+                    if eng == 'xlrd' and ('missing optional dependency' in msg or 'xlrd' in msg):
+                        raise ValueError("Cannot read .xls files because 'xlrd' is not installed on the server. Install xlrd or upload .xlsx/.csv.")
+
+            details = '; '.join(f"{eng}: {type(exc).__name__}: {exc}" for eng, exc in errors[:2])
+            raise ValueError(details or "Unable to read Excel workbook")
+
         # Read into a DataFrame (or dict of DataFrames for Excel)
         try:
             if is_excel:
                 # Read all sheets for preview logic
-                df_sheets = pd.read_excel(upload, sheet_name=None)
+                df_sheets = _read_excel_sheets(upload, ext)
                 if not df_sheets:
                     return err("No sheets found in workbook")
                 if preferred_sheet and preferred_sheet in df_sheets:
@@ -2249,9 +2584,13 @@ class BulkUploadView(APIView):
                 s2 = ' '.join(s2.split())
                 # direct synonyms
                 mapping = {
+                    'srno': 'sr_no',
+                    'sr no': 'sr_no',
                     'key': 'enrollment_no',
                     'enrollment': 'enrollment_no',
                     'enrollment no': 'enrollment_no',
+                    'roll no': 'enrollment_no',
+                    'roll number': 'enrollment_no',
                     'enrollment_no': 'enrollment_no',
                     'enrollment id': 'enrollment_id',
                     'enrollment_id': 'enrollment_id',
@@ -2267,6 +2606,8 @@ class BulkUploadView(APIView):
                     'institute_id': 'institute_id',
                     'temp enrollment': 'temp_enroll_no',
                     'temp enrollment no': 'temp_enroll_no',
+                    'temp student id': 'temp_enroll_no',
+                    'temp student': 'temp_enroll_no',
                     'temp_enroll_no': 'temp_enroll_no',
                     'main': 'maincourse_id',
                     'maincourse': 'maincourse_id',
@@ -2281,7 +2622,54 @@ class BulkUploadView(APIView):
                     'mg_date': 'mg_date',
                     'mg date': 'mg_date',
                     'student name': 'student_name',
+                    'studentname': 'student_name',
                     'student_name': 'student_name',
+                    'batch': 'batch',
+                    'registration date': 'enrollment_date',
+                    'enrollment date': 'enrollment_date',
+                    'admission date': 'admission_date',
+                    'father name': 'father_name',
+                    'fathername': 'father_name',
+                    'mother name': 'mother_name',
+                    'mothername': 'mother_name',
+                    'gender': 'gender',
+                    'birth date': 'birth_date',
+                    'birthdate': 'birth_date',
+                    'address1': 'address1',
+                    'address2': 'address2',
+                    'contact no': 'contact_no',
+                    'contactno': 'contact_no',
+                    'mobile no': 'contact_no',
+                    'mobile number': 'contact_no',
+                    'local address': 'address1',
+                    'permanent address': 'address2',
+                    'city1': 'city1',
+                    'city2': 'city2',
+                    'local city': 'city1',
+                    'permanent city': 'city2',
+                    'email': 'email',
+                    'email id': 'email',
+                    'admission cast category': 'category',
+                    'admission caste category': 'category',
+                    'category': 'category',
+                    'fees': 'fees',
+                    'total fees': 'fees',
+                    'aadhar no': 'aadhar_no',
+                    'aadhar number': 'aadhar_no',
+                    'aadhaar number': 'aadhar_no',
+                    'abc id': 'abc_id',
+                    'abcid': 'abc_id',
+                    'mobile adhar': 'mobile_adhar',
+                    'mobile no as per aadhar': 'mobile_adhar',
+                    'mobile no as per aadhaar': 'mobile_adhar',
+                    'name adhar': 'name_adhar',
+                    'name as per aadhar': 'name_adhar',
+                    'name as per aadhaar': 'name_adhar',
+                    'is d2d': 'is_d2d',
+                    'program medium': 'program_medium',
+                    'hostel required': 'hostel_required',
+                    'use hostel': 'hostel_required',
+                    'photo uploaded': 'photo_uploaded',
                     'pay rec no': 'pay_rec_no',
                     'pay_rec_no': 'pay_rec_no',
                     'exam year': 'exam_year',

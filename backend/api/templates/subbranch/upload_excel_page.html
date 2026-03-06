@@ -38,6 +38,7 @@
     .xu-footer-note {font-size:11px; color:#666; margin-top:6px;}
     .xu-small {font-size:12px; color:#444;}
     .xu-inline {display:inline-block;}
+    .xu-error-box {border:1px solid #e9b4b4; background:#fff1f1; color:#8c1d1d; padding:10px; border-radius:4px; margin-bottom:10px;}
 </style>
 
 <div class="xu-box" id="xu-step-1">
@@ -86,10 +87,15 @@
 <div class="xu-box xu-hidden" id="xu-step-4">
     <h2>4. Upload Progress</h2>
     <div class="xu-progress" id="xu-progress">
-        <div class="spinner"></div>
-        <div>Uploading... Please wait.</div>
+        <div class="spinner" id="xu-spinner"></div>
+        <div id="xu-progress-text">Uploading file... Please wait.</div>
         <div class="xu-progress-bar"><div class="xu-progress-bar-inner" id="xu-progress-inner"></div></div>
         <div id="xu-progress-pct">0%</div>
+        <div id="xu-progress-meta" class="xu-small" style="margin-top:8px;">
+            <span class="xu-badge">Total Files 1</span>
+            <span class="xu-badge" id="xu-files-done">Completed Files 0</span>
+            <span class="xu-badge" id="xu-files-problem">Problem Files 0</span>
+        </div>
     </div>
     <div id="xu-result" class="xu-hidden"></div>
 </div>
@@ -123,8 +129,14 @@
      const startUploadBtn = document.getElementById('xu-start-upload');
      const resultDiv = document.getElementById('xu-result');
      const progressDiv = document.getElementById('xu-progress');
+    const progressInner = document.getElementById('xu-progress-inner');
+    const progressPct = document.getElementById('xu-progress-pct');
+    const progressText = document.getElementById('xu-progress-text');
+    const filesDoneBadge = document.getElementById('xu-files-done');
+    const filesProblemBadge = document.getElementById('xu-files-problem');
      const selectAllBtn = document.getElementById('xu-select-all');
      const clearAllBtn = document.getElementById('xu-clear-all');
+    let processingTimer = null;
 
      function showMessage(msg, level='info'){
              // simple inline message
@@ -137,6 +149,125 @@
              el.className = 'xu-small';
              el.style.color = level==='error'?'#b20000':'#0a4d14';
              el.textContent = msg;
+     }
+
+     function setProgress(pct, text){
+         const safePct = Math.max(0, Math.min(100, Number(pct) || 0));
+         progressInner.style.width = safePct + '%';
+         progressPct.textContent = safePct + '%';
+         if(text){ progressText.textContent = text; }
+     }
+
+     function startProcessingPulse(){
+         stopProcessingPulse();
+         processingTimer = window.setInterval(()=>{
+             const current = parseInt(progressInner.style.width || '90', 10) || 90;
+             const next = Math.min(98, current + 1);
+             setProgress(next, 'File uploaded. Processing rows on server...');
+         }, 700);
+     }
+
+     function stopProcessingPulse(){
+         if(processingTimer){
+             window.clearInterval(processingTimer);
+             processingTimer = null;
+         }
+     }
+
+     function renderUploadError(message, rawResponse=''){
+         stopProcessingPulse();
+         setProgress(100, 'Upload failed.');
+         filesDoneBadge.textContent = 'Completed Files 0';
+         filesProblemBadge.textContent = 'Problem Files 1';
+         setHidden(progressDiv.id, true);
+         setHidden(resultDiv.id, false);
+
+         const totalRows = parseInt(totalCount.textContent || '0', 10) || 0;
+         const processedRows = 0;
+         const createdVal = 0;
+         const updatedVal = 0;
+         const skippedVal = 0;
+         const failVal = 1;
+
+         let extra = '';
+         const raw = (rawResponse || '').toString().trim();
+         if(raw && !raw.startsWith('{"error"')){
+             extra = `<details style='margin-top:8px;'><summary>Server response</summary><pre style='white-space:pre-wrap; font-size:11px; max-height:160px; overflow:auto;'>${htmlEscape(raw.slice(0, 3000))}</pre></details>`;
+         }
+
+         resultDiv.innerHTML =
+             `<div class='xu-error-box'><strong>Upload failed:</strong> ${htmlEscape(message || 'Unknown error')}</div>` +
+             `<div><span class='xu-badge'>Total Files 1</span><span class='xu-badge'>Completed Files 0</span><span class='xu-badge skipped'>Problem Files 1</span></div>` +
+             `<div class='xu-small' style='margin-top:8px;'>${processedRows}/${totalRows} rows processed</div>` +
+             `<div class='xu-small'>OK/Created ${createdVal} · Updated ${updatedVal} · Skipped ${skippedVal} · Fail ${failVal}</div>` +
+             extra;
+     }
+
+     function renderUploadResult(data){
+         const counts = data.counts || {created:0, updated:0, skipped:0};
+         const created = Number(counts.created || 0);
+         const updated = Number(counts.updated || 0);
+         const skipped = Number(counts.skipped || 0);
+         const logEntries = Array.isArray(data.log) ? data.log : [];
+         const failFromCounts = Number(counts.fail ?? counts.failed ?? 0);
+         const failFromLog = logEntries.filter(entry => {
+             const status = String(entry?.status || '').toLowerCase();
+             return status === 'failed' || status === 'error' || status === 'exception';
+         }).length;
+         const failVal = Number.isFinite(failFromCounts) && failFromCounts > 0 ? failFromCounts : failFromLog;
+
+         const createdVal = created;
+         const updatedVal = updated;
+         const skippedVal = skipped;
+         const processedRows = createdVal + updatedVal + skippedVal + failVal;
+         const totalRows = parseInt(totalCount.textContent || '0', 10) || Number(data.total_rows || 0) || processedRows;
+         const completedRows = createdVal + updatedVal;
+         const problemRows = skippedVal + failVal;
+         const problemFiles = problemRows > 0 ? 1 : 0;
+
+         stopProcessingPulse();
+         setProgress(100, problemRows > 0 ? 'Upload completed with warnings.' : 'Upload complete.');
+         filesDoneBadge.textContent = 'Completed Files 1';
+         filesProblemBadge.textContent = `Problem Files ${problemFiles}`;
+         setHidden(progressDiv.id, true);
+         setHidden(resultDiv.id, false);
+
+         let logHtml =
+             `<div>` +
+             `<span class='xu-badge'>Total Files 1</span>` +
+             `<span class='xu-badge created'>Completed Files 1</span>` +
+             `<span class='xu-badge skipped'>Problem Files ${problemFiles}</span>` +
+             `</div>` +
+             `<div style='margin-top:8px;'>` +
+             `<span class='xu-badge'>Total Rows ${totalRows}</span>` +
+             `<span class='xu-badge'>Processed Rows ${processedRows}</span>` +
+             `<span class='xu-badge created'>Completed Rows ${completedRows}</span>` +
+             `<span class='xu-badge skipped'>Problem Rows ${problemRows}</span>` +
+             `</div>`;
+
+         logHtml += `<div class='xu-small' style='margin-top:8px;'>${processedRows}/${totalRows} rows processed</div>`;
+         logHtml += `<div class='xu-small'>OK/Created ${createdVal} · Updated ${updatedVal} · Skipped ${skippedVal} · Fail ${failVal}</div>`;
+
+         logHtml += '<div style="margin-top:10px; max-height:300px; overflow:auto;">';
+         logHtml += '<table class="log-table"><thead><tr><th>Row</th><th>Status</th><th>Ref</th><th>Message</th></tr></thead><tbody>';
+         if(!logEntries.length){
+             logHtml += '<tr><td colspan="4">No row-level log entries returned.</td></tr>';
+         }
+         logEntries.forEach(entry=>{
+             const cls = 'status-' + entry.status;
+             logHtml += `<tr class='${cls}'><td>${entry.row}</td><td>${entry.status}</td><td>${entry.ref||''}</td><td>${htmlEscape(entry.message)}</td></tr>`;
+         });
+         logHtml += '</tbody></table></div>';
+         logHtml += '<button type="button" class="button" id="xu-download-log">Download Log CSV</button>';
+         if(data.log_xlsx && data.log_name){
+             logHtml += ' <button type="button" class="button" id="xu-download-log-xlsx">Download Log XLSX</button>';
+         }
+
+         resultDiv.innerHTML = logHtml;
+         const dlBtn = document.getElementById('xu-download-log');
+         if(dlBtn){ dlBtn.addEventListener('click', ()=> downloadLogCsv(logEntries)); }
+         const dlX = document.getElementById('xu-download-log-xlsx');
+         if(dlX){ dlX.addEventListener('click', ()=> downloadLogXlsx(data.log_xlsx, data.log_name)); }
      }
 
      fetchBtn.addEventListener('click', ()=>{
@@ -227,7 +358,10 @@
          const sheet=sheetSelect.value; if(!sheet){ showMessage('Select a sheet','error'); return; }
          const selected=[...colBox.querySelectorAll('input[type=checkbox]:checked')].map(cb=>cb.value);
          if(!selected.length){ showMessage('Select at least one column','error'); return; }
-         setHidden(step4.id,false); setHidden(resultDiv.id,true); setHidden(progressDiv.id,false);
+            setHidden(step4.id,false); setHidden(resultDiv.id,true); setHidden(progressDiv.id,false);
+            filesDoneBadge.textContent = 'Completed Files 0';
+            filesProblemBadge.textContent = 'Problem Files 0';
+            setProgress(0, 'Uploading file... Please wait.');
          showMessage('Uploading...');
          const fd=new FormData(); fd.append('csrfmiddlewaretoken', csrfToken); fd.append('action','commit'); fd.append('sheet', sheet);
          selected.forEach(c=>fd.append('columns[]', c));
@@ -238,43 +372,55 @@
          // Use XHR to track upload progress and support returned XLSX log
          const xhr = new XMLHttpRequest();
          xhr.open('POST', rootUrl, true);
+         xhr.timeout = 15 * 60 * 1000;
          xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
          xhr.upload.onprogress = function(e){
              if(e.lengthComputable){
-                 const pct = Math.round((e.loaded / e.total) * 100);
-                 document.getElementById('xu-progress-inner').style.width = pct + '%';
-                 document.getElementById('xu-progress-pct').textContent = pct + '%';
+                 const pct = Math.min(90, Math.round((e.loaded / e.total) * 90));
+                 setProgress(pct, pct >= 90 ? 'File uploaded. Processing rows on server...' : 'Uploading file... Please wait.');
              }
          };
-         xhr.onreadystatechange = function(){
-             if(xhr.readyState === 4){
-                 try{
-                     const data = JSON.parse(xhr.responseText || '{}');
-                     if(data.error){ showMessage(data.error,'error'); return; }
-                     setHidden(progressDiv.id,true); setHidden(resultDiv.id,false);
-                     const counts=data.counts || {created:0,updated:0,skipped:0};
-                     let logHtml = `<div><span class='xu-badge created'>Created ${counts.created}</span><span class='xu-badge updated'>Updated ${counts.updated}</span><span class='xu-badge skipped'>Skipped ${counts.skipped}</span></div>`;
-                     logHtml += '<div style="margin-top:10px; max-height:300px; overflow:auto;">';
-                     logHtml += '<table class="log-table"><thead><tr><th>Row</th><th>Status</th><th>Ref</th><th>Message</th></tr></thead><tbody>';
-                     (data.log||[]).forEach(entry=>{
-                            const cls = 'status-'+entry.status;
-                            logHtml += `<tr class='${cls}'><td>${entry.row}</td><td>${entry.status}</td><td>${entry.ref||''}</td><td>${htmlEscape(entry.message)}</td></tr>`;
-                     });
-                     logHtml += '</tbody></table></div>';
-                     // Download log button (CSV)
-                     logHtml += '<button type="button" class="button" id="xu-download-log">Download Log CSV</button>';
-                     // If server returned an Excel log (base64), add button to download it
-                     if(data.log_xlsx && data.log_name){
-                         logHtml += ` <button type="button" class="button" id="xu-download-log-xlsx">Download Log XLSX</button>`;
-                     }
-                     resultDiv.innerHTML = logHtml;
-                     showMessage('Upload complete.');
-                     const dlBtn = document.getElementById('xu-download-log');
-                     if(dlBtn){ dlBtn.addEventListener('click', ()=> downloadLogCsv(data.log || [])); }
-                     const dlX = document.getElementById('xu-download-log-xlsx');
-                     if(dlX){ dlX.addEventListener('click', ()=> downloadLogXlsx(data.log_xlsx, data.log_name)); }
-                 }catch(err){ showMessage('Upload parse error: '+err,'error'); }
+         xhr.upload.onloadend = function(){
+             const current = parseInt(progressInner.style.width || '0', 10) || 0;
+             if(current < 90){
+                 setProgress(90, 'File uploaded. Processing rows on server...');
              }
+             startProcessingPulse();
+         };
+         xhr.onerror = function(){
+             renderUploadError('Network error while uploading file.');
+             showMessage('Network error while uploading file.', 'error');
+         };
+         xhr.ontimeout = function(){
+             renderUploadError('Upload timed out while waiting for server processing.');
+             showMessage('Upload timed out while waiting for server processing.', 'error');
+         };
+         xhr.onreadystatechange = function(){
+             if(xhr.readyState !== 4) return;
+             stopProcessingPulse();
+
+             let data = null;
+             try {
+                 data = JSON.parse(xhr.responseText || '{}');
+             } catch (_) {
+                 data = null;
+             }
+
+             if(xhr.status < 200 || xhr.status >= 300){
+                 const errMsg = (data && data.error) ? data.error : `Upload failed with status ${xhr.status}.`;
+                 renderUploadError(errMsg, xhr.responseText || '');
+                 showMessage(errMsg, 'error');
+                 return;
+             }
+
+             if(data && data.error){
+                 renderUploadError(data.error, xhr.responseText || '');
+                 showMessage(data.error, 'error');
+                 return;
+             }
+
+             renderUploadResult(data || {});
+             showMessage('Upload complete.');
          };
          xhr.send(fd);
      });

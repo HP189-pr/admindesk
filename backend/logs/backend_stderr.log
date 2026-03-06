@@ -38364,3 +38364,756 @@ WARNING:waitress.queue:Task queue depth is 2
 WARNING:waitress.queue:Task queue depth is 1
 WARNING:waitress.queue:Task queue depth is 2
 WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+Unauthorized: /api/users/
+WARNING:django.request:Unauthorized: /api/users/
+Unauthorized: /api/users/
+WARNING:django.request:Unauthorized: /api/users/
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+Unauthorized: /api/users/
+WARNING:django.request:Unauthorized: /api/users/
+Unauthorized: /api/users/
+WARNING:django.request:Unauthorized: /api/users/
+Not Found: /favicon.ico
+WARNING:django.request:Not Found: /favicon.ico
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\openpyxl\worksheet\_reader.py:329: UserWarning: Conditional Formatting extension is not supported and will be removed
+  warn(msg)
+C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\openpyxl\worksheet\_reader.py:329: UserWarning: Conditional Formatting extension is not supported and will be removed
+  warn(msg)
+C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\openpyxl\worksheet\_reader.py:329: UserWarning: Conditional Formatting extension is not supported and will be removed
+  warn(msg)
+Bad Request: /admin/api/admissioncancel/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/admissioncancel/upload-excel/
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\openpyxl\worksheet\_reader.py:329: UserWarning: Conditional Formatting extension is not supported and will be removed
+  warn(msg)
+C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\openpyxl\worksheet\_reader.py:329: UserWarning: Conditional Formatting extension is not supported and will be removed
+  warn(msg)
+C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\openpyxl\worksheet\_reader.py:329: UserWarning: Conditional Formatting extension is not supported and will be removed
+  warn(msg)
+C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\openpyxl\worksheet\_reader.py:329: UserWarning: Conditional Formatting extension is not supported and will be removed
+  warn(msg)
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+Not Found: /static/admin/img/sorting-icons.svg
+WARNING:django.request:Not Found: /static/admin/img/sorting-icons.svg
+C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\openpyxl\worksheet\_reader.py:329: UserWarning: Conditional Formatting extension is not supported and will be removed
+  warn(msg)
+C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\openpyxl\worksheet\_reader.py:329: UserWarning: Conditional Formatting extension is not supported and will be removed
+  warn(msg)
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+Not Found: /favicon.ico
+WARNING:django.request:Not Found: /favicon.ico
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+ERROR:root:Error reading uploaded file
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\view_bulkupload.py", line 2222, in post
+    df_sheets = pd.read_excel(upload, sheet_name=None)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\io\excel\_base.py", line 495, in read_excel
+    io = ExcelFile(
+         ^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\io\excel\_base.py", line 1554, in __init__
+    raise ValueError(
+ValueError: Excel file format cannot be determined, you must specify an engine manually.
+Bad Request: /api/bulk-upload/
+WARNING:django.request:Bad Request: /api/bulk-upload/
+ERROR:root:Error reading uploaded file
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\view_bulkupload.py", line 2222, in post
+    df_sheets = pd.read_excel(upload, sheet_name=None)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\io\excel\_base.py", line 495, in read_excel
+    io = ExcelFile(
+         ^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\io\excel\_base.py", line 1554, in __init__
+    raise ValueError(
+ValueError: Excel file format cannot be determined, you must specify an engine manually.
+Bad Request: /api/bulk-upload/
+WARNING:django.request:Bad Request: /api/bulk-upload/
+ERROR:root:Error reading uploaded file
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\view_bulkupload.py", line 2222, in post
+    df_sheets = pd.read_excel(upload, sheet_name=None)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\io\excel\_base.py", line 495, in read_excel
+    io = ExcelFile(
+         ^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\io\excel\_base.py", line 1554, in __init__
+    raise ValueError(
+ValueError: Excel file format cannot be determined, you must specify an engine manually.
+Bad Request: /api/bulk-upload/
+WARNING:django.request:Bad Request: /api/bulk-upload/
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+ERROR:root:Error reading uploaded file
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\view_bulkupload.py", line 2254, in post
+    df_sheets = _read_excel_sheets(upload, ext)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\view_bulkupload.py", line 2248, in _read_excel_sheets
+    raise ValueError(str(last_err) if last_err else "Unable to read Excel workbook")
+ValueError: Excel file format cannot be determined, you must specify an engine manually.
+Bad Request: /api/bulk-upload/
+WARNING:django.request:Bad Request: /api/bulk-upload/
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /favicon.ico
+WARNING:django.request:Not Found: /favicon.ico
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /favicon.ico
+WARNING:django.request:Not Found: /favicon.ico
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+Not Found: /static/admin/js/theme.js
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /favicon.ico
+WARNING:django.request:Not Found: /favicon.ico
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /favicon.ico
+WARNING:django.request:Not Found: /favicon.ico
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/dark_mode.css
+WARNING:waitress.queue:Task queue depth is 2
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /favicon.ico
+WARNING:django.request:Not Found: /favicon.ico
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/login.css
+WARNING:django.request:Not Found: /static/admin/css/login.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/css/dark_mode.css
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/dashboard.css
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/js/theme.js
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+ERROR:root:Error reading uploaded file
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\view_bulkupload.py", line 2254, in post
+    df_sheets = _read_excel_sheets(upload, ext)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\view_bulkupload.py", line 2248, in _read_excel_sheets
+    raise ValueError(str(last_err) if last_err else "Unable to read Excel workbook")
+ValueError: Excel file format cannot be determined, you must specify an engine manually.
+Bad Request: /api/bulk-upload/
+WARNING:django.request:Bad Request: /api/bulk-upload/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+ERROR:root:Error reading uploaded file
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\view_bulkupload.py", line 2254, in post
+    df_sheets = _read_excel_sheets(upload, ext)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\view_bulkupload.py", line 2248, in _read_excel_sheets
+    raise ValueError(str(last_err) if last_err else "Unable to read Excel workbook")
+ValueError: Excel file format cannot be determined, you must specify an engine manually.
+Bad Request: /api/bulk-upload/
+WARNING:django.request:Bad Request: /api/bulk-upload/
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/css/login.css
+WARNING:django.request:Not Found: /static/admin/css/login.css
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/login.css
+WARNING:django.request:Not Found: /static/admin/css/login.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /
+WARNING:django.request:Not Found: /
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/dark_mode.css
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/css/login.css
+WARNING:django.request:Not Found: /static/admin/css/login.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/dark_mode.css
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/dark_mode.css
+WARNING:waitress.queue:Task queue depth is 2
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /favicon.ico
+WARNING:django.request:Not Found: /favicon.ico
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /login
+WARNING:django.request:Not Found: /login
+Not Found: /favicon.ico
+WARNING:django.request:Not Found: /favicon.ico
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/login.css
+WARNING:django.request:Not Found: /static/admin/css/login.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/css/login.css
+WARNING:django.request:Not Found: /static/admin/css/login.css
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/css/login.css
+WARNING:django.request:Not Found: /static/admin/css/login.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+Not Found: /static/admin/css/base.css
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/dashboard.css
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING:django.request:Not Found: /.well-known/appspecific/com.chrome.devtools.json
+Not Found: /static/admin/css/base.css
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:django.request:Not Found: /static/admin/css/base.css
+Not Found: /static/admin/css/dark_mode.css
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/dark_mode.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/js/theme.js
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+Not Found: /static/admin/css/responsive.css
+WARNING:django.request:Not Found: /static/admin/css/responsive.css
+Not Found: /static/admin/css/dashboard.css
+WARNING:django.request:Not Found: /static/admin/css/dashboard.css
+Not Found: /static/admin/css/nav_sidebar.css
+WARNING:django.request:Not Found: /static/admin/css/nav_sidebar.css
+Not Found: /static/admin/js/nav_sidebar.js
+WARNING:django.request:Not Found: /static/admin/js/nav_sidebar.js
+Not Found: /static/admin/js/theme.js
+WARNING:django.request:Not Found: /static/admin/js/theme.js
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000

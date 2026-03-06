@@ -38,12 +38,10 @@ const CANCEL_ACTION = "Cancel Admission";
 const BATCH_OPTIONS = [2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024];
 
   const buildCancelFormState = () => {
-    const todayIso = new Date().toISOString().slice(0, 10);
     return {
     enrollmentNoInput: '',
     enrollmentId: null,
     studentName: '',
-    cancel_date: todayIso || '',
     inward_no: '',
     inward_date: '',
     outward_no: '',
@@ -431,7 +429,6 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
       const payload = {
         enrollment: cancelForm.enrollmentId,
         student_name: cancelForm.studentName,
-        cancel_date: cancelForm.cancel_date || null,
         inward_no: cancelForm.inward_no || null,
         inward_date: cancelForm.inward_date || null,
         outward_no: cancelForm.outward_no || null,
@@ -595,7 +592,6 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
           <table className="w-full border-collapse border">
             <thead>
               <tr className="bg-gray-100">
-                <th className="border p-2 text-left">Cancel Date</th>
                 <th className="border p-2 text-left">Enrollment No</th>
                 <th className="border p-2 text-left">Student Name</th>
                 <th className="border p-2 text-left">Inward No</th>
@@ -609,12 +605,11 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
             <tbody>
               {cancelRecords.length === 0 ? (
                 <tr>
-                  <td className="border p-4 text-center" colSpan={9}>No cancellation records</td>
+                  <td className="border p-4 text-center" colSpan={8}>No cancellation records</td>
                 </tr>
               ) : (
                 cancelRecords.map(record => (
                   <tr key={record.id}>
-                    <td className="border p-2">{isoToDMY(record.cancel_date) || '-'}</td>
                     <td className="border p-2">{record.enrollment_no}</td>
                     <td className="border p-2">{record.student_name}</td>
                     <td className="border p-2">{record.inward_no || '-'}</td>
@@ -859,18 +854,6 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
       </div>
 
       {/* ================= ROW 2 ================= */}
-      <div className="col-span-12 md:col-span-2">
-        <label className="block mb-1">Cancel Date</label>
-        <input
-          type="date"
-          value={cancelForm.cancel_date}
-          onChange={(e) =>
-            handleCancelFormChange('cancel_date', e.target.value)
-          }
-          className="border rounded px-3 py-2 w-full"
-        />
-      </div>
-
       <div className="col-span-12 md:col-span-2">
         <label className="block mb-1">Inward No</label>
         <input

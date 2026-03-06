@@ -3,12 +3,16 @@
  * Centralized configuration for API and media URLs
  */
 
+const defaultBackendOrigin = import.meta.env.PROD
+  ? 'http://localhost:8000'
+  : 'http://localhost:8001';
+
 const config = {
   // API base URL - where Django backend runs
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || defaultBackendOrigin,
   
   // Media base URL - where Django serves media files
-  mediaBaseUrl: import.meta.env.VITE_MEDIA_BASE_URL || 'http://localhost:8000',
+  mediaBaseUrl: import.meta.env.VITE_MEDIA_BASE_URL || defaultBackendOrigin,
   
   // Helper to build media URLs
   getMediaUrl: (path) => {

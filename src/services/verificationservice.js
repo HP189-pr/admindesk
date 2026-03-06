@@ -2,12 +2,11 @@
 // All API and data logic for Verification page
 
 import { isoToDMY, dmyToISO } from "../utils/date";
+import { API_BASE_URL } from "../api/axiosInstance";
 
 const apiUrl = (path) => {
-  const envBase = import.meta?.env?.VITE_API_BASE_URL?.trim();
-  if (envBase) return `${envBase.replace(/\/$/, '')}${path}`;
-  if (import.meta.env.DEV) return `http://127.0.0.1:8001${path}`;
-  return path;
+  const base = (API_BASE_URL || '').replace(/\/$/, '');
+  return `${base}${path}`;
 };
 
 // Resolve enrollment number to enrollment object (for auto name fetch)

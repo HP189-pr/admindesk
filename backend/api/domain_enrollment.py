@@ -4,7 +4,6 @@ Enrollment, StudentProfile
 from django.contrib.auth.models import User
 from django.db import models
 from django.contrib.postgres.search import SearchVectorField
-from django.utils import timezone
 from .domain_courses import Institute, SubBranch, MainBranch
 
 __all__ = [
@@ -60,6 +59,7 @@ class StudentProfile(models.Model):
     mobile_adhar = models.CharField(max_length=20, null=True, blank=True, db_column='mobile_adhar')
     name_adhar = models.CharField(max_length=255, null=True, blank=True, db_column='name_adhar')
     mother_name = models.CharField(max_length=255, null=True, blank=True, db_column='mother_name')
+    father_name = models.CharField(max_length=255, null=True, blank=True, db_column='father_name')
     category = models.CharField(max_length=50, null=True, blank=True, db_column='category')
     photo_uploaded = models.BooleanField(default=False, db_column='photo_uploaded')
     is_d2d = models.BooleanField(default=False, db_column='is_d2d')
@@ -85,7 +85,6 @@ class AdmissionCancel(models.Model):
     ]
 
     id = models.AutoField(primary_key=True)
-    cancel_date = models.DateField(default=timezone.now)
     enrollment = models.OneToOneField(
         Enrollment,
         on_delete=models.CASCADE,
@@ -102,7 +101,7 @@ class AdmissionCancel(models.Model):
 
     class Meta:
         db_table = 'admission_cancel'
-        ordering = ['-cancel_date', '-id']
+        ordering = ['-created_at', '-id']
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)

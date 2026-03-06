@@ -5,17 +5,20 @@ const resolveApiBase = () => {
   const envBase = import.meta?.env?.VITE_API_BASE_URL?.trim();
   if (envBase) return envBase.replace(/\/$/, '');
 
-  if (typeof window === 'undefined') return 'http://127.0.0.1:8000';
+  const defaultBackendPort = import.meta?.env?.PROD ? '8000' : '8001';
+
+  if (typeof window === 'undefined') return `http://127.0.0.1:${defaultBackendPort}`;
 
   const url = new URL(window.location.href);
-  const devPorts = new Set(['3000', '5173', '5174', '8081']);
-  // If frontend runs on a dev port, assume backend on same host port 8000
-  if (devPorts.has(url.port)) {
-    url.port = '8000';
+  const localHost = ['127.0.0.1', 'localhost'].includes(url.hostname);
+  const frontendPorts = new Set(['3000', '5173', '5174', '8081']);
+  // If frontend runs locally on known UI ports, map to configured backend port.
+  if (localHost && frontendPorts.has(url.port)) {
+    url.port = defaultBackendPort;
     return url.origin;
   }
-  if (!url.port && (url.hostname === 'localhost' || url.hostname === '127.0.0.1')) {
-    url.port = '8000';
+  if (localHost && !url.port) {
+    url.port = defaultBackendPort;
     return url.origin;
   }
   return url.origin;

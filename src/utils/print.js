@@ -9,6 +9,26 @@ export const printElement = (element, options = {}) => {
     return;
   }
 
+  const resolveElement = (input) => {
+    if (!input) return null;
+    if (typeof input === "string") {
+      return document.querySelector(input);
+    }
+    if (input && typeof input === "object" && "current" in input) {
+      return input.current || null;
+    }
+    if (input && typeof input.cloneNode === "function") {
+      return input;
+    }
+    return null;
+  };
+
+  const target = resolveElement(element);
+  if (!target) {
+    console.warn("printElement: Could not resolve a printable DOM element.", element);
+    return;
+  }
+
   // -----------------------------
   // OPTIONS (BACKWARD COMPATIBLE)
   // -----------------------------
@@ -44,7 +64,7 @@ export const printElement = (element, options = {}) => {
   // -----------------------------
   // CLONE CONTENT
   // -----------------------------
-  const clone = element.cloneNode(true);
+  const clone = target.cloneNode(true);
 
   // Remove scrollbars & height locks
   clone.querySelectorAll("*").forEach((el) => {

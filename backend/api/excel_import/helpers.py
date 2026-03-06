@@ -52,13 +52,46 @@ def parse_excel_date(val: Any):
         except Exception:
             pass
     sval = str(val).strip()
-    if sval.lower() in ("nat", "nan", "null", "none", "<na>") or sval == "":
+    low = sval.lower()
+    if low in ("nat", "nan", "null", "none", "<na>", "", "-", "--", "na", "n/a", "nil"):
         return None
-    for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%Y/%m/%d", "%m/%d/%Y", "%d.%m.%Y"):
+
+    # Numeric strings from CSV/Excel (e.g. "45230", "45230.0")
+    try:
+        snum = float(str(sval).replace(",", ""))
+        if snum > 25000:
+            origin = datetime(1899, 12, 30)
+            return (origin + timedelta(days=int(snum))).date()
+    except Exception:
+        pass
+
+    for fmt in (
+        "%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%Y/%m/%d", "%m/%d/%Y", "%d.%m.%Y",
+        "%Y-%m-%d %H:%M:%S", "%d-%m-%Y %H:%M:%S", "%d/%m/%Y %H:%M:%S", "%d.%m.%Y %H:%M:%S",
+        "%Y-%m-%d %H:%M", "%d-%m-%Y %H:%M", "%d/%m/%Y %H:%M", "%d.%m.%Y %H:%M",
+        "%d-%m-%Y %I:%M:%S %p", "%d/%m/%Y %I:%M:%S %p", "%Y-%m-%d %I:%M:%S %p",
+    ):
         try:
             return datetime.strptime(sval, fmt).date()
         except Exception:
             continue
+
+    # Final tolerant fallback (dayfirst handles dd-mm-yyyy / dd/mm/yyyy naturally)
+    if pd is not None:
+        try:
+            parsed = pd.to_datetime(sval, errors='coerce', dayfirst=True)
+            if not pd.isna(parsed):
+                if hasattr(parsed, 'to_pydatetime'):
+                    parsed = parsed.to_pydatetime()
+                if isinstance(parsed, datetime):
+                    if getattr(parsed, 'tzinfo', None) is not None:
+                        parsed = parsed.replace(tzinfo=None)
+                    return parsed.date()
+                if isinstance(parsed, date):
+                    return parsed
+        except Exception:
+            pass
+
     return None
 
 def clean_cell(val: Any):

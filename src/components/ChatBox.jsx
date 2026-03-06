@@ -438,7 +438,8 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
       };
     };
 
-    wsReconnectTimerRef.current = setTimeout(connect, 0);
+    const initialConnectDelayMs = import.meta.env.DEV ? 120 : 0;
+    wsReconnectTimerRef.current = setTimeout(connect, initialConnectDelayMs);
 
     return () => {
       closedByCleanup = true;

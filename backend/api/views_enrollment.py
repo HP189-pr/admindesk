@@ -157,7 +157,7 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
 
 
 class AdmissionCancelViewSet(viewsets.ModelViewSet):
-    queryset = AdmissionCancel.objects.select_related('enrollment').order_by('-cancel_date', '-id')
+    queryset = AdmissionCancel.objects.select_related('enrollment').order_by('-created_at', '-id')
     serializer_class = AdmissionCancelSerializer
     permission_classes = [IsAuthenticated]
 

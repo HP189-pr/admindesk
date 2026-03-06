@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { useAuth } from './AuthContext.jsx';
 import AdminBulkUpload from '../components/AdminBulkUpload.jsx';
+import { API_BASE_URL } from '../api/axiosInstance';
 
 const SERVICES = [
   { key: 'DOCREC', label: 'Document Received' },
-  { key: 'ENROLLMENT', label: 'Enrollment' },
+  { key: 'ENROLLMENT_PROFILE', label: 'Enrollment / Student Profile' },
   { key: 'DEGREE', label: 'Degree' },
   { key: 'MIGRATION', label: 'Migration' },
   { key: 'VERIFICATION', label: 'Verification' },
   { key: 'PROVISIONAL', label: 'Provisional' },
   { key: 'STUDENT_FEES', label: 'Student Fees' },
-  { key: 'STUDENT_PROFILE', label: 'Student Profile' },
   { key: 'INSTITUTIONAL_VERIFICATION', label: 'Institutional Verification' },
   { key: 'LEAVE', label: 'Leave Entry' },
   { key: 'EMP_PROFILE', label: 'EMP Profile' },
@@ -27,7 +27,19 @@ export default function AuthUpload() {
   const [result, setResult] = useState(null);
   const [autoCreateDocRec, setAutoCreateDocRec] = useState(false);
 
-  const apiBase = (import.meta && import.meta.env && import.meta.env.VITE_API_BASE) || 'http://127.0.0.1:8000/api';
+  const apiBase = `${API_BASE_URL.replace(/\/$/, '')}/api`;
+  const selectValue = (service === 'ENROLLMENT' || service === 'STUDENT_PROFILE')
+    ? 'ENROLLMENT_PROFILE'
+    : service;
+
+  const handleServiceSelectChange = (nextValue) => {
+    if (nextValue === 'ENROLLMENT_PROFILE') {
+      // Default to ENROLLMENT; uploader auto-detect can switch to STUDENT_PROFILE by columns.
+      setService('ENROLLMENT');
+      return;
+    }
+    setService(nextValue);
+  };
 
   /* ===================== DOWNLOAD TEMPLATE ===================== */
 
@@ -156,8 +168,8 @@ export default function AuthUpload() {
       <div className="flex items-center gap-2">
         <label className="font-semibold">Service:</label>
         <select
-          value={service}
-          onChange={(e) => setService(e.target.value)}
+          value={selectValue}
+          onChange={(e) => handleServiceSelectChange(e.target.value)}
           className="border rounded p-1 text-black"
         >
           {SERVICES.map((s) => (

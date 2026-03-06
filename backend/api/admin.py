@@ -186,9 +186,9 @@ Notes:
 
 import base64
 from decimal import Decimal, InvalidOperation
-from io import BytesIO
+from io import BytesIO, StringIO
 from datetime import datetime, date, timedelta
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
@@ -206,7 +206,7 @@ except Exception:  # pragma: no cover
 
 from .models import (
     MainBranch, SubBranch, Module, Menu, UserPermission, Institute, Enrollment,
-    DocRec, PayPrefixRule, Eca, InstLetterMain, InstLetterStudent,
+    AdmissionCancel, DocRec, PayPrefixRule, Eca, InstLetterMain, InstLetterStudent,
     MigrationRecord, ProvisionalRecord, StudentProfile, Verification, FeeType,
     Receipt
 )
@@ -223,6 +223,145 @@ def _sanitize(v: Any) -> str:
     if v is None:
         return ""
     return str(v).replace("\r", " ").replace("\n", " ")
+
+
+def _excel_engine_order(file_ext: Optional[str]) -> List[Optional[str]]:
+    ext = (file_ext or '').lower().strip()
+    if ext == '.xlsx':
+        return ['openpyxl', None, 'xlrd']
+    if ext == '.xls':
+        return ['xlrd', 'openpyxl', None]
+    return [None, 'openpyxl', 'xlrd']
+
+
+def _read_excel_compat(source: Any, file_ext: Optional[str] = None, **kwargs):
+    """Read Excel with engine fallbacks so admin upload supports .xlsx/.xls robustly."""
+    # Convert to bytes once so retries don't depend on a mutable file pointer.
+    if isinstance(source, (bytes, bytearray)):
+        raw = bytes(source)
+    elif hasattr(source, 'read'):
+        raw = source.read()
+        try:
+            source.seek(0)
+        except Exception:
+            pass
+    elif hasattr(source, 'getvalue'):
+        raw = source.getvalue()
+    else:
+        raw = bytes(source)
+
+    if not raw:
+        raise ValueError('Uploaded file is empty')
+
+    def _read_delimited_fallback(raw_bytes: bytes):
+        """Parse text-delimited content uploaded with Excel extensions."""
+        head_bytes = raw_bytes[:4096]
+        has_delimiter_hint = any(d in head_bytes for d in (b'\t', b',', b';', b'|'))
+        has_utf16_bom = raw_bytes.startswith((b'\xff\xfe', b'\xfe\xff'))
+        if not has_delimiter_hint and not has_utf16_bom:
+            return None
+
+        def _decode_delimited_text(data: bytes) -> str:
+            if data.startswith(b'\xef\xbb\xbf'):
+                try:
+                    return data.decode('utf-8-sig')
+                except Exception:
+                    pass
+            if data.startswith((b'\xff\xfe', b'\xfe\xff')):
+                for enc in ('utf-16', 'utf-16-le', 'utf-16-be'):
+                    try:
+                        return data.decode(enc)
+                    except Exception:
+                        continue
+
+            try:
+                return data.decode('utf-8-sig')
+            except Exception:
+                pass
+
+            if b'\x00' in data[:4096]:
+                for enc in ('utf-16-le', 'utf-16-be', 'utf-16'):
+                    try:
+                        return data.decode(enc)
+                    except Exception:
+                        continue
+
+            return data.decode('latin-1', errors='replace')
+
+        decoded_text = _decode_delimited_text(raw_bytes)
+        if not decoded_text or not decoded_text.strip():
+            return None
+
+        sample = decoded_text[:8192]
+        lines = [ln for ln in sample.splitlines() if ln.strip()]
+        if not lines:
+            return None
+
+        delimiter = None
+        try:
+            sniff_sample = '\n'.join(lines[:20])
+            dialect = csv.Sniffer().sniff(sniff_sample, delimiters='\t,;|')
+            delimiter = dialect.delimiter
+        except Exception:
+            probe = '\n'.join(lines[:20])
+            counts = {
+                '\t': probe.count('\t'),
+                ',': probe.count(','),
+                ';': probe.count(';'),
+                '|': probe.count('|'),
+            }
+            delimiter = max(counts, key=counts.get)
+            if counts[delimiter] == 0:
+                delimiter = None
+
+        if not delimiter:
+            return None
+
+        # Keep only arguments that read_csv supports.
+        allowed_csv_args = {
+            'header', 'names', 'index_col', 'usecols', 'dtype', 'skiprows',
+            'nrows', 'na_values', 'keep_default_na', 'parse_dates', 'dayfirst',
+        }
+        csv_kwargs = {k: v for k, v in kwargs.items() if k in allowed_csv_args}
+
+        parse_kwargs = {
+            'sep': delimiter,
+            'engine': 'python',
+            'on_bad_lines': 'skip',
+            **csv_kwargs,
+        }
+        try:
+            df_text = pd.read_csv(StringIO(decoded_text), **parse_kwargs)
+        except TypeError:
+            parse_kwargs.pop('on_bad_lines', None)
+            df_text = pd.read_csv(StringIO(decoded_text), **parse_kwargs)
+
+        sheet_name = kwargs.get('sheet_name', None)
+        if sheet_name is None:
+            return {'Sheet1': df_text}
+        return df_text
+
+    last_err = None
+    for engine in _excel_engine_order(file_ext):
+        try:
+            bio = BytesIO(raw)
+            read_kwargs = dict(kwargs)
+            if engine:
+                read_kwargs['engine'] = engine
+            return pd.read_excel(bio, **read_kwargs)
+        except Exception as exc:
+            last_err = exc
+            continue
+
+    # Fallback for tab/comma-separated text files uploaded with .xls/.xlsx extension.
+    try:
+        text_result = _read_delimited_fallback(raw)
+        if text_result is not None:
+            return text_result
+    except Exception as exc:
+        last_err = exc
+
+    raise ValueError(str(last_err) if last_err else 'Unable to read Excel workbook')
 
 # Import helpers from excel_import.helpers
 from .excel_import.helpers import parse_excel_date, clean_cell, row_value, parse_boolean_cell
@@ -333,12 +472,21 @@ def get_import_spec(model) -> Dict[str, Any]:
         MainBranch: {"allowed_columns": ["maincourse_id", "course_code", "course_name"], "required_keys": ["maincourse_id"], "create_requires": ["maincourse_id"]},
         SubBranch: {"allowed_columns": ["subcourse_id", "subcourse_name", "maincourse_id"], "required_keys": ["subcourse_id", "maincourse_id"], "create_requires": ["subcourse_id", "maincourse_id"]},
         Institute: {"allowed_columns": ["institute_id", "institute_code", "institute_name", "institute_campus", "institute_address", "institute_city"], "required_keys": ["institute_id"], "create_requires": ["institute_id", "institute_code"]},
-        Enrollment: {"allowed_columns": ["enrollment_no", "student_name", "batch", "institute_id", "subcourse_id", "maincourse_id", "temp_enroll_no", "enrollment_date", "admission_date"], "required_keys": ["enrollment_no"], "create_requires": ["enrollment_no", "student_name", "batch", "institute_id", "subcourse_id", "maincourse_id"]},
+        Enrollment: {
+            "allowed_columns": [
+                "enrollment_no", "student_name", "batch", "institute_id", "subcourse_id", "maincourse_id", "temp_enroll_no", "enrollment_date", "admission_date",
+                "gender", "birth_date", "address1", "address2", "city1", "city2", "contact_no", "email", "fees", "hostel_required",
+                "aadhar_no", "abc_id", "mobile_adhar", "name_adhar", "mother_name", "father_name", "category", "photo_uploaded", "is_d2d", "program_medium",
+            ],
+            "required_keys": ["enrollment_no"],
+            "create_requires": ["enrollment_no", "student_name", "batch", "institute_id", "subcourse_id", "maincourse_id"],
+        },
+        AdmissionCancel: {"allowed_columns": ["enrollment_no", "student_name", "inward_no", "inward_date", "outward_no", "outward_date", "can_remark", "status"], "required_keys": ["enrollment_no"], "create_requires": ["enrollment_no"]},
             # Employee (EmpProfile) bulk upload
             EmpProfile: {"allowed_columns": ["emp_id", "emp_name", "emp_designation", "username", "usercode", "actual_joining", "emp_birth_date", "usr_birth_date", "department_joining", "institute_id", "status", "el_balance", "sl_balance", "cl_balance", "vacation_balance", "joining_year_allocation_el", "joining_year_allocation_cl", "joining_year_allocation_sl", "joining_year_allocation_vac", "leave_calculation_date", "emp_short"], "required_keys": ["emp_id"], "create_requires": ["emp_id", "emp_name"]},
             # LeaveEntry bulk upload
             LeaveEntry: {"allowed_columns": ["leave_report_no", "emp_id", "leave_code", "start_date", "end_date", "total_days", "reason", "status", "created_by", "approved_by", "approved_at"], "required_keys": ["leave_report_no"], "create_requires": ["leave_report_no", "emp_id", "leave_code", "start_date"]},
-        StudentProfile: {"allowed_columns": ["enrollment_no", "gender", "birth_date", "address1", "address2", "city1", "city2", "contact_no", "email", "fees", "hostel_required", "aadhar_no", "abc_id", "mobile_adhar", "name_adhar", "mother_name", "category", "photo_uploaded", "is_d2d", "program_medium"], "required_keys": ["enrollment_no"], "create_requires": ["enrollment_no"]},
+        StudentProfile: {"allowed_columns": ["enrollment_no", "gender", "birth_date", "address1", "address2", "city1", "city2", "contact_no", "email", "fees", "hostel_required", "aadhar_no", "abc_id", "mobile_adhar", "name_adhar", "mother_name", "father_name", "category", "photo_uploaded", "is_d2d", "program_medium"], "required_keys": ["enrollment_no"], "create_requires": ["enrollment_no"]},
     FeeType: {"allowed_columns": ["code", "name", "is_active"], "required_keys": ["code", "name"], "create_requires": ["code", "name"]},
     Receipt: {
         "allowed_columns": [
@@ -378,6 +526,80 @@ COLUMN_ALIAS_MAP: Dict[type, Dict[str, str]] = {
         "cancelled": "is_cancelled",
         "cancel reason": "cancel_reason",
         "cancelled by": "cancelled_by",
+    },
+    Enrollment: {
+        "enrollment": "enrollment_no",
+        "enrollment no": "enrollment_no",
+        "roll no": "enrollment_no",
+        "roll number": "enrollment_no",
+        "temp enrollment": "temp_enroll_no",
+        "temp enrollment no": "temp_enroll_no",
+        "temp student id": "temp_enroll_no",
+        "student name": "student_name",
+        "studentname": "student_name",
+        "registration date": "enrollment_date",
+        "enrollment date": "enrollment_date",
+        "admission date": "admission_date",
+        "institute": "institute_id",
+        "institute id": "institute_id",
+        "main": "maincourse_id",
+        "main course": "maincourse_id",
+        "maincourse id": "maincourse_id",
+        "sub": "subcourse_id",
+        "sub course": "subcourse_id",
+        "subcourse id": "subcourse_id",
+        "birth date": "birth_date",
+        "admission cast category": "category",
+        "admission caste category": "category",
+        "local address": "address1",
+        "permanent address": "address2",
+        "local city": "city1",
+        "permanent city": "city2",
+        "mobile no": "contact_no",
+        "mobile number": "contact_no",
+        "total fees": "fees",
+        "abc id": "abc_id",
+        "aadhaar number": "aadhar_no",
+        "aadhar number": "aadhar_no",
+        "name as per aadhar": "name_adhar",
+        "name as per aadhaar": "name_adhar",
+        "mobile no as per aadhar": "mobile_adhar",
+        "mobile no as per aadhaar": "mobile_adhar",
+        "mothername": "mother_name",
+        "father name": "father_name",
+        "is d2d": "is_d2d",
+        "program medium": "program_medium",
+        "photo uploaded": "photo_uploaded",
+        "use hostel": "hostel_required",
+    },
+    StudentProfile: {
+        "enrollment": "enrollment_no",
+        "enrollment no": "enrollment_no",
+        "roll no": "enrollment_no",
+        "roll number": "enrollment_no",
+        "birth date": "birth_date",
+        "admission cast category": "category",
+        "admission caste category": "category",
+        "local address": "address1",
+        "permanent address": "address2",
+        "local city": "city1",
+        "permanent city": "city2",
+        "mobile no": "contact_no",
+        "mobile number": "contact_no",
+        "total fees": "fees",
+        "abc id": "abc_id",
+        "aadhaar number": "aadhar_no",
+        "aadhar number": "aadhar_no",
+        "name as per aadhar": "name_adhar",
+        "name as per aadhaar": "name_adhar",
+        "mobile no as per aadhar": "mobile_adhar",
+        "mobile no as per aadhaar": "mobile_adhar",
+        "mothername": "mother_name",
+        "father name": "father_name",
+        "is d2d": "is_d2d",
+        "program medium": "program_medium",
+        "photo uploaded": "photo_uploaded",
+        "use hostel": "hostel_required",
     },
     StudentFeesLedger: {
         "enrollment": "enrollment_no",
@@ -491,9 +713,10 @@ class ExcelUploadMixin:
                     if ext not in allowed_ext:
                         return JsonResponse({"error": "Unsupported file type. Use .xlsx or .xls"}, status=415)
                     request.session["excel_data"] = base64.b64encode(up.read()).decode("utf-8")
+                    request.session["excel_file_ext"] = ext
                     up.seek(0)
                     try:
-                        sheets = list(pd.read_excel(up, sheet_name=None, nrows=0).keys())
+                        sheets = list(_read_excel_compat(up, file_ext=ext, sheet_name=None, nrows=0).keys())
                     except Exception as e:
                         return JsonResponse({"error": f"Read error: {e}"}, status=400)
                     return JsonResponse({"sheets": sheets})
@@ -502,6 +725,7 @@ class ExcelUploadMixin:
                 if action == "columns":
                     sheet = request.POST.get("sheet")
                     encoded = request.session.get("excel_data")
+                    file_ext = request.session.get("excel_file_ext")
                     if not encoded:
                         return JsonResponse({"error": "Session expired"}, status=400)
                     spec, allowed, allowed_map, alias_map, allowed_norm_map, alias_norm_map = _build_allowed_maps(self.model)
@@ -517,7 +741,7 @@ class ExcelUploadMixin:
                     read_err = None
                     for try_h in (0, 1, 2):
                         try:
-                            frames_try = pd.read_excel(BytesIO(base64.b64decode(encoded)), sheet_name=None, header=try_h, nrows=0)
+                            frames_try = _read_excel_compat(base64.b64decode(encoded), file_ext=file_ext, sheet_name=None, header=try_h, nrows=0)
                         except Exception as e:
                             read_err = e
                             continue
@@ -535,7 +759,7 @@ class ExcelUploadMixin:
                     if frames is None:
                         # final attempt without header override to bubble up the original error
                         try:
-                            frames = pd.read_excel(BytesIO(base64.b64decode(encoded)), sheet_name=None, nrows=0)
+                            frames = _read_excel_compat(base64.b64decode(encoded), file_ext=file_ext, sheet_name=None, nrows=0)
                         except Exception as e:
                             return JsonResponse({"error": f"Read error: {e}"}, status=400)
 
@@ -571,16 +795,17 @@ class ExcelUploadMixin:
                 if action == "debug_columns":
                     sheet = request.POST.get("sheet")
                     encoded = request.session.get("excel_data")
+                    file_ext = request.session.get("excel_file_ext")
                     if not encoded:
                         return JsonResponse({"error": "Session expired"}, status=400)
                     try:
                         # Try with the stored header row first
                         header_map = request.session.get('excel_header_rows', {})
                         header_row = header_map.get(str(sheet), 0)
-                        frames = pd.read_excel(BytesIO(base64.b64decode(encoded)), sheet_name=None, header=header_row)
+                        frames = _read_excel_compat(base64.b64decode(encoded), file_ext=file_ext, sheet_name=None, header=header_row)
                     except Exception:
                         try:
-                            frames = pd.read_excel(BytesIO(base64.b64decode(encoded)), sheet_name=None)
+                            frames = _read_excel_compat(base64.b64decode(encoded), file_ext=file_ext, sheet_name=None)
                         except Exception as e:
                             return JsonResponse({"error": f"Read error: {e}"}, status=400)
                     if sheet not in frames:
@@ -595,13 +820,14 @@ class ExcelUploadMixin:
                     if not selected:
                         return JsonResponse({"error": "Select at least one column"}, status=400)
                     encoded = request.session.get("excel_data")
+                    file_ext = request.session.get("excel_file_ext")
                     if not encoded:
                         return JsonResponse({"error": "Session expired"}, status=400)
                     # Respect any detected header row for this sheet (fallback to 0)
                     header_map = request.session.get('excel_header_rows', {})
                     header_row = header_map.get(str(sheet), 0)
                     try:
-                        frames = pd.read_excel(BytesIO(base64.b64decode(encoded)), sheet_name=None, header=header_row)
+                        frames = _read_excel_compat(base64.b64decode(encoded), file_ext=file_ext, sheet_name=None, header=header_row)
                     except Exception as e:
                         return JsonResponse({"error": f"Read error: {e}"}, status=400)
                     if sheet not in frames:
@@ -650,13 +876,14 @@ class ExcelUploadMixin:
                     if not selected:
                         return JsonResponse({"error": "No columns selected"}, status=400)
                     encoded = request.session.get("excel_data")
+                    file_ext = request.session.get("excel_file_ext")
                     if not encoded:
                         return JsonResponse({"error": "Session expired"}, status=400)
                     # Respect detected header row if available when committing
                     header_map = request.session.get('excel_header_rows', {})
                     header_row = header_map.get(str(sheet), 0)
                     try:
-                        frames = pd.read_excel(BytesIO(base64.b64decode(encoded)), sheet_name=None, header=header_row)
+                        frames = _read_excel_compat(base64.b64decode(encoded), file_ext=file_ext, sheet_name=None, header=header_row)
                     except Exception as e:
                         return JsonResponse({"error": f"Read error: {e}"}, status=400)
                     if sheet not in frames:
@@ -811,34 +1038,161 @@ class ExcelUploadMixin:
                                 if created: counts["created"] += 1; add_log(i, "created", "Created", iid)
                                 else: counts["updated"] += 1; add_log(i, "updated", "Updated", iid)
                         elif issubclass(self.model, Enrollment) and sheet_norm == "enrollment":
+                            profile_cols = {
+                                "gender", "birth_date", "address1", "address2", "city1", "city2", "contact_no", "email", "fees",
+                                "hostel_required", "aadhar_no", "abc_id", "mobile_adhar", "name_adhar", "mother_name", "father_name",
+                                "category", "photo_uploaded", "is_d2d", "program_medium",
+                            }
+
+                            def _safe_date(cell):
+                                try:
+                                    d = parse_excel_date(cell)
+                                    if hasattr(d, 'to_pydatetime'):
+                                        d = d.to_pydatetime()
+                                    if isinstance(d, datetime):
+                                        if d.tzinfo is not None:
+                                            d = d.replace(tzinfo=None)
+                                        return d.date()
+                                    return d if isinstance(d, date) else None
+                                except Exception:
+                                    return None
+
+                            def _to_bool(v):
+                                try:
+                                    s = str(v).strip().lower()
+                                except Exception:
+                                    return False
+                                return s in ("1", "true", "yes", "y", "t")
+
+                            def _normalize_fk_token(raw):
+                                val = _clean_cell(raw)
+                                if val in (None, ""):
+                                    return None
+                                s = str(val).strip()
+                                if not s:
+                                    return None
+                                import re as _re
+                                if _re.fullmatch(r"[0-9]+(?:\.0+)?", s):
+                                    try:
+                                        return str(int(float(s)))
+                                    except Exception:
+                                        return s
+                                return s
+
+                            def _resolve_institute(raw):
+                                token = _normalize_fk_token(raw)
+                                if not token:
+                                    return None, None
+                                obj = None
+                                try:
+                                    obj = Institute.objects.filter(institute_id=int(token)).first()
+                                except Exception:
+                                    obj = None
+                                if not obj:
+                                    obj = Institute.objects.filter(institute_code__iexact=token).first()
+                                if not obj:
+                                    obj = Institute.objects.filter(institute_name__iexact=token).first()
+                                return obj, token
+
+                            def _resolve_maincourse(raw):
+                                token = _normalize_fk_token(raw)
+                                if not token:
+                                    return None, None
+                                obj = MainBranch.objects.filter(maincourse_id__iexact=token).first()
+                                if not obj:
+                                    obj = MainBranch.objects.filter(course_code__iexact=token).first()
+                                if not obj:
+                                    obj = MainBranch.objects.filter(course_name__iexact=token).first()
+                                return obj, token
+
+                            def _resolve_subcourse(raw, main_obj=None):
+                                token = _normalize_fk_token(raw)
+                                if not token:
+                                    return None, None
+                                obj = SubBranch.objects.filter(subcourse_id__iexact=token).first()
+                                if not obj and main_obj is not None:
+                                    obj = SubBranch.objects.filter(subcourse_name__iexact=token, maincourse=main_obj).first()
+                                if not obj:
+                                    obj = SubBranch.objects.filter(subcourse_name__iexact=token).first()
+                                return obj, token
+
+                            def _upsert_profile_from_row(enrollment_obj, row):
+                                # Only run if at least one profile column was selected.
+                                if not any(c in eff for c in profile_cols):
+                                    return None
+
+                                fees_val = None
+                                if "fees" in eff:
+                                    try:
+                                        raw_fees = row.get("fees")
+                                        if raw_fees not in (None, ""):
+                                            fees_val = float(raw_fees)
+                                    except Exception:
+                                        fees_val = None
+
+                                birth_date = _safe_date(row.get("birth_date")) if "birth_date" in eff else None
+                                _, created_profile = StudentProfile.objects.update_or_create(
+                                    enrollment=enrollment_obj,
+                                    defaults={
+                                        **({"gender": row.get("gender") or None} if "gender" in eff else {}),
+                                        **({"birth_date": birth_date} if "birth_date" in eff else {}),
+                                        **({"address1": row.get("address1") or None} if "address1" in eff else {}),
+                                        **({"address2": row.get("address2") or None} if "address2" in eff else {}),
+                                        **({"city1": row.get("city1") or None} if "city1" in eff else {}),
+                                        **({"city2": row.get("city2") or None} if "city2" in eff else {}),
+                                        **({"contact_no": row.get("contact_no") or None} if "contact_no" in eff else {}),
+                                        **({"email": row.get("email") or None} if "email" in eff else {}),
+                                        **({"fees": fees_val} if "fees" in eff else {}),
+                                        **({"hostel_required": _to_bool(row.get("hostel_required"))} if "hostel_required" in eff else {}),
+                                        **({"aadhar_no": row.get("aadhar_no") or None} if "aadhar_no" in eff else {}),
+                                        **({"abc_id": row.get("abc_id") or None} if "abc_id" in eff else {}),
+                                        **({"mobile_adhar": row.get("mobile_adhar") or None} if "mobile_adhar" in eff else {}),
+                                        **({"name_adhar": row.get("name_adhar") or None} if "name_adhar" in eff else {}),
+                                        **({"mother_name": row.get("mother_name") or None} if "mother_name" in eff else {}),
+                                        **({"father_name": row.get("father_name") or None} if "father_name" in eff else {}),
+                                        **({"category": row.get("category") or None} if "category" in eff else {}),
+                                        **({"photo_uploaded": _to_bool(row.get("photo_uploaded"))} if "photo_uploaded" in eff else {}),
+                                        **({"is_d2d": _to_bool(row.get("is_d2d"))} if "is_d2d" in eff else {}),
+                                        **({"program_medium": row.get("program_medium") or None} if "program_medium" in eff else {}),
+                                        "updated_by": request.user,
+                                    }
+                                )
+                                return created_profile
+
                             for i, (_, r) in enumerate(df.iterrows(), start=2):
                                 try:
                                     en = str(r.get("enrollment_no") or "").strip()
                                     if not en:
                                         counts["skipped"] += 1; add_log(i, "skipped", "Missing enrollment_no"); continue
-                                    inst_key = _clean_cell(r.get("institute_id")) if "institute_id" in eff else None
-                                    sub_key = _clean_cell(r.get("subcourse_id")) if "subcourse_id" in eff else None
-                                    main_key = _clean_cell(r.get("maincourse_id")) if "maincourse_id" in eff else None
-                                    inst = Institute.objects.filter(institute_id=inst_key).first() if inst_key else None
-                                    sub = SubBranch.objects.filter(subcourse_id=sub_key).first() if sub_key else None
-                                    main = MainBranch.objects.filter(maincourse_id=main_key).first() if main_key else None
-                                    if ("institute_id" in eff and not inst) or ("subcourse_id" in eff and not sub) or ("maincourse_id" in eff and not main):
-                                        counts["skipped"] += 1; add_log(i, "skipped", "Related FK missing"); continue
-                                    # Parse dates robustly; skip problematic conversions (NaTType etc.)
-                                    def _safe_date(cell):
-                                        try:
-                                            d = parse_excel_date(cell)
-                                            if hasattr(d, 'to_pydatetime'):
-                                                d = d.to_pydatetime()
-                                            if isinstance(d, datetime):
-                                                if d.tzinfo is not None:
-                                                    d = d.replace(tzinfo=None)
-                                                return d.date()
-                                            return d if isinstance(d, date) else None
-                                        except Exception:
-                                            return None
+
+                                    existing_enrollment = Enrollment.objects.filter(enrollment_no=en).first()
+
+                                    inst = sub = main = None
+                                    inst_key = sub_key = main_key = None
+
+                                    if "institute_id" in eff:
+                                        inst, inst_key = _resolve_institute(r.get("institute_id"))
+                                    if "maincourse_id" in eff:
+                                        main, main_key = _resolve_maincourse(r.get("maincourse_id"))
+                                    if "subcourse_id" in eff:
+                                        sub, sub_key = _resolve_subcourse(r.get("subcourse_id"), main)
+
+                                    missing_fk = []
+                                    if "institute_id" in eff and inst_key and not inst:
+                                        missing_fk.append("institute_id")
+                                    if "subcourse_id" in eff and sub_key and not sub:
+                                        missing_fk.append("subcourse_id")
+                                    if "maincourse_id" in eff and main_key and not main:
+                                        missing_fk.append("maincourse_id")
+
+                                    # For existing enrollment rows, unresolved FK inputs are ignored so
+                                    # profile-only updates can still be applied.
+                                    if missing_fk and not existing_enrollment:
+                                        counts["skipped"] += 1; add_log(i, "skipped", f"Related FK missing: {', '.join(missing_fk)}"); continue
+
                                     enroll_dt = _safe_date(r.get("enrollment_date")) if "enrollment_date" in eff else None
                                     adm_dt = _safe_date(r.get("admission_date")) if "admission_date" in eff else None
+
                                     obj, created = Enrollment.objects.update_or_create(
                                         enrollment_no=en,
                                         defaults={
@@ -848,13 +1202,21 @@ class ExcelUploadMixin:
                                             **({"subcourse": sub} if getattr(sub, 'pk', None) is not None and "subcourse_id" in eff else {}),
                                             **({"maincourse": main} if getattr(main, 'pk', None) is not None and "maincourse_id" in eff else {}),
                                             **({"temp_enroll_no": r.get("temp_enroll_no")} if "temp_enroll_no" in eff else {}),
-                                            **({"enrollment_date": enroll_dt} if enroll_dt and "enrollment_date" in eff else {}),
-                                            **({"admission_date": adm_dt} if adm_dt and "admission_date" in eff else {}),
+                                            **({"enrollment_date": enroll_dt} if "enrollment_date" in eff else {}),
+                                            **({"admission_date": adm_dt} if "admission_date" in eff else {}),
                                             "updated_by": request.user,
                                         }
                                     )
-                                    if created: counts["created"] += 1; add_log(i, "created", "Created", en)
-                                    else: counts["updated"] += 1; add_log(i, "updated", "Updated", en)
+
+                                    profile_created = _upsert_profile_from_row(obj, r)
+                                    profile_msg = ""
+                                    if profile_created is True:
+                                        profile_msg = " + profile created"
+                                    elif profile_created is False:
+                                        profile_msg = " + profile updated"
+
+                                    if created: counts["created"] += 1; add_log(i, "created", f"Created{profile_msg}", en)
+                                    else: counts["updated"] += 1; add_log(i, "updated", f"Updated{profile_msg}", en)
                                 except Exception as row_err:
                                     # Attempt recovery for NaTType/utcoffset errors by retrying without date fields
                                     err_txt = str(row_err)
@@ -873,13 +1235,90 @@ class ExcelUploadMixin:
                                                     "updated_by": request.user,
                                                 }
                                             )
-                                            if created: counts["created"] += 1; add_log(i, "created", "Recovered without dates", r.get("enrollment_no"))
-                                            else: counts["updated"] += 1; add_log(i, "updated", "Recovered without dates", r.get("enrollment_no"))
+
+                                            profile_created = _upsert_profile_from_row(obj, r)
+                                            profile_msg = ""
+                                            if profile_created is True:
+                                                profile_msg = " + profile created"
+                                            elif profile_created is False:
+                                                profile_msg = " + profile updated"
+
+                                            if created: counts["created"] += 1; add_log(i, "created", f"Recovered without dates{profile_msg}", r.get("enrollment_no"))
+                                            else: counts["updated"] += 1; add_log(i, "updated", f"Recovered without dates{profile_msg}", r.get("enrollment_no"))
                                             continue
                                         except Exception as recover_err:
                                             counts["skipped"] += 1; add_log(i, "skipped", f"Row error: {recover_err}", str(r.get("enrollment_no") or '').strip()); continue
                                     counts["skipped"] += 1; add_log(i, "skipped", f"Row error: {row_err}", str(r.get("enrollment_no") or '').strip())
                                     continue
+                        elif issubclass(self.model, AdmissionCancel):  # relax sheet name requirement
+                            for i, (_, r) in enumerate(df.iterrows(), start=2):
+                                en_no = str(row_value(r, "enrollment_no") or "").strip()
+                                if not en_no:
+                                    counts["skipped"] += 1; add_log(i, "skipped", "Missing enrollment_no"); continue
+
+                                enrollment = (
+                                    Enrollment.objects.filter(enrollment_no__iexact=en_no).first()
+                                    or Enrollment.objects.filter(temp_enroll_no__iexact=en_no).first()
+                                )
+                                if not enrollment:
+                                    counts["skipped"] += 1; add_log(i, "skipped", f"Enrollment {en_no} not found"); continue
+
+                                status_raw = _clean_cell(row_value(r, "status")) if "status" in eff else AdmissionCancel.STATUS_CANCELLED
+                                if status_raw in (None, ""):
+                                    status_raw = AdmissionCancel.STATUS_CANCELLED
+                                status_val = _normalize_choice(status_raw, AdmissionCancel.STATUS_CHOICES)
+                                if not status_val:
+                                    norm_status = str(status_raw).strip().upper()
+                                    if norm_status.startswith("CANCEL"):
+                                        status_val = AdmissionCancel.STATUS_CANCELLED
+                                    elif norm_status.startswith("REVOKE"):
+                                        status_val = AdmissionCancel.STATUS_REVOKED
+                                if not status_val:
+                                    counts["skipped"] += 1; add_log(i, "skipped", f"Invalid status: {status_raw}", en_no); continue
+
+                                inward_date_raw = row_value(r, "inward_date")
+                                inward_date = None
+                                if "inward_date" in eff:
+                                    inward_text = str(inward_date_raw).strip() if inward_date_raw is not None else ""
+                                    if inward_text and inward_text.lower() not in {"-", "--", "na", "n/a", "none", "null", "<na>"}:
+                                        inward_date = parse_excel_date(inward_date_raw)
+                                        if not inward_date:
+                                            counts["skipped"] += 1; add_log(i, "skipped", f"Invalid inward_date: {inward_text}", en_no); continue
+
+                                outward_date_raw = row_value(r, "outward_date")
+                                outward_date = None
+                                if "outward_date" in eff:
+                                    outward_text = str(outward_date_raw).strip() if outward_date_raw is not None else ""
+                                    if outward_text and outward_text.lower() not in {"-", "--", "na", "n/a", "none", "null", "<na>"}:
+                                        outward_date = parse_excel_date(outward_date_raw)
+                                        if not outward_date:
+                                            counts["skipped"] += 1; add_log(i, "skipped", f"Invalid outward_date: {outward_text}", en_no); continue
+
+                                student_name_val = _clean_cell(row_value(r, "student_name")) if "student_name" in eff else None
+                                if not student_name_val:
+                                    student_name_val = enrollment.student_name or ""
+
+                                defaults = {
+                                    "student_name": student_name_val,
+                                    "status": status_val,
+                                }
+                                if "inward_no" in eff:
+                                    defaults["inward_no"] = _clean_cell(row_value(r, "inward_no")) or None
+                                if "inward_date" in eff:
+                                    defaults["inward_date"] = inward_date
+                                if "outward_no" in eff:
+                                    defaults["outward_no"] = _clean_cell(row_value(r, "outward_no")) or None
+                                if "outward_date" in eff:
+                                    defaults["outward_date"] = outward_date
+                                if "can_remark" in eff:
+                                    defaults["can_remark"] = _clean_cell(row_value(r, "can_remark")) or None
+
+                                obj, created = AdmissionCancel.objects.update_or_create(
+                                    enrollment=enrollment,
+                                    defaults=defaults,
+                                )
+                                if created: counts["created"] += 1; add_log(i, "created", "Created", en_no)
+                                else: counts["updated"] += 1; add_log(i, "updated", "Updated", en_no)
                         elif issubclass(self.model, DocRec) and sheet_norm in ("docrec", "doc_rec"):
                             for i, (_, r) in enumerate(df.iterrows(), start=2):
                                 apply_for = str(r.get("apply_for") or "").strip().upper()
@@ -1368,6 +1807,7 @@ class ExcelUploadMixin:
                                         **({"mobile_adhar": r.get("mobile_adhar") or None} if "mobile_adhar" in eff else {}),
                                         **({"name_adhar": r.get("name_adhar") or None} if "name_adhar" in eff else {}),
                                         **({"mother_name": r.get("mother_name") or None} if "mother_name" in eff else {}),
+                                        **({"father_name": r.get("father_name") or None} if "father_name" in eff else {}),
                                         **({"category": r.get("category") or None} if "category" in eff else {}),
                                         **({"photo_uploaded": _to_bool(r.get("photo_uploaded"))} if "photo_uploaded" in eff else {}),
                                         **({"is_d2d": _to_bool(r.get("is_d2d"))} if "is_d2d" in eff else {}),
@@ -1610,7 +2050,7 @@ class ExcelUploadMixin:
 
                     if "excel_data" in request.session:
                         del request.session["excel_data"]
-                    resp = {"success": True, "counts": counts, "log": log}
+                    resp = {"success": True, "counts": counts, "log": log, "total_rows": (len(df.index) if df is not None else 0)}
                     if log_xlsx_b64:
                         resp['log_xlsx'] = log_xlsx_b64
                         resp['log_name'] = log_name
@@ -1883,6 +2323,14 @@ class EnrollmentAdmin(CommonAdminMixin):
     list_filter = ("institute", "batch", "maincourse", "subcourse", "enrollment_date", "admission_date")
     readonly_fields = ("created_at", "updated_at")
 
+@admin.register(AdmissionCancel)
+class AdmissionCancelAdmin(CommonAdminMixin):
+    list_display = ("id", "enrollment", "student_name", "inward_no", "inward_date", "outward_no", "outward_date", "status", "created_at")
+    search_fields = ("enrollment__enrollment_no", "enrollment__temp_enroll_no", "student_name", "inward_no", "outward_no")
+    list_filter = ("status", "inward_date", "outward_date", "created_at")
+    readonly_fields = ("created_at",)
+    autocomplete_fields = ("enrollment",)
+
 @admin.register(InstLetterStudent)
 class InstLetterStudentAdmin(admin.ModelAdmin):
     list_display = ("id", "doc_rec", "sr_no", "enrollment", "student_name",  "study_mode", "verification_status")
@@ -1893,7 +2341,7 @@ class InstLetterStudentAdmin(admin.ModelAdmin):
 @admin.register(StudentProfile)
 class StudentProfileAdmin(CommonAdminMixin):
     list_display = ("id", "enrollment", "gender", "birth_date", "city1", "city2", "contact_no", "abc_id", "photo_uploaded", "is_d2d", "updated_at")
-    search_fields = ("enrollment__enrollment_no", "enrollment__student_name", "abc_id", "aadhar_no", "mobile_adhar", "name_adhar", "mother_name", "category")
+    search_fields = ("enrollment__enrollment_no", "enrollment__student_name", "abc_id", "aadhar_no", "mobile_adhar", "name_adhar", "mother_name", "father_name", "category")
     list_filter = ("gender", "city1", "city2", "photo_uploaded", "is_d2d", "category")
     readonly_fields = ("created_at", "updated_at")
     autocomplete_fields = ("enrollment",)

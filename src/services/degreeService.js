@@ -6,10 +6,8 @@ import API from '../api/axiosInstance';
 
 /* ==================== API PATHS ==================== */
 /* IMPORTANT:
-   axiosInstance baseURL MUST be '/'
-   so these resolve to:
-   - http://localhost:3000/api/... (Vite dev)
-   - http://localhost:8081/api/... (Nginx prod)
+    API base is resolved centrally in axiosInstance via VITE_API_BASE_URL
+    (with local fallbacks), so these relative paths always map to that base.
 */
 const DEGREE_API = '/api/degrees/';
 const CONVOCATION_API = '/api/convocations/';

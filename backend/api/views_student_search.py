@@ -110,7 +110,7 @@ class StudentSearchViewSet(viewsets.ViewSet):
             'gender': profile.gender if profile else '',
             'birth_date': profile.birth_date.strftime('%Y-%m-%d') if profile and profile.birth_date else '',
             'mother_name': profile.mother_name if profile else '',
-            'father_name': profile.name_adhar if profile else '',  # Assuming name_adhar contains father name
+            'father_name': (profile.father_name or profile.name_adhar) if profile else '',
             'aadhar_no': profile.aadhar_no if profile else '',
             'address1': profile.address1 if profile else '',
             'address2': profile.address2 if profile else '',

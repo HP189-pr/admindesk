@@ -1,6 +1,10 @@
 @echo off
 cd /d E:\admindesk\backend
 
+set "BIND_HOST=%~1"
+if "%BIND_HOST%"=="" set "BIND_HOST=127.0.0.1"
+set "BIND_PORT=8001"
+
 REM Activate the workspace venv
 call ..\.venv\Scripts\activate.bat
 
@@ -13,4 +17,5 @@ REM Ensure GTK runtime (for WeasyPrint) is on PATH; adjust if installed elsewher
 set "PATH=D:\Program Files\GTK3-Runtime Win64\bin;%PATH%"
 
 REM WebSocket-compatible ASGI server (replaces Waitress WSGI)
-..\.venv\Scripts\python.exe -m daphne -b 0.0.0.0 -p 8001 backend.asgi:application
+echo Starting ASGI backend at http://%BIND_HOST%:%BIND_PORT%
+..\.venv\Scripts\python.exe -m daphne -b %BIND_HOST% -p %BIND_PORT% backend.asgi:application
