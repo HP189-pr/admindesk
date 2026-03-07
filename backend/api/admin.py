@@ -972,7 +972,7 @@ class ExcelUploadMixin:
                         sheet_lc = (sheet or "").lower().replace(" ", "")
                         # Generic date columns across sheets
                         _normalize(["doc_rec_date","date","birth_date"])  # safe no-op if absent
-                        if sheet_lc == "enrollment":
+                        if issubclass(self.model, Enrollment) or sheet_lc == "enrollment":
                             _normalize(["enrollment_date","admission_date"])
                         elif sheet_lc == "migration":
                             _normalize(["mg_date"])
@@ -1037,7 +1037,7 @@ class ExcelUploadMixin:
                                 )
                                 if created: counts["created"] += 1; add_log(i, "created", "Created", iid)
                                 else: counts["updated"] += 1; add_log(i, "updated", "Updated", iid)
-                        elif issubclass(self.model, Enrollment) and sheet_norm == "enrollment":
+                        elif issubclass(self.model, Enrollment):  # relax sheet name requirement
                             profile_cols = {
                                 "gender", "birth_date", "address1", "address2", "city1", "city2", "contact_no", "email", "fees",
                                 "hostel_required", "aadhar_no", "abc_id", "mobile_adhar", "name_adhar", "mother_name", "father_name",
@@ -1166,6 +1166,19 @@ class ExcelUploadMixin:
                                         counts["skipped"] += 1; add_log(i, "skipped", "Missing enrollment_no"); continue
 
                                     existing_enrollment = Enrollment.objects.filter(enrollment_no=en).first()
+                                    if not existing_enrollment:
+                                        existing_enrollment = Enrollment.objects.filter(enrollment_no__iexact=en).first()
+                                    if not existing_enrollment:
+                                        try:
+                                            norm_en = ''.join(str(en).split()).lower()
+                                            existing_enrollment = (
+                                                Enrollment.objects
+                                                .annotate(_norm=Replace(Lower(models.F('enrollment_no')), Value(' '), Value('')))
+                                                .filter(_norm=norm_en)
+                                                .first()
+                                            )
+                                        except Exception:
+                                            existing_enrollment = None
 
                                     inst = sub = main = None
                                     inst_key = sub_key = main_key = None
@@ -1179,16 +1192,17 @@ class ExcelUploadMixin:
 
                                     missing_fk = []
                                     if "institute_id" in eff and inst_key and not inst:
-                                        missing_fk.append("institute_id")
+                                        missing_fk.append(("institute_id", inst_key))
                                     if "subcourse_id" in eff and sub_key and not sub:
-                                        missing_fk.append("subcourse_id")
+                                        missing_fk.append(("subcourse_id", sub_key))
                                     if "maincourse_id" in eff and main_key and not main:
-                                        missing_fk.append("maincourse_id")
+                                        missing_fk.append(("maincourse_id", main_key))
 
                                     # For existing enrollment rows, unresolved FK inputs are ignored so
                                     # profile-only updates can still be applied.
                                     if missing_fk and not existing_enrollment:
-                                        counts["skipped"] += 1; add_log(i, "skipped", f"Related FK missing: {', '.join(missing_fk)}"); continue
+                                        fk_detail = ', '.join([f"{field}='{value}'" for field, value in missing_fk])
+                                        counts["skipped"] += 1; add_log(i, "skipped", f"Related FK missing: {fk_detail}"); continue
 
                                     enroll_dt = _safe_date(r.get("enrollment_date")) if "enrollment_date" in eff else None
                                     adm_dt = _safe_date(r.get("admission_date")) if "admission_date" in eff else None

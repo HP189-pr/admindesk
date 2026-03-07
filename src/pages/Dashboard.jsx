@@ -25,10 +25,46 @@ const MONTH_FILTER_OPTIONS = [
     { value: "all", label: "All" },
 ];
 
-const getMonthFromDate = (value) => {
+const parseDashboardDate = (value) => {
     if (!value) return null;
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return null;
+    if (value instanceof Date) {
+        return Number.isNaN(value.getTime()) ? null : value;
+    }
+
+    const raw = String(value).trim();
+    if (!raw) return null;
+
+    // Accept ISO-style strings like yyyy-mm-dd and yyyy/mm/dd first.
+    let m = raw.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+    if (m) {
+        const year = Number(m[1]);
+        const month = Number(m[2]);
+        const day = Number(m[3]);
+        if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+            return new Date(year, month - 1, day);
+        }
+        return null;
+    }
+
+    // API date output is configured as dd-mm-yyyy / dd/mm/yyyy.
+    m = raw.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+    if (m) {
+        const day = Number(m[1]);
+        const month = Number(m[2]);
+        const year = Number(m[3]);
+        if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+            return new Date(year, month - 1, day);
+        }
+        return null;
+    }
+
+    const parsed = new Date(raw);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const getMonthFromDate = (value) => {
+    const d = parseDashboardDate(value);
+    if (!d) return null;
     return d.getMonth();
 };
 

@@ -742,15 +742,15 @@ class BulkUploadView(APIView):
             if "institute_id" in row_cols:
                 institute, inst_key = _resolve_institute(row.get("institute_id"))
                 if inst_key and not institute:
-                    missing_related.append("institute_id")
+                    missing_related.append(("institute_id", inst_key))
             if "maincourse_id" in row_cols:
                 maincourse, main_key = _resolve_maincourse(row.get("maincourse_id"))
                 if main_key and not maincourse:
-                    missing_related.append("maincourse_id")
+                    missing_related.append(("maincourse_id", main_key))
             if "subcourse_id" in row_cols:
                 subcourse, sub_key = _resolve_subcourse(row.get("subcourse_id"), maincourse)
                 if sub_key and not subcourse:
-                    missing_related.append("subcourse_id")
+                    missing_related.append(("subcourse_id", sub_key))
 
             return institute, subcourse, maincourse, missing_related
 
@@ -814,10 +814,55 @@ class BulkUploadView(APIView):
             resolved_enr_key = (getattr(enr_existing, 'enrollment_no', None) or enr_key)
 
             institute, subcourse, maincourse, missing_related = _resolve_enrollment_fk(row)
+
+            # Heuristic for common BED enrollment numbers (for example 25BED06001):
+            # if FK inputs are missing/unresolved on new rows, infer institute from key
+            # and main/sub from historical BED records for that institute.
+            if enr_existing is None:
+                enr_text = str(resolved_enr_key or '').strip()
+                import re as _re
+                if enr_text and _re.search(r'bed', enr_text, flags=_re.IGNORECASE):
+                    if institute is None:
+                        m_inst = _re.search(r'bed[^0-9]*([0-9]{2})', enr_text, flags=_re.IGNORECASE)
+                        if m_inst:
+                            try:
+                                inst_guess = int(m_inst.group(1))
+                                institute = Institute.objects.filter(institute_id=inst_guess).first() or institute
+                            except Exception:
+                                pass
+
+                    if institute is not None and (maincourse is None or subcourse is None):
+                        try:
+                            top = (
+                                Enrollment.objects
+                                .filter(institute=institute, enrollment_no__icontains='BED')
+                                .values('maincourse_id', 'subcourse_id')
+                                .annotate(cnt=models.Count('id'))
+                                .order_by('-cnt')
+                                .first()
+                            )
+                        except Exception:
+                            top = None
+                        if top:
+                            if maincourse is None and top.get('maincourse_id'):
+                                maincourse = MainBranch.objects.filter(maincourse_id=top.get('maincourse_id')).first() or maincourse
+                            if subcourse is None and top.get('subcourse_id'):
+                                subcourse = SubBranch.objects.filter(subcourse_id=top.get('subcourse_id')).first() or subcourse
+
             # Existing enrollment rows are allowed to continue even when FK columns are
             # unresolved; we keep existing linked FK values in that case.
             if enr_existing is None and missing_related:
-                return None, None, f"Related FK missing: {', '.join(missing_related)}"
+                unresolved = []
+                for field, value in missing_related:
+                    if field == 'institute_id' and institute is None:
+                        unresolved.append((field, value))
+                    elif field == 'maincourse_id' and maincourse is None:
+                        unresolved.append((field, value))
+                    elif field == 'subcourse_id' and subcourse is None:
+                        unresolved.append((field, value))
+                if unresolved:
+                    parts = [f"{field}='{value}'" for field, value in unresolved]
+                    return None, None, f"Related FK missing: {', '.join(parts)}"
 
             student_name = _clean_cell(row.get("student_name")) if "student_name" in row_cols else None
             batch_val = _to_int_or_none(row.get("batch")) if "batch" in row_cols else None
@@ -825,16 +870,68 @@ class BulkUploadView(APIView):
             enrollment_date = _parse_excel_date_safe(row.get("enrollment_date")) if "enrollment_date" in row_cols else None
             admission_date = _parse_excel_date_safe(row.get("admission_date")) if "admission_date" in row_cols else None
 
+            # Infer batch for new rows when the source column is missing/blank.
+            # Common case: enrollment keys like 25BED06047 imply batch 2025.
+            if enr_existing is None and batch_val is None:
+                def _infer_batch_from_key(text):
+                    if not text:
+                        return None
+                    import re as _re
+                    s = str(text).strip()
+                    if not s:
+                        return None
+
+                    m4 = _re.search(r'(20\d{2})', s)
+                    if m4:
+                        try:
+                            y = int(m4.group(1))
+                            if 1990 <= y <= 2100:
+                                return y
+                        except Exception:
+                            pass
+
+                    # Two-digit prefix before alpha token (e.g. 25BED...)
+                    m2 = _re.match(r'^([0-9]{2})(?=[A-Za-z])', s)
+                    if m2:
+                        try:
+                            yy = int(m2.group(1))
+                            y = 2000 + yy
+                            current_year = timezone.now().year
+                            if y > current_year + 1:
+                                alt = 1900 + yy
+                                if 1990 <= alt <= current_year + 1:
+                                    return alt
+                            return y
+                        except Exception:
+                            return None
+                    return None
+
+                batch_val = _infer_batch_from_key(resolved_enr_key) or _infer_batch_from_key(temp_enroll_no)
+
+                # Final fallback: use most recent historical batch for the same mapping.
+                if batch_val is None and institute is not None:
+                    try:
+                        hist_qs = Enrollment.objects.filter(institute=institute).exclude(batch__isnull=True)
+                        if maincourse is not None:
+                            hist_qs = hist_qs.filter(maincourse=maincourse)
+                        if subcourse is not None:
+                            hist_qs = hist_qs.filter(subcourse=subcourse)
+                        hist_batch = hist_qs.order_by('-batch').values_list('batch', flat=True).first()
+                        if hist_batch is not None:
+                            batch_val = int(hist_batch)
+                    except Exception:
+                        pass
+
             defaults = {}
             if student_name is not None:
                 defaults["student_name"] = student_name
             if batch_val is not None:
                 defaults["batch"] = batch_val
-            if "institute_id" in row_cols and institute is not None:
+            if institute is not None and ("institute_id" in row_cols or enr_existing is None):
                 defaults["institute"] = institute
-            if "subcourse_id" in row_cols and subcourse is not None:
+            if subcourse is not None and ("subcourse_id" in row_cols or enr_existing is None):
                 defaults["subcourse"] = subcourse
-            if "maincourse_id" in row_cols and maincourse is not None:
+            if maincourse is not None and ("maincourse_id" in row_cols or enr_existing is None):
                 defaults["maincourse"] = maincourse
             if temp_enroll_no is not None:
                 defaults["temp_enroll_no"] = temp_enroll_no

@@ -21,6 +21,7 @@ import {
 import { fetchInstituteCodes, fetchCourseCodes, fetchSubcourseNames } from "../services/provisionalservice";
 import { useAuth } from "../hooks/AuthContext";
 import API from "../api/axiosInstance";
+import EnrollmentReport from "../report/enrollmentreport";
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -34,8 +35,13 @@ const CANCEL_STATUS_OPTIONS = [
   { value: "REVOKED", label: "Revoked" },
 ];
 
+const CANCEL_ENTRY_MODE_OPTIONS = [
+  { value: 'single', label: 'Single' },
+  { value: 'multiple', label: 'Multiple' },
+];
+
 const CANCEL_ACTION = "Cancel Admission";
-const BATCH_OPTIONS = [2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024];
+const BATCH_OPTIONS = [2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024,2025, 2026, 2027, 2028];
 
   const buildCancelFormState = () => {
     return {
@@ -53,6 +59,27 @@ const BATCH_OPTIONS = [2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024];
     error: ''
   };
 };
+
+const buildMultipleCancelRowState = () => ({
+  rowId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  enrollmentNoInput: '',
+  enrollmentId: null,
+  studentName: '',
+  status: CANCEL_STATUS_OPTIONS[0].value,
+  loadingEnrollment: false,
+  error: '',
+});
+
+const buildMultipleCancelFormState = () => ({
+  inward_no: '',
+  inward_date: '',
+  outward_no: '',
+  outward_date: '',
+  can_remark: '',
+  rows: [buildMultipleCancelRowState()],
+  isSubmitting: false,
+  error: '',
+});
 
 const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar, onToggleChatbox }) => {
   const navigate = useNavigate();
@@ -107,6 +134,8 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
   const [cancelRecords, setCancelRecords] = useState([]);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelForm, setCancelForm] = useState(() => buildCancelFormState());
+  const [cancelEntryMode, setCancelEntryMode] = useState('single');
+  const [multipleCancelForm, setMultipleCancelForm] = useState(() => buildMultipleCancelFormState());
   useEffect(() => {
     API.get("/api/my-navigation/")
       .then(({ data }) => {
@@ -373,12 +402,90 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
     setCancelForm(buildCancelFormState());
   };
 
+  const resetMultipleCancelForm = () => {
+    setMultipleCancelForm(buildMultipleCancelFormState());
+  };
+
   const handleCancelFormChange = (field, value) => {
     setCancelForm(prev => ({ ...prev, [field]: value, error: '' }));
   };
 
+  const handleMultipleCancelFormChange = (field, value) => {
+    setMultipleCancelForm(prev => ({ ...prev, [field]: value, error: '' }));
+  };
+
+  const handleMultipleRowChange = (rowId, field, value) => {
+    setMultipleCancelForm(prev => ({
+      ...prev,
+      error: '',
+      rows: prev.rows.map((row) => {
+        if (row.rowId !== rowId) return row;
+
+        if (field === 'enrollmentNoInput') {
+          return {
+            ...row,
+            enrollmentNoInput: value,
+            enrollmentId: null,
+            studentName: '',
+            error: '',
+          };
+        }
+
+        return {
+          ...row,
+          [field]: value,
+          error: field === 'status' ? '' : row.error,
+        };
+      }),
+    }));
+  };
+
+  const addMultipleCancelRow = () => {
+    setMultipleCancelForm(prev => ({
+      ...prev,
+      rows: [...prev.rows, buildMultipleCancelRowState()],
+      error: '',
+    }));
+  };
+
+  const removeMultipleCancelRow = (rowId) => {
+    setMultipleCancelForm(prev => {
+      if (prev.rows.length <= 1) return prev;
+      return {
+        ...prev,
+        rows: prev.rows.filter((row) => row.rowId !== rowId),
+        error: '',
+      };
+    });
+  };
+
+  const extractApiErrorMessage = (error, fallbackMessage) => {
+    const apiData = error?.response?.data;
+    if (!apiData) return error?.message || fallbackMessage;
+    if (typeof apiData === 'string') return apiData;
+    if (apiData.detail) return String(apiData.detail);
+    if (Array.isArray(apiData.non_field_errors) && apiData.non_field_errors.length > 0) {
+      return apiData.non_field_errors.join(' ');
+    }
+
+    const firstKey = Object.keys(apiData)[0];
+    if (!firstKey) return fallbackMessage;
+
+    const firstVal = apiData[firstKey];
+    if (Array.isArray(firstVal)) {
+      return firstVal.join(' ');
+    }
+    return String(firstVal);
+  };
+
   const fetchEnrollmentForCancellation = async (overrideEnrollmentNo) => {
-    const enrollmentNo = (overrideEnrollmentNo || cancelForm.enrollmentNoInput || '').trim();
+    const looksLikeEvent =
+      overrideEnrollmentNo &&
+      typeof overrideEnrollmentNo === 'object' &&
+      typeof overrideEnrollmentNo.preventDefault === 'function';
+
+    const normalizedOverride = looksLikeEvent ? undefined : overrideEnrollmentNo;
+    const enrollmentNo = String(normalizedOverride ?? cancelForm.enrollmentNoInput ?? '').trim();
     if (!enrollmentNo) {
       setCancelForm(prev => ({ ...prev, error: 'Enter enrollment number to fetch details.' }));
       return;
@@ -395,7 +502,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
         ...prev,
         enrollmentId: record.id,
         studentName: record.student_name || '',
-        enrollmentNoInput: record.enrollment_no,
+        enrollmentNoInput: String(record.enrollment_no ?? ''),
         loadingEnrollment: false,
       }));
     } catch (error) {
@@ -409,11 +516,77 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
     }
   };
 
+  const fetchEnrollmentForMultipleRow = async (rowId, overrideEnrollmentNo) => {
+    const currentRow = multipleCancelForm.rows.find((row) => row.rowId === rowId);
+    const enrollmentNo = String(overrideEnrollmentNo ?? currentRow?.enrollmentNoInput ?? '').trim();
+
+    if (!enrollmentNo) {
+      setMultipleCancelForm(prev => ({
+        ...prev,
+        rows: prev.rows.map((row) => (
+          row.rowId === rowId
+            ? { ...row, enrollmentId: null, studentName: '', error: 'Enter enrollment number to fetch details.' }
+            : row
+        )),
+      }));
+      return;
+    }
+
+    setMultipleCancelForm(prev => ({
+      ...prev,
+      error: '',
+      rows: prev.rows.map((row) => (
+        row.rowId === rowId
+          ? { ...row, loadingEnrollment: true, error: '' }
+          : row
+      )),
+    }));
+
+    try {
+      const record = await resolveEnrollment(enrollmentNo);
+      if (!record) {
+        throw new Error('Enrollment not found (exact match)');
+      }
+
+      setMultipleCancelForm(prev => ({
+        ...prev,
+        rows: prev.rows.map((row) => (
+          row.rowId === rowId
+            ? {
+              ...row,
+              enrollmentId: record.id,
+              studentName: record.student_name || '',
+              enrollmentNoInput: String(record.enrollment_no ?? ''),
+              loadingEnrollment: false,
+              error: '',
+            }
+            : row
+        )),
+      }));
+    } catch (error) {
+      setMultipleCancelForm(prev => ({
+        ...prev,
+        rows: prev.rows.map((row) => (
+          row.rowId === rowId
+            ? {
+              ...row,
+              loadingEnrollment: false,
+              enrollmentId: null,
+              studentName: '',
+              error: error.message || 'Enrollment not found',
+            }
+            : row
+        )),
+      }));
+    }
+  };
+
   const startCancellationFromRow = (enrollment) => {
     forceShowCancelPanel();
+    setCancelEntryMode('single');
     setCancelForm({
       ...buildCancelFormState(),
-      enrollmentNoInput: enrollment.enrollment_no || '',
+      enrollmentNoInput: String(enrollment.enrollment_no ?? ''),
       enrollmentId: enrollment.id,
       studentName: enrollment.student_name || '',
     });
@@ -447,6 +620,71 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
     } finally {
       setCancelForm(prev => ({ ...prev, isSubmitting: false }));
     }
+  };
+
+  const submitMultipleCancelForm = async () => {
+    const filledRows = multipleCancelForm.rows.filter(
+      (row) => String(row.enrollmentNoInput || '').trim().length > 0
+    );
+
+    if (filledRows.length === 0) {
+      setMultipleCancelForm(prev => ({
+        ...prev,
+        error: 'Enter at least one enrollment number.',
+      }));
+      return;
+    }
+
+    const unresolvedRows = filledRows.filter((row) => !row.enrollmentId);
+    if (unresolvedRows.length > 0) {
+      setMultipleCancelForm(prev => ({
+        ...prev,
+        error: `Fetch valid student details before saving: ${unresolvedRows.map((row) => row.enrollmentNoInput || 'Row').join(', ')}`,
+      }));
+      return;
+    }
+
+    setMultipleCancelForm(prev => ({ ...prev, isSubmitting: true, error: '' }));
+
+    let successCount = 0;
+    const failures = [];
+
+    for (const row of filledRows) {
+      const payload = {
+        enrollment: row.enrollmentId,
+        student_name: row.studentName,
+        inward_no: multipleCancelForm.inward_no || null,
+        inward_date: multipleCancelForm.inward_date || null,
+        outward_no: multipleCancelForm.outward_no || null,
+        outward_date: multipleCancelForm.outward_date || null,
+        can_remark: multipleCancelForm.can_remark || null,
+        status: row.status,
+      };
+
+      try {
+        await createAdmissionCancellation(payload);
+        successCount += 1;
+      } catch (error) {
+        failures.push(`${row.enrollmentNoInput}: ${extractApiErrorMessage(error, 'Failed to save cancellation')}`);
+      }
+    }
+
+    if (successCount > 0) {
+      toast.success(`${successCount} cancellation record${successCount > 1 ? 's' : ''} saved`);
+      loadCancellationRecords();
+      loadEnrollments(state.searchTerm, state.pagination.currentPage);
+    }
+
+    if (failures.length > 0) {
+      setMultipleCancelForm(prev => ({
+        ...prev,
+        isSubmitting: false,
+        error: failures.join(' | '),
+      }));
+      return;
+    }
+
+    setMultipleCancelForm(buildMultipleCancelFormState());
   };
 
   const getHydratedEnrollment = (enr) => ({
@@ -811,154 +1049,326 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
     </div>
   );
 
-  const renderCancelAdmissionForm = () => (
-  <div className="space-y-4">
-    <h2 className="text-lg font-semibold">Cancel Admission Entry</h2>
+  const renderCancelAdmissionForm = () => {
+    const isSingleMode = cancelEntryMode === 'single';
 
-        {/* GRID */}
-    <div className="grid grid-cols-12 gap-4 items-end">
-
-      {/* ================= ROW 1 ================= */}
-      <div className="col-span-12 md:col-span-5">
-        <label className="block mb-1">Enrollment Number *</label>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={cancelForm.enrollmentNoInput}
-            onChange={(e) =>
-              handleCancelFormChange('enrollmentNoInput', e.target.value)
-            }
-            className="border rounded px-3 py-2 w-[220px]"
-            placeholder="Type enrollment number"
-          />
-          <button
-            type="button"
-            className="px-4 py-2 bg-indigo-600 text-white rounded"
-            onClick={fetchEnrollmentForCancellation}
-            disabled={cancelForm.loadingEnrollment}
-          >
-            {cancelForm.loadingEnrollment ? 'Fetching...' : 'Fetch'}
-          </button>
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <h2 className="text-lg font-semibold">Cancel Admission Entry</h2>
+          <label className="text-sm min-w-[180px]">
+            <span className="block mb-1 font-medium">Entry Type</span>
+            <select
+              value={cancelEntryMode}
+              onChange={(e) => setCancelEntryMode(e.target.value)}
+              className="border rounded px-3 py-2 w-full"
+            >
+              {CANCEL_ENTRY_MODE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </label>
         </div>
+
+        {isSingleMode ? (
+          <>
+            <div className="grid grid-cols-12 gap-4 items-end">
+              <div className="col-span-12 md:col-span-5">
+                <label className="block mb-1">Enrollment Number *</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={cancelForm.enrollmentNoInput}
+                    onChange={(e) =>
+                      handleCancelFormChange('enrollmentNoInput', e.target.value)
+                    }
+                    className="border rounded px-3 py-2 w-[220px]"
+                    placeholder="Type enrollment number"
+                  />
+                  <button
+                    type="button"
+                    className="px-4 py-2 bg-indigo-600 text-white rounded"
+                    onClick={() => fetchEnrollmentForCancellation()}
+                    disabled={cancelForm.loadingEnrollment}
+                  >
+                    {cancelForm.loadingEnrollment ? 'Fetching...' : 'Fetch'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="col-span-12 md:col-span-7">
+                <label className="block mb-1">Student Name</label>
+                <input
+                  type="text"
+                  value={cancelForm.studentName}
+                  readOnly
+                  className="border rounded px-3 py-2 w-full bg-gray-100"
+                  placeholder="Auto after fetch"
+                />
+              </div>
+
+              <div className="col-span-12 md:col-span-2">
+                <label className="block mb-1">Inward No</label>
+                <input
+                  type="text"
+                  value={cancelForm.inward_no}
+                  onChange={(e) =>
+                    handleCancelFormChange('inward_no', e.target.value)
+                  }
+                  className="border rounded px-3 py-2 w-full"
+                />
+              </div>
+
+              <div className="col-span-12 md:col-span-2">
+                <label className="block mb-1">Inward Date</label>
+                <input
+                  type="date"
+                  value={cancelForm.inward_date}
+                  onChange={(e) =>
+                    handleCancelFormChange('inward_date', e.target.value)
+                  }
+                  className="border rounded px-3 py-2 w-full"
+                />
+              </div>
+
+              <div className="col-span-12 md:col-span-3">
+                <label className="block mb-1">Outward No</label>
+                <input
+                  type="text"
+                  value={cancelForm.outward_no}
+                  onChange={(e) =>
+                    handleCancelFormChange('outward_no', e.target.value)
+                  }
+                  className="border rounded px-3 py-2 w-full"
+                />
+              </div>
+
+              <div className="col-span-12 md:col-span-3">
+                <label className="block mb-1">Outward Date</label>
+                <input
+                  type="date"
+                  value={cancelForm.outward_date}
+                  onChange={(e) =>
+                    handleCancelFormChange('outward_date', e.target.value)
+                  }
+                  className="border rounded px-3 py-2 w-full"
+                />
+              </div>
+
+              <div className="col-span-12 md:col-span-2">
+                <label className="block mb-1">Status</label>
+                <select
+                  value={cancelForm.status}
+                  onChange={(e) =>
+                    handleCancelFormChange('status', e.target.value)
+                  }
+                  className="border rounded px-3 py-2 w-full"
+                >
+                  {CANCEL_STATUS_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="col-span-12 md:col-span-7">
+                <label className="block mb-1">Cancellation Remark</label>
+                <input
+                  type="text"
+                  value={cancelForm.can_remark}
+                  onChange={(e) =>
+                    handleCancelFormChange('can_remark', e.target.value)
+                  }
+                  className="border rounded px-3 py-2 w-full"
+                  placeholder="Reason / note for cancellation"
+                />
+              </div>
+
+              <div className="col-span-12 md:col-span-3 flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="px-4 py-2 border rounded"
+                  onClick={resetCancelForm}
+                  disabled={cancelForm.isSubmitting}
+                >
+                  Reset
+                </button>
+
+                <button
+                  type="button"
+                  className="px-5 py-2 bg-red-600 text-white rounded"
+                  onClick={submitCancelForm}
+                  disabled={cancelForm.isSubmitting}
+                >
+                  {cancelForm.isSubmitting ? 'Saving...' : 'Save Cancellation'}
+                </button>
+              </div>
+            </div>
+
+            {cancelForm.error && (
+              <p className="text-sm text-red-600 mt-2">{cancelForm.error}</p>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 items-end">
+              <div>
+                <label className="block mb-1">Inward No</label>
+                <input
+                  type="text"
+                  value={multipleCancelForm.inward_no}
+                  onChange={(e) => handleMultipleCancelFormChange('inward_no', e.target.value)}
+                  className="border rounded px-3 py-2 w-full"
+                  placeholder="Applied to all rows"
+                />
+              </div>
+              <div>
+                <label className="block mb-1">Inward Date</label>
+                <input
+                  type="date"
+                  value={multipleCancelForm.inward_date}
+                  onChange={(e) => handleMultipleCancelFormChange('inward_date', e.target.value)}
+                  className="border rounded px-3 py-2 w-full"
+                />
+              </div>
+              <div>
+                <label className="block mb-1">Outward No</label>
+                <input
+                  type="text"
+                  value={multipleCancelForm.outward_no}
+                  onChange={(e) => handleMultipleCancelFormChange('outward_no', e.target.value)}
+                  className="border rounded px-3 py-2 w-full"
+                  placeholder="Applied to all rows"
+                />
+              </div>
+              <div>
+                <label className="block mb-1">Outward Date</label>
+                <input
+                  type="date"
+                  value={multipleCancelForm.outward_date}
+                  onChange={(e) => handleMultipleCancelFormChange('outward_date', e.target.value)}
+                  className="border rounded px-3 py-2 w-full"
+                />
+              </div>
+              <div className="xl:col-span-1">
+                <label className="block mb-1">Cancellation Remark</label>
+                <input
+                  type="text"
+                  value={multipleCancelForm.can_remark}
+                  onChange={(e) => handleMultipleCancelFormChange('can_remark', e.target.value)}
+                  className="border rounded px-3 py-2 w-full"
+                  placeholder="Optional, applied to all"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {multipleCancelForm.rows.map((row, index) => (
+                <div key={row.rowId} className="rounded-xl border border-slate-200 p-3 bg-slate-50">
+                  <div className="text-sm font-semibold text-slate-700 mb-2">Record {index + 1}</div>
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                    <div className="md:col-span-4">
+                      <label className="block mb-1">Enrollment Number *</label>
+                      <input
+                        type="text"
+                        value={row.enrollmentNoInput}
+                        onChange={(e) => handleMultipleRowChange(row.rowId, 'enrollmentNoInput', e.target.value)}
+                        onBlur={() => fetchEnrollmentForMultipleRow(row.rowId)}
+                        className="border rounded px-3 py-2 w-full"
+                        placeholder="Auto fetch on blur"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <button
+                        type="button"
+                        className="w-full px-3 py-2 bg-indigo-600 text-white rounded"
+                        onClick={() => fetchEnrollmentForMultipleRow(row.rowId)}
+                        disabled={row.loadingEnrollment}
+                      >
+                        {row.loadingEnrollment ? 'Fetching...' : 'Fetch'}
+                      </button>
+                    </div>
+
+                    <div className="md:col-span-4">
+                      <label className="block mb-1">Student Name</label>
+                      <input
+                        type="text"
+                        value={row.studentName}
+                        readOnly
+                        className="border rounded px-3 py-2 w-full bg-gray-100"
+                        placeholder="Auto after fetch"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block mb-1">Status</label>
+                      <select
+                        value={row.status}
+                        onChange={(e) => handleMultipleRowChange(row.rowId, 'status', e.target.value)}
+                        className="border rounded px-3 py-2 w-full"
+                      >
+                        {CANCEL_STATUS_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="md:col-span-12 flex justify-end">
+                      <button
+                        type="button"
+                        className="px-3 py-2 border rounded text-sm disabled:opacity-50"
+                        onClick={() => removeMultipleCancelRow(row.rowId)}
+                        disabled={multipleCancelForm.rows.length <= 1 || multipleCancelForm.isSubmitting}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                  {row.error && <p className="text-sm text-red-600 mt-2">{row.error}</p>}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <button
+                type="button"
+                className="px-4 py-2 bg-slate-700 text-white rounded"
+                onClick={addMultipleCancelRow}
+                disabled={multipleCancelForm.isSubmitting}
+              >
+                Add New Record
+              </button>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="px-4 py-2 border rounded"
+                  onClick={resetMultipleCancelForm}
+                  disabled={multipleCancelForm.isSubmitting}
+                >
+                  Reset
+                </button>
+                <button
+                  type="button"
+                  className="px-5 py-2 bg-red-600 text-white rounded"
+                  onClick={submitMultipleCancelForm}
+                  disabled={multipleCancelForm.isSubmitting}
+                >
+                  {multipleCancelForm.isSubmitting ? 'Saving...' : 'Save All Cancellations'}
+                </button>
+              </div>
+            </div>
+
+            {multipleCancelForm.error && (
+              <p className="text-sm text-red-600 mt-2">{multipleCancelForm.error}</p>
+            )}
+          </>
+        )}
       </div>
-
-      <div className="col-span-12 md:col-span-7">
-        <label className="block mb-1">Student Name</label>
-        <input
-          type="text"
-          value={cancelForm.studentName}
-          readOnly
-          className="border rounded px-3 py-2 w-full bg-gray-100"
-          placeholder="Auto after fetch"
-        />
-      </div>
-
-      {/* ================= ROW 2 ================= */}
-      <div className="col-span-12 md:col-span-2">
-        <label className="block mb-1">Inward No</label>
-        <input
-          type="text"
-          value={cancelForm.inward_no}
-          onChange={(e) =>
-            handleCancelFormChange('inward_no', e.target.value)
-          }
-          className="border rounded px-3 py-2 w-full"
-        />
-      </div>
-
-      <div className="col-span-12 md:col-span-2">
-        <label className="block mb-1">Inward Date</label>
-        <input
-          type="date"
-          value={cancelForm.inward_date}
-          onChange={(e) =>
-            handleCancelFormChange('inward_date', e.target.value)
-          }
-          className="border rounded px-3 py-2 w-full"
-        />
-      </div>
-
-      <div className="col-span-12 md:col-span-3">
-        <label className="block mb-1">Outward No</label>
-        <input
-          type="text"
-          value={cancelForm.outward_no}
-          onChange={(e) =>
-            handleCancelFormChange('outward_no', e.target.value)
-          }
-          className="border rounded px-3 py-2 w-full"
-        />
-      </div>
-
-      <div className="col-span-12 md:col-span-3">
-        <label className="block mb-1">Outward Date</label>
-        <input
-          type="date"
-          value={cancelForm.outward_date}
-          onChange={(e) =>
-            handleCancelFormChange('outward_date', e.target.value)
-          }
-          className="border rounded px-3 py-2 w-full"
-        />
-      </div>
-
-      {/* ================= ROW 3 ================= */}
-      <div className="col-span-12 md:col-span-2">
-        <label className="block mb-1">Status</label>
-        <select
-          value={cancelForm.status}
-          onChange={(e) =>
-            handleCancelFormChange('status', e.target.value)
-          }
-          className="border rounded px-3 py-2 w-full"
-        >
-          {CANCEL_STATUS_OPTIONS.map(opt => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="col-span-12 md:col-span-7">
-        <label className="block mb-1">Cancellation Remark</label>
-        <input
-          type="text"
-          value={cancelForm.can_remark}
-          onChange={(e) =>
-            handleCancelFormChange('can_remark', e.target.value)
-          }
-          className="border rounded px-3 py-2 w-full"
-          placeholder="Reason / note for cancellation"
-        />
-      </div>
-
-      <div className="col-span-12 md:col-span-3 flex justify-end gap-2">
-        <button
-          type="button"
-          className="px-4 py-2 border rounded"
-          onClick={resetCancelForm}
-          disabled={cancelForm.isSubmitting}
-        >
-          Reset
-        </button>
-
-        <button
-          type="button"
-          className="px-5 py-2 bg-red-600 text-white rounded"
-          onClick={submitCancelForm}
-          disabled={cancelForm.isSubmitting}
-        >
-          {cancelForm.isSubmitting ? 'Saving...' : 'Save Cancellation'}
-        </button>
-      </div>
-    </div>
-
-    {cancelForm.error && (
-      <p className="text-sm text-red-600 mt-2">{cancelForm.error}</p>
-    )}
-  </div>
-  );
+    );
+  };
 
   // Collapsible action panel controls and unified top section
   const [panelOpen, setPanelOpen] = useState(false);
@@ -987,6 +1397,8 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
     setSelectedAction(CANCEL_ACTION);
     if (!panelOpen) setPanelOpen(true);
   };
+
+  const showRecordsSection = selectedAction !== "📄 Report";
 
   return (
     <div className="p-2 md:p-3 space-y-4 h-full bg-slate-100">
@@ -1030,7 +1442,12 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
             )}
             {selectedAction === "📊 Excel Upload" && renderExcelUpload()}
             {selectedAction === "📄 Report" && (
-              <div className="text-sm text-gray-600">Report view coming soon...</div>
+              <EnrollmentReport
+                onBack={() => {
+                  setSelectedAction(null);
+                  setPanelOpen(false);
+                }}
+              />
             )}
             {selectedAction === CANCEL_ACTION && renderCancelAdmissionForm()}
           </div>
@@ -1038,20 +1455,22 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
       </div>
 
       {/* Records section */}
-      <div className="bg-white shadow rounded-2xl p-4 h-[calc(100vh-220px)] overflow-auto">
-        <div className="flex flex-wrap gap-2 mb-4">
-          {TAB_OPTIONS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`px-4 py-2 rounded-full text-sm font-semibold transition ${activeTab === tab.key ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-            >
-              {tab.label}
-            </button>
-          ))}
+      {showRecordsSection && (
+        <div className="bg-white shadow rounded-2xl p-4 h-[calc(100vh-220px)] overflow-auto">
+          <div className="flex flex-wrap gap-2 mb-4">
+            {TAB_OPTIONS.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`px-4 py-2 rounded-full text-sm font-semibold transition ${activeTab === tab.key ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          {activeTab === 'list' ? renderSearchView() : renderCancellationView()}
         </div>
-        {activeTab === 'list' ? renderSearchView() : renderCancellationView()}
-      </div>
+      )}
     </div>
   );
 };

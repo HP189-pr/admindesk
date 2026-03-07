@@ -23,6 +23,63 @@ const decodeUserId = () => {
 
 const CHAT_PREF_DB = 'admindesk-chat-prefs';
 const CHAT_PREF_STORE = 'kv';
+const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost']);
+const FRONTEND_PROXY_PORTS = new Set(['3000', '5173', '5174', '8081']);
+
+const toWebSocketProtocol = (protocol) => {
+  if (protocol === 'https:') return 'wss:';
+  if (protocol === 'http:') return 'ws:';
+  return protocol;
+};
+
+const addWsBaseCandidate = (acc, baseLike) => {
+  try {
+    const base = baseLike instanceof URL ? new URL(baseLike.toString()) : new URL(String(baseLike));
+    const key = `${base.protocol}//${base.host}`;
+    if (!acc.some((row) => row.key === key)) {
+      acc.push({ key, base });
+    }
+  } catch {
+    // Ignore invalid candidate values.
+  }
+};
+
+const resolveChatWsBases = (fallbackOrigin) => {
+  const candidates = [];
+  const envWsBase = import.meta?.env?.VITE_WS_BASE_URL?.trim();
+
+  if (typeof window !== 'undefined') {
+    const page = new URL(window.location.href);
+    if (LOCAL_HOSTS.has(page.hostname) && FRONTEND_PROXY_PORTS.has(page.port)) {
+      // Local frontend ports often proxy to backend on 8001/8000. Add both
+      // direct backend targets before trying the frontend origin.
+      const local8001 = new URL(page.origin);
+      local8001.port = '8001';
+      addWsBaseCandidate(candidates, local8001);
+
+      const local8000 = new URL(page.origin);
+      local8000.port = '8000';
+      addWsBaseCandidate(candidates, local8000);
+    }
+  }
+
+  if (envWsBase) addWsBaseCandidate(candidates, envWsBase);
+  addWsBaseCandidate(candidates, fallbackOrigin);
+
+  if (typeof window !== 'undefined') {
+    const page = new URL(window.location.href);
+    if (LOCAL_HOSTS.has(page.hostname)) {
+      addWsBaseCandidate(candidates, page.origin);
+    }
+  }
+
+  return candidates.map((row) => row.base);
+};
+
+const toWsUrl = (base, tokenValue) => {
+  const wsProto = toWebSocketProtocol(base.protocol);
+  return `${wsProto}//${base.host}/ws/chat/?token=${encodeURIComponent(tokenValue)}`;
+};
 
 const openChatPrefDb = () =>
   new Promise((resolve, reject) => {
@@ -227,25 +284,14 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
     time: m.createdat || m.created_at || m.time || null,
   });
 
-  const getWsUrl = () => {
+  const getWsUrls = () => {
     try {
       const tokenValue = token || localStorage.getItem('access_token');
-      if (!tokenValue) return null;
-      const envWsBase = import.meta?.env?.VITE_WS_BASE_URL?.trim();
-      if (envWsBase) {
-        const base = new URL(envWsBase);
-        const wsProto = base.protocol === 'https:' ? 'wss:' : base.protocol === 'http:' ? 'ws:' : base.protocol;
-        return `${wsProto}//${base.host}/ws/chat/?token=${encodeURIComponent(tokenValue)}`;
-      }
-      const base = new URL(API_BASE_URL);
-      const localHost = ['127.0.0.1', 'localhost'].includes(base.hostname);
-      if (localHost && base.port === '8000') {
-        base.port = '8001';
-      }
-      const wsProto = base.protocol === 'https:' ? 'wss:' : base.protocol === 'http:' ? 'ws:' : base.protocol;
-      return `${wsProto}//${base.host}/ws/chat/?token=${encodeURIComponent(tokenValue)}`;
+      if (!tokenValue) return [];
+      const bases = resolveChatWsBases(API_BASE_URL);
+      return bases.map((base) => toWsUrl(base, tokenValue));
     } catch {
-      return null;
+      return [];
     }
   };
 
@@ -301,8 +347,8 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
 
   useEffect(() => {
     if (!isAuthenticated) return undefined;
-    const socketUrl = getWsUrl();
-    if (!socketUrl) return undefined;
+    const socketUrls = getWsUrls();
+    if (!socketUrls.length) return undefined;
 
     let closedByCleanup = false;
 
@@ -402,6 +448,8 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
       if (wsRef.current && [WebSocket.CONNECTING, WebSocket.OPEN].includes(wsRef.current.readyState)) {
         return;
       }
+      const candidateIndex = Math.min(wsRetryAttemptRef.current, socketUrls.length - 1);
+      const socketUrl = socketUrls[candidateIndex];
       const ws = new WebSocket(socketUrl);
       wsRef.current = ws;
 
@@ -431,7 +479,10 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
             return;
           }
           const attempt = wsRetryAttemptRef.current;
-          const delayMs = Math.min(30000, 3000 * Math.pow(2, attempt));
+          const fallbackAttempts = Math.max(0, socketUrls.length - 1);
+          const exploringFallbacks = attempt < fallbackAttempts;
+          const backoffAttempt = Math.max(0, attempt - fallbackAttempts);
+          const delayMs = exploringFallbacks ? 400 : Math.min(30000, 3000 * Math.pow(2, backoffAttempt));
           wsRetryAttemptRef.current = attempt + 1;
           wsReconnectTimerRef.current = setTimeout(connect, delayMs);
         }

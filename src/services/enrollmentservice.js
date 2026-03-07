@@ -4,13 +4,21 @@ import API from '../api/axiosInstance';
 const ENROLLMENT_API = '/api/enrollments/';
 
 // Enrollment CRUD Operations
-export const getEnrollments = async (searchTerm = '', page = 1, pageSize = 10, cancelFilter) => {
+export const getEnrollments = async (searchTerm = '', page = 1, pageSize = 10, cancelFilter, requestConfig = {}) => {
     const params = { search: searchTerm.trim(), page, limit: pageSize };
     if (typeof cancelFilter !== 'undefined' && cancelFilter !== null) {
         params.cancel = cancelFilter;
     }
 
-    const res = await API.get(ENROLLMENT_API, { params });
+    const res = await API.get(ENROLLMENT_API, { params, ...requestConfig });
+    return res.data;
+};
+
+export const getEnrollmentReportSummary = async (params = {}, requestConfig = {}) => {
+    const res = await API.get(`${ENROLLMENT_API}report-summary/`, {
+        params,
+        ...requestConfig,
+    });
     return res.data;
 };
 
@@ -169,6 +177,7 @@ export const resolveEnrollment = async (enrollmentNo) => {
 
 export default {
     getEnrollments,
+    getEnrollmentReportSummary,
     createEnrollment,
     updateEnrollment,
     patchEnrollment: updateEnrollment,

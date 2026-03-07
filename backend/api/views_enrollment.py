@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pandas as pd
 from django.db import models
-from django.db.models import Count, Q, Value
+from django.db.models import Case, CharField, Count, Q, Value, When
 from django.db.models.functions import Lower, Replace, Coalesce
 from django.http import HttpResponse
 from rest_framework import viewsets, status
@@ -16,7 +16,7 @@ from rest_framework.views import APIView
 from .models import Enrollment, AdmissionCancel
 from .serializers_enrollment import EnrollmentSerializer, AdmissionCancelSerializer
 
-BATCH_DEFAULTS = [2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024]
+BATCH_DEFAULTS = [2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028]
 
 
 def _normalize_subcourse_name(value):
@@ -154,6 +154,175 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(updated_by=self.request.user if self.request.user.is_authenticated else None)
+
+    @action(detail=False, methods=['get'], url_path='report-summary')
+    def report_summary(self, request):
+        """Aggregated summary for enrollment report (single lightweight call)."""
+        group_by = (request.query_params.get('group_by') or 'batch').strip().lower()
+        if group_by not in {'batch', 'institute', 'course', 'status'}:
+            group_by = 'batch'
+
+        status_filter = (request.query_params.get('status') or 'all').strip().lower()
+        batch_filter = (request.query_params.get('batch') or '').strip()
+        institute_filter = (request.query_params.get('institute') or '').strip()
+        course_filter = (request.query_params.get('course') or '').strip()
+
+        qs = Enrollment.objects.select_related('institute', 'maincourse')
+
+        if status_filter == 'active':
+            qs = qs.filter(Q(cancel=False) | Q(cancel__isnull=True))
+        elif status_filter == 'cancelled':
+            qs = qs.filter(cancel=True)
+
+        if batch_filter and batch_filter.lower() != 'all':
+            try:
+                qs = qs.filter(batch=int(batch_filter))
+            except (TypeError, ValueError):
+                return Response({'detail': 'Invalid batch filter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if institute_filter and institute_filter.lower() != 'all':
+            try:
+                qs = qs.filter(institute_id=int(institute_filter))
+            except (TypeError, ValueError):
+                return Response({'detail': 'Invalid institute filter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if course_filter and course_filter.lower() != 'all':
+            qs = qs.filter(maincourse_id=course_filter)
+
+        totals_raw = qs.aggregate(
+            total=Count('id'),
+            active=Count('id', filter=Q(cancel=False) | Q(cancel__isnull=True)),
+            cancelled=Count('id', filter=Q(cancel=True)),
+        )
+
+        count_annotations = {
+            'total': Count('id'),
+            'active': Count('id', filter=Q(cancel=False) | Q(cancel__isnull=True)),
+            'cancelled': Count('id', filter=Q(cancel=True)),
+        }
+
+        rows = []
+        if group_by == 'batch':
+            grouped = qs.values('batch').annotate(**count_annotations).order_by('-batch')
+            rows = [
+                {
+                    'group': str(item.get('batch')) if item.get('batch') is not None else '-',
+                    'total': int(item.get('total') or 0),
+                    'active': int(item.get('active') or 0),
+                    'cancelled': int(item.get('cancelled') or 0),
+                }
+                for item in grouped
+            ]
+        elif group_by == 'institute':
+            grouped = (
+                qs.values('institute_id', 'institute__institute_code', 'institute__institute_name')
+                .annotate(**count_annotations)
+                .order_by('institute__institute_code', 'institute__institute_name', 'institute_id')
+            )
+            for item in grouped:
+                code = (item.get('institute__institute_code') or '').strip()
+                name = (item.get('institute__institute_name') or '').strip()
+                label = f"{code} - {name}" if code and name else (code or name or str(item.get('institute_id') or '-'))
+                rows.append({
+                    'group': label,
+                    'total': int(item.get('total') or 0),
+                    'active': int(item.get('active') or 0),
+                    'cancelled': int(item.get('cancelled') or 0),
+                })
+        elif group_by == 'course':
+            grouped = (
+                qs.values('maincourse_id', 'maincourse__course_code', 'maincourse__course_name')
+                .annotate(**count_annotations)
+                .order_by('maincourse__course_code', 'maincourse__course_name', 'maincourse_id')
+            )
+            for item in grouped:
+                code = (item.get('maincourse__course_code') or '').strip()
+                name = (item.get('maincourse__course_name') or '').strip()
+                maincourse_id = (item.get('maincourse_id') or '').strip()
+                label = f"{code} - {name}" if code and name else (name or code or maincourse_id or '-')
+                rows.append({
+                    'group': label,
+                    'total': int(item.get('total') or 0),
+                    'active': int(item.get('active') or 0),
+                    'cancelled': int(item.get('cancelled') or 0),
+                })
+        else:
+            grouped = (
+                qs.annotate(
+                    status_group=Case(
+                        When(cancel=True, then=Value('Cancelled')),
+                        default=Value('Active'),
+                        output_field=CharField(),
+                    ),
+                    status_order=Case(
+                        When(cancel=True, then=Value(2)),
+                        default=Value(1),
+                        output_field=models.IntegerField(),
+                    ),
+                )
+                .values('status_group', 'status_order')
+                .annotate(**count_annotations)
+                .order_by('status_order')
+            )
+            rows = [
+                {
+                    'group': item.get('status_group') or '-',
+                    'total': int(item.get('total') or 0),
+                    'active': int(item.get('active') or 0),
+                    'cancelled': int(item.get('cancelled') or 0),
+                }
+                for item in grouped
+            ]
+
+        option_source = Enrollment.objects.select_related('institute', 'maincourse')
+
+        batch_options = [
+            {'value': str(batch), 'label': str(batch)}
+            for batch in option_source.exclude(batch__isnull=True).values_list('batch', flat=True).distinct().order_by('-batch')
+        ]
+
+        institute_options = []
+        for item in (
+            option_source.values('institute_id', 'institute__institute_code', 'institute__institute_name')
+            .distinct()
+            .order_by('institute__institute_code', 'institute__institute_name', 'institute_id')
+        ):
+            code = (item.get('institute__institute_code') or '').strip()
+            name = (item.get('institute__institute_name') or '').strip()
+            label = f"{code} - {name}" if code and name else (code or name or str(item.get('institute_id') or '-'))
+            institute_options.append({
+                'value': str(item.get('institute_id')),
+                'label': label,
+            })
+
+        course_options = []
+        for item in (
+            option_source.values('maincourse_id', 'maincourse__course_code', 'maincourse__course_name')
+            .distinct()
+            .order_by('maincourse__course_code', 'maincourse__course_name', 'maincourse_id')
+        ):
+            code = (item.get('maincourse__course_code') or '').strip()
+            name = (item.get('maincourse__course_name') or '').strip()
+            maincourse_id = (item.get('maincourse_id') or '').strip()
+            label = f"{code} - {name}" if code and name else (name or code or maincourse_id or '-')
+            course_options.append({
+                'value': maincourse_id,
+                'label': label,
+            })
+
+        return Response({
+            'rows': rows,
+            'totals': {
+                'total': int(totals_raw.get('total') or 0),
+                'active': int(totals_raw.get('active') or 0),
+                'cancelled': int(totals_raw.get('cancelled') or 0),
+            },
+            'options': {
+                'batches': batch_options,
+                'institutes': institute_options,
+                'courses': course_options,
+            },
+        })
 
 
 class AdmissionCancelViewSet(viewsets.ModelViewSet):

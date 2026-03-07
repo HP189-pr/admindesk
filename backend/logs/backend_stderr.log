@@ -39117,3 +39117,94 @@ INFO:waitress:Serving on http://127.0.0.1:8000
 E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
   warnings.warn("channels is not installed. Install it with: pip install channels")
 INFO:waitress:Serving on http://127.0.0.1:8000
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+Bad Request: /admin/api/enrollment/upload-excel/
+WARNING:django.request:Bad Request: /admin/api/enrollment/upload-excel/
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+WARNING:waitress.queue:Task queue depth is 1
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+Not Found: /favicon.ico
+WARNING:django.request:Not Found: /favicon.ico
+Not Found: /login
+WARNING:django.request:Not Found: /login
+Not Found: /favicon.ico
+WARNING:django.request:Not Found: /favicon.ico
+Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING:django.request:Not Found: /.well-known/appspecific/com.chrome.devtools.json
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
