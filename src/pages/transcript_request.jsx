@@ -16,6 +16,7 @@ const STATUS_LABELS = {
   pending: 'Pending',
   progress: 'In Progress',
   done: 'Sent',
+  cancel: 'Cancel',
 };
 
 const STATUS_OPTIONS = [
@@ -23,6 +24,7 @@ const STATUS_OPTIONS = [
   { value: 'pending', label: STATUS_LABELS.pending },
   { value: 'progress', label: STATUS_LABELS.progress },
   { value: 'done', label: STATUS_LABELS.done },
+  { value: 'cancel', label: STATUS_LABELS.cancel },
 ];
 
 const RIGHTS_FALLBACK = { can_view: false, can_create: false, can_edit: false, can_delete: false };
@@ -371,13 +373,14 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   const handleReload = () => loadRows();
 
   const statusCounts = useMemo(() => {
-    const counts = { pending: 0, progress: 0, done: 0 };
+    const counts = { pending: 0, progress: 0, done: 0, cancel: 0 };
     rows.forEach((row) => {
       const raw = (row.mail_status || '').toString().trim().toLowerCase();
       let key = 'progress';
       if (!raw) key = 'progress';
       else if (['yes', 'done', 'sent'].includes(raw)) key = 'done';
       else if (raw === 'pending') key = 'pending';
+      else if (['cancel', 'cancelled', 'canceled'].includes(raw)) key = 'cancel';
       else if (['progress', 'in progress', 'processing'].includes(raw)) key = 'progress';
       if (counts[key] !== undefined) counts[key] += 1;
     });
@@ -385,7 +388,7 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   }, [rows]);
 
   // sort rows for display: prefer numeric `tr_request_no` (higher = newer),
-  // sort rows for display: first by mail_status priority (done > progress > pending),
+  // sort rows for display: first by mail_status priority (done > progress > pending > cancel),
   // then by numeric `tr_request_no` (higher numbers first), then by requested_at desc.
   const sortedRows = useMemo(() => {
     const copy = Array.isArray(rows) ? [...rows] : [];
@@ -394,7 +397,8 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
       if (v === 'done') return 0;
       if (v === 'progress') return 1;
       if (v === 'pending') return 2;
-      return 3;
+      if (v === 'cancel') return 3;
+      return 4;
     };
 
     const parseNumeric = (val) => {
@@ -578,6 +582,7 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                   <span>Pending: {statusCounts.pending}</span>
                   <span>In Progress: {statusCounts.progress}</span>
                   <span>Sent: {statusCounts.done}</span>
+                  <span>Cancel: {statusCounts.cancel}</span>
                   <span className="text-xs text-gray-500">Selected rows: {selectedIds.length}</span>
                 </div>
               </div>

@@ -542,8 +542,8 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
 
               {/* Row 3: ECA and conditional doc_remark/button */}
               {/* Row 3 : ECA row (always exists) */}
-              <div className="grid gap-3 md:grid-cols-6 items-end">
-                <div>
+              <div className="grid gap-1 md:[grid-template-columns:repeat(24,minmax(0,1fr))] items-end">
+                <div className="md:col-span-2">
                   <label className="block text-sm mb-1">ECA?</label>
                   <select
                     className="w-full border rounded-lg p-2"
@@ -556,7 +556,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                 </div>
                 {form.eca_required && (
                   <>
-                    <div>
+                    <div className="md:col-span-2">
                       <label className="block text-sm mb-1">ECA Name</label>
                       <select
                         className="w-full border rounded-lg p-2"
@@ -573,7 +573,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                         <option value="CAPR">CAPR</option>
                       </select>
                     </div>
-                    <div>
+                    <div className="md:col-span-3">
                       <label className="block text-sm mb-1">ECA Ref No</label>
                       <input
                         className="w-full border rounded-lg p-2"
@@ -581,7 +581,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                         onChange={(e) => handleChange("eca_ref_no", e.target.value)}
                       />
                     </div>
-                    <div>
+                    <div className="md:col-span-3">
                       <label className="block text-sm mb-1">ECA Send Date</label>
                       <input
                         type="date"
@@ -590,7 +590,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                         onChange={(e) => handleChange("eca_send_date", e.target.value)}
                       />
                     </div>
-                    <div>
+                    <div className="md:col-span-2">
                       <label className="block text-sm mb-1">ECA Status</label>
                       <select
                         className="w-full border rounded-lg p-2"
@@ -604,7 +604,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                         <option value="REJECTED">REJECTED</option>
                       </select>
                     </div>
-                    <div>
+                    <div className="md:col-span-3">
                       <label className="block text-sm mb-1">ECA Resubmit Date</label>
                       <input
                         type="date"

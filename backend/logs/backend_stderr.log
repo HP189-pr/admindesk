@@ -39208,3 +39208,24 @@ WARNING:waitress.queue:Task queue depth is 1
 WARNING:waitress.queue:Task queue depth is 1
 WARNING:waitress.queue:Task queue depth is 1
 WARNING:waitress.queue:Task queue depth is 2
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
