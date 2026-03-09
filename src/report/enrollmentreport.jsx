@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { getEnrollmentReportSummary } from "../services/enrollmentservice";
+import { getEnrollmentReportSummary, getEnrollments } from "../services/enrollmentservice";
 
 const GROUP_OPTIONS = [
   { value: "batch", label: "Batch Wise" },
@@ -46,6 +46,8 @@ const normalizeSummaryRow = (item) => ({
 const EnrollmentReport = ({ onBack }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [includeStudentList, setIncludeStudentList] = useState(false);
+  const [fetchingStudents, setFetchingStudents] = useState(false);
 
   const [groupBy, setGroupBy] = useState("batch");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -151,58 +153,169 @@ const EnrollmentReport = ({ onBack }) => {
     };
   }, [loadReportSummary]);
 
-  const handleExportExcel = () => {
+  const fetchStudentListData = useCallback(async () => {
+    try {
+      // Fetch all enrollments with a large page size
+      const response = await getEnrollments("", 1, 10000);
+      let enrollments = response.results || response || [];
+
+      // Apply filters on client side
+      enrollments = enrollments.filter((enrollment) => {
+        // Status filter
+        if (statusFilter === "active" && enrollment.cancel) return false;
+        if (statusFilter === "cancelled" && !enrollment.cancel) return false;
+
+        // Batch filter
+        if (batchFilter && String(enrollment.batch) !== String(batchFilter)) return false;
+
+        // Institute filter
+        if (instituteFilter && String(enrollment.institute?.id || enrollment.institute) !== String(instituteFilter)) return false;
+
+        // Course filter
+        if (courseFilter && String(enrollment.maincourse?.id || enrollment.maincourse) !== String(courseFilter)) return false;
+
+        return true;
+      });
+
+      return enrollments;
+    } catch (err) {
+      console.error("Failed to fetch student list:", err);
+      return [];
+    }
+  }, [statusFilter, batchFilter, instituteFilter, courseFilter]);
+
+  const handleExportExcel = async () => {
     if (!summaryRows.length) return;
 
-    const groupLabel = GROUP_LABELS[groupBy] || "Group";
-    const aoa = [
-      ["Enrollment Report"],
-      ["Grouped By", GROUP_OPTIONS.find((o) => o.value === groupBy)?.label || groupBy],
-      ["Status Filter", STATUS_OPTIONS.find((o) => o.value === statusFilter)?.label || statusFilter],
-      ["Batch Filter", batchFilter || "All"],
-      ["Institute Filter", instituteFilter || "All"],
-      ["Course Filter", courseFilter || "All"],
-      [],
-      [groupLabel, "Total", "Active", "Cancelled"],
-      ...summaryRows.map((row) => [row.group, row.total, row.active, row.cancelled]),
-      ["GRAND TOTAL", totals.total, totals.active, totals.cancelled],
-    ];
+    setFetchingStudents(true);
+    try {
+      const groupLabel = GROUP_LABELS[groupBy] || "Group";
+      let worksheets = {};
 
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "EnrollmentReport");
-    XLSX.writeFile(wb, `enrollment_report_${groupBy}.xlsx`);
-  };
-
-  const handleExportPdf = () => {
-    if (!summaryRows.length) return;
-
-    const groupLabel = GROUP_LABELS[groupBy] || "Group";
-    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-
-    doc.setFontSize(14);
-    doc.text("Enrollment Report", 14, 12);
-    doc.setFontSize(10);
-    doc.text(`Grouped By: ${GROUP_OPTIONS.find((o) => o.value === groupBy)?.label || groupBy}`, 14, 18);
-    doc.text(`Status: ${STATUS_OPTIONS.find((o) => o.value === statusFilter)?.label || statusFilter}`, 14, 23);
-
-    autoTable(doc, {
-      startY: 28,
-      head: [[groupLabel, "Total", "Active", "Cancelled"]],
-      body: [
+      // First sheet: Summary
+      const aoa = [
+        ["Enrollment Report"],
+        ["Grouped By", GROUP_OPTIONS.find((o) => o.value === groupBy)?.label || groupBy],
+        ["Status Filter", STATUS_OPTIONS.find((o) => o.value === statusFilter)?.label || statusFilter],
+        ["Batch Filter", batchFilter || "All"],
+        ["Institute Filter", instituteFilter || "All"],
+        ["Course Filter", courseFilter || "All"],
+        [],
+        [groupLabel, "Total", "Active", "Cancelled"],
         ...summaryRows.map((row) => [row.group, row.total, row.active, row.cancelled]),
         ["GRAND TOTAL", totals.total, totals.active, totals.cancelled],
-      ],
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [79, 70, 229] },
-      columnStyles: {
-        1: { halign: "right" },
-        2: { halign: "right" },
-        3: { halign: "right" },
-      },
-    });
+      ];
 
-    doc.save(`enrollment_report_${groupBy}.pdf`);
+      const summaryWs = XLSX.utils.aoa_to_sheet(aoa);
+      worksheets["Summary"] = summaryWs;
+
+      // Second sheet: Student List (if checkbox is checked)
+      if (includeStudentList) {
+        const students = await fetchStudentListData();
+        if (students.length > 0) {
+          const studentAoa = [
+            ["Student List"],
+            ["Total Students", students.length],
+            [],
+            ["Enrollment No", "Student Name", "Batch", "Institute", "Course", "Status"],
+            ...students.map((enrollment) => [
+              enrollment.enrollment_no || "N/A",
+              enrollment.student_name || "N/A",
+              enrollment.batch || "N/A",
+              enrollment.institute?.institute_code ? `${enrollment.institute.institute_code} - ${enrollment.institute.institute_name}` : "N/A",
+              enrollment.maincourse?.course_code ? `${enrollment.maincourse.course_code} - ${enrollment.maincourse.course_name}` : "N/A",
+              enrollment.cancel ? "Cancelled" : "Active",
+            ]),
+          ];
+
+          const studentWs = XLSX.utils.aoa_to_sheet(studentAoa);
+          worksheets["Students"] = studentWs;
+        }
+      }
+
+      const wb = XLSX.utils.book_new();
+      Object.keys(worksheets).forEach((sheetName) => {
+        XLSX.utils.book_append_sheet(wb, worksheets[sheetName], sheetName);
+      });
+      XLSX.writeFile(wb, `enrollment_report_${groupBy}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    } finally {
+      setFetchingStudents(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!summaryRows.length) return;
+
+    setFetchingStudents(true);
+    try {
+      const groupLabel = GROUP_LABELS[groupBy] || "Group";
+      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+
+      doc.setFontSize(14);
+      doc.text("Enrollment Report", 14, 12);
+      doc.setFontSize(10);
+      doc.text(`Grouped By: ${GROUP_OPTIONS.find((o) => o.value === groupBy)?.label || groupBy}`, 14, 18);
+      doc.text(`Status: ${STATUS_OPTIONS.find((o) => o.value === statusFilter)?.label || statusFilter}`, 14, 23);
+
+      // Summary Table
+      autoTable(doc, {
+        startY: 28,
+        head: [[groupLabel, "Total", "Active", "Cancelled"]],
+        body: [
+          ...summaryRows.map((row) => [row.group, row.total, row.active, row.cancelled]),
+          ["GRAND TOTAL", totals.total, totals.active, totals.cancelled],
+        ],
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [79, 70, 229] },
+        columnStyles: {
+          1: { halign: "right" },
+          2: { halign: "right" },
+          3: { halign: "right" },
+        },
+      });
+
+      // Student List (if checkbox is checked)
+      if (includeStudentList) {
+        const students = await fetchStudentListData();
+        if (students.length > 0) {
+          const currentPageHeight = doc.internal.pageSize.getHeight();
+          const currentY = doc.lastAutoTable?.finalY || 28;
+
+          // Add new page if needed
+          if (currentY > currentPageHeight - 40) {
+            doc.addPage();
+            doc.setFontSize(14);
+            doc.text("Student List - Enrollment Report", 14, 12);
+          } else {
+            doc.setFontSize(12);
+            doc.text("Student List", 14, currentY + 10);
+          }
+
+          autoTable(doc, {
+            startY: doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 40,
+            head: [["Enrollment No", "Student Name", "Batch", "Institute", "Course", "Status"]],
+            body: students.map((enrollment) => [
+              enrollment.enrollment_no || "N/A",
+              enrollment.student_name || "N/A",
+              enrollment.batch || "N/A",
+              enrollment.institute?.institute_code ? `${enrollment.institute.institute_code}` : "N/A",
+              enrollment.maincourse?.course_code ? `${enrollment.maincourse.course_code}` : "N/A",
+              enrollment.cancel ? "Cancelled" : "Active",
+            ]),
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [79, 70, 229] },
+            columnStyles: {
+              2: { halign: "right" },
+              4: { halign: "right" },
+            },
+          });
+        }
+      }
+
+      doc.save(`enrollment_report_${groupBy}_${new Date().toISOString().split('T')[0]}.pdf`);
+    } finally {
+      setFetchingStudents(false);
+    }
   };
 
   const handleResetFilters = () => {
@@ -217,11 +330,20 @@ const EnrollmentReport = ({ onBack }) => {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-lg font-semibold">Enrollment Report</h3>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
+          <label className="inline-flex items-center gap-2 border border-gray-300 rounded px-3 py-2 bg-white">
+            <input
+              type="checkbox"
+              checked={includeStudentList}
+              onChange={(e) => setIncludeStudentList(e.target.checked)}
+              className="w-4 h-4"
+            />
+            <span className="text-sm font-medium">Report with student list</span>
+          </label>
           <button
             type="button"
             onClick={() => loadReportSummary()}
-            className="rounded bg-slate-700 px-4 py-2 text-white"
+            className="rounded bg-slate-700 px-4 py-2 text-white disabled:opacity-50"
             disabled={loading}
           >
             {loading ? "Loading..." : "Refresh"}
@@ -229,18 +351,18 @@ const EnrollmentReport = ({ onBack }) => {
           <button
             type="button"
             onClick={handleExportPdf}
-            disabled={!summaryRows.length}
+            disabled={!summaryRows.length || fetchingStudents}
             className="rounded bg-indigo-600 px-4 py-2 text-white disabled:opacity-50"
           >
-            Export PDF
+            {fetchingStudents ? "Preparing..." : "Export PDF"}
           </button>
           <button
             type="button"
             onClick={handleExportExcel}
-            disabled={!summaryRows.length}
+            disabled={!summaryRows.length || fetchingStudents}
             className="rounded bg-emerald-600 px-4 py-2 text-white disabled:opacity-50"
           >
-            Export Excel
+            {fetchingStudents ? "Preparing..." : "Export Excel"}
           </button>
           {onBack && (
             <button

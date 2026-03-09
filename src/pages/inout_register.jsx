@@ -317,7 +317,7 @@ const InOutRegister = () => {
   const renderInwardTab = () => (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="bg-white rounded shadow p-4">
+      <div className="bg-white rounded-xl shadow p-4">
         <h3 className="text-lg font-bold mb-3">Filters</h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <input
@@ -361,7 +361,7 @@ const InOutRegister = () => {
       </div>
 
       {/* Add/Edit Form */}
-      <div className="bg-white rounded shadow p-4">
+      <div className="bg-white rounded-xl shadow p-4">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">{editingInward ? 'Edit' : 'Add'} Inward Register</h2>
           {!editingInward && inwardNextNumber.next_no && (
