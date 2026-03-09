@@ -835,20 +835,15 @@ class InstLetterStudentViewSet(viewsets.ModelViewSet):
 
         update_fields = []
 
-        # Institute (safe)
-        if enrollment_obj.institute_id:
-            instance.institute_id = enrollment_obj.institute_id
-            update_fields.append('institute')
+        # enrollment FK uses to_field='enrollment_no', so compare/save via enrollment relation.
+        if getattr(instance, 'enrollment_id', None) != getattr(enrollment_obj, 'enrollment_no', None):
+            instance.enrollment = enrollment_obj
+            update_fields.append('enrollment')
 
-        # Main course (use MainBranch object, not numeric ID)
-        if enrollment_obj.maincourse:
-            instance.main_course = enrollment_obj.maincourse
-            update_fields.append('main_course')
-
-        # Sub course (use SubBranch object, not numeric ID)
-        if enrollment_obj.subcourse:
-            instance.sub_course = enrollment_obj.subcourse
-            update_fields.append('sub_course')
+        # Clear fallback raw value when FK is available.
+        if getattr(instance, 'enrollment_no_text', None):
+            instance.enrollment_no_text = None
+            update_fields.append('enrollment_no_text')
 
         if update_fields:
             instance.save(update_fields=update_fields)

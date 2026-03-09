@@ -121,9 +121,8 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
   const [formState, setFormState] = useState({
     date: today,
     payment_mode: 'CASH',
-    remark: '',
   });
-  const [feeItems, setFeeItems] = useState([{ fee_type: '', amount: '' }]);
+  const [feeItems, setFeeItems] = useState([{ fee_type: '', amount: '', remark: '' }]);
   const [bankPrefix, setBankPrefix] = useState('1471');
   const [receiptPreview, setReceiptPreview] = useState('--');
   const [receiptPreviewRaw, setReceiptPreviewRaw] = useState('');
@@ -264,7 +263,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
       const data = await fetchFeeTypes({ active: true });
       setFeeTypes(Array.isArray(data) ? data : data?.results || []);
       if (!editingEntry && data.length && !feeItems[0].fee_type) {
-        setFeeItems([{ fee_type: data[0].id?.toString() || '', amount: '' }]);
+        setFeeItems([{ fee_type: data[0].id?.toString() || '', amount: '', remark: '' }]);
       }
     } catch (err) {
       setFlash('error', 'Unable to load fee types');
@@ -483,10 +482,9 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     setFormState({
       date: filters.date || today,
       payment_mode: filters.payment_mode || 'CASH',
-      remark: '',
     });
     setBankPrefix((filters.payment_mode || 'CASH') === 'BANK' ? '1471' : '');
-    setFeeItems([{ fee_type: feeTypes[0]?.id?.toString() || '', amount: '' }]);
+    setFeeItems([{ fee_type: feeTypes[0]?.id?.toString() || '', amount: '', remark: '' }]);
   };
 
   const handleSubmit = async (event) => {
@@ -516,6 +514,8 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
         return;
       }
     }
+
+    const receiptRemark = (validItems.find((item) => String(item.remark || '').trim())?.remark || '').trim();
     
     setSaving(true);
     try {
@@ -524,10 +524,11 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
         const payload = {
           date: formState.date,
           payment_mode: formState.payment_mode,
-          remark: formState.remark?.trim() || '',
+          remark: receiptRemark,
           items: validItems.map(item => ({
             fee_type: Number(item.fee_type),
             amount: Number(item.amount),
+            remark: String(item.remark || '').trim(),
           })),
         };
         // Call the new update-with-items API (assume updateReceiptWithItems is imported)
@@ -540,10 +541,11 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
             date: formState.date,
             payment_mode: formState.payment_mode,
             bank_prefix: formState.payment_mode === 'BANK' ? bankPrefix : undefined,
-            remark: formState.remark?.trim() || '',
+            remark: receiptRemark,
             items: validItems.map(item => ({
               fee_type: Number(item.fee_type),
               amount: Number(item.amount),
+              remark: String(item.remark || '').trim(),
             })),
           }],
         };
@@ -598,12 +600,12 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     setFormState({
       date: first.date,
       payment_mode: first.payment_mode,
-      remark: first.remark || '',
     });
     setFeeItems(
       receiptRows.map((r) => ({
         fee_type: String(r.fee_type), // FeeType.id (REQUIRED)
         amount: r.amount,
+        remark: r.remark || '',
       }))
     );
   };
@@ -857,41 +859,33 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
             
             {/* Fee Items */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-semibold text-gray-700">Fee Type(s) & Amount(s)</label>
-                {!editingEntry && (
-                  <div className="flex flex-col items-start gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setFeeItems([...feeItems, { fee_type: feeTypes[0]?.id?.toString() || '', amount: '' }])}
-                      className="rounded bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-700"
-                    >
-                      ➕ Add More
-                    </button>
-                    <p className="text-xs text-gray-500 mt-1">
-                      All fee rows will be saved under the same receipt number
-                    </p>
-                  </div>
-                )}
-                {editingEntry && (
-                  <div className="flex flex-col items-start gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setFeeItems([...feeItems, { fee_type: feeTypes[0]?.id?.toString() || '', amount: '' }])}
-                      className="rounded bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-700"
-                    >
-                      ➕ Add More
-                    </button>
-                    <p className="text-xs text-gray-500 mt-1">
-                      All fee rows will be saved under the same receipt number
-                    </p>
-                  </div>
-                )}
+              {/* Header Row */}
+              <div className="grid grid-cols-12 gap-3 border-b pb-2 text-sm font-semibold text-gray-700">
+                <div className="col-span-5">Fee Type</div>
+                <div className="col-span-2">Amount</div>
+                <div className="col-span-4">Remark</div>
+                <div className="col-span-1 text-right">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFeeItems([
+                        ...feeItems,
+                        { fee_type: '', amount: '', remark: '' },
+                      ])
+                    }
+                    className="rounded bg-green-600 px-2 py-1 text-xs text-white hover:bg-green-700"
+                  >
+                    + Add
+                  </button>
+                </div>
               </div>
+
+              {/* Rows */}
               {feeItems.map((item, index) => (
-                <div key={index} className="flex flex-wrap items-end gap-3">
-                  <label className="text-sm font-medium text-gray-700 flex-1 min-w-[220px] lg:flex-[1_1_300px]">
-                    {index === 0 ? 'Fee Type' : ''}
+                <div key={index} className="grid grid-cols-12 items-center gap-3">
+
+                  {/* Fee Type */}
+                  <div className="col-span-5">
                     <select
                       value={item.fee_type}
                       onChange={(e) => {
@@ -899,21 +893,20 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                         updated[index].fee_type = e.target.value;
                         setFeeItems(updated);
                       }}
-                      className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                      className="w-full rounded border border-gray-300 px-3 py-2"
                       required
                     >
-                      <option value="" disabled>
-                        Select fee type
-                      </option>
+                      <option value="" disabled>Select fee type</option>
                       {feeTypes.map((type) => (
                         <option key={type.id} value={String(type.id)}>
                           {type.code} - {type.name}
                         </option>
                       ))}
                     </select>
-                  </label>
-                  <label className="text-sm font-medium text-gray-700 w-full sm:w-[160px] lg:w-[180px]">
-                    {index === 0 ? 'Amount' : ''}
+                  </div>
+
+                  {/* Amount */}
+                  <div className="col-span-2">
                     <input
                       type="number"
                       min="0"
@@ -924,34 +917,44 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                         updated[index].amount = e.target.value;
                         setFeeItems(updated);
                       }}
-                      className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                      className="w-full rounded border border-gray-300 px-3 py-2"
                       required
                     />
-                  </label>
-                  {feeItems.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => setFeeItems(feeItems.filter((_, i) => i !== index))}
-                      className="rounded border border-red-300 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50"
-                    >
-                      ✖
-                    </button>
-                  )}
+                  </div>
+
+                  {/* Remark */}
+                  <div className="col-span-4">
+                    <input
+                      type="text"
+                      value={item.remark || ''}
+                      onChange={(e) => {
+                        const updated = [...feeItems];
+                        updated[index].remark = e.target.value;
+                        setFeeItems(updated);
+                      }}
+                      placeholder="Optional notes"
+                      className="w-full rounded border border-gray-300 px-3 py-2"
+                    />
+                  </div>
+
+                  {/* Remove Button */}
+                  <div className="col-span-1 text-right">
+                    {feeItems.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setFeeItems(feeItems.filter((_, i) => i !== index))}
+                        className="rounded border border-red-300 px-2 py-2 text-xs text-red-600 hover:bg-red-50"
+                      >
+                        ✖
+                      </button>
+                    )}
+                  </div>
+
                 </div>
               ))}
             </div>
-            
+
             <div className="flex flex-wrap items-end gap-4">
-              <label className="text-sm font-medium text-gray-700 flex-1 min-w-[260px] lg:w-1/2">
-                Remark
-                <input
-                  type="text"
-                  value={formState.remark}
-                  onChange={(e) => handleFormChange('remark', e.target.value)}
-                  className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-                  placeholder="Optional notes"
-                />
-              </label>
               <div className="flex flex-wrap gap-3 lg:flex-1 lg:justify-start">
                 <button
                   type="submit"

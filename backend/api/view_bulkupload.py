@@ -2268,37 +2268,21 @@ class BulkUploadView(APIView):
                                         if changed:
                                             exists.save()
 
-                                        # If an enrollment value was provided and resolved to an Enrollment
-                                        # object, ensure the student row links to that enrollment and
-                                        # copies institute/main/subcourse from the Enrollment for sync.
+                                        # If enrollment was provided, keep FK/text linkage in sync.
                                         try:
                                             if s.get('enrollment'):
+                                                resolved_text = str(s.get('enrollment')).strip()
                                                 if enr_obj:
                                                     if getattr(exists, 'enrollment', None) != enr_obj:
                                                         exists.enrollment = enr_obj
                                                         changed = True
-                                                    # copy institute/main/subcourse from enrollment when present
-                                                    try:
-                                                        if getattr(enr_obj, 'institute', None) and getattr(exists, 'institute', None) != enr_obj.institute:
-                                                            exists.institute = enr_obj.institute
-                                                            changed = True
-                                                    except Exception:
-                                                        pass
-                                                    try:
-                                                        if getattr(enr_obj, 'maincourse', None) and getattr(exists, 'main_course', None) != enr_obj.maincourse:
-                                                            exists.main_course = enr_obj.maincourse
-                                                            changed = True
-                                                    except Exception:
-                                                        pass
-                                                    try:
-                                                        if getattr(enr_obj, 'subcourse', None) and getattr(exists, 'sub_course', None) != enr_obj.subcourse:
-                                                            exists.sub_course = enr_obj.subcourse
-                                                            changed = True
-                                                    except Exception:
-                                                        pass
                                                     # clear enrollment text copy if we now have Enrollment FK
                                                     if getattr(exists, 'enrollment_no_text', None):
                                                         exists.enrollment_no_text = None
+                                                        changed = True
+                                                else:
+                                                    if getattr(exists, 'enrollment_no_text', None) != resolved_text:
+                                                        exists.enrollment_no_text = resolved_text
                                                         changed = True
                                             if changed:
                                                 exists.save()
@@ -2334,10 +2318,6 @@ class BulkUploadView(APIView):
                                             verification_status = vs,
                                             enrollment = enr_obj,
                                             enrollment_no_text = enr_text,
-                                            # If enrollment resolved, copy related institute/main/subcourse
-                                            institute = (enr_obj.institute if enr_obj and getattr(enr_obj, 'institute', None) else (Institute.objects.filter(pk=s.get('institute_id')).first() if s.get('institute_id') else None)),
-                                            main_course = (enr_obj.maincourse if enr_obj and getattr(enr_obj, 'maincourse', None) else (MainBranch.objects.filter(pk=s.get('maincourse_id')).first() if s.get('maincourse_id') else None)),
-                                            sub_course = (enr_obj.subcourse if enr_obj and getattr(enr_obj, 'subcourse', None) else (SubBranch.objects.filter(pk=s.get('subcourse_id')).first() if s.get('subcourse_id') else None)),
                                             study_mode = _normalize_study_mode(s.get('study_mode')) or row_study_mode,
                                         )
                                         student_created = True
@@ -2401,34 +2381,18 @@ class BulkUploadView(APIView):
                                                     changed = True
                                         if changed:
                                             exists.save()
-                                        # If enrollment present in the row and we resolved an Enrollment
-                                        # ensure FK links and copy institute/main/subcourse
+                                        # If enrollment was provided, keep FK/text linkage in sync.
                                         try:
                                             if enr:
                                                 if getattr(exists, 'enrollment', None) != enr:
                                                     exists.enrollment = enr
                                                     changed = True
-                                                try:
-                                                    if getattr(enr, 'institute', None) and getattr(exists, 'institute', None) != enr.institute:
-                                                        exists.institute = enr.institute
-                                                        changed = True
-                                                except Exception:
-                                                    pass
-                                                try:
-                                                    if getattr(enr, 'maincourse', None) and getattr(exists, 'main_course', None) != enr.maincourse:
-                                                        exists.main_course = enr.maincourse
-                                                        changed = True
-                                                except Exception:
-                                                    pass
-                                                try:
-                                                    if getattr(enr, 'subcourse', None) and getattr(exists, 'sub_course', None) != enr.subcourse:
-                                                        exists.sub_course = enr.subcourse
-                                                        changed = True
-                                                except Exception:
-                                                    pass
                                                 if getattr(exists, 'enrollment_no_text', None):
                                                     exists.enrollment_no_text = None
                                                     changed = True
+                                            elif enr_text and getattr(exists, 'enrollment_no_text', None) != enr_text:
+                                                exists.enrollment_no_text = enr_text
+                                                changed = True
                                             if changed:
                                                 exists.save()
                                         except Exception:
@@ -2450,9 +2414,6 @@ class BulkUploadView(APIView):
                                             verification_status = vs,
                                             enrollment = enr,
                                             enrollment_no_text = enr_text,
-                                            institute = (enr.institute if enr and getattr(enr, 'institute', None) else (Institute.objects.filter(pk=row.get('institute_id')).first() if row.get('institute_id') else None)),
-                                            main_course = (enr.maincourse if enr and getattr(enr, 'maincourse', None) else (MainBranch.objects.filter(pk=row.get('maincourse_id')).first() if row.get('maincourse_id') else None)),
-                                            sub_course = (enr.subcourse if enr and getattr(enr, 'subcourse', None) else (SubBranch.objects.filter(pk=row.get('subcourse_id')).first() if row.get('subcourse_id') else None)),
                                             study_mode = _normalize_study_mode(row.get('study_mode')) or row_study_mode,
                                         )
                                         student_created = True
