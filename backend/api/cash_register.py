@@ -67,6 +67,7 @@ _PAYMENT_PREFIX = {
 
 # Allowed bank prefixes (multi-account support)
 _BANK_PREFIX_CHOICES = {"1471", "138"}
+_AUTO_CANCEL_REASON = "Cancelled from new entry panel"
 
 
 def _fiscal_year_suffix(entry_date: date) -> int:
@@ -247,6 +248,14 @@ class FeeTypeViewSet(FinancePermissionMixin, mixins.ListModelMixin, mixins.Creat
 
 class ReceiptNumberService:
     @staticmethod
+    def _series_prefix(prefix: str) -> str:
+        """Normalize a receipt series prefix to end with '/R'."""
+        normalized = (normalize_receipt_no(prefix) or "").rstrip("/")
+        if normalized and not normalized.endswith("/R"):
+            normalized = f"{normalized}/R"
+        return normalized
+
+    @staticmethod
     def _prefix(payment_mode: str, entry_date: date, bank_base: Optional[str] = None) -> str:
         # Allow overriding bank prefix when multiple bank accounts are supported
         if payment_mode == "BANK" and bank_base:
@@ -254,40 +263,54 @@ class ReceiptNumberService:
         else:
             base = _PAYMENT_PREFIX[payment_mode]
         year = _fiscal_year_suffix(entry_date)
-        return f"{base}/{year:02d}/R/"
+        return ReceiptNumberService._series_prefix(f"{base}/{year:02d}/R")
 
     @classmethod
     def next_numbers(cls, payment_mode: str, entry_date: date, *, lock: bool = False, bank_base: Optional[str] = None) -> Dict[str, Any]:
-        rec_ref = cls._prefix(payment_mode, entry_date, bank_base=bank_base)
-        legacy_ref = rec_ref.rstrip('/')
+        # Support mixed historical formats for the same fiscal series, e.g.:
+        # - PREFIX/25/R
+        # - PREFIX/2025
+        # - PREFIX/2025/R
+        if payment_mode == "BANK" and bank_base:
+            base = bank_base
+        else:
+            base = _PAYMENT_PREFIX[payment_mode]
 
-        # Support both historical rec_ref styles:
-        # - PREFIX/YY/R/ (new)
-        # - PREFIX/YY/R  (legacy)
-        # Using legacy_ref in startswith safely matches both formats.
-        qs = Receipt.objects.filter(payment_mode=payment_mode, rec_ref__startswith=legacy_ref)
+        fiscal_start_year = entry_date.year if entry_date.month >= 4 else entry_date.year - 1
+        short_prefix = cls._series_prefix(f"{base}/{_fiscal_year_suffix(entry_date):02d}/R")
+        full_prefix = cls._series_prefix(f"{base}/{fiscal_start_year}/R")
+        full_legacy = f"{base}/{fiscal_start_year}"
+
+        qs = Receipt.objects.filter(payment_mode=payment_mode).filter(
+            Q(rec_ref__startswith=short_prefix)
+            | Q(rec_ref__startswith=full_prefix)
+            | Q(rec_ref__startswith=full_legacy)
+            | Q(receipt_no_full__startswith=short_prefix)
+            | Q(receipt_no_full__startswith=full_prefix)
+            | Q(receipt_no_full__startswith=full_legacy)
+        )
 
         if lock:
             qs = qs.select_for_update()
 
-        last_receipt = (
-            qs.exclude(rec_no__isnull=True)
-            .order_by("-rec_no")
-            .values_list("rec_no", flat=True)
-            .first()
-        )
-        last_no = last_receipt or 0
+        max_seq = 0
+        best_prefix = ""
+        for rec in qs.only("rec_ref", "rec_no", "receipt_no_full"):
+            full_prefix_candidate, parsed_from_full = split_receipt(rec.receipt_no_full)
+            parsed_seq = rec.rec_no if rec.rec_no is not None else parsed_from_full
+            if parsed_seq is None:
+                continue
+            seq_val = int(parsed_seq)
+            if seq_val > max_seq:
+                max_seq = seq_val
+                # Prefer prefix from receipt_no_full because it is closest to displayed series.
+                if full_prefix_candidate:
+                    best_prefix = cls._series_prefix(full_prefix_candidate)
+                elif rec.rec_ref:
+                    best_prefix = cls._series_prefix(rec.rec_ref)
 
-        if not last_no:
-            max_from_full = 0
-            for val in qs.values_list("receipt_no_full", flat=True):
-                _, parsed = split_receipt(val)
-                if parsed and parsed > max_from_full:
-                    max_from_full = parsed
-            if max_from_full:
-                last_no = max_from_full
-
-        seq = (last_no or 0) + 1
+        rec_ref = best_prefix or short_prefix
+        seq = max_seq + 1
         receipt_no_full = normalize_receipt_no(f"{rec_ref}{seq:06d}")
         return {
             "rec_ref": rec_ref,
@@ -335,18 +358,18 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
         **FinancePermissionMixin.permission_action_map,
         "next_receipt": "can_create",
         "cancel_receipt": "can_edit",
+        "cancel_current_number": "can_create",
     }
 
     @action(detail=True, methods=["put"], url_path="update-with-items")
     @transaction.atomic
     def update_with_items(self, request, pk=None):
         receipt = self.get_object()
-        if receipt.is_cancelled:
-            return Response(
-                {"detail": "Cancelled receipt cannot be edited"},
-                status=400
-            )
-        if receipt.is_cancelled:
+        is_auto_cancelled = bool(
+            receipt.is_cancelled
+            and (receipt.cancel_reason or "").strip().lower() == _AUTO_CANCEL_REASON.lower()
+        )
+        if receipt.is_cancelled and not is_auto_cancelled:
             return Response({"detail": "Cancelled receipt cannot be edited"}, status=400)
 
         items = request.data.get("items", [])
@@ -379,7 +402,14 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
             total += float(amount)
 
         receipt.total_amount = total
-        receipt.save()
+        if is_auto_cancelled:
+            # Re-open placeholder receipts once real items are entered.
+            receipt.is_cancelled = None
+            receipt.cancel_reason = None
+            receipt.cancelled_by = None
+            receipt.save(update_fields=["total_amount", "is_cancelled", "cancel_reason", "cancelled_by", "updated_at"])
+        else:
+            receipt.save()
 
         return Response({"detail": "Receipt updated successfully"})
     # Back the legacy `cash-register` endpoint with Receipt as the canonical source.
@@ -391,6 +421,7 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
         **FinancePermissionMixin.permission_action_map,
         "next_receipt": "can_create",
         "cancel_receipt": "can_edit",
+        "cancel_current_number": "can_create",
     }
 
     def get_queryset(self) -> QuerySet[Receipt]:  # type: ignore[override]
@@ -505,6 +536,62 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
             "rec_no": next_numbers["rec_no"],
             "receipt_no_full": next_numbers["receipt_no_full"],
         })
+
+    @action(detail=False, methods=["post"], url_path="cancel-current-number")
+    @transaction.atomic
+    def cancel_current_number(self, request):
+        """Create a cancelled placeholder receipt for the current next number.
+
+        This lets users skip a receipt number without entering fee items.
+        """
+        payment_mode = (request.data.get("payment_mode") or "CASH").upper()
+        if payment_mode not in _PAYMENT_PREFIX:
+            return Response({"detail": "Invalid payment_mode"}, status=400)
+
+        date_param = request.data.get("date")
+        if date_param:
+            try:
+                entry_date = datetime.strptime(date_param, "%Y-%m-%d").date()
+            except ValueError:
+                return Response({"detail": "Invalid date format"}, status=400)
+        else:
+            entry_date = timezone.now().date()
+
+        bank_base = None
+        if payment_mode == "BANK":
+            raw_base = (request.data.get("bank_prefix") or request.data.get("rec_ref_base") or "").strip()
+            if raw_base and raw_base not in _BANK_PREFIX_CHOICES:
+                return Response({"detail": "Invalid bank_prefix"}, status=400)
+            if raw_base in _BANK_PREFIX_CHOICES:
+                bank_base = raw_base
+
+        next_numbers = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=True, bank_base=bank_base)
+        cancel_reason = (request.data.get("cancel_reason") or "").strip() or _AUTO_CANCEL_REASON
+
+        receipt = Receipt.objects.create(
+            date=entry_date,
+            payment_mode=payment_mode,
+            rec_ref=next_numbers["rec_ref"],
+            rec_no=next_numbers["rec_no"],
+            receipt_no_full=next_numbers["receipt_no_full"],
+            total_amount=Decimal("0.00"),
+            remark="",
+            is_cancelled=True,
+            cancel_reason=cancel_reason,
+            cancelled_by=request.user,
+            created_by=request.user,
+        )
+
+        return Response(
+            {
+                "detail": "Receipt number cancelled successfully",
+                "id": receipt.id,
+                "rec_ref": receipt.rec_ref,
+                "rec_no": receipt.rec_no,
+                "receipt_no_full": receipt.receipt_no_full,
+            },
+            status=201,
+        )
 
     @action(detail=True, methods=["post"], url_path="cancel")
     @transaction.atomic
@@ -1009,10 +1096,36 @@ class ReceiptViewSet(FinancePermissionMixin, mixins.ListModelMixin, mixins.Retri
         
         flat_rows = []
         for receipt in qs:
-            for item in receipt.items.all():
+            items = list(receipt.items.all())
+            if items:
+                for item in items:
+                    flat_rows.append({
+                        "id": f"{receipt.id}-{item.id}",
+                        "receipt_id": receipt.id,  # <-- Add real DB id for frontend
+                        "date": receipt.date,
+                        "payment_mode": receipt.payment_mode,
+                        "receipt_no_full": receipt.receipt_no_full,
+                        "rec_ref": receipt.rec_ref,
+                        "rec_no": receipt.rec_no,
+                        "is_cancelled": receipt.is_cancelled,
+                        "cancel_reason": receipt.cancel_reason,
+                        "cancelled_by": receipt.cancelled_by.id if getattr(receipt, "cancelled_by", None) else None,
+                        "cancelled_by_name": (receipt.cancelled_by.get_full_name().strip() or receipt.cancelled_by.username) if getattr(receipt, "cancelled_by", None) else None,
+                        "fee_type": item.fee_type.id,
+                        "fee_type_code": item.fee_type.code,
+                        "fee_type_name": item.fee_type.name,
+                        "amount": str(item.amount),
+                        "remark": item.remark or receipt.remark or "",
+                        "created_by": receipt.created_by.id,
+                        "created_by_name": receipt.created_by.get_full_name().strip() or receipt.created_by.username,
+                        "created_at": receipt.created_at,
+                        "updated_at": receipt.updated_at,
+                    })
+            else:
+                # Keep cancelled placeholder receipts visible in list view.
                 flat_rows.append({
-                    "id": f"{receipt.id}-{item.id}",
-                    "receipt_id": receipt.id,  # <-- Add real DB id for frontend
+                    "id": f"{receipt.id}-0",
+                    "receipt_id": receipt.id,
                     "date": receipt.date,
                     "payment_mode": receipt.payment_mode,
                     "receipt_no_full": receipt.receipt_no_full,
@@ -1022,11 +1135,11 @@ class ReceiptViewSet(FinancePermissionMixin, mixins.ListModelMixin, mixins.Retri
                     "cancel_reason": receipt.cancel_reason,
                     "cancelled_by": receipt.cancelled_by.id if getattr(receipt, "cancelled_by", None) else None,
                     "cancelled_by_name": (receipt.cancelled_by.get_full_name().strip() or receipt.cancelled_by.username) if getattr(receipt, "cancelled_by", None) else None,
-                    "fee_type": item.fee_type.id,
-                    "fee_type_code": item.fee_type.code,
-                    "fee_type_name": item.fee_type.name,
-                    "amount": str(item.amount),
-                    "remark": item.remark or receipt.remark or "",
+                    "fee_type": None,
+                    "fee_type_code": None,
+                    "fee_type_name": None,
+                    "amount": None,
+                    "remark": receipt.remark or "",
                     "created_by": receipt.created_by.id,
                     "created_by_name": receipt.created_by.get_full_name().strip() or receipt.created_by.username,
                     "created_at": receipt.created_at,

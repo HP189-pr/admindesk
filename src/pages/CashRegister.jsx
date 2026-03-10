@@ -8,6 +8,7 @@ import {
   createReceiptsBulk,
   updateReceiptWithItems,
   cancelCashEntry,
+  cancelCurrentReceiptNumber,
 } from '../services/cashRegisterService';
 import { fetchFeeTypes } from '../services/feeTypeService';
 import PageTopbar from '../components/PageTopbar';
@@ -42,6 +43,7 @@ const fiscalYearCode = (dateStr) => {
 };
 
 const TOPBAR_ACTIONS = ['➕ Add', '🔍 Search', '📄 Report', 'Cash on Hand'];
+const AUTO_CANCEL_REASON = 'cancelled from new entry panel';
 const ACTION_DESCRIPTIONS = {
   '➕ Add': 'Capture new cash receipts for the selected day while seeing the live next number preview.',
   '🔍 Search': 'Filter totals by date and payment mode, then review every receipt in the ledger below.',
@@ -132,6 +134,8 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
   const [editingEntry, setEditingEntry] = useState(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [cancellingPreview, setCancellingPreview] = useState(false);
+  const [showCancelCurrentPopup, setShowCancelCurrentPopup] = useState(false);
   const [status, setStatus] = useState(null);
   const [pageError, setPageError] = useState('');
   const actionSummary = ACTION_DESCRIPTIONS[selectedTopbarMenu] || ACTION_DESCRIPTIONS['➕ Add'];
@@ -168,6 +172,21 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     const match = String(receiptPreviewRaw).match(RECEIPT_SUFFIX_REGEX);
     return match ? match[1] : '';
   }, [editingEntry, receiptPreviewRaw]);
+
+  const cancelPreviewDisplay = useMemo(() => {
+    if (receiptPreviewRaw) {
+      return formatReceiptDisplay(receiptPreviewRaw);
+    }
+    if (receiptPreview && receiptPreview !== '--') {
+      return receiptPreview;
+    }
+    return '--';
+  }, [receiptPreviewRaw, receiptPreview, formatReceiptDisplay]);
+
+  const isAutoCancelledPlaceholder = useCallback((entry) => {
+    if (!entry?.is_cancelled) return false;
+    return String(entry.cancel_reason || '').trim().toLowerCase() === AUTO_CANCEL_REASON;
+  }, []);
 
   const filteredEntries = useMemo(() => {
     if (!filters.payment_mode) {
@@ -571,8 +590,58 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     }
   };
 
+  const handleCancelCurrentReceipt = async () => {
+    if (!rights.can_create) {
+      setFlash('error', 'You do not have permission to cancel receipt numbers.');
+      return;
+    }
+    if (!formState.date) {
+      setFlash('error', 'Select a date first.');
+      return;
+    }
+
+    setCancellingPreview(true);
+    try {
+      const payload = {
+        date: formState.date,
+        payment_mode: formState.payment_mode,
+      };
+      if (formState.payment_mode === 'BANK' && bankPrefix) {
+        payload.bank_prefix = bankPrefix;
+      }
+
+      const result = await cancelCurrentReceiptNumber(payload);
+      const cancelledNo = formatReceiptDisplay(result?.receipt_no_full);
+      setFlash('success', `Receipt ${cancelledNo || ''} cancelled successfully.`.trim());
+      setPreviewNonce((prev) => prev + 1);
+      setShowCancelCurrentPopup(false);
+      loadEntries();
+    } catch (err) {
+      setShowCancelCurrentPopup(false);
+      setFlash('error', err?.response?.data?.detail || 'Unable to cancel current receipt number.');
+    } finally {
+      setCancellingPreview(false);
+    }
+  };
+
+  const openCancelCurrentReceiptConfirm = () => {
+    if (!rights.can_create) {
+      setFlash('error', 'You do not have permission to cancel receipt numbers.');
+      return;
+    }
+    if (!formState.date) {
+      setFlash('error', 'Select a date first.');
+      return;
+    }
+    if (!receiptPreviewRaw) {
+      setFlash('error', 'Next receipt number is not ready yet.');
+      return;
+    }
+    setShowCancelCurrentPopup(true);
+  };
+
   const startEdit = async (entry) => {
-    if (entry.is_cancelled) {
+    if (entry.is_cancelled && !isAutoCancelledPlaceholder(entry)) {
       setFlash('error', 'Cancelled receipt cannot be edited.');
       return;
     }
@@ -609,8 +678,13 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
       date: first.date,
       payment_mode: first.payment_mode,
     });
+    const itemRows = receiptRows.filter((r) => r.fee_type);
+    if (!itemRows.length) {
+      setFeeItems([{ fee_type: feeTypes[0]?.id?.toString() || '', amount: '', remark: '' }]);
+      return;
+    }
     setFeeItems(
-      receiptRows.map((r) => ({
+      itemRows.map((r) => ({
         fee_type: String(r.fee_type), // FeeType.id (REQUIRED)
         amount: r.amount,
         remark: r.remark || '',
@@ -978,6 +1052,23 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                 >
                   Clear form
                 </button>
+                {!editingEntry && (
+                  <button
+                    type="button"
+                    onClick={openCancelCurrentReceiptConfirm}
+                    disabled={
+                      cancellingPreview
+                      || saving
+                      || previewLoading
+                      || !rights.can_create
+                      || !formState.date
+                      || !receiptPreviewRaw
+                    }
+                    className="rounded border border-amber-300 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {cancellingPreview ? 'Cancelling...' : 'Cancel Rec'}
+                  </button>
+                )}
               </div>
               <div className="text-right">
                 <span className="text-base font-bold text-emerald-700">
@@ -1020,6 +1111,10 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                 <tbody className="divide-y divide-gray-100 bg-white">
                   {displayedEntries.map((entry) => {
                     const formattedReceipt = formatReceiptDisplay(entry.receipt_no_full);
+                    const canEditEntry = !entry.is_cancelled || isAutoCancelledPlaceholder(entry);
+                    const amountValue = Number(entry.amount);
+                    const hasAmount = Number.isFinite(amountValue) && amountValue > 0;
+                    const isAutoPlaceholder = isAutoCancelledPlaceholder(entry);
                     return (
                       <tr key={entry.id} className="hover:bg-slate-50">
                         <td className="px-4 py-2 font-mono text-sm text-gray-900">
@@ -1032,9 +1127,9 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                       >
                         {receiptFeesMap[entry.receipt_no_full || entry.id] || (entry.fee_type_code ? `${entry.fee_type_code} - ${entry.fee_type_name}` : entry.fee_type_name || '--')}
                       </td>
-                      <td className="px-4 py-2 text-right font-semibold text-gray-900">Rs. {Number(entry.amount).toFixed(2)}</td>
+                      <td className="px-4 py-2 text-right font-semibold text-gray-900">{hasAmount ? `Rs. ${amountValue.toFixed(2)}` : '--'}</td>
                       <td className="px-4 py-2 text-gray-600">
-                        {entry.is_cancelled ? (
+                        {entry.is_cancelled && !isAutoPlaceholder ? (
                           <span className="font-semibold text-red-700">
                             CANCELLED{entry.cancel_reason ? ` - ${entry.cancel_reason}` : ''}
                           </span>
@@ -1046,7 +1141,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                           <button
                             type="button"
                             onClick={() => startEdit(entry)}
-                            disabled={entry.is_cancelled}
+                            disabled={!canEditEntry}
                             className="rounded border border-blue-200 px-3 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-50"
                           >
                             Edit
@@ -1081,6 +1176,35 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
           )}
         </section>
       </div>
+
+      {showCancelCurrentPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl">
+            <h3 className="text-lg font-semibold text-gray-900">Confirm Cancel</h3>
+            <p className="mt-2 text-sm text-gray-700">
+              Are you sure to cancel rec no <span className="font-mono font-semibold text-gray-900">{cancelPreviewDisplay}</span>?
+            </p>
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowCancelCurrentPopup(false)}
+                disabled={cancellingPreview}
+                className="rounded border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                No
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelCurrentReceipt}
+                disabled={cancellingPreview}
+                className="rounded bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:bg-amber-300"
+              >
+                {cancellingPreview ? 'Cancelling...' : 'Yes, Cancel Rec'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

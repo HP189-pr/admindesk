@@ -21,6 +21,7 @@ const STATUS_OPTIONS = [
 
 const RIGHTS_FALLBACK = { can_view: false, can_create: false, can_edit: false, can_delete: false };
 const RIGHTS_DEFAULT = { can_view: true, can_create: false, can_edit: true, can_delete: false };
+const AUTO_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 
 const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   const [statusFilter, setStatusFilter] = useState('pending');
@@ -45,6 +46,8 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   const [activeRow, setActiveRow] = useState(null);
   const [editForm, setEditForm] = useState({ mail_status: 'pending', remark: '' });
   const activeRowRef = useRef(null);
+  const autoRefreshInFlightRef = useRef(false);
+  const initialAutoRefreshDoneRef = useRef(false);
 
   useEffect(() => {
     const handle = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 350);
@@ -156,6 +159,70 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
     }
     loadRows();
   }, [loadRows, rightsLoaded, rights.can_view]);
+
+  const runSheetSyncRefresh = useCallback(
+    async ({ silent = false, showModal = true } = {}) => {
+      if (!rights.can_view || autoRefreshInFlightRef.current) return;
+      autoRefreshInFlightRef.current = true;
+
+      if (!silent) {
+        setLoading(true);
+        setError('');
+        setFlashMessage('info', 'Syncing from Google Sheet...');
+      }
+
+      try {
+        const result = await syncMailRequestsFromSheet({ noPrune: safeRefresh });
+        if (showModal && result && result.output) {
+          const lines = String(result.output).split('\n').filter(Boolean);
+          const snippet = lines.slice(0, 3).join(' | ');
+          setFlashMessage('info', `Sync output: ${snippet}`);
+          setSyncModalContent(result.output);
+          setSyncModalOpen(true);
+          // eslint-disable-next-line no-console
+          console.info('Sheet sync output:\n', result.output);
+        }
+
+        await loadRows();
+
+        if (!silent) {
+          setFlashMessage('success', 'Sheet sync completed. Refreshing list...');
+        }
+      } catch (err) {
+        const msg = err.message || 'Failed to sync from sheet.';
+        setError(msg);
+        setFlashMessage('error', msg);
+        if (showModal) {
+          setSyncModalContent(msg);
+          setSyncModalOpen(true);
+        }
+      } finally {
+        if (!silent) {
+          setLoading(false);
+        }
+        autoRefreshInFlightRef.current = false;
+      }
+    },
+    [rights.can_view, safeRefresh, loadRows, setFlashMessage]
+  );
+
+  useEffect(() => {
+    if (!rightsLoaded || !rights.can_view || initialAutoRefreshDoneRef.current) {
+      return;
+    }
+    initialAutoRefreshDoneRef.current = true;
+    runSheetSyncRefresh({ silent: true, showModal: false });
+  }, [rightsLoaded, rights.can_view, runSheetSyncRefresh]);
+
+  useEffect(() => {
+    if (!rightsLoaded || !rights.can_view) {
+      return undefined;
+    }
+    const intervalId = setInterval(() => {
+      runSheetSyncRefresh({ silent: true, showModal: false });
+    }, AUTO_REFRESH_INTERVAL_MS);
+    return () => clearInterval(intervalId);
+  }, [rightsLoaded, rights.can_view, runSheetSyncRefresh]);
 
   const toggleSelect = (id) => {
     setSelectedIds((prev) => {
@@ -274,37 +341,9 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   const handleReload = () => loadRows();
 
   // Sync from Google Sheet then reload rows
-  const handleSyncAndReload = async () => {
-    if (!rights.can_view) return;
-    setLoading(true);
-    setError('');
-    try {
-      setFlashMessage('info', 'Syncing from Google Sheet...');
-      const result = await syncMailRequestsFromSheet({ noPrune: safeRefresh });
-      // Show a short snippet in the flash and full output in modal (if available)
-      if (result && result.output) {
-        const lines = String(result.output).split('\n').filter(Boolean);
-        const snippet = lines.slice(0, 3).join(' | ');
-        setFlashMessage('info', `Sync output: ${snippet}`);
-        // display full output in modal for inspection
-        setSyncModalContent(result.output);
-        setSyncModalOpen(true);
-        // also log to console
-        // eslint-disable-next-line no-console
-        console.info('Sheet sync output:\n', result.output);
-      }
-      setFlashMessage('success', 'Sheet sync completed. Refreshing list...');
-      await loadRows();
-    } catch (err) {
-      const msg = err.message || 'Failed to sync from sheet.';
-      setError(msg);
-      setFlashMessage('error', msg);
-      setSyncModalContent(msg);
-      setSyncModalOpen(true);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleSyncAndReload = useCallback(() => {
+    runSheetSyncRefresh({ silent: false, showModal: true });
+  }, [runSheetSyncRefresh]);
 
   const isRefreshing = (id) => refreshingIds.includes(id);
 

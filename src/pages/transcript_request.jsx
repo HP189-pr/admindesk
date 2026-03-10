@@ -29,6 +29,7 @@ const STATUS_OPTIONS = [
 
 const RIGHTS_FALLBACK = { can_view: false, can_create: false, can_edit: false, can_delete: false };
 const RIGHTS_DEFAULT = { can_view: true, can_create: false, can_edit: true, can_delete: false };
+const AUTO_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 
 const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   const [statusFilter, setStatusFilter] = useState('');
@@ -56,6 +57,8 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   const [rightsLoaded, setRightsLoaded] = useState(false);
   const [syncModalOpen, setSyncModalOpen] = useState(false);
   const [syncModalContent, setSyncModalContent] = useState('');
+  const autoRefreshInFlightRef = useRef(false);
+  const initialAutoRefreshDoneRef = useRef(false);
 
   useEffect(() => {
     const handle = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 350);
@@ -147,6 +150,77 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
     }
     loadRows();
   }, [loadRows, rightsLoaded, rights.can_view]);
+
+  const runSheetSyncRefresh = useCallback(
+    async ({ silent = false, showModal = true } = {}) => {
+      if (!rights.can_view || autoRefreshInFlightRef.current) return;
+      autoRefreshInFlightRef.current = true;
+
+      if (!silent) {
+        setLoading(true);
+        setError('');
+        setFlashMessage('info', 'Syncing from Google Sheet...');
+      }
+
+      try {
+        const result = await syncTranscriptRequestsFromSheet({
+          no_prune: safeRefresh,
+          force_overwrite_status: forceStatus,
+        });
+
+        if (showModal) {
+          if (result && result.summary) {
+            const summary = result.summary;
+            const take = (arr, n = 20) => (Array.isArray(arr) ? arr.slice(0, n) : []);
+            const createdSample = take(summary.created_trs).join(', ') || '-';
+            const updatedSample = take(summary.updated_trs).join(', ') || '-';
+            const modal = `Imported: ${summary.created} created\nUpdated: ${summary.updated}\nTotal rows in sheet: ${summary.total}\nPruned: ${summary.pruned || 0}\n\nCreated TRs (sample): ${createdSample}\nUpdated TRs (sample): ${updatedSample}`;
+            setSyncModalContent(modal);
+          } else {
+            setSyncModalContent('Refresh completed.');
+          }
+          setSyncModalOpen(true);
+        }
+
+        await loadRows();
+
+        if (!silent) {
+          setFlashMessage('success', 'Refresh completed.');
+        }
+      } catch (err) {
+        const msg = err.message || 'Refresh and sync failed.';
+        setFlashMessage('error', msg);
+        if (showModal) {
+          setSyncModalContent(msg);
+          setSyncModalOpen(true);
+        }
+      } finally {
+        if (!silent) {
+          setLoading(false);
+        }
+        autoRefreshInFlightRef.current = false;
+      }
+    },
+    [rights.can_view, safeRefresh, forceStatus, loadRows, setFlashMessage]
+  );
+
+  useEffect(() => {
+    if (!rightsLoaded || !rights.can_view || initialAutoRefreshDoneRef.current) {
+      return;
+    }
+    initialAutoRefreshDoneRef.current = true;
+    runSheetSyncRefresh({ silent: true, showModal: false });
+  }, [rightsLoaded, rights.can_view, runSheetSyncRefresh]);
+
+  useEffect(() => {
+    if (!rightsLoaded || !rights.can_view) {
+      return undefined;
+    }
+    const intervalId = setInterval(() => {
+      runSheetSyncRefresh({ silent: true, showModal: false });
+    }, AUTO_REFRESH_INTERVAL_MS);
+    return () => clearInterval(intervalId);
+  }, [rightsLoaded, rights.can_view, runSheetSyncRefresh]);
 
   useEffect(() => {
     if (rightsLoaded && !rights.can_view) {
@@ -358,19 +432,17 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   // optional polling to auto-refresh list (every 10s) when enabled
   useEffect(() => {
     if (!polling || !rights.can_view) return undefined;
-    const id = setInterval(async () => {
-      try {
-        // first ask server to import any new rows from the sheet, then reload
-        await syncTranscriptRequestsFromSheet();
-        await loadRows();
-      } catch (err) {
-        // swallow errors; show a flash for the first error could be noisy so keep silent
-      }
+    const id = setInterval(() => {
+      runSheetSyncRefresh({ silent: true, showModal: false });
     }, 10000);
     return () => clearInterval(id);
-  }, [polling, rights.can_view, loadRows]);
+  }, [polling, rights.can_view, runSheetSyncRefresh]);
 
   const handleReload = () => loadRows();
+
+  const handleSyncAndReload = useCallback(() => {
+    runSheetSyncRefresh({ silent: false, showModal: true });
+  }, [runSheetSyncRefresh]);
 
   const statusCounts = useMemo(() => {
     const counts = { pending: 0, progress: 0, done: 0, cancel: 0 };
