@@ -13,6 +13,11 @@ const APPLY_FOR = [
   { value: "GT", label: "Marks to Grade" },
 ];
 
+const APPLY_FOR_LABELS = APPLY_FOR.reduce((acc, item) => {
+  acc[item.value] = item.label;
+  return acc;
+}, {});
+
 const PAY_BY = [
   { value: "CASH", label: "Cash" },
   { value: "BANK", label: "Bank" },
@@ -399,7 +404,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
       payBy: r.pay_by || null,
       payPre: r.pay_rec_no_pre || '',
       payNo: r.pay_rec_no || '',
-      payAmount: r.pay_amount || 0,
+      payAmount: (typeof r.pay_amount === 'undefined' || r.pay_amount === null) ? '' : r.pay_amount,
     };
   };
 
@@ -413,6 +418,93 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     // For display, format IV IDs; keep raw elsewhere
     const applyFor = r.apply_for || (r.type === 'inst-verification' ? 'IV' : null);
     return formatDocRecId(raw, applyFor);
+  };
+
+  const formatRecentDate = (value) => {
+    if (!value) return '';
+    const raw = String(value).trim();
+    if (!raw) return '';
+    // Convert ISO-like values to dd-mm-yyyy for consistent display.
+    if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return isoToDMY(raw.slice(0, 10));
+    // Strip time when values are already in day-first formats.
+    if (/^\d{2}-\d{2}-\d{4}/.test(raw)) return raw.slice(0, 10);
+    if (/^\d{2}\/\d{2}\/\d{4}/.test(raw)) return raw.slice(0, 10);
+    return raw;
+  };
+
+  const displayApplyFor = (applyFor) => {
+    const key = (applyFor || '').toUpperCase();
+    return APPLY_FOR_LABELS[key] || applyFor || '';
+  };
+
+  const normalizeRecentValue = (value) => {
+    const s = (value === null || typeof value === 'undefined') ? '' : String(value).trim();
+    return s || '-';
+  };
+
+  const recentSegmentClass = (kind) => {
+    if (kind === 'payment') return 'font-bold text-indigo-700';
+    if (kind === 'date') return 'font-semibold text-emerald-700';
+    return 'text-gray-900';
+  };
+
+  const buildRecentRowValues = (type, r) => {
+    const docId = resolveDocRecId(r);
+    const enrollment = r.enrollment_no || r.enrollment || r.enrollment_no_string || '';
+    const studentName = r.student_name || r.name || r.full_name || '';
+    const recInstName = r.rec_inst_name || r.rec_inst_city || '';
+    const { payBy, payPre, payNo, payAmount } = resolvePayment(r);
+    const payReceipt = payBy && payBy !== 'NA' ? `${payPre || ''}${payNo || ''}` : '';
+    const amount = (payAmount === null || typeof payAmount === 'undefined') ? '' : String(payAmount);
+    const docDate = formatRecentDate(
+      r.doc_rec_date || r.created_at || r.received_at || r.vr_date || r.prv_date || r.mg_date || r.inst_veri_date || ''
+    );
+    const docRemark = r.doc_remark || r.doc_rec_remark || '';
+
+    if (type === 'verification' || type === 'migration' || type === 'provisional') {
+      return [docId, enrollment, studentName, payBy || '', payReceipt, amount, docDate, docRemark];
+    }
+    if (type === 'inst-verification') {
+      return [docId, recInstName, payBy || '', payReceipt, amount, docDate, docRemark];
+    }
+    // "all" currently lists DocRec rows.
+    return [docId, docDate, displayApplyFor(r.apply_for), payBy || '', payReceipt, amount];
+  };
+
+  const buildRecentRowSegments = (type, r) => {
+    const values = buildRecentRowValues(type, r);
+    if (type === 'verification' || type === 'migration' || type === 'provisional') {
+      return [
+        { text: values[0], kind: 'default' },
+        { text: values[1], kind: 'default' },
+        { text: values[2], kind: 'default' },
+        { text: values[3], kind: 'payment' },
+        { text: values[4], kind: 'payment' },
+        { text: values[5], kind: 'payment' },
+        { text: values[6], kind: 'date' },
+        { text: values[7], kind: 'default' },
+      ];
+    }
+    if (type === 'inst-verification') {
+      return [
+        { text: values[0], kind: 'default' },
+        { text: values[1], kind: 'default' },
+        { text: values[2], kind: 'payment' },
+        { text: values[3], kind: 'payment' },
+        { text: values[4], kind: 'payment' },
+        { text: values[5], kind: 'date' },
+        { text: values[6], kind: 'default' },
+      ];
+    }
+    // all/docrec
+    return [
+      { text: values[0], kind: 'default' },
+      { text: values[1], kind: 'date' },
+      { text: values[2], kind: 'default' },
+      { text: values[3], kind: 'payment' },
+      { text: values[4], kind: 'payment' },
+      { text: values[5], kind: 'payment' },
+    ];
   };
 
   const onRecordClick = (rec) => {
@@ -1078,8 +1170,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
               <div className="lg:col-span-3">
                 <label className="text-sm font-medium text-gray-700">Record Type</label>
                 <select className="w-full border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-sky-200" value={serviceFilter} onChange={(e)=>{ setServiceFilter(e.target.value); fetchRecentRecords(searchTerm, e.target.value); }}>
-                  <option value="all">All / DocRec</option>
-                  <option value="docrec">DocRec</option>
+                  <option value="all">All</option>
                   <option value="migration">Migration</option>
                   <option value="provisional">Provisional</option>
                   <option value="verification">Verification</option>
@@ -1102,32 +1193,20 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
                   const r = rec.raw || rec;
                   const type = rec.type || 'docrec';
                   const docId = resolveDocRecId(r);
-                  const name = (type === 'inst-verification') ? (r.rec_inst_name || r.rec_inst_city || '') : (r.student_name || r.name || r.full_name || '');
-                  const enr = r.enrollment_no || r.enrollment || r.enrollment_no_string || '';
-                  const date = r.prv_date || r.mg_date || r.vr_date || r.inst_veri_date || r.created_at || r.received_at || '';
-                  const docNumber = type === 'inst-verification' ? (r.inst_veri_number || '') : (type === 'migration' ? (r.mg_number || '') : (type === 'provisional' ? (r.prv_number || '') : (type === 'verification' ? (r.final_no || '') : '')));
-                  
-                  const { payBy, payPre, payNo } = resolvePayment(r);
+                  const rowSegments = buildRecentRowSegments(type, r).map((seg) => ({
+                    ...seg,
+                    text: normalizeRecentValue(seg.text),
+                  }));
 
                   return (
                     <div key={`${type}-${docId}-${idx}`} className="p-2 border rounded hover:bg-gray-50 cursor-pointer" onClick={()=>onRecordClick(rec)}>
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <div className="text-sm font-medium">
-                            {docId && `${docId} · `}
-                            {name}
-                            {enr ? ` · ${enr}` : ''}
-                          </div>
-                          {payBy && payBy !== 'NA' && (
-                            <div className="mt-1 text-xs text-gray-800">
-                              {payBy}{(payPre || payNo) ? ` · ${payPre}${payNo}` : ''}
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-xs text-right">
-                          <div className="uppercase text-[10px] px-2 py-1 rounded bg-gray-100">{type}</div>
-                          <div className="text-xs text-gray-500">{date}</div>
-                        </div>
+                      <div className="text-sm font-medium whitespace-pre overflow-x-auto">
+                        {rowSegments.length ? rowSegments.map((seg, segIdx) => (
+                          <React.Fragment key={`${type}-${docId}-${idx}-${segIdx}`}>
+                            {segIdx > 0 ? '  ' : ''}
+                            <span className={recentSegmentClass(seg.kind)}>{seg.text}</span>
+                          </React.Fragment>
+                        )) : 'No details'}
                       </div>
                     </div>
                   );
