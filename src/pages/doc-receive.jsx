@@ -20,6 +20,8 @@ const PAY_BY = [
   { value: "NA", label: "Not Applicable" },
 ];
 
+const GRID24 = "grid grid-cols-1 md:[grid-template-columns:repeat(24,minmax(0,1fr))] gap-1";
+
 // Format IV doc_rec_id for display as IVYY + 4+ digit sequence (strip extra zeros)
 const formatDocRecId = (docRecId, applyFor) => {
   if (!docRecId) return '';
@@ -745,6 +747,48 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     return true;
   };
 
+  const handleSaveNew = async () => {
+    try {
+      await submit();
+      showFlash('Saved!');
+      // Keep explicit reset shape used by existing Save flow.
+      setForm({
+        apply_for: "VR",
+        pay_by: "NA",
+        pay_amount: 0,
+        doc_rec_date: todayDMY(),
+        doc_rec_id: "",
+        pay_rec_no_pre: "",
+        pay_rec_no: "",
+        doc_remark: "",
+        enrollment: "",
+        enrollment_id: null,
+        second_enrollment: "",
+        student_name: "",
+        institute_id: "",
+        sub_course: "",
+        main_course: "",
+        class_obtain: "",
+        tr: 0, ms: 0, dg: 0, moi: 0, backlog: 0,
+        eca_required: false,
+        rec_by: "",
+        rec_inst_name: "",
+        rec_inst_suggestions: [],
+        rec_inst_loading: false,
+        prv_number: "",
+        prv_date: "",
+        passing_year: "",
+        mg_number: "",
+        mg_date: "",
+        exam_year: "",
+        admission_year: "",
+      });
+      fetchRecentRecords('', 'all');
+    } catch (e) {
+      alert(e.message || 'Failed');
+    }
+  };
+
   const leftSlot = (
     <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-sky-600 text-white text-xl">📥</div>       
   );
@@ -780,28 +824,29 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
         </div>
 
         {panelOpen && selected === "➕" && (
-          <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div>
+          <div className={`px-2 pt-2 pb-1 ${GRID24}`}>
             {/* doc_rec_date */}
-            <div>
+            <div className="md:col-span-3">
               <label className="text-sm">Doc Rec Date</label>
               <input type="date" className="w-full border rounded-lg p-2" value={(form.doc_rec_date && dmyToISO(form.doc_rec_date)) || ''} onChange={(e)=>handleChange("doc_rec_date", e.target.value ? isoToDMY(e.target.value) : todayDMY())} />
             </div>
 
             {/* apply_for */}
-            <div>
+            <div className="md:col-span-3">
               <label className="text-sm">Apply For</label>
               <select className="w-full border rounded-lg p-2" value={form.apply_for} onChange={(e)=>handleChange("apply_for", e.target.value)}> {APPLY_FOR.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
               </select>
             </div>
 
             {/* doc_rec_id preview */}
-            <div>
+            <div className="md:col-span-3">
               <label className="text-sm">Doc Rec ID (next)</label>
               <input className="w-full border rounded-lg p-2" value={formatDocRecId(form.doc_rec_id, form.apply_for)} readOnly />
             </div>
 
             {/* pay_by */}
-            <div>
+            <div className="md:col-span-3">
               <label className="text-sm">Pay By</label>
               <select className="w-full border rounded-lg p-2" value={form.pay_by} onChange={(e)=>handleChange("pay_by", e.target.value)}> {PAY_BY.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
               </select>
@@ -809,7 +854,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
 
             {/* pay_rec_no_pre (readonly preview), only show when pay_by not NA */}
             {form.pay_by && form.pay_by !== 'NA' && (
-              <div>
+              <div className="md:col-span-2">
                 <label className="text-sm">Pay Receipt Prefix</label>
                 <input className="w-full border rounded-lg p-2" value={form.pay_rec_no_pre} readOnly />
               </div>
@@ -817,69 +862,79 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
 
             {/* pay_rec_no */}
             {form.pay_by && form.pay_by !== 'NA' ? (
-              <div>
-                <label className="text-sm">Pay Receipt No (optional)</label>
+              <div className="md:col-span-2">
+                <label className="text-sm">Receipt No</label>
                 <input className="w-full border rounded-lg p-2" value={form.pay_rec_no} onChange={(e)=>handleChange("pay_rec_no", e.target.value)} />
               </div>
             ) : null}
 
             {/* pay_amount */}
             {form.pay_by && form.pay_by !== 'NA' ? (
-              <div>
+              <div className="md:col-span-3">
                 <label className="text-sm">Amount</label>
                 <input type="number" className="w-full border rounded-lg p-2" value={form.pay_amount} onChange={(e)=>handleChange("pay_amount", e.target.value)} />
               </div>
             ) : null}
 
             {/* doc_remark */}
-            <div className="md:col-span-4">
+            <div className={`${form.pay_by === 'NA' ? 'md:col-span-12' : 'md:col-span-5'}`}>
               <label className="text-sm">Doc Remark</label>
               <input className="w-full border rounded-lg p-2" value={form.doc_remark} onChange={(e)=>handleChange("doc_remark", e.target.value)} />
             </div>
-
+            </div>
             {/* If VR show verification options (simplified UI as placeholder) */}
             {form.apply_for === 'VR' && (
-              <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-8 gap-3">
-                <div className="md:col-span-2">
+              <div className={`px-2 pt-0 pb-2 ${GRID24} items-end`}>
+                <div className="md:col-span-4">
                   <label className="text-sm">Enrollment No</label>
                   <input className="w-full border rounded-lg p-2" placeholder="e.g. 20MSCCHEM22184" value={form.enrollment} onChange={(e)=>handleChange("enrollment", e.target.value)} />
                 </div>
-                <div className="md:col-span-2">
+                <div className="md:col-span-4">
                   <label className="text-sm">2nd Enrollment</label>
                   <input className="w-full border rounded-lg p-2" value={form.second_enrollment} onChange={(e)=>handleChange("second_enrollment", e.target.value)} />
                 </div>
-                <div className="md:col-span-4">
+                <div className="md:col-span-8">
                   <label className="text-sm">Student Name</label>
                   <input className="w-full border rounded-lg p-2" value={form.student_name} onChange={(e)=>handleChange("student_name", e.target.value)} />
                 </div>
 
-                <div>
+                <div className="md:col-span-1">
                   <label className="text-sm">TR</label>
                   <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.tr} onChange={(e)=>handleChange("tr", clamp3(e.target.value))} />
                 </div>
-                <div>
+                <div className="md:col-span-1">
                   <label className="text-sm">MS</label>
                   <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.ms} onChange={(e)=>handleChange("ms", clamp3(e.target.value))} />
                 </div>
-                <div>
+                <div className="md:col-span-1">
                   <label className="text-sm">DG</label>
                   <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.dg} onChange={(e)=>handleChange("dg", clamp3(e.target.value))} />
                 </div>
-                <div>
+                <div className="md:col-span-1">
                   <label className="text-sm">MOI</label>
                   <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.moi} onChange={(e)=>handleChange("moi", clamp3(e.target.value))} />
                 </div>
-                <div>
+                <div className="md:col-span-1">
                   <label className="text-sm">Backlog</label>
                   <input type="number" min="0" max="999" className="w-full border rounded-lg p-2" value={form.backlog} onChange={(e)=>handleChange("backlog", clamp3(e.target.value))} />
                 </div>
+                {!selectedRec && (
+                  <div className="md:col-span-3 flex justify-end items-end">
+                    <button
+                      className="px-4 py-2 rounded-lg bg-emerald-600 text-white"
+                      onClick={handleSaveNew}
+                    >
+                      Save
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
             {/* If inst-verification, rec_by & rec_inst_name */}
             {form.apply_for === 'IV' && (
-              <>
-                <div>
+              <div className={`px-2 pt-0 pb-2 ${GRID24} items-end`}>
+                <div className="md:col-span-4">
                   <label className="text-sm">Received By</label>
                   <select className="w-full border rounded-lg p-2" value={form.rec_by} onChange={(e)=>handleChange("rec_by", e.target.value)}>
                     <option value="">--</option>
@@ -888,7 +943,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
                     <option value="Self">Self</option>
                   </select>
                 </div>
-                <div className="md:col-span-2">
+                <div className="md:[grid-column:span_16/span_16]">
                   <label className="text-sm">Rec Inst Name (type 3 chars)</label>
                   <div className="relative">
                     <input
@@ -930,97 +985,74 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
                     )}
                   </div>
                 </div>
-              </>
+                {!selectedRec && (
+                  <div className="md:col-span-4 flex justify-end">
+                    <button className="px-4 py-2 rounded-lg bg-emerald-600 text-white" onClick={handleSaveNew}>Save</button>
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Provisional / Migration minimal UI */}
             {form.apply_for === 'PR' && (
-              <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-8 gap-3">
-                <div className="md:col-span-4">
+              <div className={`px-2 pt-0 pb-2 ${GRID24} items-end`}>
+                <div className="md:col-span-10">
                   <label className="text-sm">Enrollment No</label>
                   <input className="w-full border rounded-lg p-2" placeholder="e.g. 20MSCCHEM22184" value={form.enrollment} onChange={(e)=>handleChange("enrollment", e.target.value)} />
                 </div>
-                <div className="md:col-span-4">
+                <div className="md:col-span-10">
                   <label className="text-sm">Name</label>
                   <input className="w-full border rounded-lg p-2 bg-gray-50" value={form.student_name} readOnly />
                 </div>
-                {serviceIssueError && <div className="md:col-span-8 text-sm text-red-600">{serviceIssueError}</div>}
+                {!selectedRec && (
+                  <div className="md:col-span-4 flex justify-end items-end">
+                    <button className="px-4 py-2 rounded-lg bg-emerald-600 text-white" onClick={handleSaveNew}>Save</button>
+                  </div>
+                )}
+                {serviceIssueError && <div className="md:col-span-full text-sm text-red-600">{serviceIssueError}</div>}
               </div>
             )}
 
             {form.apply_for === 'MG' && (
-              <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-8 gap-3">
-                <div className="md:col-span-4">
+              <div className={`px-2 pt-0 pb-2 ${GRID24} items-end`}>
+                <div className="md:col-span-10">
                   <label className="text-sm">Enrollment No</label>
                   <input className="w-full border rounded-lg p-2" placeholder="e.g. 20MSCCHEM22184" value={form.enrollment} onChange={(e)=>handleChange("enrollment", e.target.value)} />
                 </div>
-                <div className="md:col-span-4">
+                <div className="md:col-span-10">
                   <label className="text-sm">Name</label>
                   <input className="w-full border rounded-lg p-2 bg-gray-50" value={form.student_name} readOnly />
                 </div>
-                {serviceIssueError && <div className="md:col-span-8 text-sm text-red-600">{serviceIssueError}</div>}
+                {!selectedRec && (
+                  <div className="md:col-span-4 flex justify-end items-end">
+                    <button className="px-4 py-2 rounded-lg bg-emerald-600 text-white" onClick={handleSaveNew}>Save</button>
+                  </div>
+                )}
+                {serviceIssueError && <div className="md:col-span-full text-sm text-red-600">{serviceIssueError}</div>}
               </div>
             )}
 
-            <div className="md:col-span-1 md:col-start-4 self-end flex justify-end space-x-2 mt-2 md:mt-0">
-              {!selectedRec && (
-                <button className="px-4 py-2 rounded-lg bg-emerald-600 text-white" onClick={async()=>{
-                  try { 
-                    await submit(); 
-                    showFlash('Saved!');
-                    // Reset form for new entry
-                    setForm({
-                      apply_for: "VR",
-                      pay_by: "NA",
-                      pay_amount: 0,
-                      doc_rec_date: todayDMY(),
-                      doc_rec_id: "",
-                      pay_rec_no_pre: "",
-                      pay_rec_no: "",
-                      doc_remark: "",
-                      enrollment: "",
-                      enrollment_id: null,
-                      second_enrollment: "",
-                      student_name: "",
-                      institute_id: "",
-                      sub_course: "",
-                      main_course: "",
-                      class_obtain: "",
-                      tr: 0, ms: 0, dg: 0, moi: 0, backlog: 0,
-                      eca_required: false,
-                      rec_by: "",
-                      rec_inst_name: "",
-                      rec_inst_suggestions: [],
-                      rec_inst_loading: false,
-                      prv_number: "",
-                      prv_date: "",
-                      passing_year: "",
-                      mg_number: "",
-                      mg_date: "",
-                      exam_year: "",
-                      admission_year: "",
-                    });
-                    // Refresh recent records
-                    fetchRecentRecords('', 'all');
-                  } catch(e){ alert(e.message || 'Failed'); }
-                }}>Save</button>
-              )}
-              {selectedRec && (
-                <>
-                  <button className="px-4 py-2 rounded-lg bg-yellow-600 text-white" onClick={async()=>{
-                    try {
-                      await updateDocRec();
-                      setSelectedRec(null);
-                      showFlash('Updated successfully!');
-                    } catch(e){ alert(e.message || 'Update failed'); }
-                  }}>Update</button>
-                  <button className="px-4 py-2 rounded-lg bg-red-600 text-white" onClick={async()=>{
-                    if (!confirm('Delete this DocRec? This will also remove related rows where cascade applies.')) return;
-                    try { await deleteDocRec(); alert('Deleted'); setSelectedRec(null); setForm((f)=>({ ...f, doc_rec_id: '', enrollment: '', enrollment_id: null, student_name: '' })); } catch(e){ alert(e.message || 'Delete failed'); }
-                  }}>Delete</button>
-                </>
-              )}
-            </div>
+            {!selectedRec && !['VR', 'IV', 'PR', 'MG'].includes(form.apply_for) && (
+              <div className="p-4 flex justify-end mt-2">
+                <button className="px-4 py-2 rounded-lg bg-emerald-600 text-white" onClick={handleSaveNew}>Save</button>
+              </div>
+            )}
+
+            {selectedRec && (
+              <div className="p-4 flex justify-end space-x-2 mt-2">
+                <button className="px-4 py-2 rounded-lg bg-yellow-600 text-white" onClick={async()=>{
+                  try {
+                    await updateDocRec();
+                    setSelectedRec(null);
+                    showFlash('Updated successfully!');
+                  } catch(e){ alert(e.message || 'Update failed'); }
+                }}>Update</button>
+                <button className="px-4 py-2 rounded-lg bg-red-600 text-white" onClick={async()=>{
+                  if (!confirm('Delete this DocRec? This will also remove related rows where cascade applies.')) return;
+                  try { await deleteDocRec(); alert('Deleted'); setSelectedRec(null); setForm((f)=>({ ...f, doc_rec_id: '', enrollment: '', enrollment_id: null, student_name: '' })); } catch(e){ alert(e.message || 'Delete failed'); }
+                }}>Delete</button>
+              </div>
+            )}
           </div>
         )}
       </div>
