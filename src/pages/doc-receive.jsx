@@ -1188,7 +1188,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
             <div>
               {recentLoading && <div className="text-muted">Loading...</div>}
               {!recentLoading && recentRecords.length === 0 && <div className="text-muted">No records found.</div>}
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {recentRecords.map((rec, idx) => {
                   const r = rec.raw || rec;
                   const type = rec.type || 'docrec';
@@ -1199,7 +1199,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
                   }));
 
                   return (
-                    <div key={`${type}-${docId}-${idx}`} className="p-2 border rounded hover:bg-gray-50 cursor-pointer" onClick={()=>onRecordClick(rec)}>
+                    <div key={`${type}-${docId}-${idx}`} className="p-2 border rounded-xl hover:bg-gray-50 cursor-pointer" onClick={()=>onRecordClick(rec)}>
                       <div className="text-sm font-medium whitespace-pre overflow-x-auto">
                         {rowSegments.length ? rowSegments.map((seg, segIdx) => (
                           <React.Fragment key={`${type}-${docId}-${idx}-${segIdx}`}>

@@ -1133,8 +1133,23 @@ class CashOutwardViewSet(
     def get_queryset(self):
         qs = super().get_queryset()
         date_str = self.request.query_params.get("date")
+        date_from_str = self.request.query_params.get("date_from")
+        date_to_str = self.request.query_params.get("date_to")
+
+        # Exact date filter takes precedence for single-day views.
         if date_str:
-            qs = qs.filter(date=date_str)
+            date_exact = parse_date(date_str)
+            if date_exact:
+                qs = qs.filter(date=date_exact)
+            return qs.order_by("-date", "-id")
+
+        date_from = parse_date(date_from_str) if date_from_str else None
+        date_to = parse_date(date_to_str) if date_to_str else None
+
+        if date_from:
+            qs = qs.filter(date__gte=date_from)
+        if date_to:
+            qs = qs.filter(date__lte=date_to)
         return qs.order_by("-date", "-id")
 
 

@@ -477,6 +477,13 @@ const CashReport = ({ onBack }) => {
                 <h2 className="font-semibold mb-2">Add Deposit</h2>
                 <form className="flex flex-wrap gap-3 mb-4" onSubmit={handleDepositSubmit}>
                   <input
+                    type="date"
+                    className="border px-3 py-2 rounded"
+                    value={dateTo}
+                    onChange={e => setDateTo(e.target.value)}
+                    required
+                  />
+                  <input
                     type="number"
                     min="0"
                     step="0.01"
@@ -508,7 +515,7 @@ const CashReport = ({ onBack }) => {
                     {formSaving ? 'Saving...' : 'Add'}
                   </button>
                 </form>
-                <h2 className="font-semibold mb-2">Deposit Records</h2>
+                <h2 className="font-semibold mb-2">Deposit Records ({formatDateDisplay(dateTo)})</h2>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b">
@@ -520,7 +527,10 @@ const CashReport = ({ onBack }) => {
                   </thead>
                   <tbody>
                     {(() => {
-                      const depositRows = outward.filter(o => o && o.txn_type === 'DEPOSIT');
+                      const selectedDate = dateTo || today;
+                      const depositRows = outward.filter(
+                        o => o && o.txn_type === 'DEPOSIT' && o.date === selectedDate
+                      );
                       if (depositRows.length === 0) {
                         return (
                           <tr>
@@ -545,6 +555,13 @@ const CashReport = ({ onBack }) => {
               <div className="bg-white p-4 rounded shadow">
                 <h2 className="font-semibold mb-2">Add Expense</h2>
                 <form className="flex flex-wrap gap-3 mb-4" onSubmit={handleExpenseSubmit}>
+                  <input
+                    type="date"
+                    className="border px-3 py-2 rounded"
+                    value={dateTo}
+                    onChange={e => setDateTo(e.target.value)}
+                    required
+                  />
                   <input
                     type="number"
                     min="0"
@@ -577,7 +594,7 @@ const CashReport = ({ onBack }) => {
                     {formSaving ? 'Saving...' : 'Add'}
                   </button>
                 </form>
-                <h2 className="font-semibold mb-2">Expense Records</h2>
+                <h2 className="font-semibold mb-2">Expense Records ({formatDateDisplay(dateTo)})</h2>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b">
@@ -589,7 +606,10 @@ const CashReport = ({ onBack }) => {
                   </thead>
                   <tbody>
                     {(() => {
-                      const expenseRows = outward.filter(o => o && o.txn_type === 'EXPENSE');
+                      const selectedDate = dateTo || today;
+                      const expenseRows = outward.filter(
+                        o => o && o.txn_type === 'EXPENSE' && o.date === selectedDate
+                      );
                       if (expenseRows.length === 0) {
                         return (
                           <tr>

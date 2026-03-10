@@ -140,6 +140,14 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     return num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }, []);
 
+  const entryTotal = useMemo(
+    () => feeItems.reduce((sum, item) => {
+      const amount = Number(item.amount);
+      return Number.isFinite(amount) && amount > 0 ? sum + amount : sum;
+    }, 0),
+    [feeItems]
+  );
+
   const applyPreview = useCallback(
     (full) => {
       const safeFull = full || '';
@@ -954,8 +962,8 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
               ))}
             </div>
 
-            <div className="flex flex-wrap items-end gap-4">
-              <div className="flex flex-wrap gap-3 lg:flex-1 lg:justify-start">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap gap-3">
                 <button
                   type="submit"
                   disabled={saving || (!editingEntry && !rights.can_create) || (editingEntry && !rights.can_edit)}
@@ -970,6 +978,11 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                 >
                   Clear form
                 </button>
+              </div>
+              <div className="text-right">
+                <span className="text-base font-bold text-emerald-700">
+                  Total Amount: Rs. {formatAmount(entryTotal)}
+                </span>
               </div>
             </div>
           </form>
