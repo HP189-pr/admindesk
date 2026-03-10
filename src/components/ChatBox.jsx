@@ -1,3 +1,4 @@
+// src/components/ChatBox.jsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   FiChevronLeft,
@@ -25,6 +26,9 @@ const CHAT_PREF_DB = 'admindesk-chat-prefs';
 const CHAT_PREF_STORE = 'kv';
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost']);
 const FRONTEND_PROXY_PORTS = new Set(['3000', '5173', '5174', '8081']);
+const RTC_CONFIG = {
+  iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+};
 
 const toWebSocketProtocol = (protocol) => {
   if (protocol === 'https:') return 'wss:';
@@ -158,6 +162,9 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
   const bottomRef = useRef(null);
   const downloadedFilesRef = useRef({});
   const prefsHydratedRef = useRef(false);
+  const peerRef = useRef(null);
+  const screenStreamRef = useRef(null);
+  const remoteVideoRef = useRef(null);
 
   const isOpen = typeof controlledIsOpen === 'boolean' ? controlledIsOpen : internalIsOpen;
   const setIsOpen = (val) => {
@@ -389,6 +396,77 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
         return;
       }
 
+      if (eventType === 'webrtc_offer' && data?.offer) {
+        const fromUserId = data.from || data.from_userid || data.userid || data.sender;
+        if (!fromUserId) return;
+
+        if (peerRef.current) {
+          try {
+            peerRef.current.close();
+          } catch {
+            // Ignore close errors while replacing the peer connection.
+          }
+        }
+
+        const pc = new RTCPeerConnection(RTC_CONFIG);
+        peerRef.current = pc;
+
+        pc.ontrack = (trackEvent) => {
+          if (remoteVideoRef.current) {
+            const stream = trackEvent.streams?.[0] || null;
+            if (stream) remoteVideoRef.current.srcObject = stream;
+          }
+        };
+
+        pc.onicecandidate = (candidateEvent) => {
+          if (candidateEvent.candidate && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.send(
+              JSON.stringify({
+                event: 'webrtc_ice',
+                to: fromUserId,
+                from: selfId,
+                candidate: candidateEvent.candidate,
+              })
+            );
+          }
+        };
+
+        await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(
+            JSON.stringify({
+              event: 'webrtc_answer',
+              to: fromUserId,
+              from: selfId,
+              answer,
+            })
+          );
+        }
+        return;
+      }
+
+      if (eventType === 'webrtc_answer' && data?.answer) {
+        if (peerRef.current) {
+          await peerRef.current.setRemoteDescription(new RTCSessionDescription(data.answer));
+        }
+        return;
+      }
+
+      if (eventType === 'webrtc_ice' && data?.candidate) {
+        if (peerRef.current) {
+          try {
+            await peerRef.current.addIceCandidate(data.candidate);
+          } catch (err) {
+            console.warn('ICE error', err);
+          }
+        }
+        return;
+      }
+
       if (eventType === 'new_message' && data?.id) {
         const normalized = normalizeMessage(data);
         const partnerId = String(normalized.from) === String(selfId) ? normalized.to : normalized.from;
@@ -505,6 +583,21 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
+      }
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach((track) => track.stop());
+        screenStreamRef.current = null;
+      }
+      if (peerRef.current) {
+        try {
+          peerRef.current.close();
+        } catch {
+          // Ignore close errors during cleanup.
+        }
+        peerRef.current = null;
+      }
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = null;
       }
       wsRetryAttemptRef.current = 0;
     };
@@ -666,6 +759,86 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
       }
     } catch (e) {
       console.warn('Clear failed', e?.message || e);
+    }
+  };
+
+  const stopScreenShare = () => {
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach((track) => track.stop());
+      screenStreamRef.current = null;
+    }
+    if (peerRef.current) {
+      try {
+        peerRef.current.close();
+      } catch {
+        // Ignore close errors during manual stop.
+      }
+      peerRef.current = null;
+    }
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
+  };
+
+  const startScreenShare = async () => {
+    if (!selectedUser) return;
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      console.warn('WebSocket is not connected');
+      return;
+    }
+
+    try {
+      stopScreenShare();
+
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: false,
+      });
+
+      screenStreamRef.current = stream;
+
+      const pc = new RTCPeerConnection(RTC_CONFIG);
+      peerRef.current = pc;
+
+      stream.getTracks().forEach((track) => {
+        pc.addTrack(track, stream);
+      });
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(
+            JSON.stringify({
+              event: 'webrtc_ice',
+              to: selectedUser.id,
+              from: selfId,
+              candidate: event.candidate,
+            })
+          );
+        }
+      };
+
+      const [videoTrack] = stream.getVideoTracks();
+      if (videoTrack) {
+        videoTrack.onended = () => {
+          stopScreenShare();
+        };
+      }
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(
+          JSON.stringify({
+            event: 'webrtc_offer',
+            to: selectedUser.id,
+            from: selfId,
+            offer,
+          })
+        );
+      }
+    } catch (err) {
+      console.error('Screen share failed', err);
     }
   };
 
@@ -1017,7 +1190,14 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
             {selectedUser && (
               <div className="flex-1 min-h-0 bg-gray-50 text-black flex flex-col">
                 <div className="p-3 bg-gray-900 text-white flex items-center gap-3">
-                  <button onClick={() => setSelectedUser(null)} className="text-xl" aria-label="Back to user list">
+                  <button
+                    onClick={() => {
+                      stopScreenShare();
+                      setSelectedUser(null);
+                    }}
+                    className="text-xl"
+                    aria-label="Back to user list"
+                  >
                     <FiChevronLeft />
                   </button>
 
@@ -1035,6 +1215,13 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
 
                   <div className="font-semibold text-lg flex-1 truncate">{formatName(selectedUser)}</div>
                 </div>
+
+                <video
+                  ref={remoteVideoRef}
+                  autoPlay
+                  playsInline
+                  className="w-full max-h-[300px] bg-black rounded mb-2"
+                />
 
                 <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-3 space-y-3 bg-gradient-to-b from-gray-100 to-gray-200">
                   {(messages[selectedUser.id] || []).map((msg) => {
@@ -1165,6 +1352,22 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
                     title={uploading ? 'Sending...' : 'Send'}
                   >
                     <FiSend className={uploading ? 'animate-pulse' : ''} />
+                  </button>
+                  <button
+                    onClick={startScreenShare}
+                    className="w-10 h-10 rounded-full bg-green-500 hover:bg-green-600 text-white flex items-center justify-center"
+                    title="Share Screen"
+                    type="button"
+                  >
+                    {'\u{1F5A5}'}
+                  </button>
+                  <button
+                    onClick={stopScreenShare}
+                    className="w-10 h-10 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center"
+                    title="Stop Sharing"
+                    type="button"
+                  >
+                    ■
                   </button>
                 </div>
                 {file?.name && (

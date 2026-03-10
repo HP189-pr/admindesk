@@ -1,3 +1,4 @@
+# backend/api/chatbox/consumers.py
 from __future__ import annotations
 
 import time
@@ -100,6 +101,8 @@ class PrivateChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def receive_json(self, content, **kwargs):
         event = (content or {}).get("event")
+
+        # keep presence ping
         if event == "ping" and getattr(self, "user", None) and self.user.is_authenticated:
             ts = _mark_online(self.user.id)
             await self.channel_layer.group_send(
@@ -108,6 +111,29 @@ class PrivateChatConsumer(AsyncJsonWebsocketConsumer):
                     "type": "chat.event",
                     "event": "presence_update",
                     "data": {"userid": self.user.id, "online": True, "last_seen": ts},
+                },
+            )
+            return
+
+        # WebRTC / screen share events
+        if event in [
+            "webrtc_offer",
+            "webrtc_answer",
+            "webrtc_ice",
+            "screen_share_request",
+            "screen_share_accept",
+            "screen_share_reject",
+        ]:
+            to_user = content.get("to")
+            if not to_user:
+                return
+
+            await self.channel_layer.group_send(
+                user_group_name(int(to_user)),
+                {
+                    "type": "chat.event",
+                    "event": event,
+                    "data": content,
                 },
             )
 

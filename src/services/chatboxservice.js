@@ -1,3 +1,4 @@
+// src/services/chatboxservice.js
 import API from '../api/axiosInstance';
 
 const ChatBoxService = {

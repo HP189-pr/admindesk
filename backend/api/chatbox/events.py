@@ -1,4 +1,5 @@
-from __future__ import annotations
+
+# backend/api/chatbox/events.py
 
 try:
     from asgiref.sync import async_to_sync

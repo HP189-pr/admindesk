@@ -1,3 +1,4 @@
+# backend/api/chatbox/auth.py
 from __future__ import annotations
 
 from urllib.parse import parse_qs
