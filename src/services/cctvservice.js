@@ -62,3 +62,6 @@ export const syncCctvFromSheet = (sheetName) =>
   API.post(`${API_BASE}/centre/sync-from-sheet/`, {
     sheet_name: sheetName,
   });
+
+export const downloadOutwardPDF = (id) =>
+  API.get(`${API_BASE}/cctv-outward/${id}/generate-pdf/`, { responseType: "blob" });

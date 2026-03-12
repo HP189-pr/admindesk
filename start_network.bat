@@ -16,17 +16,17 @@ set "FRONTEND_PORT=3000"
 set "BACKEND_PORT=8001"
 set "BACKEND_TITLE=Daphne Backend (Dev)"
 set "FRONTEND_TITLE=Vite Frontend (Dev)"
-set "BACKEND_CMD=cd /d %~dp0backend && call start_backend.bat 0.0.0.0"
+set "BACKEND_CMD=cd /d %~dp0backend && call start_backend.bat dev 0.0.0.0 8001"
 set "FRONTEND_CMD=cd /d %~dp0 && npm run dev -- --host 0.0.0.0 --port 3000"
 goto START
 
 :MODE_PROD
 set "FRONTEND_PORT=8081"
 set "BACKEND_PORT=8000"
-set "BACKEND_TITLE=Django Backend (Prod)"
+set "BACKEND_TITLE=Daphne Backend (Prod)"
 set "FRONTEND_TITLE=Vite Preview (Prod)"
-set "BACKEND_CMD=cd /d %~dp0backend && ..\.venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000"
-set "FRONTEND_CMD=cd /d %~dp0 && npm run serve -- --host 0.0.0.0 --port 8081"
+set "BACKEND_CMD=cd /d %~dp0backend && call start_backend.bat prod 0.0.0.0 8000"
+set "FRONTEND_CMD=cd /d %~dp0 && npm run build && npm run serve -- --host 0.0.0.0 --port 8081"
 goto START
 
 :START

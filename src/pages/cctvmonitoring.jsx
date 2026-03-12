@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import PageTopbar from "../components/PageTopbar";
+import { toDateInput } from "../utils/date";
 import {
   getExams,
   createCentre,
@@ -12,6 +13,7 @@ import {
   deleteOutward,
   syncCctvExamsFromSheet,
   syncCctvFromSheet,
+  downloadOutwardPDF,
 } from "../services/cctvservice";
 
 const ACTIONS = ["CCTV Monitoring", "CCTV-Outward"];
@@ -47,18 +49,17 @@ const CCTVMonitoring = ({
     outward_date: "",
     cctv_record_no: "",
     college_name: "",
-    centre_name: "",
     exam_on: "",
     last_date: "",
     cc_start_label: "",
-    cc_end_label: "",
     no_of_dvd: "",
     no_of_report: "",
+    rep_nos: "",
     return_received: false,
     case_found: false,
     case_type: "",
     case_details: "",
-    remark: "",
+    note: "",
     id: null,
   });
 
@@ -211,10 +212,21 @@ const CCTVMonitoring = ({
       groups[key].rows.push(exam);
     });
 
-    return Object.values(groups).map((group) => ({
-      ...group,
-      times: Array.from(group.times),
-    }));
+    return Object.values(groups)
+      .map((group) => ({
+        ...group,
+        times: Array.from(group.times),
+      }))
+      .sort((a, b) => {
+        // Parse dd-mm-yyyy or yyyy-mm-dd to comparable string
+        const toSortable = (d) => {
+          if (!d) return '';
+          const m = String(d).match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+          if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+          return d; // already ISO or unknown — compare as-is
+        };
+        return toSortable(b.exam_date).localeCompare(toSortable(a.exam_date));
+      });
   }, [exams]);
 
   const setFlashMessage = (type, text) => {
@@ -279,46 +291,50 @@ const CCTVMonitoring = ({
     }
 
     const payload = {
-      outward_date: outwardForm.outward_date,
+      outward_date: outwardForm.outward_date || null,
       college_name: outwardForm.college_name,
-      centre_name: outwardForm.centre_name,
       exam_on: outwardForm.exam_on,
-      last_date: outwardForm.last_date,
+      last_date: outwardForm.last_date || null,
       cc_start_label: outwardForm.cc_start_label,
-      cc_end_label: outwardForm.cc_end_label,
-      no_of_dvd: outwardForm.no_of_dvd,
-      no_of_report: outwardForm.no_of_report,
+      no_of_dvd: outwardForm.no_of_dvd !== "" ? Number(outwardForm.no_of_dvd) : 0,
+      no_of_report: outwardForm.no_of_report !== "" ? Number(outwardForm.no_of_report) : 0,
+      rep_nos: outwardForm.rep_nos || "",
       return_received: outwardForm.return_received,
       case_found: outwardForm.case_found,
-      case_type: outwardForm.case_found ? outwardForm.case_type : "",
+      case_type: outwardForm.case_found ? outwardForm.case_type : null,
       case_details: outwardForm.case_found ? outwardForm.case_details : "",
-      remark: outwardForm.remark,
+      note: outwardForm.note || "",
     };
 
-    if (isEdit) {
-      await updateOutward(outwardForm.id, payload);
-      alert("Outward Updated");
-    } else {
-      await createOutward(payload);
-      alert("Outward Created");
+    try {
+      if (isEdit) {
+        await updateOutward(outwardForm.id, payload);
+        alert("Outward Updated");
+      } else {
+        await createOutward(payload);
+        alert("Outward Created");
+      }
+    } catch (err) {
+      const detail = err?.response?.data;
+      alert("Save failed: " + (detail ? JSON.stringify(detail) : err.message));
+      return;
     }
 
     setOutwardForm({
       outward_date: "",
       cctv_record_no: "",
       college_name: "",
-      centre_name: "",
       exam_on: "",
       last_date: "",
       cc_start_label: "",
-      cc_end_label: "",
       no_of_dvd: "",
       no_of_report: "",
+      rep_nos: "",
       return_received: false,
       case_found: false,
       case_type: "",
       case_details: "",
-      remark: "",
+      note: "",
       id: null,
     });
     fetchOutwards();
@@ -331,18 +347,17 @@ const CCTVMonitoring = ({
       outward_date: row.outward_date || "",
       cctv_record_no: row.cctv_record_no || "",
       college_name: row.college_name || "",
-      centre_name: row.centre_name || "",
       exam_on: row.exam_on || "",
       last_date: row.last_date || "",
       cc_start_label: row.cc_start_label || "",
-      cc_end_label: row.cc_end_label || "",
       no_of_dvd: row.no_of_dvd || "",
       no_of_report: row.no_of_report || "",
+      rep_nos: row.rep_nos || "",
       return_received: !!row.return_received,
       case_found: !!row.case_found,
       case_type: row.case_type || "",
       case_details: row.case_details || "",
-      remark: row.remark || "",
+      note: row.note || "",
     });
   };
 
@@ -367,7 +382,10 @@ const CCTVMonitoring = ({
         }
         actions={ACTIONS}
         selected={selectedAction}
-        onSelect={setSelectedAction}
+        onSelect={(action) => {
+          setSelectedAction(action);
+          if (action === ACTIONS[1]) fetchOutwards();
+        }}
         actionsOnLeft={false}
         onToggleSidebar={onToggleSidebar}
         onToggleChatbox={onToggleChatbox}
@@ -422,9 +440,9 @@ const CCTVMonitoring = ({
           <div className="border p-4 rounded">
             <h2 className="font-semibold mb-4">Exam Table</h2>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[60vh]">
               <table className="w-full text-sm border border-collapse table-fixed">
-                <thead className="bg-gray-200 text-xs uppercase">
+                <thead className="bg-gray-200 text-xs uppercase sticky top-0 z-10">
                   <tr>
                     <th className="w-12 px-2 py-1 text-left">Sem</th>
                     <th className="w-24 px-2 py-1 text-left">Subject Code</th>
@@ -722,20 +740,40 @@ const CCTVMonitoring = ({
         <div className="border p-4 rounded space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="font-semibold">CCTV Outward</h2>
-            <button
-              type="button"
-              onClick={() => {
-                if (!outwards.length) {
-                  alert("No outward record available.");
-                  return;
-                }
-                const latest = outwards[0];
-                window.open(`/api/cctv-outward/${latest.id}/generate-pdf/`, "_blank");
-              }}
-              className="px-4 py-2 rounded bg-green-600 text-white text-sm hover:bg-green-700"
-            >
-              Generate Latest Letter
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={fetchOutwards}
+                className="px-4 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700"
+              >
+                ↻ Reload
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!outwards.length) {
+                    alert("No outward record available.");
+                    return;
+                  }
+                  const latest = outwards[0];
+                  try {
+                    const res = await downloadOutwardPDF(latest.id);
+                    const mime = "application/pdf";
+                    const url = URL.createObjectURL(new Blob([res.data], { type: mime }));
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `${latest.cctv_record_no || "CCTV_Letter"}.pdf`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  } catch {
+                    alert("Failed to generate letter.");
+                  }
+                }}
+                className="px-4 py-2 rounded bg-green-600 text-white text-sm hover:bg-green-700"
+              >
+                Generate Latest Letter
+              </button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -746,8 +784,7 @@ const CCTVMonitoring = ({
                   <th className="px-3 py-2 text-left">Record No.</th>
                   <th className="px-3 py-2 text-left">Outward No.</th>
                   <th className="px-3 py-2 text-left">College</th>
-                  <th className="px-3 py-2 text-left">Centre</th>
-                  <th className="px-3 py-2 text-left">CC Range</th>
+                  <th className="px-3 py-2 text-left">DVD No</th>
                   <th className="px-3 py-2 text-left">Total DVD</th>
                   <th className="px-3 py-2 text-left">Reports</th>
                   <th className="px-3 py-2 text-left">Return</th>
@@ -758,7 +795,7 @@ const CCTVMonitoring = ({
               <tbody>
                 {outwards.length === 0 && (
                   <tr>
-                    <td colSpan={11} className="px-4 py-6 text-center text-gray-500">
+                    <td colSpan={10} className="px-4 py-6 text-center text-gray-500">
                       No outward entries found.
                     </td>
                   </tr>
@@ -773,7 +810,6 @@ const CCTVMonitoring = ({
                       <td className="px-3 py-2 align-top">{row.cctv_record_no || "—"}</td>
                       <td className="px-3 py-2 align-top">{row.outward_no || "—"}</td>
                       <td className="px-3 py-2 align-top">{row.college_name || "—"}</td>
-                      <td className="px-3 py-2 align-top">{row.centre_name || "—"}</td>
                       <td className="px-3 py-2 align-top">{cdLabel || "—"}</td>
                       <td className="px-3 py-2 align-top">{row.no_of_dvd || "—"}</td>
                       <td className="px-3 py-2 align-top">{row.no_of_report || "—"}</td>
@@ -803,7 +839,20 @@ const CCTVMonitoring = ({
                           </button>
                           <button
                             type="button"
-                            onClick={() => window.open(`/api/cctv-outward/${row.id}/generate-pdf/`, "_blank")}
+                            onClick={async () => {
+                              try {
+                                const res = await downloadOutwardPDF(row.id);
+                                const mime = "application/pdf";
+                                const url = URL.createObjectURL(new Blob([res.data], { type: mime }));
+                                const a = document.createElement("a");
+                                a.href = url;
+                                a.download = `${row.cctv_record_no || "CCTV_Letter"}.pdf`;
+                                a.click();
+                                URL.revokeObjectURL(url);
+                              } catch {
+                                alert("Failed to generate letter.");
+                              }
+                            }}
                             className="px-3 py-1.5 rounded bg-green-600 text-white text-xs hover:bg-green-700"
                           >
                             Generate Letter
@@ -822,7 +871,7 @@ const CCTVMonitoring = ({
             <form onSubmit={handleOutwardSubmit} className="grid md:grid-cols-2 gap-4">
               <input
                 type="date"
-                value={outwardForm.outward_date}
+                value={toDateInput(outwardForm.outward_date)}
                 onChange={(e) =>
                   setOutwardForm({ ...outwardForm, outward_date: e.target.value })
                 }
@@ -846,15 +895,6 @@ const CCTVMonitoring = ({
 
               <input
                 type="text"
-                placeholder="Centre Name"
-                value={outwardForm.centre_name || ""}
-                onChange={(e) =>
-                  setOutwardForm({ ...outwardForm, centre_name: e.target.value })
-                }
-              />
-
-              <input
-                type="text"
                 placeholder="Exam On (e.g. March 2026)"
                 value={outwardForm.exam_on || ""}
                 onChange={(e) =>
@@ -864,7 +904,7 @@ const CCTVMonitoring = ({
 
               <input
                 type="date"
-                value={outwardForm.last_date || ""}
+                value={toDateInput(outwardForm.last_date || "")}
                 onChange={(e) =>
                   setOutwardForm({ ...outwardForm, last_date: e.target.value })
                 }
@@ -872,19 +912,11 @@ const CCTVMonitoring = ({
 
               <input
                 type="text"
-                placeholder="CC Start Label"
+                placeholder="DVD No(S) (e.g. CC-001, CC-002)"
+                
                 value={outwardForm.cc_start_label}
                 onChange={(e) =>
                   setOutwardForm({ ...outwardForm, cc_start_label: e.target.value })
-                }
-              />
-
-              <input
-                type="text"
-                placeholder="CC End Label"
-                value={outwardForm.cc_end_label}
-                onChange={(e) =>
-                  setOutwardForm({ ...outwardForm, cc_end_label: e.target.value })
                 }
               />
 
@@ -904,6 +936,15 @@ const CCTVMonitoring = ({
                 onChange={(e) =>
                   setOutwardForm({ ...outwardForm, no_of_report: e.target.value })
                 }
+              />
+
+              <textarea
+                placeholder="Report No(s) (e.g. R-001, R-002)"
+                value={outwardForm.rep_nos || ""}
+                onChange={(e) =>
+                  setOutwardForm({ ...outwardForm, rep_nos: e.target.value })
+                }
+                className="md:col-span-2"
               />
 
               <label>
@@ -964,10 +1005,10 @@ const CCTVMonitoring = ({
               )}
 
               <textarea
-                placeholder="Remark"
-                value={outwardForm.remark || ""}
+                placeholder="Remark / Note"
+                value={outwardForm.note || ""}
                 onChange={(e) =>
-                  setOutwardForm({ ...outwardForm, remark: e.target.value })
+                  setOutwardForm({ ...outwardForm, note: e.target.value })
                 }
                 className="md:col-span-2"
               />

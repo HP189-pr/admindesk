@@ -50,7 +50,7 @@ const addWsBaseCandidate = (acc, baseLike) => {
 
 const resolveChatWsBases = (fallbackOrigin) => {
   const candidates = [];
-  const envWsBase = import.meta?.env?.VITE_WS_BASE_URL?.trim();
+  const envWsBase = import.meta.env.VITE_WS_BASE_URL?.trim();
 
   if (typeof window !== 'undefined') {
     const page = new URL(window.location.href);

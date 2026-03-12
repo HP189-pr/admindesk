@@ -1,6 +1,7 @@
 // src/components/AuthLeave.jsx
 import React, { useEffect, useState } from 'react';
 import axios from '../api/axiosInstance';
+import { toDateInput } from '../utils/date';
 
 /**
  * AuthLeave component
@@ -502,14 +503,14 @@ export default function AuthLeave() {
               <input
                 type="date"
                 placeholder="Start Date"
-                value={periodForm.start_date}
+                value={toDateInput(periodForm.start_date)}
                 onChange={(e) => setPeriodForm({ ...periodForm, start_date: e.target.value })}
                 className="border px-2 py-1"
               />
               <input
                 type="date"
                 placeholder="End Date"
-                value={periodForm.end_date}
+                value={toDateInput(periodForm.end_date)}
                 onChange={(e) => setPeriodForm({ ...periodForm, end_date: e.target.value })}
                 className="border px-2 py-1"
               />

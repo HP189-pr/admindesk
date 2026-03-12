@@ -39,10 +39,13 @@ if load_dotenv:
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-0x0bwjij$1%19z)@kld_2l3(wx3j*slrp)d6=0dfw=jd&3&sir'
+SECRET_KEY = os.environ.get(
+    'DJANGO_SECRET_KEY',
+    'django-insecure-0x0bwjij$1%19z)@kld_2l3(wx3j*slrp)d6=0dfw=jd&3&sir',
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', 'true').lower() == 'true'
 
 ALLOWED_HOSTS = [
     'localhost',
@@ -153,29 +156,17 @@ else:
 
 # Use environment variables; fallback to sqlite for local dev
 DB_ENGINE = os.getenv("DB_ENGINE", "django.db.backends.postgresql")
-if DB_ENGINE == "django.db.backends.postgresql":
-    DATABASES = {
-        'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'frontdesk',       # or the DB you created
-        'USER': 'postgres',
-        'PASSWORD': 'Ksv@svkm2007',
-        'HOST': 'localhost',
-        'PORT': '5432',
+DATABASES = {
+    "default": {
+        "ENGINE": DB_ENGINE,
+        "NAME": os.getenv("DB_NAME", "frontdesk"),
+        "USER": os.getenv("DB_USER", "postgres"),
+        "PASSWORD": os.getenv("DB_PASSWORD", ""),
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": int(os.getenv("DB_PORT", "5432")),
+        "CONN_MAX_AGE": 60,
     }
-    }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": DB_ENGINE,
-            "NAME": os.getenv("DB_NAME"),
-            "USER": os.getenv("DB_USER"),
-            "PASSWORD": os.getenv("DB_PASSWORD"),
-            "HOST": os.getenv("DB_HOST", "localhost"),
-            # CAST PORT to int (fix)
-            "PORT": int(os.getenv("DB_PORT", "5432")),
-        }
-    }
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -295,7 +286,7 @@ REST_FRAMEWORK = {
     'DATETIME_INPUT_FORMATS': ['%d-%m-%Y %H:%M:%S', '%Y-%m-%d %H:%M:%S', '%d-%m-%Y'],
     # Pagination for better performance
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
-    'PAGE_SIZE': 200,  # Default page size
+    'PAGE_SIZE': 50,  # Default page size (reduced from 200 to improve response times)
 }
 
 # Django-level (non-DRF) date display/input preferences (admin, forms)
@@ -311,7 +302,7 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': False,
     'UPDATE_LAST_LOGIN': True,  # Optional, updates `last_login`
     'ALGORITHM': 'HS256',  # Default
-    'SIGNING_KEY': 'Ksvsvkm2007to2024',  # Use your Django secret key
+    'SIGNING_KEY': SECRET_KEY,  # Inherits from DJANGO_SECRET_KEY env var
     'AUTH_HEADER_TYPES': ('Bearer',),  # Frontend must send "Authorization: Bearer <token>"
     'USER_ID_FIELD': 'id',  # Using default User model's `id`
     'USER_ID_CLAIM': 'user_id',  # Use `user_id` for consistency

@@ -112,6 +112,8 @@ try:
     router.register(r'inventory-inward', InventoryInwardViewSet, basename='inventory-inward')
     router.register(r'inventory-outward', InventoryOutwardViewSet, basename='inventory-outward')
     router.register(r'fee-types', FeeTypeViewSet, basename='fee-types')
+    # DEPRECATED: cash-register/ is an alias kept for backward compatibility.
+    # New code should use receipts/ (ReceiptViewSet) instead.
     router.register(r'cash-register', CashRegisterViewSet, basename='cash-register')
     router.register(r'receipts', ReceiptViewSet, basename='receipts')
     router.register(r'modules', ModuleViewSet, basename='modules')

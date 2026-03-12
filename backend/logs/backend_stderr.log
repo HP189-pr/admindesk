@@ -39305,3 +39305,213 @@ WARNING:waitress.queue:Task queue depth is 1
 WARNING:waitress.queue:Task queue depth is 1
 Not Found: /ws/chat/
 WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+E:\admindesk\backend\backend\settings.py:88: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+Unauthorized: /api/backlogin/
+WARNING:django.request:Unauthorized: /api/backlogin/
+Unauthorized: /api/backlogin/
+WARNING:django.request:Unauthorized: /api/backlogin/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3
+Not Found: /ws/chat/
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:django.request:Not Found: /ws/chat/
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+E:\admindesk\backend\backend\settings.py:91: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+E:\admindesk\backend\backend\settings.py:91: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+E:\admindesk\backend\backend\settings.py:91: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+E:\admindesk\backend\backend\settings.py:91: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+E:\admindesk\backend\backend\settings.py:91: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+E:\admindesk\backend\backend\settings.py:91: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+E:\admindesk\backend\backend\settings.py:91: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+E:\admindesk\backend\backend\settings.py:91: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+E:\admindesk\backend\backend\settings.py:91: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+E:\admindesk\backend\backend\settings.py:91: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+E:\admindesk\backend\backend\settings.py:91: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+E:\admindesk\backend\backend\settings.py:91: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 4
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 4
+WARNING:waitress.queue:Task queue depth is 4
+WARNING:waitress.queue:Task queue depth is 1
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/

@@ -130,6 +130,44 @@ export const getNextOutwardNumber = async (type = 'Gen') => {
   }
 };
 
+// ==================== INSTITUTE / COURSE LOOKUPS ====================
+
+export const searchInstitutes = async (search = '') => {
+  try {
+    const response = await axiosInstance.get('/api/institutes/', { params: { search, page_size: 20 } });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getMainCourses = async () => {
+  try {
+    const response = await axiosInstance.get('/api/mainbranch/');
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getSubCoursesByMain = async (maincourseId) => {
+  try {
+    const response = await axiosInstance.get('/api/subbranch/', { params: { maincourse_id: maincourseId } });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getInstituteCourses = async (instituteId) => {
+  try {
+    const response = await axiosInstance.get('/api/institute-course-offerings/', { params: { institute_id: instituteId } });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export default {
   getInwardRegister,
   getInwardRegisterById,

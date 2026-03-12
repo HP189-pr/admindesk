@@ -12,3 +12,5 @@ psycopg2-binary
 python-dotenv
 weasyprint
 reportlab
+python-docx
+xhtml2pdf

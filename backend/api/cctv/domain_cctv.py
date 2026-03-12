@@ -131,10 +131,11 @@ class CCTVOutward(models.Model):
     exam_on = models.CharField(max_length=200,default="",blank=True)
     last_date = models.DateField(null=True, blank=True)
 
-    cc_start_label = models.CharField(max_length=20, null=True, blank=True, default="")
-    cc_end_label = models.CharField(max_length=20, null=True, blank=True, default="")
+    cc_start_label = models.CharField(max_length=200, null=True, blank=True, default="")
+ 
 
     no_of_dvd = models.IntegerField(default=0)
+    rep_nos = models.CharField(max_length=200, blank=True, default="")
     no_of_report = models.IntegerField(default=0)
 
     return_received = models.BooleanField(default=False)
@@ -154,7 +155,7 @@ class CCTVOutward(models.Model):
     )
 
     case_details = models.TextField(blank=True)
-    remark = models.TextField(blank=True)
+    note = models.TextField(blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
 

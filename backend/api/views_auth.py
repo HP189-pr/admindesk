@@ -550,6 +550,14 @@ class MyNavigationView(APIView):
     def get(self, request):
         user = request.user
         is_admin_like = getattr(user, "is_staff", False) or getattr(user, "is_superuser", False)
+        # Fetch all permissions for this user in one query — avoids N+1 inside the loop
+        if not is_admin_like:
+            perm_map = {
+                (p.module_id, p.menu_id): p
+                for p in UserPermission.objects.filter(user=user)
+            }
+        else:
+            perm_map = {}
         modules = []
         for mod in Module.objects.all().order_by("name"):
             menus_payload = []
@@ -558,28 +566,23 @@ class MyNavigationView(APIView):
                 if is_admin_like:
                     rights = {k: True for k in rights}
                 else:
-                    try:
-                        perm = UserPermission.objects.filter(user=user, module=mod, menu=mn).first()
-                        if perm:
+                    perm = perm_map.get((mod.pk, mn.pk))
+                    if perm:
+                        rights = {
+                            "can_view": bool(perm.can_view),
+                            "can_create": bool(perm.can_create),
+                            "can_edit": bool(perm.can_edit),
+                            "can_delete": bool(perm.can_delete),
+                        }
+                    else:
+                        mod_perm = perm_map.get((mod.pk, None))
+                        if mod_perm:
                             rights = {
-                                "can_view": bool(perm.can_view),
-                                "can_create": bool(perm.can_create),
-                                "can_edit": bool(perm.can_edit),
-                                "can_delete": bool(perm.can_delete),
+                                "can_view": bool(mod_perm.can_view),
+                                "can_create": bool(mod_perm.can_create),
+                                "can_edit": bool(mod_perm.can_edit),
+                                "can_delete": bool(mod_perm.can_delete),
                             }
-                        else:
-                            mod_perm = (
-                                UserPermission.objects.filter(user=user, module=mod, menu__isnull=True).first()
-                            )
-                            if mod_perm:
-                                rights = {
-                                    "can_view": bool(mod_perm.can_view),
-                                    "can_create": bool(mod_perm.can_create),
-                                    "can_edit": bool(mod_perm.can_edit),
-                                    "can_delete": bool(mod_perm.can_delete),
-                                }
-                    except ObjectDoesNotExist:  # pragma: no cover
-                        pass
                 menus_payload.append({
                     "id": getattr(mn, 'menuid', None) or mn.pk,
                     "name": mn.name,
@@ -655,10 +658,9 @@ class UserAPIView(APIView):
                                     pw = birth.strftime('%d%m%y')
                                     user_obj.set_password(pw)
                                     user_obj.save()
-                                    print(f"[DEBUG] Set default password for user id={user_obj.id} to birthdate-derived value")
+                                    logger.debug("Set default password for user id=%s from birthdate", user_obj.id)
                                 except Exception:
-                                    print(f"[DEBUG] Failed to set default password for user id={user_obj.id}")
-                                    pass
+                                    logger.warning("Failed to set default password for user id=%s", user_obj.id)
             except Exception:
                 pass
 

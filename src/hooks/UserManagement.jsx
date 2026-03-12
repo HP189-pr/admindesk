@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import axios from "../api/axiosInstance";
 import { DEFAULT_PROFILE_PIC, resolveProfilePicture } from "../utils/mediaUrl";
+import { toDateInput } from "../utils/date";
 
 const UserManagement = ({ selectedTopbarMenu }) => {
   const { fetchUsers, fetchUserDetail } = useAuth();
@@ -226,7 +227,7 @@ const UserManagement = ({ selectedTopbarMenu }) => {
                   <label className="block text-sm mb-1">Birth Date</label>
                   <input name="usr_birth_date"
                     type="date"
-                    defaultValue={selectedUser?.usr_birth_date ? selectedUser.usr_birth_date.split('T')[0] : ""}
+                    defaultValue={toDateInput(selectedUser?.usr_birth_date || "")}
                     className="block w-full p-2 border rounded mb-3"
                   />
                   <button

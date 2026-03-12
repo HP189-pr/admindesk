@@ -90,7 +90,18 @@ export default defineConfig(({ mode }) => {
       sourcemap: false,
       rollupOptions: {
         output: {
-          manualChunks: undefined,
+          manualChunks: {
+            // Core React runtime — rarely changes, cache-friendly
+            vendor: ['react', 'react-dom', 'react-router-dom'],
+            // UI utilities
+            ui: ['react-toastify', 'react-icons'],
+            // Network + query-string
+            network: ['axios', 'qs'],
+            // Heavy Excel library — only needed on upload/download pages
+            excel: ['xlsx'],
+            // PDF generation — only needed on report pages
+            pdf: ['jspdf', 'jspdf-autotable'],
+          },
         },
       },
     },

@@ -365,6 +365,15 @@ def _read_excel_compat(source: Any, file_ext: Optional[str] = None, **kwargs):
 
 # Import helpers from excel_import.helpers
 from .excel_import.helpers import parse_excel_date, clean_cell, row_value, parse_boolean_cell
+# Import spec / alias / column-resolution from the canonical module (excel_import/specs.py).
+# The local definitions below are kept for backward compatibility during the transition;
+# they match the implementations in specs.py and will be removed in the next cleanup pass.
+from .excel_import.specs import (  # noqa: F401
+    get_import_spec as _get_import_spec_from_specs,
+    COLUMN_ALIAS_MAP as _COLUMN_ALIAS_MAP_from_specs,
+    _build_allowed_maps as _build_allowed_maps_from_specs,
+    _resolve_column_name as _resolve_column_name_from_specs,
+)
 
 # Alias for clearer usage
 _clean_cell = clean_cell

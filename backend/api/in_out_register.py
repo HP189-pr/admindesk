@@ -33,9 +33,10 @@ class InwardRegister(models.Model):
     inward_date = models.DateField()
     inward_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
     inward_from = models.CharField(max_length=255, verbose_name="Sender")
-    rec_type = models.CharField(max_length=20, choices=REC_TYPE_CHOICES)
+    rec_type = models.CharField(max_length=20, choices=REC_TYPE_CHOICES, blank=True, default='')
     details = models.TextField(blank=True, null=True)
     remark = models.TextField(blank=True, null=True)
+    extra_data = models.JSONField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -68,9 +69,10 @@ class OutwardRegister(models.Model):
     outward_date = models.DateField()
     outward_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
     outward_to = models.CharField(max_length=255, verbose_name="Receiver")
-    send_type = models.CharField(max_length=20, choices=SEND_TYPE_CHOICES)
+    send_type = models.CharField(max_length=20, choices=SEND_TYPE_CHOICES, blank=True, default='')
     details = models.TextField(blank=True, null=True)
     remark = models.TextField(blank=True, null=True)
+    extra_data = models.JSONField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -86,57 +88,39 @@ class OutwardRegister(models.Model):
 
 # ==================== AUTO NUMBER GENERATOR ====================
 
-def generate_running_no(model, doc_type, date_field='inward_date'):
+def generate_running_no(model, doc_type):
     """
     Generate auto-incrementing number in format: YY/TYPE/0001
-    
-    Args:
-        model: Django model class (InwardRegister or OutwardRegister)
-        doc_type: Type value (Gen, Exam, Enr, Can, Doc)
-        date_field: Name of the date field to extract year from
-    
-    Returns:
-        str: Generated number like "25/Gen/0001"
+    Enrollment (Enr) and Cancellation (Can) share the same counter.
     """
-    # Get current year (last 2 digits)
-    current_year = datetime.now().year % 100  # e.g., 2025 -> 25
-    
-    # Build prefix
+    current_year = datetime.now().year % 100
     prefix = f"{current_year:02d}/{doc_type}/"
-    
-    # Find max sequence number for this year and type
+
     if model == InwardRegister:
         field_name = 'inward_no'
         type_field = 'inward_type'
-    else:  # OutwardRegister
+    else:
         field_name = 'outward_no'
         type_field = 'outward_type'
-    
-    # Get all records matching this year and type
-    # Filter by prefix pattern to ensure we only get current year records
+
+    # Enr + Can share same counter; prefix changes but sequence continues
+    type_filter = ['Enr', 'Can'] if doc_type in ['Enr', 'Can'] else [doc_type]
+
     existing = model.objects.filter(
-        **{f'{type_field}': doc_type}
-    ).filter(
-        **{f'{field_name}__startswith': prefix}
+        **{f'{type_field}__in': type_filter,
+           f'{field_name}__startswith': f"{current_year:02d}/"}
     )
-    
-    if existing.exists():
-        # Extract sequence numbers and find max
-        max_no = existing.aggregate(Max(field_name))[f'{field_name}__max']
-        if max_no:
-            try:
-                # Extract sequence from "25/Gen/0001" -> 0001
-                last_seq = int(max_no.split('/')[-1])
-                next_seq = last_seq + 1
-            except (ValueError, IndexError):
-                next_seq = 1
-        else:
-            next_seq = 1
-    else:
-        next_seq = 1
-    
-    # Format: YY/TYPE/0001
-    return f"{prefix}{next_seq:04d}"
+
+    max_seq = 0
+    for record in existing:
+        try:
+            seq = int(getattr(record, field_name).split('/')[-1])
+            if seq > max_seq:
+                max_seq = seq
+        except (ValueError, IndexError):
+            pass
+
+    return f"{prefix}{max_seq + 1:04d}"
 
 
 # ==================== SERIALIZERS ====================
@@ -148,15 +132,18 @@ class InwardRegisterSerializer(serializers.ModelSerializer):
         model = InwardRegister
         fields = [
             'id', 'inward_no', 'inward_date', 'inward_type', 'inward_from',
-            'rec_type', 'details', 'remark', 'created_at', 'updated_at'
+            'rec_type', 'details', 'remark', 'extra_data', 'created_at', 'updated_at'
         ]
         read_only_fields = ['inward_no', 'created_at', 'updated_at']
+        extra_kwargs = {
+            'rec_type': {'required': False, 'allow_blank': True, 'default': ''},
+        }
     
     def create(self, validated_data):
         """Override create to auto-generate inward_no"""
         # Generate inward number
         inward_type = validated_data.get('inward_type')
-        validated_data['inward_no'] = generate_running_no(InwardRegister, inward_type, 'inward_date')
+        validated_data['inward_no'] = generate_running_no(InwardRegister, inward_type)
         
         return super().create(validated_data)
     
@@ -169,6 +156,8 @@ class InwardRegisterSerializer(serializers.ModelSerializer):
     
     def validate_rec_type(self, value):
         """Validate rec_type is in allowed choices"""
+        if not value:
+            return value
         allowed = [choice[0] for choice in InwardRegister.REC_TYPE_CHOICES]
         if value not in allowed:
             raise serializers.ValidationError(f"Invalid rec_type. Must be one of: {', '.join(allowed)}")
@@ -182,15 +171,18 @@ class OutwardRegisterSerializer(serializers.ModelSerializer):
         model = OutwardRegister
         fields = [
             'id', 'outward_no', 'outward_date', 'outward_type', 'outward_to',
-            'send_type', 'details', 'remark', 'created_at', 'updated_at'
+            'send_type', 'details', 'remark', 'extra_data', 'created_at', 'updated_at'
         ]
         read_only_fields = ['outward_no', 'created_at', 'updated_at']
+        extra_kwargs = {
+            'send_type': {'required': False, 'allow_blank': True, 'default': ''},
+        }
     
     def create(self, validated_data):
         """Override create to auto-generate outward_no"""
         # Generate outward number
         outward_type = validated_data.get('outward_type')
-        validated_data['outward_no'] = generate_running_no(OutwardRegister, outward_type, 'outward_date')
+        validated_data['outward_no'] = generate_running_no(OutwardRegister, outward_type)
         
         return super().create(validated_data)
     
@@ -203,6 +195,8 @@ class OutwardRegisterSerializer(serializers.ModelSerializer):
     
     def validate_send_type(self, value):
         """Validate send_type is in allowed choices"""
+        if not value:
+            return value
         allowed = [choice[0] for choice in OutwardRegister.SEND_TYPE_CHOICES]
         if value not in allowed:
             raise serializers.ValidationError(f"Invalid send_type. Must be one of: {', '.join(allowed)}")
@@ -255,33 +249,30 @@ class InwardRegisterViewSet(viewsets.ModelViewSet):
     def next_number(self, request):
         """Get last and next inward number for given type"""
         inward_type = request.query_params.get('type', 'Gen')
-        
-        # Get current year prefix
         current_year = datetime.now().year % 100
         prefix = f"{current_year:02d}/{inward_type}/"
-        
-        # Find last number for this year and type
-        last_record = InwardRegister.objects.filter(
-            inward_type=inward_type,
-            inward_no__startswith=prefix
-        ).order_by('-inward_no').first()
-        
-        if last_record:
-            last_no = last_record.inward_no
+
+        # Enr + Can share same counter
+        type_filter = ['Enr', 'Can'] if inward_type in ['Enr', 'Can'] else [inward_type]
+        records = InwardRegister.objects.filter(
+            inward_type__in=type_filter,
+            inward_no__startswith=f"{current_year:02d}/"
+        )
+
+        max_seq = 0
+        last_no = None
+        for record in records:
             try:
-                last_seq = int(last_no.split('/')[-1])
-                next_seq = last_seq + 1
+                seq = int(record.inward_no.split('/')[-1])
+                if seq > max_seq:
+                    max_seq = seq
+                    last_no = record.inward_no
             except (ValueError, IndexError):
-                next_seq = 1
-        else:
-            last_no = None
-            next_seq = 1
-        
-        next_no = f"{prefix}{next_seq:04d}"
-        
+                pass
+
         return Response({
             'last_no': last_no,
-            'next_no': next_no
+            'next_no': f"{prefix}{max_seq + 1:04d}"
         })
 
 
@@ -329,33 +320,30 @@ class OutwardRegisterViewSet(viewsets.ModelViewSet):
     def next_number(self, request):
         """Get last and next outward number for given type"""
         outward_type = request.query_params.get('type', 'Gen')
-        
-        # Get current year prefix
         current_year = datetime.now().year % 100
         prefix = f"{current_year:02d}/{outward_type}/"
-        
-        # Find last number for this year and type
-        last_record = OutwardRegister.objects.filter(
-            outward_type=outward_type,
-            outward_no__startswith=prefix
-        ).order_by('-outward_no').first()
-        
-        if last_record:
-            last_no = last_record.outward_no
+
+        # Enr + Can share same counter
+        type_filter = ['Enr', 'Can'] if outward_type in ['Enr', 'Can'] else [outward_type]
+        records = OutwardRegister.objects.filter(
+            outward_type__in=type_filter,
+            outward_no__startswith=f"{current_year:02d}/"
+        )
+
+        max_seq = 0
+        last_no = None
+        for record in records:
             try:
-                last_seq = int(last_no.split('/')[-1])
-                next_seq = last_seq + 1
+                seq = int(record.outward_no.split('/')[-1])
+                if seq > max_seq:
+                    max_seq = seq
+                    last_no = record.outward_no
             except (ValueError, IndexError):
-                next_seq = 1
-        else:
-            last_no = None
-            next_seq = 1
-        
-        next_no = f"{prefix}{next_seq:04d}"
-        
+                pass
+
         return Response({
             'last_no': last_no,
-            'next_no': next_no
+            'next_no': f"{prefix}{max_seq + 1:04d}"
         })
 
 

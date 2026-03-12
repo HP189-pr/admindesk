@@ -11,10 +11,13 @@ from django.db import transaction
 from django.db.models import Max
 from django.http import HttpResponse
 
-from reportlab.lib.units import inch
-from reportlab.lib.styles import getSampleStyleSheet
+import io
 from reportlab.lib.pagesizes import A4
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.units import mm, inch
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT, TA_RIGHT
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+from reportlab.lib import colors
 
 from .domain_cctv import (
     CCTVExam,
@@ -276,66 +279,172 @@ class CCTVOutwardViewSet(CctvPermissionMixin, viewsets.ModelViewSet):
     def generate_pdf(self, request, pk=None):
         outward = self.get_object()
 
-        response = HttpResponse(content_type="application/pdf")
-        response["Content-Disposition"] = f"attachment; filename=\"{outward.cctv_record_no}.pdf\""
+        def fmt_date(val):
+            if not val:
+                return ""
+            s = str(val)
+            if len(s) >= 10 and s[4] == "-":
+                parts = s[:10].split("-")
+                return f"{parts[2]}-{parts[1]}-{parts[0]}"
+            return s
 
-        doc = SimpleDocTemplate(response, pagesize=A4)
-        styles = getSampleStyleSheet()
-        elements = []
+        dvd_label = outward.cc_start_label or ""
+        last_date_str = fmt_date(outward.last_date)
 
-        elements.append(Paragraph("KADI SARVA VISHWAVIDYALAYA", styles["Heading2"]))
-        elements.append(Paragraph("Examination Department", styles["Normal"]))
-        elements.append(Spacer(1, 0.3 * inch))
+        buf = io.BytesIO()
 
-        elements.append(Paragraph(f"Record No: {outward.cctv_record_no}", styles["Normal"]))
-        elements.append(Paragraph(f"Outward No: {outward.outward_no}", styles["Normal"]))
-        elements.append(Paragraph(f"Date: {outward.outward_date}", styles["Normal"]))
-        elements.append(Spacer(1, 0.3 * inch))
-
-        elements.append(Paragraph("To,", styles["Normal"]))
-        elements.append(Paragraph("The Principal,", styles["Normal"]))
-        elements.append(Paragraph(outward.college_name, styles["Normal"]))
-        elements.append(Paragraph(outward.centre_name, styles["Normal"]))
-        elements.append(Spacer(1, 0.3 * inch))
-
-        elements.append(
-            Paragraph(
-                "Subject: Submission of CCTV Observation Report and CD for Verification",
-                styles["Normal"],
-            )
-        )
-        elements.append(Spacer(1, 0.3 * inch))
-
-        body_text = (
-            "With reference to the above subject, we have received the CCTV observation "
-            "report for your institution regarding the examination conducted in "
-            f"{outward.exam_on}. "
-            f"Submit the signed letter along with report to university by {outward.last_date}."
+        doc = SimpleDocTemplate(
+            buf,
+            pagesize=A4,
+            leftMargin=12.7 * mm,
+            rightMargin=9.9 * mm,
+            topMargin=6 * mm,
+            bottomMargin=6 * mm,
         )
 
-        elements.append(Paragraph(body_text, styles["Normal"]))
-        elements.append(Spacer(1, 0.3 * inch))
+        # ── Styles ─────────────────────────────────────────────────────────────
+        FONT_NORMAL = "Times-Roman"
+        FONT_BOLD   = "Times-Bold"
+        FONT_ITALIC = "Times-Italic"
+        FS = 12
 
-        elements.append(
-            Paragraph(
-                f"CD No.: {outward.cc_start_label} - {outward.cc_end_label}",
-                styles["Normal"],
-            )
-        )
-        elements.append(
-            Paragraph(
-                f"No. of DVD: {outward.no_of_dvd}",
-                styles["Normal"],
-            )
-        )
-        elements.append(
-            Paragraph(
-                f"CCTV Observation Report No.: {outward.no_of_report}",
-                styles["Normal"],
-            )
+        base = ParagraphStyle(
+            "Base",
+            fontName=FONT_NORMAL,
+            fontSize=FS,
+            leading=FS * 1.35,
+            spaceAfter=0,
+            spaceBefore=0,
         )
 
-        doc.build(elements)
+        def S(**kw):
+            return ParagraphStyle("_", parent=base, **kw)
+
+        st_title    = S(fontName=FONT_BOLD, fontSize=15, alignment=TA_CENTER, spaceAfter=1, leading=18)
+        st_h1       = S(fontName=FONT_BOLD, fontSize=12, alignment=TA_CENTER, spaceAfter=2, spaceBefore=1)
+        st_norm     = S(spaceAfter=2)
+        st_just     = S(alignment=TA_JUSTIFY, spaceAfter=3)
+        st_right    = S(alignment=TA_RIGHT)
+        st_list     = S(alignment=TA_JUSTIFY, leftIndent=18, firstLineIndent=-18, spaceAfter=2)
+        st_italic_just = S(fontName=FONT_ITALIC, alignment=TA_JUSTIFY, spaceAfter=3)
+        st_bold_norm = S(fontName=FONT_BOLD, spaceAfter=1)
+        st_sig      = S(alignment=TA_RIGHT, spaceAfter=1, leading=FS * 1.4)
+        st_subject  = S(fontName=FONT_BOLD, alignment=TA_CENTER, spaceAfter=4, spaceBefore=3)
+
+        story = []
+        SP = lambda h=3: Spacer(1, h * mm)
+        HR = lambda: HRFlowable(width="100%", thickness=1, color=colors.black, spaceAfter=2 * mm, spaceBefore=1 * mm)
+
+        # ── Title / Header ─────────────────────────────────────────────────────
+        story.append(Paragraph("KADI SARVA VISHWAVIDYALAYA", st_title))
+        story.append(Paragraph("Examination Department", st_h1))
+        story.append(HR())
+
+        # ── Ref No / Date — same line via two-column table ─────────────────────
+        page_w = A4[0] - 12.7 * mm - 9.9 * mm
+        ref_p  = Paragraph(f'<font name="{FONT_BOLD}">Ref No:</font>  {outward.outward_no or ""}', st_norm)
+        date_p = Paragraph(f'<font name="{FONT_BOLD}">Date:</font>  {fmt_date(outward.outward_date)}', st_right)
+        t = Table([[ref_p, date_p]], colWidths=[page_w * 0.55, page_w * 0.45])
+        t.setStyle(TableStyle([
+            ("VALIGN",        (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING",  (0, 0), (-1, -1), 0),
+            ("TOPPADDING",    (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+        ]))
+        story.append(t)
+        story.append(SP(3))
+
+        # ── Addressee ──────────────────────────────────────────────────────────
+        addr_lines = ["To,", "The Principal,"]
+        if outward.college_name:
+            addr_lines.append(outward.college_name)
+        story.append(Paragraph("<br/>".join(addr_lines), st_norm))
+        story.append(SP(3))
+
+        # ── Subject ────────────────────────────────────────────────────────────
+        story.append(Paragraph(
+            "<u><b>Subject: Submission of CCTV Observation Report and CD for Verification</b></u>",
+            st_subject,
+        ))
+
+        # ── Salutation ─────────────────────────────────────────────────────────
+        story.append(Paragraph("Respected Sir/Madam,", st_norm))
+        story.append(SP(2))
+
+        # ── Body para 1 ────────────────────────────────────────────────────────
+        story.append(Paragraph(
+            f"With reference to the above subject, we have received the CCTV observation "
+            f"report for your institution regarding the examination conducted in "
+            f"<b>{outward.exam_on or ''}</b>. The report contains remarks indicating instances "
+            f"such as students engaging in any type of irregularities during the examination.",
+            st_just,
+        ))
+
+        # ── Body para 2 ────────────────────────────────────────────────────────
+        story.append(Paragraph(
+            "As per the instructions of the Honorable President of the University, "
+            "you are requested to:",
+            st_just,
+        ))
+
+        # ── Numbered list ──────────────────────────────────────────────────────
+        items = [
+            "Verify the report and identify the concerned student(s) involved in any noted irregularities.",
+            "Call the student(s) and their parent(s) in person, show them the relevant CCTV footage, and obtain a written statement from the student and parent.",
+            "The statement of parents &amp; Student(s) must be signed by the mentor and the principal with the date mentioned.",
+            f"Submit a copy of the signed letter along with the report to the university by "
+            f"<b>{last_date_str}</b>, addressed to Mr. Hitendra Patel, Examination Officer.",
+            "Clearly mention in the report whether the student\u2019s case should be considered a copy "
+            "case or not. If the student is involved in a copy case, ensure that proper CCTV footage "
+            "evidence is available and documented.",
+        ]
+        for idx, item in enumerate(items, 1):
+            story.append(Paragraph(f"{idx}.&nbsp;&nbsp;{item}", st_list))
+
+        story.append(SP(2))
+
+        # ── Additionally ───────────────────────────────────────────────────────
+        story.append(Paragraph(
+            "Additionally, after verification, the original report and CD enclosed with this "
+            "letter must be returned to the university.",
+            st_just,
+        ))
+
+        # ── Custom Note (if filled) ────────────────────────────────────────────
+        if outward.note:
+            story.append(SP(1))
+            story.append(Paragraph(f"<b>Note:</b> {outward.note}", st_just))
+
+        # ── Institutional Note ─────────────────────────────────────────────────
+        story.append(SP(2))
+        story.append(Paragraph(
+            f"<i><b>Note:</b> If the CCTV observation report includes students from multiple "
+            f"institutions, and any student from your institution is identified in the report, "
+            f"kindly forward a copy of the report and CD to the respective institution. If no "
+            f"student from your institution is identified, please submit a Nil report to the "
+            f"university.</i>",
+            st_italic_just,
+        ))
+
+        # ── Signature (right-aligned) ──────────────────────────────────────────
+        story.append(SP(30))
+        story.append(Paragraph("<b>Examination Controller</b>", st_sig))
+        story.append(Paragraph("<b>Kadi Sarva Vishwavidyalaya</b>", st_sig))
+
+        # ── Enclosures ─────────────────────────────────────────────────────────
+        story.append(SP(2))
+        story.append(HR())
+        story.append(Paragraph("<b>Enclosures:</b>", st_bold_norm))
+        story.append(Paragraph(f"001.&nbsp;&nbsp;DVD No(s).: {dvd_label}", st_norm))
+        story.append(Paragraph(f"002.&nbsp;&nbsp;CCTV Observation Report No(s).: {outward.rep_nos or ''}", st_norm))
+
+        doc.build(story)
+        pdf_bytes = buf.getvalue()
+
+        filename = f"{outward.cctv_record_no or 'CCTV_Letter'}.pdf"
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
 
     def perform_create(self, serializer):

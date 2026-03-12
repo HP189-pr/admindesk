@@ -9,10 +9,16 @@ const cleanValue = (v) => {
   return v;
 };
 
-// For input[type="date"] values (YYYY-MM-DD)
+// For input[type="date"] values (YYYY-MM-DD) — handles ISO datetime and dd-mm-yyyy from API
 const toISODate = (v) => {
   if (!v) return '';
-  return String(v).split('T')[0].split(' ')[0];
+  const s = String(v).trim();
+  // ISO datetime or date: 2026-03-11T... or 2026-03-11
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  // dd-mm-yyyy from API
+  const m = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  return '';
 };
 
 // For read-only display (dd-MMM-yyyy)

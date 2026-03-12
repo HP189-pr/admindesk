@@ -1,8 +1,12 @@
+import logging
+from django.db import transaction
 from django.db.models.signals import post_save, post_delete, pre_save
 from django.dispatch import receiver
 from django.utils import timezone
 from django.conf import settings
 from django.contrib.postgres.search import SearchVector
+
+logger = logging.getLogger(__name__)
 from .models import DocRec, Verification, MigrationRecord, ProvisionalRecord, InstLetterMain
 from .models import PayBy, VerificationStatus
 from .domain_transcript_generate import TranscriptRequest
@@ -177,14 +181,14 @@ def docrec_post_delete(sender, instance: DocRec, **kwargs):
         if not doc_rec_id:
             return
         
-        # Delete all linked service records
-        Verification.objects.filter(doc_rec__doc_rec_id=doc_rec_id).delete()
-        MigrationRecord.objects.filter(doc_rec=doc_rec_id).delete()
-        ProvisionalRecord.objects.filter(doc_rec=doc_rec_id).delete()
-        InstLetterMain.objects.filter(doc_rec__doc_rec_id=doc_rec_id).delete()
+        # Delete all linked service records atomically
+        with transaction.atomic():
+            Verification.objects.filter(doc_rec__doc_rec_id=doc_rec_id).delete()
+            MigrationRecord.objects.filter(doc_rec=doc_rec_id).delete()
+            ProvisionalRecord.objects.filter(doc_rec=doc_rec_id).delete()
+            InstLetterMain.objects.filter(doc_rec__doc_rec_id=doc_rec_id).delete()
     except Exception:
-        # Never raise from signal handler
-        pass
+        logger.exception("docrec_post_delete failed for doc_rec_id=%s", getattr(instance, 'doc_rec_id', None))
 
 
 @receiver(post_delete, sender=Verification)
@@ -207,9 +211,10 @@ def verification_post_delete(sender, instance: Verification, **kwargs):
         
         # Only delete DocRec if no other services reference it
         if not has_other_services:
-            DocRec.objects.filter(doc_rec_id=doc_rec_id).delete()
+            with transaction.atomic():
+                DocRec.objects.filter(doc_rec_id=doc_rec_id).delete()
     except Exception:
-        pass
+        logger.exception("verification_post_delete failed for doc_rec_id=%s", doc_rec_id)
 
 
 @receiver(post_delete, sender=MigrationRecord)
@@ -228,9 +233,10 @@ def migration_post_delete(sender, instance: MigrationRecord, **kwargs):
         )
         
         if not has_other_services:
-            DocRec.objects.filter(doc_rec_id=doc_rec_id).delete()
+            with transaction.atomic():
+                DocRec.objects.filter(doc_rec_id=doc_rec_id).delete()
     except Exception:
-        pass
+        logger.exception("migration_post_delete failed for doc_rec_id=%s", getattr(instance, 'doc_rec', None))
 
 
 @receiver(post_delete, sender=ProvisionalRecord)
@@ -248,9 +254,10 @@ def provisional_post_delete(sender, instance: ProvisionalRecord, **kwargs):
         )
         
         if not has_other_services:
-            DocRec.objects.filter(doc_rec_id=doc_rec_id).delete()
+            with transaction.atomic():
+                DocRec.objects.filter(doc_rec_id=doc_rec_id).delete()
     except Exception:
-        pass
+        logger.exception("provisional_post_delete failed for doc_rec_id=%s", getattr(instance, 'doc_rec', None))
 
 
 @receiver(post_delete, sender=InstLetterMain)
@@ -271,9 +278,10 @@ def inst_verification_post_delete(sender, instance: InstLetterMain, **kwargs):
         )
         
         if not has_other_services:
-            DocRec.objects.filter(doc_rec_id=doc_rec_id).delete()
+            with transaction.atomic():
+                DocRec.objects.filter(doc_rec_id=doc_rec_id).delete()
     except Exception:
-        pass
+        logger.exception("inst_verification_post_delete failed for doc_rec_id=%s", doc_rec_id)
 
 
 # ============================================================================
@@ -303,7 +311,7 @@ def update_enrollment_search_vector(sender, instance, **kwargs):
             search_vector=SearchVector('enrollment_no', 'temp_enroll_no', 'student_name', config='simple')
         )
     except Exception:
-        pass  # Fail silently if search_vector field doesn't exist yet
+        logger.debug("FTS update skipped for Enrollment pk=%s", getattr(instance, 'pk', None))
 
 
 @receiver(post_save, sender=Verification)
@@ -317,7 +325,7 @@ def update_verification_search_vector_post(sender, instance, **kwargs):
             )
         )
     except Exception:
-        pass
+        logger.debug("FTS update skipped for Verification pk=%s", getattr(instance, 'pk', None))
 
 
 @receiver(post_save, sender=DocRec)
@@ -328,7 +336,7 @@ def update_docrec_search_vector_post(sender, instance, **kwargs):
             search_vector=SearchVector('doc_rec_id', 'pay_rec_no', 'pay_rec_no_pre')
         )
     except Exception:
-        pass
+        logger.debug("FTS update skipped for DocRec pk=%s", getattr(instance, 'pk', None))
 
 
 @receiver(post_save, sender=StudentDegree)
@@ -344,7 +352,7 @@ def update_studentdegree_search_vector_post(sender, instance, **kwargs):
             )
         )
     except Exception:
-        pass
+        logger.debug("FTS update skipped for StudentDegree pk=%s", getattr(instance, 'pk', None))
 
 
 @receiver(post_save, sender=TranscriptRequest)
@@ -357,7 +365,7 @@ def update_transcriptrequest_search_vector_post(sender, instance, **kwargs):
             )
         )
     except Exception:
-        pass
+        logger.debug("FTS update skipped for TranscriptRequest pk=%s", getattr(instance, 'pk', None))
 
 
 @receiver(post_save, sender=GoogleFormSubmission)
@@ -371,7 +379,7 @@ def update_googleform_search_vector_post(sender, instance, **kwargs):
             )
         )
     except Exception:
-        pass
+        logger.debug("FTS update skipped for GoogleFormSubmission pk=%s", getattr(instance, 'pk', None))
 
 
 @receiver(post_save, sender=InstLetterMain)
@@ -384,4 +392,4 @@ def update_instverif_search_vector_post(sender, instance, **kwargs):
             )
         )
     except Exception:
-        pass
+        logger.debug("FTS update skipped for InstLetterMain pk=%s", getattr(instance, 'pk', None))

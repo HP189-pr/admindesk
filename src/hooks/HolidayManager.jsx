@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from '../api/axiosInstance';
 import * as XLSX from 'xlsx';
+import { toDateInput } from '../utils/date';
 
 export default function HolidayManager() {
   const [holidays, setHolidays] = useState([]);
@@ -316,7 +317,7 @@ export default function HolidayManager() {
                       <td className="px-4 py-2">
                         <input 
                           type="date" 
-                          value={editValues.holiday_date} 
+                          value={toDateInput(editValues.holiday_date)} 
                           onChange={e => setEditValues(v => ({ ...v, holiday_date: e.target.value }))} 
                           className="border border-gray-300 px-2 py-1 rounded w-full"
                         />

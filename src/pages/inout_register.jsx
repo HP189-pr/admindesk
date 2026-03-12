@@ -4,6 +4,10 @@
  */
 import React, { useState, useEffect } from 'react';
 import PageTopbar from "../components/PageTopbar";
+import { toDateInput } from "../utils/date";
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   getInwardRegister,
   addInwardRegister,
@@ -15,6 +19,10 @@ import {
   deleteOutwardRegister,
   getNextInwardNumber,
   getNextOutwardNumber,
+  searchInstitutes,
+  getMainCourses,
+  getSubCoursesByMain,
+  getInstituteCourses,
 } from '../services/inoutService';
 
 const InOutRegister = () => {
@@ -66,6 +74,18 @@ const InOutRegister = () => {
   const [inwardNextNumber, setInwardNextNumber] = useState({ last_no: null, next_no: null });
   const [outwardNextNumber, setOutwardNextNumber] = useState({ last_no: null, next_no: null });
 
+  // Dynamic extra fields (stored as plain object, sent as extra_data)
+  const [inwardExtra, setInwardExtra] = useState({});
+  const [outwardExtra, setOutwardExtra] = useState({});
+
+  // Institute / course autocomplete state
+  const [institutes, setInstitutes] = useState([]);
+  const [allMainCourses, setAllMainCourses] = useState([]);
+  const [inwardInstCourses, setInwardInstCourses] = useState([]);
+  const [outwardInstCourses, setOutwardInstCourses] = useState([]);
+  const [inwardSubBranches, setInwardSubBranches] = useState([]);
+  const [outwardSubBranches, setOutwardSubBranches] = useState([]);
+
   // Show alert helper
   const showAlert = (type, message) => {
     setAlert({ show: true, type, message });
@@ -97,11 +117,26 @@ const InOutRegister = () => {
     loadTabData();
   }, [activeTab]);
 
-  // Load next numbers on mount
+  // Load next numbers and main courses on mount
   useEffect(() => {
     fetchInwardNextNumber('Gen');
     fetchOutwardNextNumber('Gen');
+    getMainCourses().then(d => setAllMainCourses(Array.isArray(d) ? d : (d?.results || []))).catch(() => {});
   }, []);
+
+  // When institute search results arrive, auto-load courses for selected college
+  useEffect(() => {
+    if (institutes.length > 0) {
+      if (inwardExtra.college && inwardInstCourses.length === 0) {
+        const m = institutes.find(i => i.institute_name === inwardExtra.college);
+        if (m) getInstituteCourses(m.institute_id).then(d => setInwardInstCourses(Array.isArray(d) ? d : (d?.results || []))).catch(() => {});
+      }
+      if (outwardExtra.college && outwardInstCourses.length === 0) {
+        const m = institutes.find(i => i.institute_name === outwardExtra.college);
+        if (m) getInstituteCourses(m.institute_id).then(d => setOutwardInstCourses(Array.isArray(d) ? d : (d?.results || []))).catch(() => {});
+      }
+    }
+  }, [institutes]);
 
   const loadTabData = async () => {
     setLoading(true);
@@ -154,13 +189,18 @@ const InOutRegister = () => {
       return;
     }
     setLoading(true);
+    const payload = {
+      ...inwardForm,
+      rec_type: ['Gen', 'Exam', 'Doc'].includes(inwardForm.inward_type) ? inwardForm.rec_type : '',
+      extra_data: Object.keys(inwardExtra).length > 0 ? inwardExtra : null,
+    };
     try {
       if (editingInward) {
-        await updateInwardRegister(editingInward.id, inwardForm);
+        await updateInwardRegister(editingInward.id, payload);
         showAlert('success', 'Inward register updated successfully');
         setEditingInward(null);
       } else {
-        await addInwardRegister(inwardForm);
+        await addInwardRegister(payload);
         showAlert('success', 'Inward register added successfully');
       }
       setInwardForm({
@@ -171,6 +211,7 @@ const InOutRegister = () => {
         details: '',
         remark: '',
       });
+      setInwardExtra({});
       fetchInwardNextNumber('Gen');
       loadTabData();
     } catch (error) {
@@ -186,10 +227,19 @@ const InOutRegister = () => {
       inward_date: record.inward_date,
       inward_type: record.inward_type,
       inward_from: record.inward_from,
-      rec_type: record.rec_type,
+      rec_type: record.rec_type || 'Internal',
       details: record.details || '',
       remark: record.remark || '',
     });
+    const extra = record.extra_data || {};
+    setInwardExtra(extra);
+    setInwardInstCourses([]);
+    setInwardSubBranches([]);
+    if (extra.college) {
+      searchInstitutes(extra.college)
+        .then(d => setInstitutes(Array.isArray(d) ? d : (d?.results || [])))
+        .catch(() => {});
+    }
   };
 
   const handleInwardDelete = async (id) => {
@@ -216,6 +266,7 @@ const InOutRegister = () => {
       details: '',
       remark: '',
     });
+    setInwardExtra({});
   };
 
   // ==================== OUTWARD HANDLERS ====================
@@ -227,13 +278,18 @@ const InOutRegister = () => {
       return;
     }
     setLoading(true);
+    const payload = {
+      ...outwardForm,
+      send_type: ['Gen', 'Exam', 'Doc'].includes(outwardForm.outward_type) ? outwardForm.send_type : '',
+      extra_data: Object.keys(outwardExtra).length > 0 ? outwardExtra : null,
+    };
     try {
       if (editingOutward) {
-        await updateOutwardRegister(editingOutward.id, outwardForm);
+        await updateOutwardRegister(editingOutward.id, payload);
         showAlert('success', 'Outward register updated successfully');
         setEditingOutward(null);
       } else {
-        await addOutwardRegister(outwardForm);
+        await addOutwardRegister(payload);
         showAlert('success', 'Outward register added successfully');
       }
       setOutwardForm({
@@ -244,6 +300,7 @@ const InOutRegister = () => {
         details: '',
         remark: '',
       });
+      setOutwardExtra({});
       fetchOutwardNextNumber('Gen');
       loadTabData();
     } catch (error) {
@@ -259,10 +316,19 @@ const InOutRegister = () => {
       outward_date: record.outward_date,
       outward_type: record.outward_type,
       outward_to: record.outward_to,
-      send_type: record.send_type,
+      send_type: record.send_type || 'Internal',
       details: record.details || '',
       remark: record.remark || '',
     });
+    const extra = record.extra_data || {};
+    setOutwardExtra(extra);
+    setOutwardInstCourses([]);
+    setOutwardSubBranches([]);
+    if (extra.college) {
+      searchInstitutes(extra.college)
+        .then(d => setInstitutes(Array.isArray(d) ? d : (d?.results || [])))
+        .catch(() => {});
+    }
   };
 
   const handleOutwardDelete = async (id) => {
@@ -289,6 +355,336 @@ const InOutRegister = () => {
       details: '',
       remark: '',
     });
+    setOutwardExtra({});
+  };
+
+  // ==================== COURSE / INSTITUTE LOOKUP ====================
+
+  const fetchInstituteSearch = (value) => {
+    if (!value || value.length < 2) { setInstitutes([]); return; }
+    searchInstitutes(value).then(d => setInstitutes(Array.isArray(d) ? d : (d?.results || []))).catch(() => {});
+  };
+
+  const handleInwardCollegeChange = (value) => {
+    setInwardExtra(prev => ({ ...prev, college: value, main_course: '', sub_course: '' }));
+    setInwardInstCourses([]);
+    setInwardSubBranches([]);
+    fetchInstituteSearch(value);
+  };
+
+  const handleOutwardCollegeChange = (value) => {
+    setOutwardExtra(prev => ({ ...prev, college: value, main_course: '', sub_course: '' }));
+    setOutwardInstCourses([]);
+    setOutwardSubBranches([]);
+    fetchInstituteSearch(value);
+  };
+
+  const handleInwardMainCourseChange = (courseId) => {
+    setInwardExtra(prev => ({ ...prev, main_course: courseId, sub_course: '' }));
+    if (inwardInstCourses.length === 0 && courseId) {
+      getSubCoursesByMain(courseId).then(d => setInwardSubBranches(Array.isArray(d) ? d : (d?.results || []))).catch(() => {});
+    } else {
+      setInwardSubBranches([]);
+    }
+  };
+
+  const handleOutwardMainCourseChange = (courseId) => {
+    setOutwardExtra(prev => ({ ...prev, main_course: courseId, sub_course: '' }));
+    if (outwardInstCourses.length === 0 && courseId) {
+      getSubCoursesByMain(courseId).then(d => setOutwardSubBranches(Array.isArray(d) ? d : (d?.results || []))).catch(() => {});
+    } else {
+      setOutwardSubBranches([]);
+    }
+  };
+
+  const getInwardMainOptions = () => {
+    if (inwardInstCourses.length > 0) {
+      const seen = new Set();
+      return inwardInstCourses
+        .filter(o => { const k = o.maincourse?.maincourse_id; if (k && !seen.has(k)) { seen.add(k); return true; } return false; })
+        .map(o => ({ id: o.maincourse.maincourse_id, name: o.maincourse.name || o.maincourse.maincourse_id }));
+    }
+    return allMainCourses.map(m => ({ id: m.maincourse_id, name: m.course_name || m.maincourse_id }));
+  };
+
+  const getInwardSubOptions = () => {
+    if (inwardInstCourses.length > 0 && inwardExtra.main_course) {
+      const seen = new Set();
+      return inwardInstCourses
+        .filter(o => o.maincourse?.maincourse_id === inwardExtra.main_course && o.subcourse?.subcourse_id)
+        .filter(o => { const k = o.subcourse.subcourse_id; if (!seen.has(k)) { seen.add(k); return true; } return false; })
+        .map(o => ({ id: o.subcourse.subcourse_id, name: o.subcourse.name || o.subcourse.subcourse_id }));
+    }
+    return inwardSubBranches.map(s => ({ id: s.subcourse_id, name: s.subcourse_name || s.subcourse_id }));
+  };
+
+  const getOutwardMainOptions = () => {
+    if (outwardInstCourses.length > 0) {
+      const seen = new Set();
+      return outwardInstCourses
+        .filter(o => { const k = o.maincourse?.maincourse_id; if (k && !seen.has(k)) { seen.add(k); return true; } return false; })
+        .map(o => ({ id: o.maincourse.maincourse_id, name: o.maincourse.name || o.maincourse.maincourse_id }));
+    }
+    return allMainCourses.map(m => ({ id: m.maincourse_id, name: m.course_name || m.maincourse_id }));
+  };
+
+  const getOutwardSubOptions = () => {
+    if (outwardInstCourses.length > 0 && outwardExtra.main_course) {
+      const seen = new Set();
+      return outwardInstCourses
+        .filter(o => o.maincourse?.maincourse_id === outwardExtra.main_course && o.subcourse?.subcourse_id)
+        .filter(o => { const k = o.subcourse.subcourse_id; if (!seen.has(k)) { seen.add(k); return true; } return false; })
+        .map(o => ({ id: o.subcourse.subcourse_id, name: o.subcourse.name || o.subcourse.subcourse_id }));
+    }
+    return outwardSubBranches.map(s => ({ id: s.subcourse_id, name: s.subcourse_name || s.subcourse_id }));
+  };
+
+  // ==================== EXPORT FUNCTIONS ====================
+
+  const exportInwardExcel = () => {
+    const rows = inwardData.map((r) => ({
+      'Inward No': r.inward_no, 'Date': r.inward_date, 'Type': r.inward_type,
+      'From': r.inward_from, 'Rec Type': r.rec_type || '', 'Details': r.details || '', 'Remark': r.remark || '',
+      'College': r.extra_data?.college || '', 'Main Course': r.extra_data?.main_course || '',
+      'Sub Course': r.extra_data?.sub_course || '', 'Students': r.extra_data?.students || '',
+      'Receiver Name': r.extra_data?.receiver || '', 'Place': r.extra_data?.place || '',
+      'Subject': r.extra_data?.subject || '', 'Inward Ref No': r.extra_data?.inward_ref || '',
+      'Enrollment No(s)': r.extra_data?.enrollment_nos || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Inward');
+    XLSX.writeFile(wb, 'Inward_Register.xlsx');
+  };
+
+  const exportInwardPDF = () => {
+    const doc = new jsPDF();
+    doc.text('Inward Register', 14, 15);
+    autoTable(doc, {
+      startY: 20,
+      head: [['Inward No', 'Date', 'Type', 'From', 'Details']],
+      body: inwardData.map((r) => [r.inward_no, r.inward_date, r.inward_type, r.inward_from, r.details || '']),
+    });
+    doc.save('Inward_Register.pdf');
+  };
+
+  const exportOutwardExcel = () => {
+    const rows = outwardData.map((r) => ({
+      'Outward No': r.outward_no, 'Date': r.outward_date, 'Type': r.outward_type,
+      'To': r.outward_to, 'Send Type': r.send_type || '', 'Details': r.details || '', 'Remark': r.remark || '',
+      'College': r.extra_data?.college || '', 'Main Course': r.extra_data?.main_course || '',
+      'Sub Course': r.extra_data?.sub_course || '', 'Students': r.extra_data?.students || '',
+      'Receiver Name': r.extra_data?.receiver || '', 'Place': r.extra_data?.place || '',
+      'Subject': r.extra_data?.subject || '', 'Outward Ref No': r.extra_data?.outward_ref || '',
+      'Enrollment No(s)': r.extra_data?.enrollment_nos || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Outward');
+    XLSX.writeFile(wb, 'Outward_Register.xlsx');
+  };
+
+  const exportOutwardPDF = () => {
+    const doc = new jsPDF();
+    doc.text('Outward Register', 14, 15);
+    autoTable(doc, {
+      startY: 20,
+      head: [['Outward No', 'Date', 'Type', 'To', 'Details']],
+      body: outwardData.map((r) => [r.outward_no, r.outward_date, r.outward_type, r.outward_to, r.details || '']),
+    });
+    doc.save('Outward_Register.pdf');
+  };
+
+  // ==================== DYNAMIC FIELDS ====================
+
+  const renderDynamicInwardFields = () => {
+    const t = inwardForm.inward_type;
+    if (t === 'Gen') return (
+      <>
+        <div>
+          <label className="block text-sm font-medium mb-1">Receiver Name</label>
+          <input type="text" value={inwardExtra.receiver || ''} onChange={(e) => setInwardExtra({ ...inwardExtra, receiver: e.target.value })} className="w-full border px-3 py-2 rounded" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Place</label>
+          <input type="text" value={inwardExtra.place || ''} onChange={(e) => setInwardExtra({ ...inwardExtra, place: e.target.value })} className="w-full border px-3 py-2 rounded" />
+        </div>
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium mb-1">Subject</label>
+          <input type="text" value={inwardExtra.subject || ''} onChange={(e) => setInwardExtra({ ...inwardExtra, subject: e.target.value })} className="w-full border px-3 py-2 rounded" />
+        </div>
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium mb-1">Description</label>
+          <textarea value={inwardExtra.description || ''} onChange={(e) => setInwardExtra({ ...inwardExtra, description: e.target.value })} className="w-full border px-3 py-2 rounded" rows="2" />
+        </div>
+      </>
+    );
+    if (t === 'Enr') return (
+      <>
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium mb-1">College Name</label>
+          <input
+            list="inward-institutes"
+            type="text"
+            value={inwardExtra.college || ''}
+            onChange={(e) => handleInwardCollegeChange(e.target.value)}
+            className="w-full border px-3 py-2 rounded"
+            placeholder="Type to search college..."
+          />
+          <datalist id="inward-institutes">
+            {institutes.map(i => <option key={i.institute_id} value={i.institute_name} />)}
+          </datalist>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Main Course</label>
+          <select
+            value={inwardExtra.main_course || ''}
+            onChange={(e) => handleInwardMainCourseChange(e.target.value)}
+            className="w-full border px-3 py-2 rounded"
+          >
+            <option value="">Select Course</option>
+            {getInwardMainOptions().map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Sub Course</label>
+          <select
+            value={inwardExtra.sub_course || ''}
+            onChange={(e) => setInwardExtra({ ...inwardExtra, sub_course: e.target.value })}
+            className="w-full border px-3 py-2 rounded"
+          >
+            <option value="">Select Sub Course</option>
+            {getInwardSubOptions().map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">No of Students</label>
+          <input type="number" value={inwardExtra.students || ''} onChange={(e) => setInwardExtra({ ...inwardExtra, students: e.target.value })} className="w-full border px-3 py-2 rounded" />
+        </div>
+      </>
+    );
+    if (t === 'Can') return (
+      <>
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium mb-1">College Name</label>
+          <input
+            list="inward-institutes"
+            type="text"
+            value={inwardExtra.college || ''}
+            onChange={(e) => handleInwardCollegeChange(e.target.value)}
+            className="w-full border px-3 py-2 rounded"
+            placeholder="Type to search college..."
+          />
+          <datalist id="inward-institutes">
+            {institutes.map(i => <option key={i.institute_id} value={i.institute_name} />)}
+          </datalist>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Inward Ref No</label>
+          <input type="text" value={inwardExtra.inward_ref || ''} onChange={(e) => setInwardExtra({ ...inwardExtra, inward_ref: e.target.value })} className="w-full border px-3 py-2 rounded" />
+        </div>
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium mb-1">Enrollment No(s)</label>
+          <textarea value={inwardExtra.enrollment_nos || ''} onChange={(e) => setInwardExtra({ ...inwardExtra, enrollment_nos: e.target.value })} className="w-full border px-3 py-2 rounded" rows="2" placeholder="One per line" />
+        </div>
+      </>
+    );
+    return null;
+  };
+
+  const renderDynamicOutwardFields = () => {
+    const t = outwardForm.outward_type;
+    if (t === 'Gen') return (
+      <>
+        <div>
+          <label className="block text-sm font-medium mb-1">Receiver Name</label>
+          <input type="text" value={outwardExtra.receiver || ''} onChange={(e) => setOutwardExtra({ ...outwardExtra, receiver: e.target.value })} className="w-full border px-3 py-2 rounded" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Place</label>
+          <input type="text" value={outwardExtra.place || ''} onChange={(e) => setOutwardExtra({ ...outwardExtra, place: e.target.value })} className="w-full border px-3 py-2 rounded" />
+        </div>
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium mb-1">Subject</label>
+          <input type="text" value={outwardExtra.subject || ''} onChange={(e) => setOutwardExtra({ ...outwardExtra, subject: e.target.value })} className="w-full border px-3 py-2 rounded" />
+        </div>
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium mb-1">Description</label>
+          <textarea value={outwardExtra.description || ''} onChange={(e) => setOutwardExtra({ ...outwardExtra, description: e.target.value })} className="w-full border px-3 py-2 rounded" rows="2" />
+        </div>
+      </>
+    );
+    if (t === 'Enr') return (
+      <>
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium mb-1">College Name</label>
+          <input
+            list="outward-institutes"
+            type="text"
+            value={outwardExtra.college || ''}
+            onChange={(e) => handleOutwardCollegeChange(e.target.value)}
+            className="w-full border px-3 py-2 rounded"
+            placeholder="Type to search college..."
+          />
+          <datalist id="outward-institutes">
+            {institutes.map(i => <option key={i.institute_id} value={i.institute_name} />)}
+          </datalist>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Main Course</label>
+          <select
+            value={outwardExtra.main_course || ''}
+            onChange={(e) => handleOutwardMainCourseChange(e.target.value)}
+            className="w-full border px-3 py-2 rounded"
+          >
+            <option value="">Select Course</option>
+            {getOutwardMainOptions().map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Sub Course</label>
+          <select
+            value={outwardExtra.sub_course || ''}
+            onChange={(e) => setOutwardExtra({ ...outwardExtra, sub_course: e.target.value })}
+            className="w-full border px-3 py-2 rounded"
+          >
+            <option value="">Select Sub Course</option>
+            {getOutwardSubOptions().map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">No of Students</label>
+          <input type="number" value={outwardExtra.students || ''} onChange={(e) => setOutwardExtra({ ...outwardExtra, students: e.target.value })} className="w-full border px-3 py-2 rounded" />
+        </div>
+      </>
+    );
+    if (t === 'Can') return (
+      <>
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium mb-1">College Name</label>
+          <input
+            list="outward-institutes"
+            type="text"
+            value={outwardExtra.college || ''}
+            onChange={(e) => handleOutwardCollegeChange(e.target.value)}
+            className="w-full border px-3 py-2 rounded"
+            placeholder="Type to search college..."
+          />
+          <datalist id="outward-institutes">
+            {institutes.map(i => <option key={i.institute_id} value={i.institute_name} />)}
+          </datalist>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Outward Ref No</label>
+          <input type="text" value={outwardExtra.outward_ref || ''} onChange={(e) => setOutwardExtra({ ...outwardExtra, outward_ref: e.target.value })} className="w-full border px-3 py-2 rounded" />
+        </div>
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium mb-1">Enrollment No(s)</label>
+          <textarea value={outwardExtra.enrollment_nos || ''} onChange={(e) => setOutwardExtra({ ...outwardExtra, enrollment_nos: e.target.value })} className="w-full border px-3 py-2 rounded" rows="2" placeholder="One per line" />
+        </div>
+      </>
+    );
+    return null;
   };
 
   // ==================== RENDER FUNCTIONS ====================
@@ -378,9 +774,9 @@ const InOutRegister = () => {
             <label className="block text-sm font-medium mb-1">Date <span className="text-red-500">*</span></label>
             <input
               type="date"
-              value={inwardForm.inward_date}
+              value={toDateInput(inwardForm.inward_date)}
               onChange={(e) => setInwardForm({ ...inwardForm, inward_date: e.target.value })}
-              className="w-full border px-3 py-2 rounded"
+              className="w-40 border px-2 py-1 rounded text-sm"
               required
             />
           </div>
@@ -390,6 +786,7 @@ const InOutRegister = () => {
               value={inwardForm.inward_type}
               onChange={(e) => {
                 setInwardForm({ ...inwardForm, inward_type: e.target.value });
+                setInwardExtra({});
                 if (!editingInward) fetchInwardNextNumber(e.target.value);
               }}
               className="w-full border px-3 py-2 rounded"
@@ -410,18 +807,19 @@ const InOutRegister = () => {
               required
             />
           </div>
+          {['Gen', 'Exam', 'Doc'].includes(inwardForm.inward_type) && (
           <div>
             <label className="block text-sm font-medium mb-1">Rec Type <span className="text-red-500">*</span></label>
             <select
               value={inwardForm.rec_type}
               onChange={(e) => setInwardForm({ ...inwardForm, rec_type: e.target.value })}
               className="w-full border px-3 py-2 rounded"
-              required
             >
               <option value="Internal">Internal</option>
               <option value="External">External</option>
             </select>
           </div>
+          )}
           <div className="md:col-span-2">
             <label className="block text-sm font-medium mb-1">Details</label>
             <textarea
@@ -440,6 +838,7 @@ const InOutRegister = () => {
               rows="2"
             />
           </div>
+          {renderDynamicInwardFields()}
           <div className="md:col-span-2 flex gap-2">
             <button
               type="submit"
@@ -463,7 +862,13 @@ const InOutRegister = () => {
 
       {/* Data Table */}
       <div className="bg-white rounded shadow p-4">
-        <h2 className="text-xl font-bold mb-4">Inward Register List</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold">Inward Register List</h2>
+          <div className="flex gap-2">
+            <button onClick={exportInwardExcel} className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm">Export Excel</button>
+            <button onClick={exportInwardPDF} className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm">Export PDF</button>
+          </div>
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full border">
             <thead className="bg-gray-100">
@@ -581,9 +986,9 @@ const InOutRegister = () => {
             <label className="block text-sm font-medium mb-1">Date <span className="text-red-500">*</span></label>
             <input
               type="date"
-              value={outwardForm.outward_date}
+              value={toDateInput(outwardForm.outward_date)}
               onChange={(e) => setOutwardForm({ ...outwardForm, outward_date: e.target.value })}
-              className="w-full border px-3 py-2 rounded"
+              className="w-40 border px-2 py-1 rounded text-sm"
               required
             />
           </div>
@@ -593,6 +998,7 @@ const InOutRegister = () => {
               value={outwardForm.outward_type}
               onChange={(e) => {
                 setOutwardForm({ ...outwardForm, outward_type: e.target.value });
+                setOutwardExtra({});
                 if (!editingOutward) fetchOutwardNextNumber(e.target.value);
               }}
               className="w-full border px-3 py-2 rounded"
@@ -613,18 +1019,19 @@ const InOutRegister = () => {
               required
             />
           </div>
+          {['Gen', 'Exam', 'Doc'].includes(outwardForm.outward_type) && (
           <div>
             <label className="block text-sm font-medium mb-1">Send Type <span className="text-red-500">*</span></label>
             <select
               value={outwardForm.send_type}
               onChange={(e) => setOutwardForm({ ...outwardForm, send_type: e.target.value })}
               className="w-full border px-3 py-2 rounded"
-              required
             >
               <option value="Internal">Internal</option>
               <option value="External">External</option>
             </select>
           </div>
+          )}
           <div className="md:col-span-2">
             <label className="block text-sm font-medium mb-1">Details</label>
             <textarea
@@ -643,6 +1050,7 @@ const InOutRegister = () => {
               rows="2"
             />
           </div>
+          {renderDynamicOutwardFields()}
           <div className="md:col-span-2 flex gap-2">
             <button
               type="submit"
@@ -666,7 +1074,13 @@ const InOutRegister = () => {
 
       {/* Data Table */}
       <div className="bg-white rounded shadow p-4">
-        <h2 className="text-xl font-bold mb-4">Outward Register List</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold">Outward Register List</h2>
+          <div className="flex gap-2">
+            <button onClick={exportOutwardExcel} className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm">Export Excel</button>
+            <button onClick={exportOutwardPDF} className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm">Export PDF</button>
+          </div>
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full border">
             <thead className="bg-gray-100">

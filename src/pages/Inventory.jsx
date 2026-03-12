@@ -4,6 +4,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import PageTopbar from "../components/PageTopbar";
+import { toDateInput } from "../utils/date";
 import {
   getItems,
   addItem,
@@ -334,7 +335,7 @@ const Inventory = () => {
             <label className="block text-sm font-medium mb-1">Inward Date <span className="text-red-500">*</span></label>
             <input
               type="date"
-              value={inwardForm.inward_date}
+              value={toDateInput(inwardForm.inward_date)}
               onChange={(e) => setInwardForm({ ...inwardForm, inward_date: e.target.value })}
               className="w-full border px-3 py-2 rounded"
               required
@@ -458,7 +459,7 @@ const Inventory = () => {
             <label className="block text-sm font-medium mb-1">Outward Date <span className="text-red-500">*</span></label>
             <input
               type="date"
-              value={outwardForm.outward_date}
+              value={toDateInput(outwardForm.outward_date)}
               onChange={(e) => setOutwardForm({ ...outwardForm, outward_date: e.target.value })}
               className="w-full border px-3 py-2 rounded"
               required

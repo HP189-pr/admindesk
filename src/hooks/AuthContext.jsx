@@ -21,6 +21,10 @@ const AuthContext = createContext({
     updateUser: async () => ({ success: false }),
 });
 
+// Module-level sentinel: prevents concurrent token-refresh attempts that can cause
+// double-logout or redirect loops when multiple 401s arrive simultaneously.
+let _pendingRefresh = null;
+
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(() => {
         const storedUser = localStorage.getItem("user");
@@ -173,27 +177,35 @@ export function AuthProvider({ children }) {
     /* ==================== TOKEN REFRESH ==================== */
 
     const refreshToken = async () => {
+        // If a refresh is already in-flight, return the same promise to all callers
+        if (_pendingRefresh) return _pendingRefresh;
         const refresh = localStorage.getItem("refresh_token");
         if (!refresh) {
             logout();
             return false;
         }
 
-        try {
-            const { data } = await API.post("/api/token/refresh/", {
-                refresh,
-            });
-            localStorage.setItem("access_token", data.access);
-            setToken(data.access);
-            return true;
-        } catch (err) {
-            console.error(
-                "❌ Token Refresh Error:",
-                err.response?.data || err.message
-            );
-            logout();
-            return false;
-        }
+        _pendingRefresh = (async () => {
+            try {
+                const { data } = await API.post("/api/token/refresh/", {
+                    refresh,
+                });
+                localStorage.setItem("access_token", data.access);
+                setToken(data.access);
+                return true;
+            } catch (err) {
+                console.error(
+                    "❌ Token Refresh Error:",
+                    err.response?.data || err.message
+                );
+                logout();
+                return false;
+            } finally {
+                _pendingRefresh = null;
+            }
+        })();
+
+        return _pendingRefresh;
     };
 
     /* ==================== PASSWORD / ADMIN ==================== */

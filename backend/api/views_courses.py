@@ -115,10 +115,23 @@ class InstituteViewSet(viewsets.ModelViewSet):
     queryset = Institute.objects.all()
     serializer_class = InstituteSerializer
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        search = self.request.query_params.get('search', '')
+        if search:
+            qs = qs.filter(institute_name__icontains=search)
+        return qs.order_by('institute_name')
+
 
 class InstituteCourseOfferingViewSet(viewsets.ModelViewSet):
-    queryset = InstituteCourseOffering.objects.all().select_related("institute", "maincourse", "subcourse", "updated_by")
     serializer_class = InstituteCourseOfferingSerializer
+
+    def get_queryset(self):
+        qs = InstituteCourseOffering.objects.all().select_related("institute", "maincourse", "subcourse", "updated_by")
+        institute_id = self.request.query_params.get('institute_id')
+        if institute_id:
+            qs = qs.filter(institute_id=institute_id)
+        return qs
 
 
 __all__ = [

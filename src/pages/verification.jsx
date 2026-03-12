@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { isoToDMY, dmyToISO } from "../utils/date";
+import { isoToDMY, dmyToISO, toDateInput } from "../utils/date";
 import { syncDocRecRemark, loadRecords as loadRecordsService, createRecord as createRecordService, updateRecord as updateRecordService } from "../services/verificationservice";
 import { FaChevronDown, FaChevronUp } from "react-icons/fa";
 import { useNavigate } from 'react-router-dom';
@@ -440,7 +440,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                   <input
                     type="date"
                     className="w-full border rounded-lg p-2"
-                    value={form.date}
+                    value={toDateInput(form.date)}
                     onChange={(e) => handleChange("date", e.target.value)}
                   />
                 </div>
@@ -510,7 +510,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                   <input
                     type="date"
                     className="w-full border rounded-lg p-2"
-                    value={form.vr_done_date}
+                    value={toDateInput(form.vr_done_date)}
                     onChange={(e) => handleChange("vr_done_date", e.target.value)}
                   />
                 </div>
@@ -586,7 +586,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                       <input
                         type="date"
                         className="w-full border rounded-lg p-2"
-                        value={form.eca_send_date}
+                        value={toDateInput(form.eca_send_date)}
                         onChange={(e) => handleChange("eca_send_date", e.target.value)}
                       />
                     </div>
@@ -609,7 +609,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                       <input
                         type="date"
                         className="w-full border rounded-lg p-2"
-                        value={form.eca_resubmit_date}
+                        value={toDateInput(form.eca_resubmit_date)}
                         onChange={(e) => handleChange("eca_resubmit_date", e.target.value)}
                       />
                     </div>
@@ -818,9 +818,9 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                         eca_required: (r.eca_required === true) || (r.eca && r.eca.eca_required === true) || !!r.eca_name,
                         eca_name: r.eca?.eca_name || r.eca_name || "",
                         eca_ref_no: r.eca?.eca_ref_no || r.eca_ref_no || "",
-                        eca_send_date: isoToDMY(r.eca?.eca_send_date || r.eca_send_date || r.eca_submit_date) || "",
+                        eca_send_date: dmyToISO(r.eca?.eca_send_date || r.eca_send_date || r.eca_submit_date) || "",
                         eca_status: r.eca?.eca_status || r.eca_status || "",
-                        eca_resubmit_date: r.eca?.eca_resubmit_date || r.eca_resubmit_date || "",
+                        eca_resubmit_date: dmyToISO(r.eca?.eca_resubmit_date || r.eca_resubmit_date) || "",
                         doc_remark: r.doc_remark || r.doc_rec?.doc_remark || "",
                         pay_rec_no: r.pay_rec_no || "",
                         doc_rec_id: r.doc_rec_id || r.doc_rec?.id || r.doc_rec_key || (r.doc_rec && (r.doc_rec.doc_rec_id || r.doc_rec.id)) || "",

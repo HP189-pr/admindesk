@@ -6,6 +6,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageTopbar from '../components/PageTopbar';
 import { FaChevronDown, FaChevronUp, FaEdit, FaTrash } from 'react-icons/fa';
+import { toDateInput } from '../utils/date';
 import {
     getDegrees,
     createDegree,
@@ -1010,7 +1011,7 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
                                 <input
                                     type="date"
                                     name="convocation_date"
-                                    value={convocationFormData.convocation_date || ''}
+                                    value={toDateInput(convocationFormData.convocation_date || '')}  
                                     onChange={handleConvocationFormChange}
                                     required
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"

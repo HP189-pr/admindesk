@@ -34,3 +34,14 @@ export function dmyToISO(dmy) {
   mo = pad2(mo);
   return `${y}-${mo}-${d}`;
 }
+
+/**
+ * Normalize any date string to yyyy-MM-dd for use as <input type="date"> value.
+ * Accepts ISO (yyyy-mm-dd), DMY (dd-mm-yyyy / dd/mm/yyyy), or empty.
+ */
+export function toDateInput(val) {
+  if (!val) return '';
+  const s = String(val).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  return dmyToISO(s) || '';
+}
