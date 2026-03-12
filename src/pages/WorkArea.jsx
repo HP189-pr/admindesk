@@ -1,26 +1,33 @@
-import React, { useState, useEffect } from "react";
-import Verification from "./verification";
-import Migration from "./Migration";
-import Provisional from "./Provisional";
-import Enrollment from "./Enrollment";
-import Degree from "./Degree";
-import InstLetter from "./inst-Letter";
-import DocReceive from "./doc-receive";
-import AdminDashboard from "../components/AdminDashboard";
-import ProfileUpdate from "../components/ProfileUpdate";
-import EmpLeavePage from "./emp-leave.jsx";
-import MailRequestPage from "./mail_request";
-import TranscriptRequestPage from "./transcript_request";
-import StudentSearch from "./student-search";
-import AuthInventory from "../hooks/AuthInventory";
-import AuthDocRegister from "../hooks/AuthDocRegister";
-import AuthFees from "../hooks/AuthFees";
-import AuthCCTV from "../hooks/AuthCCTV";
-import Record from "./Record";
+import React, { Suspense, lazy, useEffect, useState } from "react";
+
+const Verification = lazy(() => import("./verification"));
+const Migration = lazy(() => import("./Migration"));
+const Provisional = lazy(() => import("./Provisional"));
+const Enrollment = lazy(() => import("./Enrollment"));
+const Degree = lazy(() => import("./Degree"));
+const InstLetter = lazy(() => import("./inst-Letter"));
+const DocReceive = lazy(() => import("./doc-receive"));
+const AdminDashboard = lazy(() => import("../components/AdminDashboard"));
+const ProfileUpdate = lazy(() => import("../components/ProfileUpdate"));
+const EmpLeavePage = lazy(() => import("./emp-leave.jsx"));
+const MailRequestPage = lazy(() => import("./mail_request"));
+const TranscriptRequestPage = lazy(() => import("./transcript_request"));
+const StudentSearch = lazy(() => import("./student-search"));
+const AuthInventory = lazy(() => import("../hooks/AuthInventory"));
+const AuthDocRegister = lazy(() => import("../hooks/AuthDocRegister"));
+const AuthFees = lazy(() => import("../hooks/AuthFees"));
+const AuthCCTV = lazy(() => import("../hooks/AuthCCTV"));
+const Record = lazy(() => import("./Record"));
 
 
 
 // Pages will render their own topbars; WorkArea only decides which page to show.
+
+const PageLoader = () => (
+  <div className="flex min-h-[50vh] items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white text-sm font-medium text-gray-500">
+    Loading page...
+  </div>
+);
 
 const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebarOpen, isChatboxOpen, setSelectedMenuItem, selectedMenuItem, setSidebarOpen, DashboardComponent }) => {
   // Keep a per-page ephemeral action if a page needs it
@@ -215,7 +222,7 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
   // EmpLeaveReport file does not exist; fallback to EmpLeavePage
   return <EmpLeavePage />;
       case "emp_balance_certificate":
-        return <EmpBalanceCertificate />;
+        return <EmpLeavePage />;
       case "admin":
         return (
           <AdminDashboard
@@ -240,7 +247,9 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
   return (
     <div className="h-full flex flex-col overflow-hidden bg-gray-100">
       <div className="flex-1 overflow-auto px-1 md:px-1 py-1">
-        {renderPage()}
+        <Suspense fallback={<PageLoader />}>
+          {renderPage()}
+        </Suspense>
       </div>
     </div>
   );

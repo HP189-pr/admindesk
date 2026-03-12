@@ -85,6 +85,22 @@ closing_balance = opening_balance + current_allocation - current_usage
 
 ---
 
+## [March 12, 2026]
+
+### Added
+- Added a documentation hub under `docs/` with current backend, frontend, auth, deployment, sync, and reporting guides.
+
+### Changed
+- Updated root documentation to match the live runtime: frontend `3000` in dev and `8081` in preview, backend `8001` in dev and `8000` in prod-style runs.
+- Aligned helper scripts and docs around the Daphne-based backend launch path instead of treating `manage.py runserver` as the primary workflow.
+- Lazy-loaded the dashboard shell and work-area pages so the frontend production build splits large feature bundles cleanly.
+
+### Removed
+- Removed unused institutional PDF template files from `backend/api/templates/pdf_templates/` after confirming the active PDF path is code-driven with ReportLab.
+- Removed stale frontend/root files that were no longer referenced by the live dashboard shell.
+
+---
+
 ## [December 13, 2025]
 
 ### Added
