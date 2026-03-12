@@ -1,5 +1,5 @@
-# Script to convert file-path style doc_rec_id to sequential format (e.g., vr26000001)
-# Usage: python manage.py shell < backend/scripts/convert_docrec_ids.py
+# Management command to convert file-path style doc_rec_id to sequential format (e.g., vr26000001)
+# Usage: python manage.py convert_docrec_ids
 
 from django.core.management.base import BaseCommand
 from api.domain_documents import DocRec, ApplyFor
