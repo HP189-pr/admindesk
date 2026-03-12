@@ -26,13 +26,13 @@ import os
 import traceback
 
 from django.conf import settings
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, password_validation
 from django.contrib.auth.hashers import check_password
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.cache import cache
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from django.db import connection
+from django.db import connection, DatabaseError
 
 from rest_framework import status, generics, viewsets, serializers
 from rest_framework.decorators import action  # (retained if future expansions need it)
@@ -117,13 +117,14 @@ def _enrich_user_with_extra_fields(request, user_payload):
                 row = cur.fetchone()
                 if row:
                     usr_birth_date, usercode, shotchat_raw = row[0], row[1], row[2]
-            except Exception:
+            except DatabaseError:
+                logger.debug("Falling back to auth_user extra field query without shotchat column for user_id=%s", user_id, exc_info=True)
                 cur.execute("SELECT usr_birth_date, usercode FROM auth_user WHERE id=%s", [user_id])
                 row = cur.fetchone()
                 if row:
                     usr_birth_date, usercode = row[0], row[1]
-    except Exception:
-        pass
+    except DatabaseError:
+        logger.warning("Failed to fetch auth_user extra fields for user_id=%s", user_id, exc_info=True)
 
     emp_shotchat = None
     emp_usercode = None
@@ -138,7 +139,8 @@ def _enrich_user_with_extra_fields(request, user_payload):
             if emp:
                 emp_shotchat = emp.shotchat
                 emp_usercode = emp.usercode
-        except Exception:
+        except DatabaseError:
+            logger.warning("Failed to fetch EmpProfile extras for user_id=%s", user_id, exc_info=True)
             emp_shotchat = None
             emp_usercode = None
 
@@ -177,10 +179,10 @@ def _persist_extra_user_fields(user_id, username, request_data):
             if has_shotchat:
                 try:
                     cur.execute("UPDATE auth_user SET shotchat = %s WHERE id = %s", [1 if shotchat_db == 'Yes' else 0, user_id])
-                except Exception:
-                    pass
-    except Exception:
-        pass
+                except DatabaseError:
+                    logger.debug("Unable to persist auth_user shotchat flag for user_id=%s", user_id, exc_info=True)
+    except DatabaseError:
+        logger.warning("Failed to persist auth_user extra fields for user_id=%s", user_id, exc_info=True)
 
     if has_shotchat or usercode is not None:
         try:
@@ -196,8 +198,8 @@ def _persist_extra_user_fields(user_id, username, request_data):
                     updated = EmpProfile.objects.filter(username__iexact=username).update(**emp_updates)
                 if not updated and usercode:
                     EmpProfile.objects.filter(usercode=usercode).update(**emp_updates)
-        except Exception:
-            pass
+        except DatabaseError:
+            logger.warning("Failed to sync EmpProfile extra fields for user_id=%s", user_id, exc_info=True)
 
 
 class HolidayViewSet(viewsets.ModelViewSet):
@@ -217,8 +219,8 @@ class HolidayViewSet(viewsets.ModelViewSet):
             try:
                 y = int(year)
                 return self.queryset.filter(holiday_date__year=y).order_by('holiday_date')
-            except Exception:
-                pass
+            except (TypeError, ValueError):
+                logger.debug("Ignoring invalid holiday year filter: %r", year)
         # Default behaviour: holidays within the next 6 months
         today = datetime.date.today()
         six_months_later = today + datetime.timedelta(days=180)
@@ -254,8 +256,8 @@ class LoginSerializer(serializers.Serializer):
                         uid, uc = row
                         user = UserModel.objects.filter(pk=uid).first()
                         usercode = uc
-            except Exception:
-                pass
+            except DatabaseError:
+                logger.debug("Fallback auth_user usercode lookup failed during login", exc_info=True)
 
         if not user or not check_password(password, user.password):
             raise serializers.ValidationError({"detail": "Invalid credentials."})
@@ -271,8 +273,8 @@ class LoginSerializer(serializers.Serializer):
                     r = cur.fetchone()
                     if r:
                         usercode = r[0]
-            except Exception:
-                pass
+            except DatabaseError:
+                logger.debug("Failed to fetch usercode for authenticated user id=%s", user.id, exc_info=True)
 
         data['user'] = user
         data['usercode'] = usercode
@@ -447,9 +449,12 @@ class VerifyAdminPanelPasswordView(APIView):
             provided = (request.data or {}).get("password", "")
             secret = getattr(settings, "ADMIN_PANEL_SECRET", None)
             if not secret:
-                cache_key = f"{self.CACHE_KEY_PREFIX}{request.user.id}"
-                cache.set(cache_key, timezone.now().isoformat(), timeout=self.SESSION_TTL_MINUTES * 60)
-                return Response({"message": "Admin panel password disabled; access granted."}, status=200)
+                if settings.DEBUG:
+                    cache_key = f"{self.CACHE_KEY_PREFIX}{request.user.id}"
+                    cache.set(cache_key, timezone.now().isoformat(), timeout=self.SESSION_TTL_MINUTES * 60)
+                    return Response({"message": "Admin panel password disabled in development; access granted."}, status=200)
+                logger.warning("Admin panel verification denied because ADMIN_PANEL_SECRET is not configured.")
+                return Response({"detail": "Admin panel password is not configured."}, status=503)
             ok = hmac.compare_digest(str(provided), str(secret))
             if not ok:
                 return Response({"detail": "Invalid admin panel password."}, status=400)
@@ -462,7 +467,10 @@ class VerifyAdminPanelPasswordView(APIView):
     def get(self, request):
         try:
             if not getattr(settings, "ADMIN_PANEL_SECRET", None):
-                return Response({"verified": True, "disabled": True}, status=200)
+                if settings.DEBUG:
+                    return Response({"verified": True, "disabled": True}, status=200)
+                logger.warning("Admin panel verification status requested while ADMIN_PANEL_SECRET is not configured.")
+                return Response({"verified": False, "detail": "Admin panel password is not configured."}, status=503)
             cache_key = f"{self.CACHE_KEY_PREFIX}{request.user.id}"
             ts = cache.get(cache_key)
             return Response({"verified": bool(ts)}, status=200)
@@ -632,7 +640,7 @@ class UserAPIView(APIView):
                     needs = False
                     try:
                         needs = (not user_obj.has_usable_password()) or (not user_obj.password)
-                    except Exception:
+                    except AttributeError:
                         needs = not bool(user_obj.password)
                     if needs:
                         # prefer provided usr_birth_date, otherwise try to read from auth_user via SQL
@@ -640,7 +648,7 @@ class UserAPIView(APIView):
                         if b:
                             try:
                                 birth = date.fromisoformat(b)
-                            except Exception:
+                            except ValueError:
                                 birth = None
                         else:
                             try:
@@ -650,7 +658,8 @@ class UserAPIView(APIView):
                                     r = cur.fetchone()
                                     if r and r[0]:
                                         birth = r[0]
-                            except Exception:
+                            except DatabaseError:
+                                logger.warning("Failed to fetch usr_birth_date for new user id=%s", user_obj.id, exc_info=True)
                                 birth = None
 
                         if birth:
@@ -662,7 +671,7 @@ class UserAPIView(APIView):
                                 except Exception:
                                     logger.warning("Failed to set default password for user id=%s", user_obj.id)
             except Exception:
-                pass
+                logger.warning("Failed to derive default password for new user id=%s", created_id, exc_info=True)
 
             enriched = _enrich_user_with_extra_fields(request, serializer.data)
             return Response(enriched, status=201)
@@ -680,14 +689,19 @@ class AdminChangePasswordView(APIView):
             return Response({"detail": "Not authorized."}, status=403)
 
         new_password = (request.data or {}).get('new_password')
-        if not new_password or len(new_password) < 6:
-            return Response({"new_password": ["New password must be at least 6 characters."]}, status=400)
+        if not new_password:
+            return Response({"new_password": ["New password is required."]}, status=400)
 
         UserModel = get_user_model()
         try:
             u = UserModel.objects.get(id=user_id)
         except UserModel.DoesNotExist:
             return Response({"detail": "User not found."}, status=404)
+
+        try:
+            password_validation.validate_password(new_password, user=u)
+        except ValidationError as exc:
+            return Response({"new_password": list(exc.messages)}, status=400)
 
         u.set_password(new_password)
         u.save()

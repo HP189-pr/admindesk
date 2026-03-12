@@ -39515,3 +39515,7 @@ Not Found: /ws/chat/
 WARNING:django.request:Not Found: /ws/chat/
 Not Found: /ws/chat/
 WARNING:django.request:Not Found: /ws/chat/
+Not Found: /favicon.ico
+WARNING:django.request:Not Found: /favicon.ico
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/

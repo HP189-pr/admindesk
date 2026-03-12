@@ -1,11 +1,16 @@
-from django.db import transaction
+import json
+import logging
+
+from django.db import DatabaseError, transaction
 from django.http import JsonResponse
 from django.views import View
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-import json
 
 from .models import DocRec, Verification, MigrationRecord, ProvisionalRecord, InstLetterMain, InstLetterStudent, Enrollment, Institute, MainBranch, SubBranch
+
+
+logger = logging.getLogger(__name__)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -16,9 +21,13 @@ class UploadDocRecView(View):
     service_type may be one of: docrec, verification, provisional, migration, inst_verification
     """
     def post(self, request):
+        user = getattr(request, 'user', None)
+        if not user or not getattr(user, 'is_authenticated', False) or not (user.is_staff or user.is_superuser):
+            return JsonResponse({'error': 'Not authorized'}, status=403)
+
         try:
             payload = json.loads(request.body.decode('utf-8') or '{}')
-        except Exception as e:
+        except (UnicodeDecodeError, json.JSONDecodeError) as e:
             return JsonResponse({'error': 'invalid json', 'detail': str(e)}, status=400)
 
         rows = payload.get('rows') or []
@@ -156,7 +165,8 @@ class UploadDocRecView(View):
                                     if s.get('enrollment'):
                                         try:
                                             enr_obj = Enrollment.objects.filter(enrollment_no=str(s.get('enrollment')).strip()).first()
-                                        except Exception:
+                                        except DatabaseError:
+                                            logger.debug("Failed to resolve nested student enrollment for row=%s", i, exc_info=True)
                                             enr_obj = None
                                         if not enr_obj:
                                             enr_text = str(s.get('enrollment')).strip()
@@ -190,8 +200,8 @@ class UploadDocRecView(View):
                                             elif enr_text and getattr(exists, 'enrollment_no_text', None) != enr_text:
                                                 exists.enrollment_no_text = enr_text
                                                 changed = True
-                                        except Exception:
-                                            pass
+                                        except (AttributeError, DatabaseError):
+                                            logger.debug("Failed to sync nested student enrollment linkage for row=%s", i, exc_info=True)
                                         if changed:
                                             exists.save()
                                     else:
@@ -207,9 +217,13 @@ class UploadDocRecView(View):
                                             study_mode = _normalize_study_mode(s.get('study_mode')) or row_study_mode,
                                         )
                                         student_created = True
-                                except Exception:
-                                    # continue on student-level errors
-                                    pass
+                                except (TypeError, ValueError, DatabaseError):
+                                    logger.warning(
+                                        "Nested InstLetterStudent processing failed for row=%s doc_rec_id=%s",
+                                        i,
+                                        getattr(docrec, 'doc_rec_id', None),
+                                        exc_info=True,
+                                    )
 
                         # If no nested students provided but student-level fields exist on the row, create one student record
                         else:
@@ -221,7 +235,8 @@ class UploadDocRecView(View):
                                     if r.get('enrollment'):
                                         try:
                                             enr_obj = Enrollment.objects.filter(enrollment_no=str(r.get('enrollment')).strip()).first()
-                                        except Exception:
+                                        except DatabaseError:
+                                            logger.debug("Failed to resolve single student enrollment for row=%s", i, exc_info=True)
                                             enr_obj = None
                                         if not enr_obj:
                                             enr_text = str(r.get('enrollment')).strip()
@@ -237,13 +252,19 @@ class UploadDocRecView(View):
                                         study_mode = row_study_mode,
                                     )
                                     student_created = True
-                                except Exception:
-                                    pass
+                                except (TypeError, ValueError, DatabaseError):
+                                    logger.warning(
+                                        "Single InstLetterStudent processing failed for row=%s doc_rec_id=%s",
+                                        i,
+                                        getattr(docrec, 'doc_rec_id', None),
+                                        exc_info=True,
+                                    )
 
                         created = bool(created) or student_created
 
                     results.append({'row': i, 'status': 'ok', 'doc_rec_id': docrec.doc_rec_id, 'service_created': bool(created)})
             except Exception as e:
+                logger.warning("UploadDocRecView row processing failed for row=%s", i, exc_info=True)
                 results.append({'row': i, 'status': 'error', 'error': str(e)})
 
         return JsonResponse({'results': results})

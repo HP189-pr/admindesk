@@ -273,8 +273,8 @@ const UserManagement = ({ selectedTopbarMenu }) => {
               <div className="flex justify-end">
                 <button
                   onClick={async () => {
-                    if (!newPassword || newPassword.length < 6) {
-                      alert('Password must be at least 6 characters');
+                    if (!newPassword) {
+                      alert('Password is required');
                       return;
                     }
                     try {

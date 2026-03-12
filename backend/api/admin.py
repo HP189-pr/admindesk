@@ -566,15 +566,6 @@ class VerificationAdmin(CommonAdminMixin):
                         pass
         return WrappedForm
 
-
-    def save_model(self, request, obj, form, change):  # type: ignore[override]
-        if not change and not getattr(obj, 'updatedby', None):
-            try:
-                _assign_user_field(obj, request.user, 'updatedby')
-            except Exception:
-                pass
-        super().save_model(request, obj, form, change)
-
 @admin.register(ConvocationMaster)
 class ConvocationMasterAdmin(admin.ModelAdmin):
     """Admin for Convocation Master"""

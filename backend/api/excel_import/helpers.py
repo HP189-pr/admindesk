@@ -2,6 +2,7 @@
 
 # --- Excel/CSV helpers moved from admin.py ---
 from datetime import datetime, date, timedelta
+from decimal import Decimal
 from typing import Any
 
 def parse_excel_date(val: Any):
@@ -116,6 +117,104 @@ def clean_cell(val: Any):
     if s == "" or s.lower() in ("nan", "none", "<na>"):
         return None
     return s
+
+def safe_num(val: Any, default=0):
+    """Coerce a value to float while treating NaN-like inputs as missing."""
+    if val is None:
+        return default
+    if isinstance(val, str):
+        sval = val.strip()
+        if sval == "" or sval.lower() in ("nan", "nat", "none", "<na>"):
+            return default
+    try:
+        import pandas as _pd
+    except Exception:
+        _pd = None
+    try:
+        if _pd is not None and _pd.isna(val):
+            return default
+    except Exception:
+        pass
+    try:
+        import math
+        number = float(val)
+        if math.isnan(number) or number in (float("inf"), float("-inf")):
+            return default
+        return number
+    except Exception:
+        return default
+
+def normalize_month_year(val: Any):
+    """Normalize a month-year value to `MON-YYYY` when possible."""
+    if val is None:
+        return None
+    try:
+        import pandas as _pd
+    except Exception:
+        _pd = None
+    try:
+        if _pd is not None and isinstance(val, _pd.Timestamp):
+            return val.to_pydatetime().strftime("%b-%Y").upper()
+        if isinstance(val, (date, datetime)):
+            return val.strftime("%b-%Y").upper()
+        if isinstance(val, (int, float)):
+            try:
+                if float(val) > 1000:
+                    if _pd is not None:
+                        parsed = _pd.to_datetime(val, unit="D", origin="1899-12-30", errors="coerce")
+                        if not _pd.isna(parsed):
+                            return parsed.to_pydatetime().strftime("%b-%Y").upper()
+                    else:
+                        origin = datetime(1899, 12, 30)
+                        return (origin + timedelta(days=int(val))).strftime("%b-%Y").upper()
+            except Exception:
+                pass
+        sval = str(val).strip()
+        if sval == "" or sval.lower() in ("nan", "none", "<na>"):
+            return None
+        for fmt in ("%b-%y", "%b-%Y", "%B-%Y", "%m-%Y", "%Y-%m-%d", "%Y"):
+            try:
+                return datetime.strptime(sval, fmt).strftime("%b-%Y").upper()
+            except Exception:
+                continue
+        if _pd is not None:
+            try:
+                parsed = _pd.to_datetime(sval, errors="coerce", dayfirst=True)
+                if not _pd.isna(parsed):
+                    return parsed.to_pydatetime().strftime("%b-%Y").upper()
+            except Exception:
+                pass
+        import re
+        match = re.search(r"([A-Za-z]{3,9})[\s\-_/]*(\d{2,4})", sval)
+        if match:
+            mon = match.group(1)[:3].upper()
+            year = match.group(2)
+            if len(year) == 2:
+                year = f"{2000 + int(year):04d}"
+            return f"{mon}-{year}"
+    except Exception:
+        pass
+    return str(val)
+
+def normalize_dataframe_nulls(df: Any):
+    """Replace pandas null-like values in a DataFrame with Python None."""
+    try:
+        import pandas as pd
+        if isinstance(df, pd.DataFrame):
+            return df.where(pd.notnull(df), None)
+    except Exception:
+        pass
+    return df
+
+def coerce_decimal_or_none(val: Any):
+    """Convert numeric-like input to Decimal, returning None for missing/invalid values."""
+    cleaned = clean_cell(val)
+    if cleaned is None:
+        return None
+    try:
+        return Decimal(str(cleaned))
+    except Exception:
+        return None
 
 def row_value(row, column_name: str):
     """Return the scalar value for a column in a DataFrame row.
