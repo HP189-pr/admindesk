@@ -156,13 +156,11 @@ def generate_leave_calendar(
         .order_by("start_date", "end_date")
     )
 
-    # Fetch holidays for both the requested window and spill-over edges
     holiday_years = set(range(start_window.year - 1, end_window.year + 2))
     holidays: set[date] = set()
     for yr in holiday_years:
         holidays.update(get_holidays(yr))
 
-    # Pre-build entry detail map for richer frontend data
     entry_details: Dict[date, List[dict]] = defaultdict(list)
     leave_name_map: Dict[str, str] = {"SANDWICH": "Sandwich"}
     for entry in entries:

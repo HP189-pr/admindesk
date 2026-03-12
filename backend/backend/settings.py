@@ -1,4 +1,3 @@
-# Allow large Excel uploads (default is 1000, increase as needed)
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 20000
 from pathlib import Path
 from datetime import timedelta
@@ -17,46 +16,33 @@ warnings.filterwarnings(
     RuntimeWarning,
 )
 
-# try to import load_dotenv but don't fail if python-dotenv is not installed
 try:
     from dotenv import load_dotenv
 except Exception:
     load_dotenv = None
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# load .env file if present (only if python-dotenv is available)
-# NOTE: load from project root: <project_root>/.env (where manage.py lives)
 if load_dotenv:
     try:
         load_dotenv(dotenv_path=str(BASE_DIR / ".env"))
     except Exception:
-        # if load fails for some reason, continue without crashing
         warnings.warn("Failed to load .env via python-dotenv; continuing with os.environ")
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get(
     'DJANGO_SECRET_KEY',
     'django-insecure-0x0bwjij$1%19z)@kld_2l3(wx3j*slrp)d6=0dfw=jd&3&sir',
 )
 
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DJANGO_DEBUG', 'true').lower() == 'true'
 
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
     'ksvoffice',
-    '160.160.160.130',   # your LAN IP
+    '160.160.160.130',
 ]
 
-# Application definition
-
-# base apps (required)
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -64,12 +50,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.postgres',  # PostgreSQL-specific features (FTS, JSONField, etc.)
-    'api',  # Core API app
-    'reports',  # Analytics & calendar endpoints
+    'django.contrib.postgres',
+    'api',
+    'reports',
 ]
 
-# optional apps: rest_framework, corsheaders
 try:
     importlib.import_module('rest_framework')
     INSTALLED_APPS.insert(len(INSTALLED_APPS), 'rest_framework')
@@ -90,13 +75,11 @@ try:
 except Exception:
     warnings.warn("channels is not installed. Install it with: pip install channels")
 
-# middleware (always include security/session/etc.)
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
 ]
 
-# insert cors middleware at top if available
 if HAS_CORS:
     MIDDLEWARE.insert(0, 'corsheaders.middleware.CorsMiddleware')
 
@@ -106,7 +89,6 @@ MIDDLEWARE += [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # Logging middleware: record user activity and exceptions
     'api.middleware_logs.RequestActivityMiddleware',
     'api.middleware_logs.ExceptionLoggingMiddleware',
 ]
@@ -151,10 +133,6 @@ else:
         }
     }
 
-# Database
-# https://docs.djangoproject.com/en/5.1/ref/settings/#databases
-
-# Use environment variables; fallback to sqlite for local dev
 DB_ENGINE = os.getenv("DB_ENGINE", "django.db.backends.postgresql")
 DATABASES = {
     "default": {
@@ -167,9 +145,6 @@ DATABASES = {
         "CONN_MAX_AGE": 60,
     }
 }
-
-# Password validation
-# https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -186,9 +161,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# Internationalization
-# https://docs.djangoproject.com/en/5.1/topics/i18n/
-
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'Asia/Kolkata'
@@ -197,26 +169,18 @@ USE_I18N = True
 
 USE_TZ = True
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.1/howto/static-files/
-
 STATIC_URL = 'static/'
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# CORS settings
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # React Frontend (Dev)
-    "http://127.0.0.1:3000",  # React Alternative URL
-    "http://localhost:5173",  # Vite default
-    "http://127.0.0.1:5173",  # Vite alt
-    "http://localhost:8000",  # Django backend self
-    "http://127.0.0.1:8000",  # Django backend alt
-    "http://localhost:8081",  # Production build preview
-    "http://127.0.0.1:8081",  # Production build alt
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:8081",
+    "http://127.0.0.1:8081",
 
     "http://ksvoffice",
     "http://160.160.160.130",
@@ -224,7 +188,6 @@ CORS_ALLOWED_ORIGINS = [
     "http://160.160.160.130:8000",
 ]
 
-# Allow additional local dev ports used during debugging (Vite on 3002, Django dev on 8001)
 CORS_ALLOWED_ORIGINS += [
     "http://localhost:3002",
     "http://127.0.0.1:3002",
@@ -232,7 +195,7 @@ CORS_ALLOWED_ORIGINS += [
     "http://127.0.0.1:8001",
 ]
 
-CORS_ALLOW_CREDENTIALS = True  # Allow credentials (cookies, sessions)
+CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
     'DELETE',
     'GET',
@@ -253,7 +216,6 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
-# CSRF trusted origins for local dev
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -269,7 +231,6 @@ CSRF_TRUSTED_ORIGINS = [
     "http://160.160.160.130:8000",
 ]
 
-# REST framework settings (leave settings dict in place; it's safe even if package absent)
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -279,45 +240,37 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
-    # Enforce consistent date formatting (dd-mm-yyyy) across API responses
     'DATE_FORMAT': '%d-%m-%Y',
-    'DATE_INPUT_FORMATS': ['%d-%m-%Y', '%d/%m/%Y', '%Y-%m-%d'],  # accept a few common inputs
-    'DATETIME_FORMAT': '%d-%m-%Y %H:%M:%S',  # if any DateTime fields are serialized
+    'DATE_INPUT_FORMATS': ['%d-%m-%Y', '%d/%m/%Y', '%Y-%m-%d'],
+    'DATETIME_FORMAT': '%d-%m-%Y %H:%M:%S',
     'DATETIME_INPUT_FORMATS': ['%d-%m-%Y %H:%M:%S', '%Y-%m-%d %H:%M:%S', '%d-%m-%Y'],
-    # Pagination for better performance
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
-    'PAGE_SIZE': 50,  # Default page size (reduced from 200 to improve response times)
+    'PAGE_SIZE': 50,
 }
 
-# Django-level (non-DRF) date display/input preferences (admin, forms)
 DATE_INPUT_FORMATS = ['%d-%m-%Y', '%d/%m/%Y', '%Y-%m-%d']
 DATE_FORMAT = 'd-m-Y'
 DATETIME_FORMAT = 'd-m-Y H:i:s'
 
-# Optional: JWT settings (for token expiration, etc.)
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=2),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': False,
-    'UPDATE_LAST_LOGIN': True,  # Optional, updates `last_login`
-    'ALGORITHM': 'HS256',  # Default
-    'SIGNING_KEY': SECRET_KEY,  # Inherits from DJANGO_SECRET_KEY env var
-    'AUTH_HEADER_TYPES': ('Bearer',),  # Frontend must send "Authorization: Bearer <token>"
-    'USER_ID_FIELD': 'id',  # Using default User model's `id`
-    'USER_ID_CLAIM': 'user_id',  # Use `user_id` for consistency
+    'UPDATE_LAST_LOGIN': True,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
 }
 
-# Media files (for file uploads)
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
-# Optional: path to wkhtmltopdf binary for server-side PDF generation (pdfkit)
-# Example on Windows: set environment variable WKHTMLTOPDF_CMD=C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltopdf.exe
 WKHTMLTOPDF_CMD = os.getenv('WKHTMLTOPDF_CMD', None)
 if not WKHTMLTOPDF_CMD:
-    # Common default install locations we can auto-detect (Windows + Linux)
     candidate_paths = [
         r"C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltopdf.exe",
         r"C:\\Program Files (x86)\\wkhtmltopdf\\bin\\wkhtmltopdf.exe",
@@ -329,17 +282,13 @@ if not WKHTMLTOPDF_CMD:
             WKHTMLTOPDF_CMD = _path
             break
 
-# Use the default Django User model
-AUTH_USER_MODEL = 'auth.User'  # Django's default User model
+AUTH_USER_MODEL = 'auth.User'
 
-# Authentication backends (no custom backend needed since you're using default User model)
 AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',  # Default Django model backend
+    'django.contrib.auth.backends.ModelBackend',
 ]
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'http')
-# Optional: Set up Admin credentials or further configurations here if needed
 
-# Admin Panel secondary password (not the user password)
-# Configure in environment variable ADMIN_PANEL_SECRET. If not set, admin panel verification will fail safely.
+# Admin panel verification uses a separate environment secret.
 ADMIN_PANEL_SECRET = os.getenv("ADMIN_PANEL_SECRET")
 

@@ -14,8 +14,6 @@ from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-
-    # Core APIs
     path("api/", include("api.urls")),
     path("api/reports/", include("reports.urls")),
 ]
