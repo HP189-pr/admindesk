@@ -9,16 +9,34 @@ import PageTopbar from "../components/PageTopbar";
 const ACTIONS = ["➕", "✏️ Edit", "🔍", "📄 Report"];
 
 // Simple badge pills for status/mail columns
-const Badge = ({ text }) => (
-  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-xs font-semibold text-slate-700">
-    {text || "-"}
-  </span>
-);
+const Badge = ({ text }) => {
+  const value = (text || "-").toString();
+  const normalized = value.trim().toUpperCase();
+  const colors = {
+    DONE: "bg-green-100 text-green-700",
+    IN_PROGRESS: "bg-orange-100 text-orange-700",
+    PENDING: "bg-yellow-100 text-yellow-700",
+    CORRECTION: "bg-blue-100 text-blue-700",
+    CANCEL: "bg-red-100 text-red-700",
+  };
+
+  return (
+    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${colors[normalized] || "bg-gray-100 text-gray-700"}`}>
+      {value}
+    </span>
+  );
+};
 
 const MailBadge = ({ text }) => (
-  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-indigo-50 text-xs font-semibold text-indigo-700">
-    {text || "-"}
-  </span>
+  (() => {
+    const value = (text || "-").toString();
+    const normalized = value.trim().toUpperCase();
+    const badgeClass = normalized === "SENT"
+      ? "inline-flex items-center px-2 py-px rounded-full text-xs font-semibold text-slate-700"
+      : "inline-flex items-center px-2 py-px rounded-full bg-red-50 text-xs font-semibold text-red-600";
+
+    return <span className={badgeClass}>{value}</span>;
+  })()
 );
 
 
@@ -296,26 +314,25 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
   // Table columns (ordered as requested)
   const columns = useMemo(() => ([
     { key: "date", label: "Date" },
-    { key: "enrollment_no", label: "Enroll No" },
-    { key: "second_enrollment_no", label: "Sec Enroll" },
+    { key: "enrollment_no", label: "Enroll / Sec" },
     { key: "student_name", label: "Name" },
     { key: "tr_count", label: "TR" },
     { key: "ms_count", label: "MS" },
     { key: "dg_count", label: "DG" },
     { key: "moi_count", label: "MOI" },
-    { key: "backlog_count", label: "Backlog" },
+    { key: "backlog_count", label: "BL" },
     { key: "status", label: "Status" },
     { key: "vr_done_date", label: "Done Date" },
     { key: "final_no", label: "Final No" },
     { key: "mail_status", label: "Mail" },
-  { key: "doc_rec_key", label: "Doc Rec ID" },
-    { key: "doc_rec_remark", label: "Doc Rec Remark" },
-    { key: "eca_required", label: "ECA Required" },
+    { key: "doc_rec_key", label: "Doc Rec ID" },
+    { key: "eca_required", label: "ECA" },
     { key: "eca_name", label: "ECA Name" },
     { key: "eca_ref_no", label: "ECA Ref No" },
-    { key: "eca_send_date", label: "ECA Send Date" },
+    { key: "eca_send_date", label: "Send Date" },
     { key: "eca_status", label: "ECA Status" },
-    { key: "eca_resubmit_date", label: "ECA Resubmit Date" },
+    { key: "eca_resubmit_date", label: "ECA Resubmit" },
+    { key: "doc_rec_remark", label: "Doc Rec Remark" },
   ]), []);
 
   const filteredRecords = useMemo(() => {
@@ -396,6 +413,81 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
     }
     return sortedRecords;
   }, [sortedRecords, statusFilter, mailFilter, ecaStatusFilter]);
+
+  const dateColumnKeys = new Set(["date", "vr_done_date", "eca_send_date", "eca_resubmit_date"]);
+  const compactCountColumnKeys = new Set(["tr_count", "ms_count", "dg_count", "moi_count", "backlog_count"]);
+  const compactFlagColumnKeys = new Set(["eca_required"]);
+  const wrapColumnKeys = new Set(["eca_ref_no", "eca_status", "eca_resubmit_date", "doc_rec_remark"]);
+  const middleAlignColumnKeys = new Set(["eca_ref_no", "eca_send_date", "eca_status", "eca_resubmit_date", "doc_rec_remark"]);
+  const getHeaderCellClassName = (key) => {
+    if (key === "date") {
+      return "sticky top-0 left-0 z-50 bg-slate-100 h-10 text-center py-2 px-1.5 font-medium whitespace-nowrap text-xs align-middle";
+    }
+    if (key === "enrollment_no") {
+      return "sticky top-0 left-[11.5ch] z-40 bg-slate-100 h-10 text-center py-2 px-3 font-medium whitespace-nowrap align-middle";
+    }
+    if (key === "mail_status") {
+      return "h-10 px-1 text-center align-middle font-medium whitespace-nowrap";
+    }
+    if (compactCountColumnKeys.has(key)) {
+      return "h-10 px-0 text-center align-middle font-medium whitespace-nowrap";
+    }
+    if (compactFlagColumnKeys.has(key)) {
+      return "h-10 px-0 text-center align-middle font-medium whitespace-nowrap";
+    }
+    if (key === "eca_ref_no") {
+      return "h-10 text-center py-2 px-3 font-medium whitespace-normal break-words leading-tight align-middle";
+    }
+    if (wrapColumnKeys.has(key)) {
+      return `h-10 text-center py-2 px-3 font-medium whitespace-normal break-words leading-tight ${middleAlignColumnKeys.has(key) ? "align-middle" : "align-top"}`;
+    }
+    if (key === "vr_done_date") {
+      return "h-10 text-center py-2 px-1.5 font-medium whitespace-nowrap text-xs align-middle";
+    }
+    if (key === "eca_send_date") {
+      return "h-10 text-center py-2 px-1.5 font-medium whitespace-nowrap text-xs align-middle";
+    }
+    return "h-10 text-center py-2 px-3 font-medium align-middle";
+  };
+  const getColumnStyle = (key) => {
+    if (key === "student_name") {
+      return { minWidth: 240 };
+    }
+    if (key === "enrollment_no") {
+      return { minWidth: 180, position: "sticky", left: "11.5ch" };
+    }
+    if (key === "mail_status") {
+      return { width: "1%", minWidth: "1%" };
+    }
+    if (compactCountColumnKeys.has(key)) {
+      return { width: "4ch", minWidth: "4ch", maxWidth: "4ch" };
+    }
+    if (compactFlagColumnKeys.has(key)) {
+      return { width: "5ch", minWidth: "5ch", maxWidth: "5ch" };
+    }
+    if (key === "eca_ref_no") {
+      return { width: "15ch", minWidth: "15ch", maxWidth: "15ch" };
+    }
+    if (key === "eca_send_date") {
+      return { width: "11.5ch", minWidth: "11.5ch", maxWidth: "11.5ch" };
+    }
+    if (key === "eca_status") {
+      return { width: "11ch", minWidth: "11ch", maxWidth: "11ch" };
+    }
+    if (key === "eca_resubmit_date") {
+      return { width: "12ch", minWidth: "12ch", maxWidth: "12ch" };
+    }
+    if (key === "doc_rec_remark") {
+      return { width: "18ch", minWidth: "18ch", maxWidth: "18ch" };
+    }
+    if (key === "date") {
+      return { width: "11.5ch", minWidth: "11.5ch", maxWidth: "11.5ch", position: "sticky", left: 0 };
+    }
+    if (key === "vr_done_date") {
+      return { width: "11.5ch", minWidth: "11.5ch", maxWidth: "11.5ch" };
+    }
+    return undefined;
+  };
 
   return (
     <div className="p-2 md:p-3 space-y-4 h-full bg-slate-100 flex flex-col" style={{ minHeight: '100vh' }}>
@@ -760,41 +852,30 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
           {errorMsg && (
             <div className="p-3 text-sm text-red-600">{errorMsg}</div>
           )}
-          <div className="overflow-auto flex-1 min-h-0">
-            <table className="min-w-full text-xs">
-              <thead className="bg-gray-50 border-b sticky top-0 z-10">
+          <div className="overflow-auto flex-1 min-h-0 bg-slate-50 px-2 pb-2">
+            <table className="min-w-full text-xs border-separate border-spacing-0">
+              <thead className="bg-slate-100 shadow-sm border-b sticky top-0 z-30 [&_th]:border-slate-200 [&_th:not(:last-child)]:border-r">
                 <tr>
                   {columns.map(col => (
                     <th
                       key={col.key}
-                      className={
-                        col.key === "final_no"
-                          ? "text-left py-2 px-3 font-extrabold text-sm text-indigo-700 bg-indigo-50"
-                          :
-                        col.key === "date" || col.key === "vr_done_date"
-                          ? "text-left py-2 px-3 font-medium whitespace-nowrap text-xs w-28"
-                          : "text-left py-2 px-3 font-medium"
-                      }
-                      style={
-                        col.key === "date" || col.key === "vr_done_date"
-                          ? { minWidth: 90, maxWidth: 120 }
-                          : undefined
-                      }
+                      className={getHeaderCellClassName(col.key)}
+                      style={getColumnStyle(col.key)}
                     >
                       {col.label}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="[&_td]:py-0.5 [&_td]:leading-[1.1] [&_tr>td]:border-y [&_tr>td]:border-slate-200 [&_tr>td:not(:last-child)]:border-r [&_tr:nth-child(odd)>td]:bg-white [&_tr:nth-child(even)>td]:bg-[#fef9ec] [&_tr]:transition [&_tr]:duration-150 [&_tr:hover>td]:bg-indigo-50 [&_tr:hover]:shadow-sm">
                 {limitedRecords.length === 0 && !loading && (
                   <tr><td colSpan={columns.length} className="py-6 text-center text-gray-500">No records</td></tr>
                 )}
                 {limitedRecords.map((r, idx) => {
-                  // Highlight mail column only if status is DONE and mail is NOT_SENT
-                  const highlightMail = r.status === "DONE" && r.mail_status === "NOT_SENT";
+                  const primaryEnrollmentNo = r.enrollment_no || r.enrollment?.enrollment_no || "-";
+                  const secondaryEnrollmentNo = r.second_enrollment_no || r.second_enrollment_id || r.second_enrollment?.enrollment_no || "";
                   return (
-                    <tr key={r.id || idx} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => {
+                    <tr key={r.id || idx} className={`group cursor-pointer transition duration-150 hover:ring-1 hover:ring-indigo-200 ${currentRow?.id === r.id ? "ring-2 ring-indigo-400 [&>td]:bg-indigo-50" : ""}`} onClick={() => {
                       setCurrentRow(r);
                       // Always use the enrollment_no from the record or nested enrollment object
                       const enrollmentNo = r.enrollment_no || (r.enrollment && r.enrollment.enrollment_no) || "";
@@ -832,36 +913,34 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                         formRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
                       }
                     }}>
-                      <td className="py-2 px-3 whitespace-nowrap text-xs w-28" style={{ minWidth: 90, maxWidth: 120 }}>{r.date || "-"}</td>
-                      <td className="py-2 px-3">{r.enrollment_no || r.enrollment?.enrollment_no || "-"}</td>
-                      <td className="py-2 px-3">{r.second_enrollment_no || r.second_enrollment?.enrollment_no || "-"}</td>
-                      <td className="py-2 px-3">{r.student_name || "-"}</td>
-                      <td className="py-2 px-3">{r.tr_count ?? "-"}</td>
-                      <td className="py-2 px-3">{r.ms_count ?? "-"}</td>
-                      <td className="py-2 px-3">{r.dg_count ?? "-"}</td>
-                      <td className="py-2 px-3">{r.moi_count ?? "-"}</td>
-                      <td className="py-2 px-3">{r.backlog_count ?? "-"}</td>
-                      <td
-                        className="py-2 px-3"
-                        style={{ backgroundColor: r.status === "IN_PROGRESS" ? "#FFEBEE" : undefined }}
-                      >
+                      <td className={`px-1.5 text-center whitespace-nowrap text-xs border-r border-slate-200 font-medium sticky left-0 z-20 ${currentRow?.id === r.id ? "bg-indigo-50" : "bg-slate-50"} group-hover:bg-indigo-50`} style={getColumnStyle("date")}>{r.date || "-"}</td>
+                      <td className={`px-3 whitespace-nowrap font-semibold sticky left-[11.5ch] z-20 ${currentRow?.id === r.id ? "bg-indigo-50" : "bg-white"} group-hover:bg-indigo-50`} style={getColumnStyle("enrollment_no")}>
+                        <span>{primaryEnrollmentNo}</span>
+                        {secondaryEnrollmentNo ? <span className="font-normal text-slate-500"> / {secondaryEnrollmentNo}</span> : null}
+                      </td>
+                      <td className="px-3" style={getColumnStyle("student_name")}>{r.student_name || "-"}</td>
+                      <td className="px-2 text-center whitespace-nowrap" style={getColumnStyle("tr_count")}>{r.tr_count ?? "-"}</td>
+                      <td className="px-2 text-center whitespace-nowrap" style={getColumnStyle("ms_count")}>{r.ms_count ?? "-"}</td>
+                      <td className="px-2 text-center whitespace-nowrap" style={getColumnStyle("dg_count")}>{r.dg_count ?? "-"}</td>
+                      <td className="px-2 text-center whitespace-nowrap" style={getColumnStyle("moi_count")}>{r.moi_count ?? "-"}</td>
+                      <td className="px-2 text-center whitespace-nowrap" style={getColumnStyle("backlog_count")}>{r.backlog_count ?? "-"}</td>
+                      <td className="px-3">
                         <Badge text={r.status} />
                       </td>
-                      <td className="py-2 px-3 whitespace-nowrap text-xs w-28" style={{ minWidth: 90, maxWidth: 120 }}>{r.vr_done_date || "-"}</td>
-                      <td className="py-2 px-3">
-                        <span className="inline-block px-2 py-0.5 rounded-md bg-indigo-50 text-orange-700 font-extrabold text-sm tracking-wide">
+                      <td className="px-1.5 text-center whitespace-nowrap text-xs" style={getColumnStyle("vr_done_date")}>{r.vr_done_date || "-"}</td>
+                      <td className="px-3 text-center">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-orange-50 text-orange-800 font-bold text-xs hover:bg-orange-100 transition">
                           {r.final_no || "-"}
                         </span>
                       </td>
-                      <td className={highlightMail ? "py-2 px-3 bg-orange-50" : "py-2 px-3"}><MailBadge text={r.mail_status} /></td>
-                      <td className="py-2 px-3">{r.doc_rec_key || r.doc_rec_id || (r.doc_rec && r.doc_rec.doc_rec_id) || '-'}</td>
-                      <td className="py-2 px-3">{r.doc_remark || r.doc_rec?.doc_remark || "-"}</td>
-                      <td className="py-2 px-3">{(r.eca_required === true || (r.eca && r.eca.eca_required === true)) ? 'Y' : ''}</td>
-                      <td className="py-2 px-3">{r.eca?.eca_name || r.eca_name || "-"}</td>
-                      <td className="py-2 px-3">{r.eca?.eca_ref_no || r.eca_ref_no || "-"}</td>
-                      <td className="py-2 px-3">{isoToDMY(r.eca_send_date || r.eca?.eca_send_date || r.eca_submit_date) || "-"}</td>
+                      <td className="px-2 text-center whitespace-nowrap" style={getColumnStyle("mail_status")}><MailBadge text={r.mail_status} /></td>
+                      <td className="px-3">{r.doc_rec_key || r.doc_rec_id || (r.doc_rec && r.doc_rec.doc_rec_id) || '-'}</td>
+                      <td className="px-2 text-center whitespace-nowrap" style={getColumnStyle("eca_required")}>{(r.eca_required === true || (r.eca && r.eca.eca_required === true)) ? 'Y' : ''}</td>
+                      <td className="px-3">{r.eca?.eca_name || r.eca_name || "-"}</td>
+                      <td className="px-3 whitespace-normal break-words align-middle" style={getColumnStyle("eca_ref_no")}>{r.eca?.eca_ref_no || r.eca_ref_no || "-"}</td>
+                      <td className="px-1.5 text-center whitespace-nowrap text-xs align-middle" style={getColumnStyle("eca_send_date")}>{isoToDMY(r.eca_send_date || r.eca?.eca_send_date || r.eca_submit_date) || "-"}</td>
                       <td
-                        className={`py-2 px-3 font-semibold ${
+                        className={`px-3 font-semibold whitespace-normal break-words leading-tight align-middle ${
                           r.eca_required && formatEcaStatus(r) === "NOT_SENT"
                             ? "text-red-600"
                             : r.eca_required && formatEcaStatus(r) === "SENT"
@@ -872,7 +951,8 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                       >
                         {r.eca_required ? formatEcaStatus(r) : ""}
                       </td>
-                      <td className="py-2 px-3">{r.eca?.eca_resubmit_date || r.eca_resubmit_date || "-"}</td>
+                      <td className="px-3 whitespace-normal break-words text-xs leading-tight align-middle" style={getColumnStyle("eca_resubmit_date")}>{r.eca?.eca_resubmit_date || r.eca_resubmit_date || "-"}</td>
+                      <td className="px-3 whitespace-normal break-words leading-tight align-middle" style={getColumnStyle("doc_rec_remark")}>{r.doc_remark || r.doc_rec?.doc_remark || "-"}</td>
                     </tr>
                   );
                 })}
