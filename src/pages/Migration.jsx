@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { dmyToISO, isoToDMY } from "../utils/date";
 import { useNavigate } from 'react-router-dom';
+import PanelToggleButton from '../components/PanelToggleButton';
 import PageTopbar from "../components/PageTopbar";
 import useEnrollmentLookup from '../hooks/useEnrollmentLookup';
 
@@ -184,7 +185,7 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
       <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
         <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
           <div className="font-semibold">{selectedTopbarMenu || 'Panel'}</div>
-          <button onClick={()=>setPanelOpen((o)=>!o)} className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50">{panelOpen ? 'Collapse':'Expand'}</button>
+          <PanelToggleButton open={panelOpen} onClick={() => setPanelOpen((o) => !o)} />
         </div>
 
         {panelOpen && (selectedTopbarMenu === '➕' || selectedTopbarMenu === '✏️ Edit') && (
@@ -252,7 +253,7 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
             </div>
 
             <div className="md:col-span-4 flex justify-end">
-              <button className="px-4 py-2 rounded-lg bg-emerald-600 text-white" onClick={async()=>{ try{ await save(); alert('Saved'); setSelectedTopbarMenu('🔍'); setPanelOpen(false); }catch(e){ alert(e.message||'Failed'); } }}>Save</button>
+              <button className="save-button" onClick={async()=>{ try{ await save(); alert('Saved'); setSelectedTopbarMenu('🔍'); setPanelOpen(false); }catch(e){ alert(e.message||'Failed'); } }}>Save</button>
             </div>
           </div>
         )}

@@ -296,7 +296,7 @@ const PaymentReport = ({ onBack }) => {
                 setPaymentMode("");
                 setReportBy("Daily");
               }}
-              className="rounded-md border border-gray-300 px-5 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100"
+              className="reset-button"
             >
               Reset Filters
             </button>

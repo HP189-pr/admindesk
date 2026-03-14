@@ -1054,7 +1054,7 @@ const CCTVMonitoring = ({
               />
 
               <button
-                className="bg-green-600 text-white p-2 rounded md:col-span-2"
+                className="save-button md:col-span-2"
                 disabled={outwardForm.id ? !rights.can_edit : !rights.can_create}
               >
                 {outwardForm.id ? "Update Outward" : "Create Outward"}

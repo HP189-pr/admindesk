@@ -1041,14 +1041,14 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                 <button
                   type="submit"
                   disabled={saving || (!editingEntry && !rights.can_create) || (editingEntry && !rights.can_edit)}
-                  className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow disabled:cursor-not-allowed disabled:bg-gray-400"
+                  className="save-button"
                 >
                   {saving ? 'Saving...' : editingEntry ? 'Update Entry' : 'Save Entry'}
                 </button>
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="rounded border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                  className="reset-button"
                 >
                   Clear form
                 </button>

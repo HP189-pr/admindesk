@@ -232,13 +232,13 @@ const UserManagement = ({ selectedTopbarMenu }) => {
                   />
                   <button
                     type="submit"
-                    className="bg-green-500 text-white px-4 py-2 rounded"
+                    className="save-button"
                   >
                     {selectedUser ? "Update User" : "Create User"}
                   </button>
                   <button
                     type="button"
-                    className="bg-gray-500 text-white px-4 py-2 rounded ml-3"
+                    className="reset-button ml-3"
                     onClick={() => {
                       setIsAddingUser(false);
                       setSelectedUser(null);
@@ -294,7 +294,7 @@ const UserManagement = ({ selectedTopbarMenu }) => {
                 >
                   OK
                 </button>
-                <button onClick={() => setShowChangeModal(false)} className="bg-gray-400 px-3 py-1 rounded">Cancel</button>
+                <button onClick={() => setShowChangeModal(false)} className="reset-button-compact">Cancel</button>
               </div>
             </div>
           </div>

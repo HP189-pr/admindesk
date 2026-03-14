@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { isoToDMY, dmyToISO } from "../utils/date";
-import { FaChevronDown, FaChevronUp, FaEdit, FaTrash } from "react-icons/fa";
+import { FaEdit, FaTrash } from "react-icons/fa";
 import { useNavigate } from 'react-router-dom';
+import PanelToggleButton from "../components/PanelToggleButton";
 import PageTopbar from "../components/PageTopbar";
 import { 
   createEnrollment, 
@@ -1004,7 +1005,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
         <div className="flex justify-end space-x-2">
           <button
             type="button"
-            className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+            className="reset-button"
             onClick={() => setSelectedTopbarMenu && setSelectedTopbarMenu("🔍")}
           >
             Cancel
@@ -1012,7 +1013,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
           {(formState.isEditing ? rights.can_edit : rights.can_create) && (
             <button
               type="submit"
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+              className="save-button"
             >
               {formState.isEditing ? "Update" : "Save"}
             </button>
@@ -1407,12 +1408,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
               selectedAction === CANCEL_ACTION ? "CANCEL ADMISSION" : "ACTION"
             )} Panel` : "Action Panel"}
           </div>
-          <button
-            onClick={() => setPanelOpen((o) => !o)}
-            className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
-          >
-            {panelOpen ? <FaChevronUp /> : <FaChevronDown />} {panelOpen ? "Collapse" : "Expand"}
-          </button>
+          <PanelToggleButton open={panelOpen} onClick={() => setPanelOpen((o) => !o)} />
         </div>
         {panelOpen && selectedAction && (
           <div className="p-4">

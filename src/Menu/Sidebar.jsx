@@ -393,7 +393,7 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
             )}
             <div className="flex justify-end mt-4">
               <button onClick={handleVerifyPassword} className="bg-blue-500 text-white px-4 py-2 rounded">Submit</button>
-              <button onClick={() => setShowPasswordModal(false)} className="ml-2 px-4 py-2 bg-gray-300 rounded">Cancel</button>
+              <button onClick={() => setShowPasswordModal(false)} className="reset-button ml-2">Cancel</button>
             </div>
           </div>
         </div>

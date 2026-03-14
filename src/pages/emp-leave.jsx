@@ -2,7 +2,8 @@
 import React, { useEffect, useState, Suspense, useMemo } from 'react';
 import axios from '../api/axiosInstance';
 import { useAuth } from '../hooks/AuthContext';
-import { FaUserTie, FaChevronUp, FaChevronDown } from 'react-icons/fa';
+import { FaUserTie } from 'react-icons/fa';
+import PanelToggleButton from '../components/PanelToggleButton';
 import { parseDMY, fmtDate, toISO } from '../report/utils';
 import PageTopbar from "../components/PageTopbar";
 
@@ -261,9 +262,7 @@ function EmpLeavePage() {
       <div className="mt-4 border rounded-xl shadow-sm">
         <div className="flex justify-between items-center px-3 py-2 bg-gray-50 border-b">
           <div className="font-semibold">{selectedPanel} Panel</div>
-          <button onClick={() => setPanelOpen(o => !o)} className="px-2 py-1 text-sm border rounded bg-white hover:bg-gray-50 flex items-center gap-1">
-            {panelOpen ? <FaChevronUp /> : <FaChevronDown />} {panelOpen ? 'Collapse' : 'Expand'}
-          </button>
+          <PanelToggleButton open={panelOpen} onClick={() => setPanelOpen(o => !o)} />
         </div>
 
         {/* main content */}
@@ -390,7 +389,7 @@ function EmpLeavePage() {
                   </div>
 
                   <div className="flex gap-3 pt-2 border-t border-gray-100">
-                    <button type="submit" className="px-5 py-2 bg-indigo-600 text-white rounded shadow-sm hover:bg-indigo-500">{editingId ? 'Save' : 'Add'}</button>
+                    <button type="submit" className="save-button">{editingId ? 'Save' : 'Add'}</button>
                     <button
                       type="button"
                       className="px-5 py-2 border border-gray-300 rounded hover:bg-gray-50"

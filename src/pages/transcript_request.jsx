@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
+import PanelToggleButton from '../components/PanelToggleButton';
 import PageTopbar from '../components/PageTopbar';
 import {
   fetchTranscriptRequests,
@@ -616,12 +617,7 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
             <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
               <div className="font-semibold text-gray-800">{selectedAction}</div>
-              <button
-                onClick={() => setPanelOpen((open) => !open)}
-                className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
-              >
-                {panelOpen ? 'Collapse' : 'Expand'}
-              </button>
+              <PanelToggleButton open={panelOpen} onClick={() => setPanelOpen((open) => !open)} />
             </div>
 
             {panelOpen && selectedAction === ACTIONS[0] && (

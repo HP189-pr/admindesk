@@ -509,7 +509,7 @@ const CashReport = ({ onBack }) => {
                   />
                   <button
                     type="submit"
-                    className="bg-blue-600 text-white px-4 py-2 rounded"
+                    className="save-button"
                     disabled={formSaving}
                   >
                     {formSaving ? 'Saving...' : 'Add'}
@@ -588,7 +588,7 @@ const CashReport = ({ onBack }) => {
                   />
                   <button
                     type="submit"
-                    className="bg-blue-600 text-white px-4 py-2 rounded"
+                    className="save-button"
                     disabled={formSaving}
                   >
                     {formSaving ? 'Saving...' : 'Add'}

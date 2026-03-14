@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
+import PanelToggleButton from '../components/PanelToggleButton';
 import PageTopbar from '../components/PageTopbar';
 import {
   fetchMailRequests,
@@ -542,12 +543,7 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
             <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
               <div className="font-semibold text-gray-800">{selectedAction}</div>
-              <button
-                onClick={() => setPanelOpen((open) => !open)}
-                className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
-              >
-                {panelOpen ? 'Collapse' : 'Expand'}
-              </button>
+              <PanelToggleButton open={panelOpen} onClick={() => setPanelOpen((open) => !open)} />
             </div>
 
             {panelOpen && selectedAction === ACTIONS[0] && (
@@ -677,7 +673,7 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                     <div className="md:col-span-2 flex justify-end">
                       <button
                         onClick={() => activeRow && applyUpdate(activeRow.id, editForm)}
-                        className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm disabled:bg-indigo-300"
+                        className="save-button"
                         disabled={!rights.can_edit || updatingId === activeRow.id}
                       >
                         {updatingId === activeRow?.id ? 'Saving...' : 'Save Changes'}
@@ -861,7 +857,7 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                                 e.stopPropagation();
                                 applyUpdate(row.id);
                               }}
-                              className="px-3 py-1.5 rounded bg-green-600 text-white text-xs disabled:bg-green-300"
+                              className="save-button-compact"
                               disabled={!rights.can_edit || disabled}
                             >
                               {updatingId === row.id ? 'Saving...' : 'Save'}

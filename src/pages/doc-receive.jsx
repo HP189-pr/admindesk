@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { dmyToISO, isoToDMY, pad2 } from "../utils/date";
+import PanelToggleButton from "../components/PanelToggleButton";
 import PageTopbar from "../components/PageTopbar";
 import useEnrollmentLookup from '../hooks/useEnrollmentLookup';
 
@@ -907,12 +908,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
       <div className="border rounded-2xl overflow-hidden shadow-sm">
         <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
           <div className="font-semibold">{selected ? `${selected} Panel` : "Action Panel"}</div>
-          <button
-            onClick={() => setPanelOpen((o) => !o)}
-            className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"  
-          >
-            {panelOpen ? "▲" : "▼"} {panelOpen ? "Collapse" : "Expand"}
-          </button>
+          <PanelToggleButton open={panelOpen} onClick={() => setPanelOpen((o) => !o)} />
         </div>
 
         {panelOpen && selected === "➕" && (
@@ -1079,7 +1075,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
                 </div>
                 {!selectedRec && (
                   <div className="md:col-span-4 flex justify-end">
-                    <button className="px-4 py-2 rounded-lg bg-emerald-600 text-white" onClick={handleSaveNew}>Save</button>
+                    <button className="save-button" onClick={handleSaveNew}>Save</button>
                   </div>
                 )}
               </div>
@@ -1098,7 +1094,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
                 </div>
                 {!selectedRec && (
                   <div className="md:col-span-4 flex justify-end items-end">
-                    <button className="px-4 py-2 rounded-lg bg-emerald-600 text-white" onClick={handleSaveNew}>Save</button>
+                    <button className="save-button" onClick={handleSaveNew}>Save</button>
                   </div>
                 )}
                 {serviceIssueError && <div className="md:col-span-full text-sm text-red-600">{serviceIssueError}</div>}
@@ -1117,7 +1113,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
                 </div>
                 {!selectedRec && (
                   <div className="md:col-span-4 flex justify-end items-end">
-                    <button className="px-4 py-2 rounded-lg bg-emerald-600 text-white" onClick={handleSaveNew}>Save</button>
+                    <button className="save-button" onClick={handleSaveNew}>Save</button>
                   </div>
                 )}
                 {serviceIssueError && <div className="md:col-span-full text-sm text-red-600">{serviceIssueError}</div>}
@@ -1126,13 +1122,13 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
 
             {!selectedRec && !['VR', 'IV', 'PR', 'MG'].includes(form.apply_for) && (
               <div className="p-4 flex justify-end mt-2">
-                <button className="px-4 py-2 rounded-lg bg-emerald-600 text-white" onClick={handleSaveNew}>Save</button>
+                <button className="save-button" onClick={handleSaveNew}>Save</button>
               </div>
             )}
 
             {selectedRec && (
               <div className="p-4 flex justify-end space-x-2 mt-2">
-                <button className="px-4 py-2 rounded-lg bg-yellow-600 text-white" onClick={async()=>{
+                <button className="save-button" onClick={async()=>{
                   try {
                     await updateDocRec();
                     setSelectedRec(null);
@@ -1179,7 +1175,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
               </div>
               <div className="lg:col-span-4 flex items-end lg:justify-end gap-2">
                 <button className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-medium disabled:opacity-60" onClick={()=>fetchRecentRecords(searchTerm, serviceFilter)} disabled={recentLoading}>Search</button>
-                <button className="px-4 py-2 rounded-lg border border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 font-medium" onClick={()=>{ setSearchTerm(''); setServiceFilter('all'); fetchRecentRecords('', 'all'); }}>Reset</button>
+                <button className="reset-button" onClick={()=>{ setSearchTerm(''); setServiceFilter('all'); fetchRecentRecords('', 'all'); }}>Reset</button>
               </div>
             </div>
           </div>

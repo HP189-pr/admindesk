@@ -1,6 +1,6 @@
 import useEnrollmentLookup from '../hooks/useEnrollmentLookup';
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { FaChevronDown, FaChevronUp } from "react-icons/fa";
+import PanelToggleButton from "../components/PanelToggleButton";
 import PageTopbar from "../components/PageTopbar";
 import { isoToDMY, dmyToISO } from "../utils/date";
 import InstVerReport from "../report/InstVerReport";
@@ -1060,13 +1060,7 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 			<section className="rounded-2xl border bg-white p-4 shadow-sm space-y-4">
 				<div className="flex flex-wrap items-center justify-between gap-3">
 					<h3 className="text-lg font-semibold">Institutional Verification</h3>
-					<button
-						type="button"
-						onClick={() => setShowInstitutePanel((prev) => !prev)}
-						className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
-					>
-						{showInstitutePanel ? <FaChevronUp /> : <FaChevronDown />} {showInstitutePanel ? "Collapse" : "Expand"}
-					</button>
+					<PanelToggleButton open={showInstitutePanel} onClick={() => setShowInstitutePanel((prev) => !prev)} />
 				</div>
 				{showInstitutePanel && (
 				<fieldset className="space-y-4" disabled={detailLoading}>
@@ -1304,7 +1298,7 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 							<button
 								type="button"
 								onClick={resetMainForm}
-								className="h-[38px] rounded border px-3 text-sm"
+								className="reset-button"
 							>
 								Reset
 							</button>
@@ -1312,7 +1306,7 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 								type="button"
 								onClick={handleSaveMain}
 								disabled={savingMain || (!rights.can_create && !rights.can_edit)}
-								className="h-[38px] rounded bg-indigo-600 px-4 text-sm font-semibold text-white disabled:opacity-60"
+								className="save-button"
 							>
 								{savingMain ? "Saving…" : "Save"}
 							</button>
@@ -1326,15 +1320,9 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 				<div className="flex items-center justify-between">
 					<h3 className="text-lg font-semibold">Students</h3>
 					<div className="flex gap-2">
-						<button
-							type="button"
-							onClick={() => setShowStudentsPanel((prev) => !prev)}
-							className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
-						>
-							{showStudentsPanel ? <FaChevronUp /> : <FaChevronDown />} {showStudentsPanel ? "Collapse" : "Expand"}
-						</button>
+						<PanelToggleButton open={showStudentsPanel} onClick={() => setShowStudentsPanel((prev) => !prev)} />
 						{editingStudentId && (
-							<button type="button" onClick={resetStudentForm} className="rounded border px-3 py-1 text-sm">
+							<button type="button" onClick={resetStudentForm} className="reset-button-compact">
 								Cancel Edit
 							</button>
 						)}
@@ -1342,7 +1330,7 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 							type="button"
 							onClick={handleStudentSave}
 							disabled={savingStudent || (!rights.can_create && !rights.can_edit)}
-							className="rounded bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
+							className="save-button"
 						>
 							{savingStudent ? "Saving…" : editingStudentId ? "Update Student" : "Add Student"}
 						</button>
@@ -1450,13 +1438,7 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 			<section className="rounded-2xl border bg-white p-4 shadow-sm">
 				<div className="mb-3 flex items-center justify-between">
 					<h3 className="text-lg font-semibold">Records</h3>
-					<button
-						type="button"
-						onClick={() => setShowRecordsPanel((prev) => !prev)}
-						className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
-					>
-						{showRecordsPanel ? <FaChevronUp /> : <FaChevronDown />} {showRecordsPanel ? "Collapse" : "Expand"}
-					</button>
+					<PanelToggleButton open={showRecordsPanel} onClick={() => setShowRecordsPanel((prev) => !prev)} />
 				</div>
 				{showRecordsPanel && (
 					<>

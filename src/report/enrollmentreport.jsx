@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { ArrowLeft, RefreshCcw, RotateCcw, Rows3, Users } from "lucide-react";
+import { FaFileExcel, FaFilePdf } from "react-icons/fa6";
 import { getEnrollmentReportSummary, getEnrollments } from "../services/enrollmentservice";
 
 const GROUP_OPTIONS = [
@@ -23,6 +25,16 @@ const GROUP_LABELS = {
   course: "Course",
   status: "Status",
 };
+
+const TOOLBAR_CARD_CLASS = "rounded-2xl border border-slate-200 bg-white p-4 shadow-sm";
+const CONTROL_LABEL_CLASS = "mb-1 block text-sm font-medium text-slate-700";
+const SELECT_CLASS = "h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/15";
+const ACTION_BUTTON_BASE_CLASS = "inline-flex h-11 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold shadow-sm transition duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50";
+const REFRESH_BUTTON_CLASS = `${ACTION_BUTTON_BASE_CLASS} border border-slate-700 bg-slate-700 text-white hover:bg-slate-800`;
+const BACK_BUTTON_CLASS = `${ACTION_BUTTON_BASE_CLASS} border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200`;
+const RESET_BUTTON_CLASS = "reset-button w-full";
+const EXPORT_EXCEL_BUTTON_CLASS = "inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 shadow-sm shadow-emerald-100 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-100 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50";
+const EXPORT_PDF_BUTTON_CLASS = "inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 shadow-sm shadow-rose-100 transition duration-200 hover:-translate-y-0.5 hover:bg-rose-100 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50";
 
 const normalizeOption = (item) => {
   if (!item) return null;
@@ -326,12 +338,31 @@ const EnrollmentReport = ({ onBack }) => {
     setCourseFilter("");
   };
 
+  const canExport = summaryRows.length > 0 && !fetchingStudents;
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-lg font-semibold">Enrollment Report</h3>
-        <div className="flex flex-wrap gap-2 items-center">
-          <label className="inline-flex items-center gap-2 border border-gray-300 rounded px-3 py-2 bg-white">
+      <div className={TOOLBAR_CARD_CLASS}>
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div>
+            <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-800">
+              <Rows3 size={18} className="text-blue-600" />
+              Enrollment Report
+            </h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Review grouped enrollment totals and export the current report view.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2 items-center">
+            <label
+              className={`inline-flex h-11 items-center gap-2 rounded-2xl border px-3 text-sm font-medium shadow-sm transition ${
+                includeStudentList
+                  ? "border-indigo-200 bg-indigo-50 text-indigo-700"
+                  : "border-slate-200 bg-slate-50 text-slate-700"
+              }`}
+            >
+              <Users size={16} className={includeStudentList ? "text-indigo-600" : "text-slate-400"} />
             <input
               type="checkbox"
               checked={includeStudentList}
@@ -343,46 +374,59 @@ const EnrollmentReport = ({ onBack }) => {
           <button
             type="button"
             onClick={() => loadReportSummary()}
-            className="rounded bg-slate-700 px-4 py-2 text-white disabled:opacity-50"
+            className={REFRESH_BUTTON_CLASS}
             disabled={loading}
           >
+            <RefreshCcw size={16} />
             {loading ? "Loading..." : "Refresh"}
           </button>
           <button
             type="button"
             onClick={handleExportPdf}
-            disabled={!summaryRows.length || fetchingStudents}
-            className="rounded bg-indigo-600 px-4 py-2 text-white disabled:opacity-50"
+            disabled={!canExport}
+            className={EXPORT_PDF_BUTTON_CLASS}
+            aria-label="Export PDF"
+            title={fetchingStudents ? "Preparing export" : "Export PDF"}
           >
-            {fetchingStudents ? "Preparing..." : "Export PDF"}
+            <FaFilePdf size={20} color="#D32F2F" />
           </button>
           <button
             type="button"
             onClick={handleExportExcel}
-            disabled={!summaryRows.length || fetchingStudents}
-            className="rounded bg-emerald-600 px-4 py-2 text-white disabled:opacity-50"
+            disabled={!canExport}
+            className={EXPORT_EXCEL_BUTTON_CLASS}
+            aria-label="Export Excel"
+            title={fetchingStudents ? "Preparing export" : "Export Excel"}
           >
-            {fetchingStudents ? "Preparing..." : "Export Excel"}
+            <FaFileExcel size={20} color="#1D6F42" />
           </button>
           {onBack && (
             <button
               type="button"
               onClick={onBack}
-              className="rounded bg-gray-200 px-4 py-2 text-gray-800"
+              className={BACK_BUTTON_CLASS}
             >
+              <ArrowLeft size={16} />
               Back
             </button>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-3 bg-white border border-slate-200 rounded-xl p-3">
+        {fetchingStudents && (
+          <div className="mt-3 inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+            Preparing export using the current filters...
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-3 xl:grid-cols-6">
         <label className="text-sm">
-          <span className="block mb-1 font-medium">Group By</span>
+          <span className={CONTROL_LABEL_CLASS}>Group By</span>
           <select
             value={groupBy}
             onChange={(e) => setGroupBy(e.target.value)}
-            className="w-full border rounded px-3 py-2"
+            className={SELECT_CLASS}
           >
             {GROUP_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>
@@ -391,11 +435,11 @@ const EnrollmentReport = ({ onBack }) => {
         </label>
 
         <label className="text-sm">
-          <span className="block mb-1 font-medium">Status</span>
+          <span className={CONTROL_LABEL_CLASS}>Status</span>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full border rounded px-3 py-2"
+            className={SELECT_CLASS}
           >
             {STATUS_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>
@@ -404,11 +448,11 @@ const EnrollmentReport = ({ onBack }) => {
         </label>
 
         <label className="text-sm">
-          <span className="block mb-1 font-medium">Batch</span>
+          <span className={CONTROL_LABEL_CLASS}>Batch</span>
           <select
             value={batchFilter}
             onChange={(e) => setBatchFilter(e.target.value)}
-            className="w-full border rounded px-3 py-2"
+            className={SELECT_CLASS}
           >
             <option value="">All</option>
             {batchOptions.map((option) => (
@@ -418,11 +462,11 @@ const EnrollmentReport = ({ onBack }) => {
         </label>
 
         <label className="text-sm">
-          <span className="block mb-1 font-medium">Institute</span>
+          <span className={CONTROL_LABEL_CLASS}>Institute</span>
           <select
             value={instituteFilter}
             onChange={(e) => setInstituteFilter(e.target.value)}
-            className="w-full border rounded px-3 py-2"
+            className={SELECT_CLASS}
           >
             <option value="">All</option>
             {instituteOptions.map((option) => (
@@ -432,11 +476,11 @@ const EnrollmentReport = ({ onBack }) => {
         </label>
 
         <label className="text-sm">
-          <span className="block mb-1 font-medium">Course</span>
+          <span className={CONTROL_LABEL_CLASS}>Course</span>
           <select
             value={courseFilter}
             onChange={(e) => setCourseFilter(e.target.value)}
-            className="w-full border rounded px-3 py-2"
+            className={SELECT_CLASS}
           >
             <option value="">All</option>
             {courseOptions.map((option) => (
@@ -449,8 +493,9 @@ const EnrollmentReport = ({ onBack }) => {
           <button
             type="button"
             onClick={handleResetFilters}
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            className={RESET_BUTTON_CLASS}
           >
+            <RotateCcw size={16} />
             Reset Filters
           </button>
         </div>
@@ -458,22 +503,22 @@ const EnrollmentReport = ({ onBack }) => {
 
       {error && <div className="text-sm text-red-600">{error}</div>}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs text-slate-500">Filtered Enrollment Rows</p>
           <p className="text-xl font-semibold">{totals.total}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-3">
+        <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm shadow-emerald-100/60">
           <p className="text-xs text-slate-500">Active</p>
           <p className="text-xl font-semibold text-emerald-600">{totals.active}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-3">
+        <div className="rounded-2xl border border-rose-100 bg-white p-4 shadow-sm shadow-rose-100/60">
           <p className="text-xs text-slate-500">Cancelled</p>
           <p className="text-xl font-semibold text-red-600">{totals.cancelled}</p>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-100 text-gray-700">
             <tr>

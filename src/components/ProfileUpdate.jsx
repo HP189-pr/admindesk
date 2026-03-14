@@ -229,7 +229,7 @@ const ProfileUpdate = ({ setWorkArea }) => {
                 <div className="flex justify-center pt-4">
                     <button
                         type="submit"
-                        className="bg-blue-600 hover:bg-blue-700 transition text-white px-8 py-2 rounded-full shadow-md font-medium"
+                        className="save-button"
                     >
                         Save Changes
                     </button>

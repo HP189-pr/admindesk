@@ -1,6 +1,11 @@
 import React from "react";
 import { useNavigate } from 'react-router-dom';
 
+const TOPBAR_ICON_BUTTON_CLASS = "inline-flex h-10 min-w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-800 px-3 text-sm font-semibold text-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-slate-700";
+const TOPBAR_ACTION_BUTTON_BASE_CLASS = "inline-flex h-10 items-center justify-center rounded-xl border px-4 text-sm font-semibold shadow-sm transition duration-200 hover:-translate-y-0.5";
+const TOPBAR_SLOT_WRAPPER_CLASS = "flex items-center gap-2 [&_button]:!rounded-xl [&_button]:transition [&_button]:duration-200 [&_button]:ease-out [&_a]:!rounded-xl [&_a]:transition [&_a]:duration-200 [&_a]:ease-out";
+const TOPBAR_HOME_BUTTON_CLASS = "inline-flex h-10 items-center gap-2 rounded-xl bg-slate-800 px-4 text-sm font-semibold text-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-slate-700";
+
 const PageTopbar = ({
   title,
   titleClassName,
@@ -19,12 +24,13 @@ const PageTopbar = ({
   const navigate = useNavigate();
 
   return (
-    <div className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 flex items-center justify-between sticky top-0 z-20">
-      <div className="flex items-center gap-2">
+    <div className="sticky top-0 z-20 flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+      <div className={TOPBAR_SLOT_WRAPPER_CLASS}>
         {onToggleSidebar && (
           <button
+            type="button"
             onClick={() => onToggleSidebar()}
-            className="px-3 py-1.5 rounded bg-gray-800 text-white hover:bg-gray-700"
+            className={TOPBAR_ICON_BUTTON_CLASS}
             title="Toggle sidebar"
           >
             ☰
@@ -42,12 +48,13 @@ const PageTopbar = ({
             {actions.map((action) => (
               <button
                 key={action}
+                type="button"
                 onClick={() => onSelect && onSelect(action)}
                 className={[
-                  "px-3 py-1.5 rounded border text-sm",
+                  TOPBAR_ACTION_BUTTON_BASE_CLASS,
                   selected === action
-                    ? "bg-indigo-600 text-white border-indigo-600"
-                    : "bg-white hover:bg-gray-50 border-gray-300",
+                    ? "border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
                 ].join(" ")}
               >
                 {action}
@@ -57,17 +64,18 @@ const PageTopbar = ({
         )}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className={TOPBAR_SLOT_WRAPPER_CLASS}>
         {/* Otherwise render actions on the right side */}
         {!actionsOnLeft && actions.map((action) => (
           <button
             key={action}
+            type="button"
             onClick={() => onSelect && onSelect(action)}
             className={[
-              "px-3 py-1.5 rounded border text-sm",
+              TOPBAR_ACTION_BUTTON_BASE_CLASS,
               selected === action
-                ? "bg-indigo-600 text-white border-indigo-600"
-                : "bg-white hover:bg-gray-50 border-gray-300",
+                ? "border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700"
+                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
             ].join(" ")}
           >
             {action}
@@ -84,15 +92,16 @@ const PageTopbar = ({
               }
               navigate(homePath);
             }}
-            className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-2 text-sm font-semibold text-white shadow"
+            className={TOPBAR_HOME_BUTTON_CLASS}
           >
             🏠 Home
           </button>
         )}
         {onToggleChatbox && (
           <button
+            type="button"
             onClick={() => onToggleChatbox()}
-            className="px-3 py-1.5 rounded bg-gray-800 text-white hover:bg-gray-700"
+            className={TOPBAR_ICON_BUTTON_CLASS}
             title="Toggle chat"
           >
             💬

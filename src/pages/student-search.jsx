@@ -234,7 +234,7 @@ export default function StudentSearch() {
                 <button
                   type="button"
                   onClick={handleReset}
-                  className="px-6 py-3 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 transition-colors"
+                  className="reset-button"
                 >
                   Reset
                 </button>

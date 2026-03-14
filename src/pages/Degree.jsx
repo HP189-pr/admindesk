@@ -4,8 +4,9 @@
  */
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import PanelToggleButton from '../components/PanelToggleButton';
 import PageTopbar from '../components/PageTopbar';
-import { FaChevronDown, FaChevronUp, FaEdit, FaTrash } from 'react-icons/fa';
+import { FaEdit, FaTrash } from 'react-icons/fa';
 import { toDateInput } from '../utils/date';
 import {
     getDegrees,
@@ -562,12 +563,7 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
             <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
                 <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
                     <div className="font-semibold">{panelTitle}</div>
-                    <button
-                        onClick={() => setPanelOpen((o) => !o)}
-                        className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
-                    >
-                        {panelOpen ? <FaChevronUp /> : <FaChevronDown />} {panelOpen ? 'Collapse' : 'Expand'}
-                    </button>
+                    <PanelToggleButton open={panelOpen} onClick={() => setPanelOpen((o) => !o)} />
                 </div>
                 {panelOpen && (
                     <div className="p-4">
@@ -695,7 +691,7 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
                                         <button
                                             type="button"
                                             onClick={handleConvocationFiltersReset}
-                                            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                                            className="reset-button"
                                         >
                                             Reset Filters
                                         </button>
@@ -955,8 +951,8 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
                             </div>
                             
                             <div className="mt-6 flex justify-end gap-3">
-                                <button type="button" onClick={() => { setShowModal(false); resetForm(); }} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
-                                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">{editingDegree ? 'Update' : 'Create'}</button>
+                                <button type="button" onClick={() => { setShowModal(false); resetForm(); }} className="reset-button">Cancel</button>
+                                <button type="submit" className="save-button">{editingDegree ? 'Update' : 'Create'}</button>
                             </div>
                         </form>
                     </div>
@@ -1035,13 +1031,13 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
                                         setShowConvocationModal(false);
                                         resetConvocationForm();
                                     }}
-                                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                                    className="reset-button"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                    className="save-button"
                                 >
                                     {editingConvocation ? 'Update' : 'Create'}
                                 </button>

@@ -3,7 +3,8 @@
  * Entry-first layout (like Enrollment): Topbar + collapsible action panel + records section
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { FaChevronDown, FaChevronUp, FaEdit, FaTrash } from 'react-icons/fa';
+import { FaEdit, FaTrash } from 'react-icons/fa';
+import PanelToggleButton from '../components/PanelToggleButton';
 import PageTopbar from '../components/PageTopbar';
 import StudentFeesReport from '../report/StudentFeesReport';
 import { toast } from 'react-toastify';
@@ -417,7 +418,7 @@ const StudentFees = ({ onToggleSidebar, onToggleChatbox, rights = { can_view: tr
                 <button
                     type="submit"
                     disabled={editingFeeId ? !rights.can_edit : !rights.can_create}
-                    className="h-[42px] px-3 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400"
+                    className="save-button"
                 >
                     {editingFeeId ? 'Update Entry' : 'Save Entry'}
                 </button>
@@ -652,12 +653,7 @@ const StudentFees = ({ onToggleSidebar, onToggleChatbox, rights = { can_view: tr
                         {selectedAction === '🔍' && 'Search Panel'}
                         {selectedAction === '📄 Report' && 'Report Panel'}
                     </div>
-                    <button
-                        onClick={() => setPanelOpen((o) => !o)}
-                        className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
-                    >
-                        {panelOpen ? <FaChevronUp /> : <FaChevronDown />} {panelOpen ? 'Collapse' : 'Expand'}
-                    </button>
+                    <PanelToggleButton open={panelOpen} onClick={() => setPanelOpen((o) => !o)} />
                 </div>
                 {panelOpen && (
                     <div className="p-4">

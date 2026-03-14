@@ -465,11 +465,11 @@ export default function AuthEmp() {
                 View mode is controlled by clicking rows / table Edit button. */}
             {!readOnly && (
               <div className="flex gap-2 mt-4">
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
+                <button type="submit" className="save-button">Save</button>
                 <button
                   type="button"
                   onClick={() => { setEditing(null); setReadOnly(false); }}
-                  className="px-4 py-2 bg-gray-300 rounded"
+                  className="reset-button"
                 >
                   Cancel
                 </button>
