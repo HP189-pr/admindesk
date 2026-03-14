@@ -146,6 +146,14 @@ class CCTVExamViewSet(CctvPermissionMixin, viewsets.ModelViewSet):
     queryset = CCTVExam.objects.all().order_by("exam_date")
     serializer_class = CCTVExamSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
+
+    def get_queryset(self):
+        queryset = CCTVExam.objects.all().order_by("exam_date")
+        exam_year_session = (self.request.query_params.get("exam_year_session") or "").strip()
+        if exam_year_session:
+            queryset = queryset.filter(exam_year_session=exam_year_session)
+        return queryset
 
     @action(detail=False, methods=["post"], url_path="sync-from-sheet")
     def sync_from_sheet(self, request):
@@ -167,6 +175,14 @@ class CCTVCentreEntryViewSet(CctvPermissionMixin, viewsets.ModelViewSet):
     queryset = CCTVCentreEntry.objects.all()
     serializer_class = CCTVCentreEntrySerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
+
+    def get_queryset(self):
+        queryset = CCTVCentreEntry.objects.all()
+        exam_year_session = (self.request.query_params.get("exam_year_session") or "").strip()
+        if exam_year_session:
+            queryset = queryset.filter(exam__exam_year_session=exam_year_session)
+        return queryset
 
     @action(detail=False, methods=["post"], url_path="sync-from-sheet")
     def sync_from_sheet(self, request):
@@ -202,6 +218,14 @@ class CCTVDVDViewSet(CctvPermissionMixin, viewsets.ModelViewSet):
     queryset = CCTVDVD.objects.all()
     serializer_class = CCTVDVDSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
+
+    def get_queryset(self):
+        queryset = CCTVDVD.objects.all()
+        exam_year_session = (self.request.query_params.get("exam_year_session") or "").strip()
+        if exam_year_session:
+            queryset = queryset.filter(centre__exam__exam_year_session=exam_year_session)
+        return queryset
 
     @action(detail=False, methods=["post"], url_path="assign-cc")
     def assign_cc(self, request):
@@ -274,6 +298,7 @@ class CCTVOutwardViewSet(CctvPermissionMixin, viewsets.ModelViewSet):
     queryset = CCTVOutward.objects.all()
     serializer_class = CCTVOutwardSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
 
     @action(detail=True, methods=["get"], url_path="generate-pdf")
     def generate_pdf(self, request, pk=None):

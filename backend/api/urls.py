@@ -92,6 +92,10 @@ try:
         InstLetterPDF, SuggestDocRec, DebugInstLetter,
         InstLetterMainViewSet, InstLetterStudentViewSet,
     )
+    from .views_exam_schedule import (
+        ExamScheduleEmployeeOptionsView,
+        ExamScheduleGenerateView,
+    )
 
     from .cctv.views_cctv import (
         CCTVExamViewSet,
@@ -183,6 +187,9 @@ try:
         path("inst-verification/generate-pdf/", InstLetterPDF.as_view(), name="inst-verification-generate-pdf"),
         path("inst-verification/suggest-doc-rec/", SuggestDocRec.as_view(), name="inst-verification-suggest-doc-rec"),
         path("inst-verification/debug/", DebugInstLetter.as_view(), name="inst-verification-debug"),
+
+        path("exam-schedule/employees/", ExamScheduleEmployeeOptionsView.as_view(), name="exam-schedule-employees"),
+        path("exam-schedule/generate/", ExamScheduleGenerateView.as_view(), name="exam-schedule-generate"),
 
         # LEAVE SYSTEM (OPTION A)
         path("leave-allocations/", LeaveAllocationListView.as_view(), name="leave-allocations"),

@@ -6,7 +6,7 @@ const API_BASE = "/api";
 // EXAM
 // =========================
 
-export const getExams = () => API.get(`${API_BASE}/exam/`);
+export const getExams = (params) => API.get(`${API_BASE}/exam/`, { params });
 
 export const createExam = (data) =>
   API.post(`${API_BASE}/exam/`, data);
@@ -20,8 +20,8 @@ export const syncCctvExamsFromSheet = (sheetName) =>
 // CENTRE ENTRY
 // =========================
 
-export const getCentres = () =>
-  API.get(`${API_BASE}/centre/`);
+export const getCentres = (params) =>
+  API.get(`${API_BASE}/centre/`, { params });
 
 export const createCentre = (data) =>
   API.post(`${API_BASE}/centre/`, data);
@@ -33,8 +33,8 @@ export const updateCentre = (id, data) =>
 // DVD
 // =========================
 
-export const getDVDs = () =>
-  API.get(`${API_BASE}/dvd/`);
+export const getDVDs = (params) =>
+  API.get(`${API_BASE}/dvd/`, { params });
 
 export const updateDVD = (id, data) =>
   API.patch(`${API_BASE}/dvd/${id}/`, data);

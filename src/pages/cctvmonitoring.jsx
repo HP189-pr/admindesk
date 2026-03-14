@@ -19,6 +19,21 @@ import {
 const ACTIONS = ["CCTV Monitoring", "CCTV-Outward"];
 const EXAM_SESSIONS = ["2026-1", "2026-2", "2027-1", "2027-2", "2028-1", "2028-2"];
 const DEFAULT_PLACES = ["Kadi", "15-LDRP", "15VSITR", "23", "12"];
+const SESSION_OPTIONS = ["A", "B", "C", "D"];
+
+const normalizeExamSlotSession = (value) => {
+  const normalized = String(value || "").trim().toUpperCase();
+  return SESSION_OPTIONS.includes(normalized) ? normalized : "";
+};
+
+const getSheetSessionFromExam = (exam) => {
+  const rawRow = exam?.raw_row;
+  if (!rawRow || typeof rawRow !== "object") return "";
+  const entry = Object.entries(rawRow).find(
+    ([key]) => String(key || "").trim().toLowerCase() === "session"
+  );
+  return normalizeExamSlotSession(entry?.[1]);
+};
 
 const CCTVMonitoring = ({
   rights = { can_view: true, can_create: true, can_edit: true, can_delete: true },
@@ -68,15 +83,41 @@ const CCTVMonitoring = ({
   // ============================
 
   useEffect(() => {
+    if (!rights.can_view) return;
     fetchExams();
     fetchCentres();
     fetchDvds();
-    fetchOutwards();
-  }, []);
+  }, [rights.can_view]);
 
-  const fetchExams = async () => {
+  useEffect(() => {
+    setSessionByExam((prev) => {
+      let changed = false;
+      const next = { ...prev };
+
+      exams.forEach((exam) => {
+        if (next[exam.id]) return;
+
+        const sheetSession = getSheetSessionFromExam(exam);
+        const centreSession = centres
+          .filter((row) => String(row.exam) === String(exam.id))
+          .map((row) => normalizeExamSlotSession(row.session))
+          .find(Boolean);
+
+        const resolvedSession = sheetSession || centreSession;
+        if (resolvedSession) {
+          next[exam.id] = resolvedSession;
+          changed = true;
+        }
+      });
+
+      return changed ? next : prev;
+    });
+  }, [exams, centres]);
+
+  const fetchExams = async (session = "") => {
     try {
-      const res = await getExams();
+      const params = session ? { exam_year_session: session } : undefined;
+      const res = await getExams(params);
       const data = Array.isArray(res?.data)
         ? res.data
         : Array.isArray(res?.data?.results)
@@ -90,9 +131,10 @@ const CCTVMonitoring = ({
     }
   };
 
-  const fetchCentres = async () => {
+  const fetchCentres = async (session = "") => {
     try {
-      const res = await getCentres();
+      const params = session ? { exam_year_session: session } : undefined;
+      const res = await getCentres(params);
       const data = Array.isArray(res?.data)
         ? res.data
         : Array.isArray(res?.data?.results)
@@ -106,9 +148,10 @@ const CCTVMonitoring = ({
     }
   };
 
-  const fetchDvds = async () => {
+  const fetchDvds = async (session = "") => {
     try {
-      const res = await getDVDs();
+      const params = session ? { exam_year_session: session } : undefined;
+      const res = await getDVDs(params);
       const data = Array.isArray(res?.data)
         ? res.data
         : Array.isArray(res?.data?.results)
@@ -245,12 +288,21 @@ const CCTVMonitoring = ({
     setSyncing(true);
     try {
       setFlashMessage("info", "Syncing CCTV data from Google Sheet...");
-      const result = await syncCctvExamsFromSheet(examSession);
-      const summary = result?.data?.summary;
-      if (summary) {
+      const examResult = await syncCctvExamsFromSheet(examSession);
+      const centreResult = await syncCctvFromSheet(examSession);
+      const examSummary = examResult?.data?.summary;
+      const centreSummary = centreResult?.data?.summary;
+
+      if (examSummary || centreSummary) {
+        const examMessage = examSummary
+          ? `Exams C:${examSummary.created} U:${examSummary.updated} S:${examSummary.skipped}`
+          : "Exams synced";
+        const centreMessage = centreSummary
+          ? `Centres C:${centreSummary.created} U:${centreSummary.updated} S:${centreSummary.skipped}`
+          : "Centres synced";
         setFlashMessage(
           "success",
-          `Sheet sync complete. Created: ${summary.created}, Updated: ${summary.updated}, Skipped: ${summary.skipped}.`
+          `Sheet sync complete. ${examMessage}. ${centreMessage}.`
         );
       } else {
         setFlashMessage("success", "Sheet sync completed.");
@@ -558,10 +610,11 @@ const CCTVMonitoring = ({
                                     }
                                     className="w-full text-xs text-center border p-0 box-border"
                                   >
-                                    <option value="A">A</option>
-                                    <option value="B">B</option>
-                                    <option value="C">C</option>
-                                    <option value="D">D</option>
+                                      {SESSION_OPTIONS.map((option) => (
+                                        <option key={option} value={option}>
+                                          {option}
+                                        </option>
+                                      ))}
                                   </select>
                                 </td>
 
@@ -713,19 +766,6 @@ const CCTVMonitoring = ({
                   })}
                 </tbody>
               </table>
-            </div>
-          </div>
-
-          <div className="border p-4 rounded">
-            <h3 className="font-semibold mb-4">Generated Labels</h3>
-            <div className="space-y-2 text-sm">
-              {centres.map((row) => (
-                <div key={row.id}>
-                  {row.place} → {row.start_label === row.end_label
-                    ? row.start_label
-                    : `${row.start_label} - ${row.end_label}`}
-                </div>
-              ))}
             </div>
           </div>
 

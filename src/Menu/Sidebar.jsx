@@ -32,6 +32,7 @@ const staticModules = [
       '🏖️ Leave Management',
       '📦 Inventory',
       '📹 CCTV Monitoring',
+      '🗓️ Schedule',
       '📊 Record',
     ],
   },
