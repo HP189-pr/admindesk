@@ -1,5 +1,6 @@
 import useEnrollmentLookup from '../hooks/useEnrollmentLookup';
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { FaChevronDown, FaChevronUp } from "react-icons/fa";
 import PageTopbar from "../components/PageTopbar";
 import { isoToDMY, dmyToISO } from "../utils/date";
 import InstVerReport from "../report/InstVerReport";
@@ -256,6 +257,7 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 	const [q, setQ] = useState("");
 	const [statusMessage, setStatusMessage] = useState("");
 	const [showInstitutePanel, setShowInstitutePanel] = useState(true);
+	const [showStudentsPanel, setShowStudentsPanel] = useState(true);
 	const [showRecordsPanel, setShowRecordsPanel] = useState(true);
 	const [searchTerm, setSearchTerm] = useState("");
 	const [searchField, setSearchField] = useState("all");
@@ -782,6 +784,7 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 				resetStudentForm();
 				setSelectedAction("✏️ Edit");
 				setShowInstitutePanel(true);
+				setShowStudentsPanel(true);
 			} catch (err) {
 				console.error(err);
 				setStatus(err.message || "Unable to open record");
@@ -981,6 +984,8 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 		setEditingStudentId(null);
 			autoDocRecRef.current = { created: false, creating: false };
 			setDocRecIsPreview(false);
+		setShowInstitutePanel(true);
+		setShowStudentsPanel(true);
 		setSelectedAction("➕");
 	};
 
@@ -1055,7 +1060,15 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 			<section className="rounded-2xl border bg-white p-4 shadow-sm space-y-4">
 				<div className="flex flex-wrap items-center justify-between gap-3">
 					<h3 className="text-lg font-semibold">Institutional Verification</h3>
+					<button
+						type="button"
+						onClick={() => setShowInstitutePanel((prev) => !prev)}
+						className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
+					>
+						{showInstitutePanel ? <FaChevronUp /> : <FaChevronDown />} {showInstitutePanel ? "Collapse" : "Expand"}
+					</button>
 				</div>
+				{showInstitutePanel && (
 				<fieldset className="space-y-4" disabled={detailLoading}>
 					<div className="grid gap-3 md:grid-cols-12">
 						<div className="md:col-span-2">
@@ -1306,12 +1319,20 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 						</div>
 					</div>
 				</fieldset>
+				)}
 			</section>
 
 			<section className="rounded-2xl border bg-white p-4 shadow-sm space-y-5">
 				<div className="flex items-center justify-between">
 					<h3 className="text-lg font-semibold">Students</h3>
 					<div className="flex gap-2">
+						<button
+							type="button"
+							onClick={() => setShowStudentsPanel((prev) => !prev)}
+							className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
+						>
+							{showStudentsPanel ? <FaChevronUp /> : <FaChevronDown />} {showStudentsPanel ? "Collapse" : "Expand"}
+						</button>
 						{editingStudentId && (
 							<button type="button" onClick={resetStudentForm} className="rounded border px-3 py-1 text-sm">
 								Cancel Edit
@@ -1328,6 +1349,8 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 					</div>
 				</div>
 
+				{showStudentsPanel && (
+				<>
 				<div className="grid gap-2 md:grid-cols-12">
 					<div className="md:col-span-1 max-w-[100]">
 						<label className="label">Sr No</label>
@@ -1420,6 +1443,8 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 				) : (
 					<p className="text-sm text-slate-500">No students for this record.</p>
 				)}
+				</>
+				)}
 			</section>
 
 			<section className="rounded-2xl border bg-white p-4 shadow-sm">
@@ -1428,9 +1453,9 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 					<button
 						type="button"
 						onClick={() => setShowRecordsPanel((prev) => !prev)}
-						className="rounded border px-3 py-1 text-sm"
+						className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
 					>
-						{showRecordsPanel ? "Collapse" : "Expand"}
+						{showRecordsPanel ? <FaChevronUp /> : <FaChevronDown />} {showRecordsPanel ? "Collapse" : "Expand"}
 					</button>
 				</div>
 				{showRecordsPanel && (

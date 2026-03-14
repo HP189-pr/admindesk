@@ -7,6 +7,7 @@ import {
   refreshMailRequest,
   bulkRefreshMailRequests,
   syncMailRequestsFromSheet,
+  isMailRequestMaybeCompletedError,
 } from '../services/mailRequestService';
 
 const ACTIONS = ['🔍 Filter', '🧰 Tools', '📝 Edit'];
@@ -23,6 +24,13 @@ const RIGHTS_FALLBACK = { can_view: false, can_create: false, can_edit: false, c
 const RIGHTS_DEFAULT = { can_view: true, can_create: false, can_edit: true, can_delete: false };
 const AUTO_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const normalizeComparableValue = (value) => (value ?? '').toString().trim();
+
+const rowMatchesPayload = (row, payload = {}) =>
+  Object.entries(payload).every(([key, value]) => normalizeComparableValue(row?.[key]) === normalizeComparableValue(value));
+
 const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   const [statusFilter, setStatusFilter] = useState('pending');
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,11 +44,13 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   const [safeRefresh, setSafeRefresh] = useState(true);
   const [syncModalOpen, setSyncModalOpen] = useState(false);
   const [syncModalContent, setSyncModalContent] = useState('');
+  const [sheetSyncing, setSheetSyncing] = useState(false);
   const [flash, setFlash] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [drafts, setDrafts] = useState({});
   const [updatingId, setUpdatingId] = useState(null);
   const [refreshingIds, setRefreshingIds] = useState([]);
+  const [lastLoadedAt, setLastLoadedAt] = useState(null);
   const [rights, setRights] = useState(RIGHTS_FALLBACK);
   const [rightsLoaded, setRightsLoaded] = useState(false);
   const [activeRow, setActiveRow] = useState(null);
@@ -108,10 +118,12 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
     }
   }, []);
 
-  const loadRows = useCallback(async () => {
-    if (!rights.can_view) return;
-    setLoading(true);
-    setError('');
+  const loadRows = useCallback(async ({ silent = false } = {}) => {
+    if (!rights.can_view) return [];
+    if (!silent) {
+      setLoading(true);
+      setError('');
+    }
     try {
       const { rows: dataRows, raw } = await fetchMailRequests({
         status: statusFilter || undefined,
@@ -119,6 +131,7 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
       });
       setRows(dataRows);
       setRawResponse(raw);
+      setLastLoadedAt(new Date());
       const currentActive = activeRowRef.current;
       if (currentActive) {
         const match = dataRows.find((row) => row.id === currentActive.id);
@@ -142,13 +155,53 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
         });
         return nextDrafts;
       });
+      return dataRows;
     } catch (err) {
-      setError(err.message || 'Failed to load mail requests.');
-      setRows([]);
+      const message = err.message || 'Failed to load mail requests.';
+      if (!silent) {
+        setError(message);
+        setRows([]);
+      }
+      return null;
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, [rights.can_view, statusFilter, debouncedSearch]);
+
+  const reloadRowsWithRetry = useCallback(
+    async ({ attempts = 3, delayMs = 1500 } = {}) => {
+      for (let attempt = 0; attempt < attempts; attempt += 1) {
+        if (attempt > 0) {
+          await wait(delayMs);
+        }
+        const latestRows = await loadRows({ silent: true });
+        if (Array.isArray(latestRows)) {
+          return latestRows;
+        }
+      }
+      return null;
+    },
+    [loadRows]
+  );
+
+  const recoverUpdatedRow = useCallback(
+    async (rowId, payload) => {
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        if (attempt > 0) {
+          await wait(1500);
+        }
+        const latestRows = await loadRows({ silent: true });
+        const latestRow = Array.isArray(latestRows) ? latestRows.find((candidate) => candidate.id === rowId) : null;
+        if (latestRow && rowMatchesPayload(latestRow, payload)) {
+          return latestRow;
+        }
+      }
+      return null;
+    },
+    [loadRows]
+  );
 
   useEffect(() => {
     if (!rightsLoaded || !rights.can_view) {
@@ -164,6 +217,7 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
     async ({ silent = false, showModal = true } = {}) => {
       if (!rights.can_view || autoRefreshInFlightRef.current) return;
       autoRefreshInFlightRef.current = true;
+      setSheetSyncing(true);
 
       if (!silent) {
         setLoading(true);
@@ -183,27 +237,49 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
           console.info('Sheet sync output:\n', result.output);
         }
 
-        await loadRows();
+        await loadRows({ silent: true });
+        setError('');
 
         if (!silent) {
-          setFlashMessage('success', 'Sheet sync completed. Refreshing list...');
+          setFlashMessage('success', 'Sheet sync completed. List reloaded.');
         }
       } catch (err) {
         const msg = err.message || 'Failed to sync from sheet.';
-        setError(msg);
-        setFlashMessage('error', msg);
-        if (showModal) {
-          setSyncModalContent(msg);
-          setSyncModalOpen(true);
+        if (isMailRequestMaybeCompletedError(err)) {
+          const latestRows = await reloadRowsWithRetry({ attempts: 2, delayMs: 2000 });
+          if (latestRows) {
+            setError('');
+            const recoveryMessage = 'The sheet sync response was delayed. Reloaded the latest available data.';
+            setFlashMessage('info', recoveryMessage);
+            if (showModal) {
+              setSyncModalContent(`${msg}\n\n${recoveryMessage}`);
+              setSyncModalOpen(true);
+            }
+          } else {
+            setError(msg);
+            setFlashMessage('error', msg);
+            if (showModal) {
+              setSyncModalContent(msg);
+              setSyncModalOpen(true);
+            }
+          }
+        } else {
+          setError(msg);
+          setFlashMessage('error', msg);
+          if (showModal) {
+            setSyncModalContent(msg);
+            setSyncModalOpen(true);
+          }
         }
       } finally {
         if (!silent) {
           setLoading(false);
         }
+        setSheetSyncing(false);
         autoRefreshInFlightRef.current = false;
       }
     },
-    [rights.can_view, safeRefresh, loadRows, setFlashMessage]
+    [rights.can_view, safeRefresh, loadRows, reloadRowsWithRetry, setFlashMessage]
   );
 
   useEffect(() => {
@@ -294,8 +370,22 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
         });
         activeRowRef.current = updated;
       }
+      await loadRows({ silent: true });
       setFlashMessage('success', 'Mail request updated.');
     } catch (err) {
+      if (isMailRequestMaybeCompletedError(err)) {
+        setFlashMessage('info', 'Save response was delayed. Checking latest data...');
+        const recoveredRow = await recoverUpdatedRow(rowId, payload);
+        if (recoveredRow) {
+          setDrafts((prev) => {
+            const copy = { ...prev };
+            delete copy[rowId];
+            return copy;
+          });
+          setFlashMessage('success', 'Mail request updated after delayed server response.');
+          return;
+        }
+      }
       setFlashMessage('error', err.message || 'Failed to update mail request.');
     } finally {
       setUpdatingId(null);
@@ -426,9 +516,9 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
               <button
                 onClick={handleSyncAndReload}
                 className="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 text-sm"
-                disabled={loading}
+                disabled={loading || sheetSyncing}
               >
-                ↻ Refresh
+                {sheetSyncing ? 'Refreshing...' : '↻ Refresh'}
               </button>
             </div>
           ) : null
@@ -678,7 +768,7 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                 <tbody>
                   {loading && (
                     <tr>
-                      <td colSpan={12} className="px-4 py-8 text-center text-gray-500">
+                      <td colSpan={14} className="px-4 py-8 text-center text-gray-500">
                         Loading mail requests...
                       </td>
                     </tr>
@@ -686,7 +776,7 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
 
                   {!loading && error && (
                     <tr>
-                      <td colSpan={12} className="px-4 py-6 text-center text-red-600">
+                      <td colSpan={14} className="px-4 py-6 text-center text-red-600">
                         {error}
                       </td>
                     </tr>
@@ -694,7 +784,7 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
 
                   {!loading && !error && rows.length === 0 && (
                     <tr>
-                      <td colSpan={12} className="px-4 py-6 text-center text-gray-500">
+                      <td colSpan={14} className="px-4 py-6 text-center text-gray-500">
                         No submissions found.
                       </td>
                     </tr>
@@ -800,7 +890,12 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                 Showing {sortedRows.length} submissions
                 {rawResponse?.count ? ` of ${rawResponse.count}` : ''}.
               </div>
-              <div>Last updated: {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+              <div>
+                Last updated:{' '}
+                {lastLoadedAt
+                  ? lastLoadedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  : 'Not loaded yet'}
+              </div>
             </div>
           </div>
         </>

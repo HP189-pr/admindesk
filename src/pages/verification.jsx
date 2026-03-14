@@ -791,69 +791,68 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
       {/* Records table (hidden when adding) */}
       {getSelected() !== "➕" && (
         <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm flex-1 flex flex-col min-h-0">
-          <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
-            <div className="font-semibold">Last Verification Records</div>
-            <div className="text-sm text-gray-500">
-              {loading ? "Loading…" : `${records.length} record(s)`}
-            </div>
-          </div>
-          {/* Filter Row */}
-          <div className="flex gap-4 p-3 bg-gray-50 border-b items-center">
-            <div>
-              <label className="text-xs font-semibold mr-1">Status:</label>
-              <select className="border rounded p-1 text-black" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-                <option value="">All</option>
-                <option value="IN_PROGRESS">IN_PROGRESS</option>
-                <option value="PENDING">PENDING</option>
-                <option value="CORRECTION">CORRECTION</option>
-                <option value="CANCEL">CANCEL</option>
-                <option value="DONE">DONE</option>
-                <option value="DONE_WITH_REMARKS">DONE_WITH_REMARKS</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold mr-1">Mail:</label>
-              <select className="border rounded p-1 text-black" value={mailFilter} onChange={e => setMailFilter(e.target.value)}>
-                <option value="">All</option>
-                <option value="SENT">SENT</option>
-                <option value="NOT_SENT">NOT_SENT</option>
-                <option value="FAILED">FAILED</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold mr-1">ECA Status:</label>
-              <select className="border rounded p-1 text-black" value={ecaStatusFilter} onChange={e => setEcaStatusFilter(e.target.value)}>
-                <option value="">All</option>
-                <option value="SENT">SENT</option>
-                <option value="NOT_SENT">NOT_SENT</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold mr-1">Date:</label>
-              <input
-                type="date"
-                className="border rounded p-1 text-sm"
-                value={searchDate}
-                onChange={(e) => setSearchDate(e.target.value)}
-              />
-            </div>
-            {!(getSelected() === "✏️ Edit" || getSelected() === "➕") && (
-              <div className="ml-auto flex items-center gap-2">
-                <label className="text-xs font-semibold">Search:</label>
+          <div className="flex flex-wrap items-center gap-3 p-3 bg-gray-50 border-b">
+            <div className="font-semibold whitespace-nowrap">Last Verification Records</div>
+            <div className="flex flex-wrap items-center gap-3 xl:gap-4 xl:ml-4 flex-1 min-w-0">
+              <div className="flex items-center gap-1 whitespace-nowrap">
+                <label className="text-xs font-semibold">Status:</label>
+                <select className="border rounded p-1 text-black" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+                  <option value="">All</option>
+                  <option value="IN_PROGRESS">IN_PROGRESS</option>
+                  <option value="PENDING">PENDING</option>
+                  <option value="CORRECTION">CORRECTION</option>
+                  <option value="CANCEL">CANCEL</option>
+                  <option value="DONE">DONE</option>
+                  <option value="DONE_WITH_REMARKS">DONE_WITH_REMARKS</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-1 whitespace-nowrap">
+                <label className="text-xs font-semibold">Mail:</label>
+                <select className="border rounded p-1 text-black" value={mailFilter} onChange={e => setMailFilter(e.target.value)}>
+                  <option value="">All</option>
+                  <option value="SENT">SENT</option>
+                  <option value="NOT_SENT">NOT_SENT</option>
+                  <option value="FAILED">FAILED</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-1 whitespace-nowrap">
+                <label className="text-xs font-semibold">ECA Status:</label>
+                <select className="border rounded p-1 text-black" value={ecaStatusFilter} onChange={e => setEcaStatusFilter(e.target.value)}>
+                  <option value="">All</option>
+                  <option value="SENT">SENT</option>
+                  <option value="NOT_SENT">NOT_SENT</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-1 whitespace-nowrap">
+                <label className="text-xs font-semibold">Date:</label>
                 <input
-                  className="border rounded p-1 text-sm w-56"
-                  placeholder="Enroll / Temp / Name / Final / DocRec / Date"
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
+                  type="date"
+                  className="border rounded p-1 text-sm"
+                  value={searchDate}
+                  onChange={(e) => setSearchDate(e.target.value)}
                 />
               </div>
-            )}
+              {!(getSelected() === "✏️ Edit" || getSelected() === "➕") && (
+                <div className="flex items-center gap-2 xl:ml-auto min-w-0">
+                  <label className="text-xs font-semibold whitespace-nowrap">Search:</label>
+                  <input
+                    className="border rounded p-1 text-sm w-56 max-w-full"
+                    placeholder="Enroll / Temp / Name / Final / DocRec / Date"
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="text-sm text-gray-500 whitespace-nowrap xl:ml-2">
+              {loading ? "Loading…" : `${records.length} record(s)`}
+            </div>
           </div>
           {errorMsg && (
             <div className="p-3 text-sm text-red-600">{errorMsg}</div>
           )}
-          <div className="overflow-auto flex-1 min-h-0 bg-slate-50 px-2 pb-2">
-            <table className="min-w-full text-xs border-separate border-spacing-0">
+          <div className="overflow-auto flex-1 min-h-0 bg-slate-50 px-2 pb-2 scroll-smooth">
+            <table className="min-w-full text-xs border-collapse">
               <thead className="bg-slate-100 shadow-sm border-b sticky top-0 z-30 [&_th]:border-slate-200 [&_th:not(:last-child)]:border-r">
                 <tr>
                   {columns.map(col => (
@@ -867,15 +866,22 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                   ))}
                 </tr>
               </thead>
-              <tbody className="[&_td]:py-0.5 [&_td]:leading-[1.1] [&_tr>td]:border-y [&_tr>td]:border-slate-200 [&_tr>td:not(:last-child)]:border-r [&_tr:nth-child(odd)>td]:bg-white [&_tr:nth-child(even)>td]:bg-[#fef9ec] [&_tr]:transition [&_tr]:duration-150 [&_tr:hover>td]:bg-indigo-50 [&_tr:hover]:shadow-sm">
+              <tbody className="[&_td]:py-0.5 [&_td]:leading-[1.1] [&_tr>td]:border-y [&_tr>td]:border-slate-200 [&_tr>td:not(:last-child)]:border-r">
                 {limitedRecords.length === 0 && !loading && (
                   <tr><td colSpan={columns.length} className="py-6 text-center text-gray-500">No records</td></tr>
                 )}
                 {limitedRecords.map((r, idx) => {
                   const primaryEnrollmentNo = r.enrollment_no || r.enrollment?.enrollment_no || "-";
                   const secondaryEnrollmentNo = r.second_enrollment_no || r.second_enrollment_id || r.second_enrollment?.enrollment_no || "";
+                  const isSelected = currentRow?.id === r.id;
+                  const rowStateClassName = isSelected
+                    ? "bg-indigo-100 hover:bg-indigo-50"
+                    : idx % 2 === 0
+                    ? "bg-white hover:bg-indigo-50"
+                    : "bg-[#fef9ec] hover:bg-indigo-50";
+
                   return (
-                    <tr key={r.id || idx} className={`group cursor-pointer transition duration-150 hover:ring-1 hover:ring-indigo-200 ${currentRow?.id === r.id ? "ring-2 ring-indigo-400 [&>td]:bg-indigo-50" : ""}`} onClick={() => {
+                    <tr key={r.id || idx} className={`group cursor-pointer transition duration-150 ${isSelected ? "" : "hover:[&>td:first-child]:border-indigo-200"} ${rowStateClassName}`} onClick={() => {
                       setCurrentRow(r);
                       // Always use the enrollment_no from the record or nested enrollment object
                       const enrollmentNo = r.enrollment_no || (r.enrollment && r.enrollment.enrollment_no) || "";
@@ -913,8 +919,8 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                         formRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
                       }
                     }}>
-                      <td className={`px-1.5 text-center whitespace-nowrap text-xs border-r border-slate-200 font-medium sticky left-0 z-20 ${currentRow?.id === r.id ? "bg-indigo-50" : "bg-slate-50"} group-hover:bg-indigo-50`} style={getColumnStyle("date")}>{r.date || "-"}</td>
-                      <td className={`px-3 whitespace-nowrap font-semibold sticky left-[11.5ch] z-20 ${currentRow?.id === r.id ? "bg-indigo-50" : "bg-white"} group-hover:bg-indigo-50`} style={getColumnStyle("enrollment_no")}>
+                      <td className="px-1.5 text-center whitespace-nowrap text-xs border-l-4 border-transparent border-r border-slate-200 font-medium sticky left-0 z-20 bg-inherit shadow-[2px_0_4px_rgba(0,0,0,0.05)]" style={getColumnStyle("date")}>{r.date || "-"}</td>
+                      <td className="px-3 whitespace-nowrap font-semibold sticky left-[11.5ch] z-20 bg-inherit shadow-[2px_0_4px_rgba(0,0,0,0.05)]" style={getColumnStyle("enrollment_no")}>
                         <span>{primaryEnrollmentNo}</span>
                         {secondaryEnrollmentNo ? <span className="font-normal text-slate-500"> / {secondaryEnrollmentNo}</span> : null}
                       </td>

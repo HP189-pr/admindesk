@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import logging
+import threading
 
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Value, Q
 from django.db.models.functions import Lower, Replace
 from rest_framework import status, viewsets
@@ -24,6 +25,19 @@ __all__ = [
 
 
 logger = logging.getLogger(__name__)
+
+
+def _sync_mail_submission_to_sheet_async(submission_id: int, changed_fields: dict[str, str]) -> None:
+    try:
+        submission = GoogleFormSubmission.objects.get(pk=submission_id)
+    except GoogleFormSubmission.DoesNotExist:
+        logger.warning('Mail submission %s disappeared before sheet sync could start', submission_id)
+        return
+
+    try:
+        sync_mail_submission_to_sheet(submission, changed_fields)
+    except Exception:  # pragma: no cover
+        logger.exception('Failed to sync mail submission %s to Google Sheet', submission_id)
 
 
 class GoogleFormSubmissionViewSet(viewsets.ModelViewSet):
@@ -139,9 +153,21 @@ class GoogleFormSubmissionViewSet(viewsets.ModelViewSet):
 
         if changed:
             try:
-                sync_mail_submission_to_sheet(instance, changed)
+                submission_id = instance.pk
+                changed_fields = changed.copy()
+
+                def start_sheet_sync() -> None:
+                    thread = threading.Thread(
+                        target=_sync_mail_submission_to_sheet_async,
+                        args=(submission_id, changed_fields),
+                        name=f'mail-sheet-sync-{submission_id}',
+                        daemon=True,
+                    )
+                    thread.start()
+
+                transaction.on_commit(start_sheet_sync)
             except Exception:  # pragma: no cover
-                logger.exception("Failed to sync mail submission %s to Google Sheet", instance.pk)
+                logger.exception('Failed to queue mail submission %s for Google Sheet sync', instance.pk)
 
         if getattr(instance, '_prefetched_objects_cache', None):  # pragma: no cover - defensive cleanup
             instance._prefetched_objects_cache = {}

@@ -1,4 +1,4 @@
-import API from '../api/axiosInstance';
+import API, { LONG_API } from '../api/axiosInstance';
 
 const BASE_PATH = '/api/mail-requests/';
 
@@ -16,9 +16,24 @@ const extractMessage = (error) => {
     const detail = error.response.data?.detail || error.response.data?.message;
     return detail || `Server error (${error.response.status})`;
   }
-  if (error.request) return 'No response from server';
+  if (error.code === 'ECONNABORTED' || /timeout/i.test(error.message || '')) {
+    return 'The server took too long to respond. The request may still complete in the background.';
+  }
+  if (error.request) return 'No response from server. The request may still complete in the background.';
   return error.message || 'Unexpected error';
 };
+
+const wrapServiceError = (error) => {
+  const wrapped = new Error(extractMessage(error));
+  wrapped.status = error?.response?.status;
+  wrapped.code = error?.code;
+  wrapped.isTimeout = error?.code === 'ECONNABORTED' || /timeout/i.test(error?.message || '');
+  wrapped.isNoResponse = !!error?.request && !error?.response;
+  wrapped.maybeCompleted = wrapped.isTimeout || wrapped.isNoResponse;
+  return wrapped;
+};
+
+export const isMailRequestMaybeCompletedError = (error) => Boolean(error?.maybeCompleted);
 
 export const fetchMailRequests = async ({ status, search, page, pageSize } = {}) => {
   try {
@@ -34,34 +49,34 @@ export const fetchMailRequests = async ({ status, search, page, pageSize } = {})
       count: response.data?.count || response.data?.total || undefined,
     };
   } catch (error) {
-    throw new Error(extractMessage(error));
+    throw wrapServiceError(error);
   }
 };
 
 export const updateMailRequest = async (id, payload) => {
   try {
-    const response = await API.patch(`${BASE_PATH}${id}/`, payload);
+    const response = await LONG_API.patch(`${BASE_PATH}${id}/`, payload);
     return response.data;
   } catch (error) {
-    throw new Error(extractMessage(error));
+    throw wrapServiceError(error);
   }
 };
 
 export const refreshMailRequest = async (id) => {
   try {
-    const response = await API.post(`${BASE_PATH}${id}/refresh-verification/`);
+    const response = await LONG_API.post(`${BASE_PATH}${id}/refresh-verification/`);
     return response.data;
   } catch (error) {
-    throw new Error(extractMessage(error));
+    throw wrapServiceError(error);
   }
 };
 
 export const bulkRefreshMailRequests = async (ids) => {
   try {
-    const response = await API.post(`${BASE_PATH}bulk-refresh/`, ids);
+    const response = await LONG_API.post(`${BASE_PATH}bulk-refresh/`, ids);
     return response.data;
   } catch (error) {
-    throw new Error(extractMessage(error));
+    throw wrapServiceError(error);
   }
 };
 
@@ -71,9 +86,9 @@ export const syncMailRequestsFromSheet = async ({ serviceAccountFile, sheetUrl, 
     if (serviceAccountFile) payload.service_account_file = serviceAccountFile;
     if (sheetUrl) payload.sheet_url = sheetUrl;
     if (noPrune) payload.no_prune = true;
-    const response = await API.post(`${BASE_PATH}sync-from-sheet/`, payload);
+    const response = await LONG_API.post(`${BASE_PATH}sync-from-sheet/`, payload);
     return response.data;
   } catch (error) {
-    throw new Error(extractMessage(error));
+    throw wrapServiceError(error);
   }
 };

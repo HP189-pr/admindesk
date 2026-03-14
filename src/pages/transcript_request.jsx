@@ -512,6 +512,16 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
     return `${dt.toLocaleDateString()} ${dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   };
 
+  const formatDateOnly = (value) => {
+    if (!value) return 'N/A';
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return value;
+    const day = String(dt.getDate()).padStart(2, '0');
+    const month = String(dt.getMonth() + 1).padStart(2, '0');
+    const year = dt.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
   const formatStatus = (value) => {
     // If sheet value is blank -> show In Progress
     if (!value || String(value).trim() === '') return STATUS_LABELS.progress;
@@ -731,8 +741,8 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
 
                     <div className="grid grid-cols-12 gap-4 items-start">
                       <div className="col-span-12 md:col-span-3">
-                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Requested At</div>
-                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm">{formatDateTime(activeRow.requested_at)}</div>
+                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Requested Date</div>
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm">{formatDateOnly(activeRow.requested_at)}</div>
                       </div>
 
                       <div className="col-span-12 md:col-span-2">
@@ -899,6 +909,7 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                       />
                     </th>
                       <th className="px-3 py-2 text-left">TR No</th>
+                      <th className="px-3 py-2 text-left">Requested Date</th>
                       <th className="px-3 py-2 text-left">Enrollment No</th>
                       <th className="px-3 py-2 text-left">Student</th>
                       <th className="px-3 py-2 text-left">Reference</th>
@@ -914,14 +925,14 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                 <tbody>
                   {loading && (
                     <tr>
-                      <td colSpan={12} className="px-4 py-6 text-center text-gray-500">
+                      <td colSpan={13} className="px-4 py-6 text-center text-gray-500">
                         Loading transcript requests...
                       </td>
                     </tr>
                   )}
                   {!loading && rows.length === 0 && (
                     <tr>
-                      <td colSpan={12} className="px-4 py-6 text-center text-gray-500">
+                      <td colSpan={13} className="px-4 py-6 text-center text-gray-500">
                         No transcript requests found.
                       </td>
                     </tr>
@@ -946,6 +957,7 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                           />
                         </td>
                         <td className="px-3 py-2 align-top">{row.tr_request_no ?? row.request_ref_no ?? 'N/A'}</td>
+                        <td className="px-3 py-2 align-top">{formatDateOnly(row.requested_at)}</td>
                         <td className="px-3 py-2 align-top">{row.enrollment_no || 'N/A'}</td>
                         <td className="px-3 py-2 align-top">{row.student_name || 'N/A'}</td>
                         <td className="px-3 py-2 align-top">{row.request_ref_no || 'N/A'}</td>

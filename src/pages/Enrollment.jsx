@@ -700,26 +700,6 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
   // Optimized render methods
   const renderSearchView = () => (
     <div>
-      <h2 className="text-lg font-semibold mb-4">Enrollment Search</h2>
-      <div className="flex flex-col md:flex-row md:items-center gap-3 mb-4">
-        <input
-          type="text"
-          placeholder="🔍 Search by enrollment no or name..."
-          className="border rounded px-4 py-2 w-full md:w-1/3"
-          value={state.searchTerm}
-          onChange={(e) => setState(prev => ({ ...prev, searchTerm: e.target.value }))}
-        />
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="border rounded px-4 py-2 w-full md:w-60"
-        >
-          <option value="active">Active Only</option>
-          <option value="cancelled">Cancelled Only</option>
-          <option value="all">All Records</option>
-        </select>
-      </div>
-      
       {state.isLoading ? (
         <div className="text-center py-4">Loading...</div>
       ) : (
@@ -1457,7 +1437,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
       {/* Records section */}
       {showRecordsSection && (
         <div className="bg-white shadow rounded-2xl p-4 h-[calc(100vh-220px)] overflow-auto">
-          <div className="flex flex-wrap gap-2 mb-4">
+          <div className="flex flex-wrap items-center gap-3 mb-4">
             {TAB_OPTIONS.map((tab) => (
               <button
                 key={tab.key}
@@ -1467,6 +1447,27 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
                 {tab.label}
               </button>
             ))}
+
+            {activeTab === 'list' && (
+              <>
+                <input
+                  type="text"
+                  placeholder="🔍 Search by enrollment no or name..."
+                  className="border rounded px-4 py-2 min-w-[280px] flex-1 max-w-[520px]"
+                  value={state.searchTerm}
+                  onChange={(e) => setState(prev => ({ ...prev, searchTerm: e.target.value }))}
+                />
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="border rounded px-4 py-2 min-w-[180px]"
+                >
+                  <option value="active">Active Only</option>
+                  <option value="cancelled">Cancelled Only</option>
+                  <option value="all">All Records</option>
+                </select>
+              </>
+            )}
           </div>
           {activeTab === 'list' ? renderSearchView() : renderCancellationView()}
         </div>
