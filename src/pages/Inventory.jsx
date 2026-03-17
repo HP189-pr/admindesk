@@ -429,13 +429,13 @@ const Inventory = () => {
                     <td className="border px-4 py-2 text-center">
                       <button
                         onClick={() => handleInwardEdit(entry)}
-                        className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 mr-2"
+                        className="edit-button-compact mr-2"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleInwardDelete(entry.id)}
-                        className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                        className="delete-button-compact"
                       >
                         Delete
                       </button>
@@ -578,13 +578,13 @@ const Inventory = () => {
                     <td className="border px-4 py-2 text-center">
                       <button
                         onClick={() => handleOutwardEdit(entry)}
-                        className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 mr-2"
+                        className="edit-button-compact mr-2"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleOutwardDelete(entry.id)}
-                        className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                        className="delete-button-compact"
                       >
                         Delete
                       </button>
@@ -671,13 +671,13 @@ const Inventory = () => {
                     <td className="border px-4 py-2 text-center">
                       <button
                         onClick={() => handleItemEdit(item)}
-                        className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 mr-2"
+                        className="edit-button-compact mr-2"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleItemDelete(item.id)}
-                        className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                        className="delete-button-compact"
                       >
                         Delete
                       </button>

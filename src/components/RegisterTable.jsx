@@ -3,8 +3,8 @@ import { Pencil, Trash2 } from 'lucide-react';
 
 const HEAD_CELL_CLASS = 'px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-700';
 const CELL_CLASS = 'border-b border-slate-200 px-4 py-3 align-top text-sm text-slate-700';
-const EDIT_BUTTON_CLASS = 'inline-flex items-center justify-center rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-amber-600';
-const DELETE_BUTTON_CLASS = 'inline-flex items-center justify-center rounded-lg bg-rose-500 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-rose-600';
+const EDIT_BUTTON_CLASS = 'edit-button-compact';
+const DELETE_BUTTON_CLASS = 'delete-button-compact';
 
 const RegisterTable = ({
   data,

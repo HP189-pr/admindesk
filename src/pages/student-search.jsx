@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { searchStudent, formatDate, getStatusColor } from "../services/studentSearchService";
 import { FaSearch, FaUser, FaUniversity, FaPhone, FaEnvelope, FaFileAlt, FaMoneyBillWave } from "react-icons/fa";
+import SearchField from '../components/SearchField';
 
 export default function StudentSearch() {
   const [enrollmentNo, setEnrollmentNo] = useState("");
@@ -9,28 +10,45 @@ export default function StudentSearch() {
   const [error, setError] = useState("");
   const [searched, setSearched] = useState(false);
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    
-    if (!enrollmentNo.trim()) {
-      setError("Please enter an enrollment number");
-      return;
-    }
+  useEffect(() => {
+    const term = enrollmentNo.trim();
 
-    setLoading(true);
-    setError("");
-    setStudentData(null);
-    setSearched(true);
-
-    try {
-      const data = await searchStudent(enrollmentNo);
-      setStudentData(data);
-    } catch (err) {
-      setError(err.message || "Failed to fetch student data");
-    } finally {
+    if (!term) {
       setLoading(false);
+      setError("");
+      setStudentData(null);
+      setSearched(false);
+      return undefined;
     }
-  };
+
+    let cancelled = false;
+    const handle = setTimeout(async () => {
+      setLoading(true);
+      setError("");
+      setStudentData(null);
+      setSearched(true);
+
+      try {
+        const data = await searchStudent(term);
+        if (!cancelled) {
+          setStudentData(data);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.message || "Failed to fetch student data");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [enrollmentNo]);
 
   const handleReset = () => {
     setEnrollmentNo("");
@@ -213,23 +231,16 @@ export default function StudentSearch() {
           </div>
 
           {/* Search Form */}
-          <form onSubmit={handleSearch} className="mt-6">
+          <div className="mt-6 space-y-3">
             <div className="flex gap-4">
-              <input
-                type="text"
+              <SearchField
+                className="flex-1"
+                inputClassName="text-lg"
                 value={enrollmentNo}
                 onChange={(e) => setEnrollmentNo(e.target.value.toUpperCase())}
                 placeholder="Enter Enrollment Number (e.g., 19PHARMD01021)"
-                className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500 text-lg"
                 disabled={loading}
               />
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-8 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                {loading ? "Searching..." : "Search"}
-              </button>
               {searched && (
                 <button
                   type="button"
@@ -240,7 +251,8 @@ export default function StudentSearch() {
                 </button>
               )}
             </div>
-          </form>
+            <p className="text-sm text-gray-500">Search runs automatically after you stop typing.</p>
+          </div>
         </div>
 
         {studentData && (

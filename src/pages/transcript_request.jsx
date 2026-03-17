@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import axios from 'axios';
 import PanelToggleButton from '../components/PanelToggleButton';
 import PageTopbar from '../components/PageTopbar';
+import SearchField from '../components/SearchField';
 import {
   fetchTranscriptRequests,
   updateTranscriptRequest,
@@ -460,19 +461,10 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
     return counts;
   }, [rows]);
 
-  // sort rows for display: prefer numeric `tr_request_no` (higher = newer),
-  // sort rows for display: first by mail_status priority (done > progress > pending > cancel),
-  // then by numeric `tr_request_no` (higher numbers first), then by requested_at desc.
+  // sort rows for display by numeric `tr_request_no` (higher = newer),
+  // then fallback to requested_at desc.
   const sortedRows = useMemo(() => {
     const copy = Array.isArray(rows) ? [...rows] : [];
-    const statusRank = (s) => {
-      const v = (s || '').toString().toLowerCase();
-      if (v === 'done') return 0;
-      if (v === 'progress') return 1;
-      if (v === 'pending') return 2;
-      if (v === 'cancel') return 3;
-      return 4;
-    };
 
     const parseNumeric = (val) => {
       if (val === null || val === undefined) return NaN;
@@ -484,10 +476,6 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
     };
 
     copy.sort((a, b) => {
-      const sa = statusRank(a?.mail_status);
-      const sb = statusRank(b?.mail_status);
-      if (sa !== sb) return sa - sb; // lower rank = higher priority
-
       const aNo = parseNumeric(a?.tr_request_no ?? a?.request_ref_no);
       const bNo = parseNumeric(b?.tr_request_no ?? b?.request_ref_no);
       const aHas = Number.isFinite(aNo);
@@ -515,12 +503,31 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
 
   const formatDateOnly = (value) => {
     if (!value) return 'N/A';
-    const dt = new Date(value);
-    if (Number.isNaN(dt.getTime())) return value;
-    const day = String(dt.getDate()).padStart(2, '0');
-    const month = String(dt.getMonth() + 1).padStart(2, '0');
-    const year = dt.getFullYear();
-    return `${day}-${month}-${year}`;
+    const raw = String(value).trim();
+
+    const toDateLabel = (day, month, year) => {
+      const dd = String(day).padStart(2, '0');
+      const mm = String(month).padStart(2, '0');
+      const yyyy = String(year).length === 2 ? `20${String(year).padStart(2, '0')}` : String(year);
+      return `${dd}-${mm}-${yyyy}`;
+    };
+
+    const ymdMatch = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[T\s].*)?$/);
+    if (ymdMatch) {
+      return toDateLabel(ymdMatch[3], ymdMatch[2], ymdMatch[1]);
+    }
+
+    const dmyMatch = raw.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})(?:[T\s].*)?$/);
+    if (dmyMatch) {
+      return toDateLabel(dmyMatch[1], dmyMatch[2], dmyMatch[3]);
+    }
+
+    const dt = new Date(raw);
+    if (!Number.isNaN(dt.getTime())) {
+      return toDateLabel(dt.getDate(), dt.getMonth() + 1, dt.getFullYear());
+    }
+
+    return raw.split(/[\sT]/)[0].replace(/\//g, '-');
   };
 
   const formatStatus = (value) => {
@@ -541,6 +548,7 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
     const label = formatStatus(value);
     if (label === STATUS_LABELS.done) return `${base} bg-green-100 text-green-700`;
     if (label === STATUS_LABELS.progress) return `${base} bg-blue-100 text-blue-700`;
+    if (label === STATUS_LABELS.cancel) return `${base} bg-red-100 text-red-700`;
     return `${base} bg-yellow-100 text-yellow-700`;
   };
 
@@ -590,10 +598,12 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                           setLoading(false);
                         }
                       }}
-                      className="px-3 py-1.5 rounded bg-purple-600 text-white hover:bg-purple-700 text-sm"
+                      className="refresh-icon-button"
                       disabled={loading}
+                      title={loading ? 'Loading' : 'Refresh'}
+                      aria-label={loading ? 'Loading' : 'Refresh'}
                     >
-                      ↻ Refresh
+                      <span className={`refresh-symbol ${loading ? 'animate-spin' : ''}`} aria-hidden="true">↻</span>
                     </button>
                   </div>
                 ) : null
@@ -614,19 +624,18 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
 
       {rightsLoaded && rights.can_view && (
         <>
-          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-            <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
-              <div className="font-semibold text-gray-800">{selectedAction}</div>
+          <div className="action-panel-shell">
+            <div className="action-panel-header">
+              <div className="action-panel-title">{selectedAction}</div>
               <PanelToggleButton open={panelOpen} onClick={() => setPanelOpen((open) => !open)} />
             </div>
 
             {panelOpen && selectedAction === ACTIONS[0] && (
-              <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div className="action-panel-body grid grid-cols-1 md:grid-cols-4 gap-3">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-600 mb-1">Search</label>
-                  <input
-                    type="search"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  <SearchField
+                    className="w-full"
                     placeholder="TR No, Enrollment number, student name, or email"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -667,7 +676,7 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
             )}
 
             {panelOpen && selectedAction === ACTIONS[1] && (
-              <div className="p-4 space-y-3 text-sm text-gray-700">
+              <div className="action-panel-body space-y-3 text-sm text-gray-700">
                 <p>
                   Apply a status to every selected request. Pick the status below and click Update after choosing the
                   rows in the table.
@@ -713,7 +722,7 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
             )}
 
             {panelOpen && selectedAction === ACTIONS[2] && (
-              <div ref={activeRowRef} className="p-4 space-y-4 text-sm text-gray-700">
+              <div ref={activeRowRef} className="action-panel-body space-y-4 text-sm text-gray-700">
                 {activeRow ? (
                   <>
                     <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
@@ -829,7 +838,7 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                         <div className="col-span-12 md:col-span-1 flex md:justify-end">
                           <button
                             onClick={() => applyUpdate(activeRow.id)}
-                            className="px-3 py-2 rounded bg-purple-600 text-white text-sm disabled:bg-purple-300 w-full"
+                            className="save-button-compact w-full"
                             disabled={!rights.can_edit || updatingId === activeRow.id}
                           >
                             {updatingId === activeRow.id ? 'Saving...' : 'Save'}
@@ -905,7 +914,7 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                       />
                     </th>
                       <th className="px-3 py-2 text-left">TR No</th>
-                      <th className="px-3 py-2 text-left">Requested Date</th>
+                      <th className="px-3 py-2 text-left whitespace-nowrap w-[10ch] min-w-[10ch]">Requested Date</th>
                       <th className="px-3 py-2 text-left">Enrollment No</th>
                       <th className="px-3 py-2 text-left">Student</th>
                       <th className="px-3 py-2 text-left">Reference</th>
@@ -935,12 +944,18 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                   )}
                   {!loading && sortedRows.map((row) => {
                     const isActive = activeRow?.id === row.id;
+                    const rawStatus = String(row.mail_status || '').trim().toLowerCase();
+                    const isCancel = ['cancel', 'cancelled', 'canceled'].includes(rawStatus);
                     return (
                       <tr
                         key={row.id}
                         onClick={() => handleRowSelect(row)}
                         className={`border-b last:border-b-0 cursor-pointer transition-colors ${
-                          isActive ? 'bg-blue-50' : 'hover:bg-gray-50'
+                          isActive
+                            ? 'bg-blue-50'
+                            : isCancel
+                            ? 'bg-red-50 hover:bg-red-100'
+                            : 'hover:bg-gray-50'
                         }`}
                       >
                         <td className="px-3 py-2 align-top">
@@ -953,11 +968,19 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                           />
                         </td>
                         <td className="px-3 py-2 align-top">{row.tr_request_no ?? row.request_ref_no ?? 'N/A'}</td>
-                        <td className="px-3 py-2 align-top">{formatDateOnly(row.requested_at)}</td>
+                        <td className="px-3 py-2 align-top whitespace-nowrap w-[10ch] min-w-[10ch]">{formatDateOnly(row.requested_at)}</td>
                         <td className="px-3 py-2 align-top">{row.enrollment_no || 'N/A'}</td>
                         <td className="px-3 py-2 align-top">{row.student_name || 'N/A'}</td>
                         <td className="px-3 py-2 align-top">{row.request_ref_no || 'N/A'}</td>
-                        <td className="px-3 py-2 align-top">{row.institute_name || 'N/A'}</td>
+                        <td className="px-3 py-2 align-top">
+                          <div
+                            className="max-w-[14rem] overflow-hidden text-ellipsis leading-5"
+                            style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
+                            title={row.institute_name || 'N/A'}
+                          >
+                            {row.institute_name || 'N/A'}
+                          </div>
+                        </td>
                         <td className="px-3 py-2 align-top">{row.transcript_receipt || ''}</td>
                         <td className="px-3 py-2 align-top text-xs text-gray-600 max-w-[18rem]">
                           {row.transcript_remark ? row.transcript_remark : ''}

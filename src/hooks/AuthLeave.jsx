@@ -386,13 +386,13 @@ export default function AuthLeave() {
                       <td className="border p-2">
                         <button
                           onClick={() => editAlloc(a)}
-                          className="text-blue-600 hover:underline mr-2"
+                          className="edit-button-compact mr-2"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => deleteAlloc(a.id)}
-                          className="text-red-600 hover:underline"
+                          className="delete-button-compact"
                         >
                           Delete
                         </button>
@@ -474,7 +474,7 @@ export default function AuthLeave() {
                             setTypeForm(t);
                             setEditingTypeId(t.id);
                           }}
-                          className="text-blue-600 hover:underline"
+                          className="edit-button-compact"
                         >
                           Edit
                         </button>
@@ -557,7 +557,7 @@ export default function AuthLeave() {
                             setPeriodForm(p);
                             setEditingPeriodId(p.id);
                           }}
-                          className="text-blue-600 hover:underline"
+                          className="edit-button-compact"
                         >
                           Edit
                         </button>

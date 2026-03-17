@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FaFileExcel, FaFilePdf } from "react-icons/fa6";
 import PageTopbar from "../components/PageTopbar";
+import SearchField from '../components/SearchField';
 import { isoToDMY } from "../utils/date";
 import {
   fetchExamScheduleEmployees,
@@ -400,8 +401,8 @@ const ExamManage = ({
                 {employeeError}
               </div>
             )}
-            <input
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            <SearchField
+              className="w-full"
               placeholder="Search employee no, name, or designation"
               value={employeeSearch}
               onChange={(event) => setEmployeeSearch(event.target.value)}

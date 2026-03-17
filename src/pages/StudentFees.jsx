@@ -2,10 +2,11 @@
  * StudentFees.jsx
  * Entry-first layout (like Enrollment): Topbar + collapsible action panel + records section
  */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FaEdit, FaTrash } from 'react-icons/fa';
 import PanelToggleButton from '../components/PanelToggleButton';
 import PageTopbar from '../components/PageTopbar';
+import SearchField from '../components/SearchField';
 import StudentFeesReport from '../report/StudentFeesReport';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -71,6 +72,7 @@ const StudentFees = ({ onToggleSidebar, onToggleChatbox, rights = { can_view: tr
     const [batchFilter, setBatchFilter] = useState('');
     const [fromDate, setFromDate] = useState('');
     const [toDate, setToDate] = useState('');
+    const initialRecordsLoadRef = useRef(true);
 
     // Fetch student summary (used for auto-populating name + numbers)
     const fetchStudentMeta = async (studentNo) => {
@@ -163,7 +165,6 @@ const StudentFees = ({ onToggleSidebar, onToggleChatbox, rights = { can_view: tr
         }
         setSearchStudentNo(studentNo);
         setCurrentPage(1);
-        loadFees(studentNo, 1);
     };
 
     const handleCreate = async (e) => {
@@ -263,25 +264,11 @@ const StudentFees = ({ onToggleSidebar, onToggleChatbox, rights = { can_view: tr
         setPanelOpen(true);
     };
 
-    const handleSearch = async (e) => {
-        e?.preventDefault?.();
-        if (!searchStudentNo.trim()) return toast.error('Enter enrollment or temp number');
-        setCurrentPage(1);
-        loadFees(searchStudentNo.trim(), 1);
-        await fetchStudentMeta(searchStudentNo.trim());
-    };
-
-    const handleApplyFilters = () => {
-        setCurrentPage(1);
-        loadFees(searchStudentNo.trim(), 1);
-    };
-
     const handleResetFilters = () => {
         setBatchFilter('');
         setFromDate('');
         setToDate('');
         setCurrentPage(1);
-        loadFees(searchStudentNo.trim(), 1, { batch: '', fromDate: '', toDate: '' });
     };
 
     const handleDelete = async (id, receiptNo) => {
@@ -315,8 +302,29 @@ const StudentFees = ({ onToggleSidebar, onToggleChatbox, rights = { can_view: tr
     }, []);
 
     useEffect(() => {
-        loadFees('', 1);
-    }, []);
+        const run = async () => {
+            const studentNo = searchStudentNo.trim();
+            const nextFilters = { batch: batchFilter, fromDate, toDate };
+            setCurrentPage(1);
+
+            if (studentNo) {
+                await fetchStudentMeta(studentNo);
+            } else {
+                setSummary(null);
+            }
+
+            await loadFees(studentNo, 1, nextFilters);
+        };
+
+        if (initialRecordsLoadRef.current) {
+            initialRecordsLoadRef.current = false;
+            run();
+            return;
+        }
+
+        const handle = setTimeout(run, 350);
+        return () => clearTimeout(handle);
+    }, [searchStudentNo, batchFilter, fromDate, toDate]);
 
     if (showReport) {
         return (
@@ -428,24 +436,18 @@ const StudentFees = ({ onToggleSidebar, onToggleChatbox, rights = { can_view: tr
     );
 
     const renderSearchPanel = () => (
-        <form onSubmit={handleSearch} className="space-y-3">
+        <div className="space-y-3">
             <label className="block text-sm font-medium">Enrollment / Temp No *</label>
-            <div className="flex gap-3 flex-col md:flex-row">
-                <input
-                    type="text"
+            <div className="space-y-2">
+                <SearchField
+                    className="w-full"
                     value={searchStudentNo}
                     onChange={(e) => setSearchStudentNo(e.target.value)}
-                    className="flex-1 border rounded px-3 py-2"
                     placeholder="Enter enrollment or temp number"
                 />
-                <button
-                    type="submit"
-                    className="px-5 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700"
-                >
-                    Search
-                </button>
+                <p className="text-xs text-slate-500">Summary and records refresh automatically while you type.</p>
             </div>
-        </form>
+        </div>
     );
 
     const renderReportPanel = () => (
@@ -507,13 +509,6 @@ const StudentFees = ({ onToggleSidebar, onToggleChatbox, rights = { can_view: tr
                         />
                         <button
                             type="button"
-                            onClick={handleApplyFilters}
-                            className="px-3 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
-                        >
-                            Apply
-                        </button>
-                        <button
-                            type="button"
                             onClick={handleResetFilters}
                             className="px-3 py-1 rounded border"
                         >
@@ -528,7 +523,7 @@ const StudentFees = ({ onToggleSidebar, onToggleChatbox, rights = { can_view: tr
                                         if (currentPage > 1) {
                                             const next = currentPage - 1;
                                             setCurrentPage(next);
-                                            loadFees(searchStudentNo, next);
+                                            loadFees(searchStudentNo.trim(), next, { batch: batchFilter, fromDate, toDate });
                                         }
                                     }}
                                     className="px-3 py-1 border rounded disabled:opacity-50"
@@ -540,7 +535,7 @@ const StudentFees = ({ onToggleSidebar, onToggleChatbox, rights = { can_view: tr
                                         if (currentPage < totalPages) {
                                             const next = currentPage + 1;
                                             setCurrentPage(next);
-                                            loadFees(searchStudentNo, next);
+                                            loadFees(searchStudentNo.trim(), next, { batch: batchFilter, fromDate, toDate });
                                         }
                                     }}
                                     className="px-3 py-1 border rounded disabled:opacity-50"
@@ -587,7 +582,7 @@ const StudentFees = ({ onToggleSidebar, onToggleChatbox, rights = { can_view: tr
                                                 e.stopPropagation();
                                                 startEditFee(fee);
                                             }}
-                                            className="w-7 h-7 inline-flex items-center justify-center rounded bg-yellow-400 text-white hover:bg-yellow-500"
+                                            className="w-7 h-7 inline-flex items-center justify-center rounded icon-edit-button"
                                             title="Edit"
                                         >
                                             <FaEdit size={12} />
@@ -599,7 +594,7 @@ const StudentFees = ({ onToggleSidebar, onToggleChatbox, rights = { can_view: tr
                                                     e.stopPropagation();
                                                     handleDelete(fee.id, fee.receipt_no);
                                                 }}
-                                                className="w-7 h-7 inline-flex items-center justify-center rounded bg-red-600 text-white hover:bg-red-700"
+                                                className="w-7 h-7 inline-flex items-center justify-center rounded icon-delete-button"
                                                 title="Delete"
                                             >
                                                 <FaTrash size={12} />
@@ -646,9 +641,9 @@ const StudentFees = ({ onToggleSidebar, onToggleChatbox, rights = { can_view: tr
                 }
             />
 
-            <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
-                <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
-                    <div className="font-semibold">
+            <div className="action-panel-shell">
+                <div className="action-panel-header">
+                    <div className="action-panel-title">
                         {selectedAction === '➕' && 'Entry Panel'}
                         {selectedAction === '🔍' && 'Search Panel'}
                         {selectedAction === '📄 Report' && 'Report Panel'}
@@ -656,7 +651,7 @@ const StudentFees = ({ onToggleSidebar, onToggleChatbox, rights = { can_view: tr
                     <PanelToggleButton open={panelOpen} onClick={() => setPanelOpen((o) => !o)} />
                 </div>
                 {panelOpen && (
-                    <div className="p-4">
+                    <div className="action-panel-body">
                         {selectedAction === '➕' && renderEntryForm()}
                         {selectedAction === '🔍' && renderSearchPanel()}
                         {selectedAction === '📄 Report' && renderReportPanel()}

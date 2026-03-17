@@ -6,6 +6,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PanelToggleButton from '../components/PanelToggleButton';
 import PageTopbar from '../components/PageTopbar';
+import SearchField from '../components/SearchField';
 import { FaEdit, FaTrash } from 'react-icons/fa';
 import { toDateInput } from '../utils/date';
 import {
@@ -560,13 +561,13 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
             />
 
             {/* Collapsible Action Panel */}
-            <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
-                <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
-                    <div className="font-semibold">{panelTitle}</div>
+            <div className="action-panel-shell">
+                <div className="action-panel-header">
+                    <div className="action-panel-title">{panelTitle}</div>
                     <PanelToggleButton open={panelOpen} onClick={() => setPanelOpen((o) => !o)} />
                 </div>
                 {panelOpen && (
-                    <div className="p-4">
+                    <div className="action-panel-body">
                         {selectedMenu === '➕' && (
                             <div className="flex gap-3">
                                 <button
@@ -591,12 +592,11 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                     <div>
                                         <label className="block text-sm font-semibold text-slate-600 mb-1">Search</label>
-                                        <input
-                                            type="text"
+                                        <SearchField
+                                            className="w-full"
                                             placeholder="Search enrollment, name, etc..."
                                             value={searchTerm}
                                             onChange={(e) => setSearchTerm(e.target.value)}
-                                            className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-200"
                                         />
                                     </div>
                                     <div>
@@ -667,12 +667,11 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium mb-1">Search</label>
-                                        <input
-                                            type="text"
+                                        <SearchField
+                                            className="w-full"
                                             placeholder="Search number or title"
                                             value={convocationSearchTerm}
                                             onChange={(e) => setConvocationSearchTerm(e.target.value)}
-                                            className="w-full px-3 py-2 border rounded-lg"
                                         />
                                     </div>
                                     <div>
@@ -770,14 +769,14 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
                                             <div className="flex items-center gap-2">
                                                 <button
                                                     title="Edit"
-                                                    className="w-5 h-5 flex items-center justify-center bg-yellow-500 text-white hover:bg-yellow-600 shadow-md rounded"
+                                                    className="w-5 h-5 flex items-center justify-center icon-edit-button shadow-md rounded"
                                                     onClick={() => handleEdit(degree)}
                                                 >
                                                     <FaEdit size={12} />
                                                 </button>
                                                 <button
                                                     title="Delete"
-                                                    className="w-5 h-5 flex items-center justify-center bg-red-600 text-white hover:bg-red-700 shadow-md rounded"
+                                                    className="w-5 h-5 flex items-center justify-center icon-delete-button shadow-md rounded"
                                                     onClick={() => handleDelete(degree.id)}
                                                 >
                                                     <FaTrash size={12} />
@@ -839,14 +838,14 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
                                                 <div className="flex items-center gap-2">
                                                     <button
                                                         title="Edit"
-                                                        className="w-5 h-5 flex items-center justify-center bg-yellow-500 text-white hover:bg-yellow-600 shadow-md rounded"
+                                                        className="w-5 h-5 flex items-center justify-center icon-edit-button shadow-md rounded"
                                                         onClick={() => handleEditConvocation(conv)}
                                                     >
                                                         <FaEdit size={12} />
                                                     </button>
                                                     <button
                                                         title="Delete"
-                                                        className="w-5 h-5 flex items-center justify-center bg-red-600 text-white hover:bg-red-700 shadow-md rounded"
+                                                        className="w-5 h-5 flex items-center justify-center icon-delete-button shadow-md rounded"
                                                         onClick={() => handleDeleteConvocation(conv)}
                                                     >
                                                         <FaTrash size={12} />

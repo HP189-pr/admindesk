@@ -1,11 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  FaSearch,
-  FaChevronUp,
-  FaChevronDown,
   FaUserGraduate,
   FaTimes
 } from 'react-icons/fa';
+import SearchField from './SearchField';
 import { searchStudent, formatDate } from '../services/studentSearchService';
 
 const PopupSearch = () => {
@@ -194,22 +192,26 @@ const PopupSearch = () => {
               </div>
             </div>
           </div>
-          {open ? <FaChevronDown /> : <FaChevronUp />}
+          <span aria-hidden="true" className="text-xl leading-none">{open ? '«' : '»'}</span>
         </div>
 
         {open && (
           <div className="p-4 space-y-3">
             {/* Search */}
-            <div className="flex items-center gap-2 border border-slate-200 rounded-xl px-3 py-2 bg-slate-50">
-              <FaSearch className="text-slate-400" />
-              <input
-                className="flex-1 bg-transparent outline-none text-sm"
+            <div className="relative">
+              <SearchField
+                className="w-full"
+                inputClassName="border-slate-200 bg-slate-50 pr-10 text-sm"
                 placeholder="Search student…"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
               {query && (
-                <button onClick={() => setQuery('')}>
+                <button
+                  type="button"
+                  onClick={() => setQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                >
                   <FaTimes className="text-slate-400" />
                 </button>
               )}

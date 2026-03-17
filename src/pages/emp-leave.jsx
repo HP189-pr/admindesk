@@ -6,6 +6,7 @@ import { FaUserTie } from 'react-icons/fa';
 import PanelToggleButton from '../components/PanelToggleButton';
 import { parseDMY, fmtDate, toISO } from '../report/utils';
 import PageTopbar from "../components/PageTopbar";
+import SearchField from '../components/SearchField';
 
 // Lazy load the report page (keeps main bundle smaller)
 const LeaveReport = React.lazy(() => import('../report/LeaveReport'));
@@ -259,9 +260,9 @@ function EmpLeavePage() {
       />
 
       {/* panel container */}
-      <div className="mt-4 border rounded-xl shadow-sm">
-        <div className="flex justify-between items-center px-3 py-2 bg-gray-50 border-b">
-          <div className="font-semibold">{selectedPanel} Panel</div>
+      <div className="mt-4 action-panel-shell">
+        <div className="action-panel-header">
+          <div className="action-panel-title">{selectedPanel} Panel</div>
           <PanelToggleButton open={panelOpen} onClick={() => setPanelOpen(o => !o)} />
         </div>
 
@@ -420,7 +421,14 @@ function EmpLeavePage() {
             <div className="border rounded-xl overflow-hidden mt-4">
               <div className="p-3 border-b bg-gray-50 flex justify-between">
                 <div className="font-semibold">Last Leave Records</div>
-                <button onClick={() => axios.get('/api/leaveentry/?page_size=9999').then(r => setLeaveEntries(normalize(r.data)))} className="text-sm px-3 py-1 bg-blue-600 text-white rounded">Refresh</button>
+                <button
+                  onClick={() => axios.get('/api/leaveentry/?page_size=9999').then(r => setLeaveEntries(normalize(r.data)))}
+                  className="refresh-icon-button"
+                  title="Refresh"
+                  aria-label="Refresh"
+                >
+                  <span className="refresh-symbol" aria-hidden="true">↻</span>
+                </button>
               </div>
 
               <div className="p-3 bg-white border-b flex flex-col gap-3 md:flex-row md:items-center">
@@ -440,9 +448,9 @@ function EmpLeavePage() {
                   </select>
                 </div>
 
-                <input
-                  type="text"
-                  className="border rounded p-2 text-sm flex-1"
+
+                <SearchField
+                  className="flex-1"
                   placeholder="Search by Report No or Employee ID"
                   value={recordSearch}
                   onChange={(e) => setRecordSearch(e.target.value)}

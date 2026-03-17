@@ -4,19 +4,19 @@ import {
   Pencil,
   Plus,
   RotateCcw,
-  Search,
 } from 'lucide-react';
 import { FaFileExcel, FaFilePdf } from 'react-icons/fa6';
 import RegisterForm from './RegisterForm';
+import SearchField from './SearchField';
 import RegisterTable from './RegisterTable';
 
 const CARD_CLASS = 'rounded-2xl border border-slate-200 bg-white p-6 shadow-md';
 const SECTION_TITLE_CLASS = 'flex items-center gap-2 text-lg font-semibold text-slate-700';
 const LABEL_CLASS = 'mb-1 block text-sm font-medium text-slate-600';
 const INPUT_CLASS = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+const SEARCH_INPUT_CLASS = 'border-slate-300 bg-white text-slate-700 focus:border-blue-500 focus:ring-blue-500/20';
 const PRIMARY_BUTTON_CLASS = 'save-button';
 const SECONDARY_BUTTON_CLASS = 'reset-button';
-const FILTER_BUTTON_CLASS = 'inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow transition hover:bg-blue-700';
 const EXPORT_EXCEL_BUTTON_CLASS = 'inline-flex h-10 w-10 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 shadow transition hover:bg-emerald-100';
 const EXPORT_PDF_BUTTON_CLASS = 'inline-flex h-10 w-10 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 shadow transition hover:bg-rose-100';
 const LAST_BADGE_CLASS = 'inline-flex items-center rounded-full bg-orange-100 px-3 py-1 text-sm font-medium text-orange-700';
@@ -132,12 +132,11 @@ const RegisterSection = ({
           <div className="grid grid-cols-1 items-end gap-4 md:grid-cols-2 xl:grid-cols-[minmax(280px,1.8fr)_minmax(150px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_auto]">
             <div className="space-y-1">
               <label className={LABEL_CLASS}>{searchLabel}</label>
-              <input
-                type="text"
+              <SearchField
                 placeholder={searchPlaceholder}
                 value={filters.search}
                 onChange={(event) => onFiltersChange((prev) => ({ ...prev, search: event.target.value }))}
-                className={INPUT_CLASS}
+                inputClassName={SEARCH_INPUT_CLASS}
               />
             </div>
             <div className="space-y-1">
@@ -173,11 +172,8 @@ const RegisterSection = ({
                 className={INPUT_CLASS}
               />
             </div>
-            <div className="xl:min-w-[148px]">
-              <button type="button" onClick={onApplyFilters} className={`${FILTER_BUTTON_CLASS} w-full justify-center xl:w-auto`}>
-                <Search size={16} />
-                Apply Filters
-              </button>
+            <div className="xl:min-w-[148px] flex items-center xl:justify-end">
+              <span className="text-xs text-slate-500">{loading ? 'Refreshing…' : 'Auto-refreshed'}</span>
             </div>
           </div>
         </div>

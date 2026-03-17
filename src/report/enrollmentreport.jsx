@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { ArrowLeft, RefreshCcw, RotateCcw, Rows3, Users } from "lucide-react";
+import { ArrowLeft, RotateCcw, Rows3, Users } from "lucide-react";
 import { FaFileExcel, FaFilePdf } from "react-icons/fa6";
 import { getEnrollmentReportSummary, getEnrollments } from "../services/enrollmentservice";
 
@@ -30,7 +30,7 @@ const TOOLBAR_CARD_CLASS = "rounded-2xl border border-slate-200 bg-white p-4 sha
 const CONTROL_LABEL_CLASS = "mb-1 block text-sm font-medium text-slate-700";
 const SELECT_CLASS = "h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/15";
 const ACTION_BUTTON_BASE_CLASS = "inline-flex h-11 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold shadow-sm transition duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50";
-const REFRESH_BUTTON_CLASS = `${ACTION_BUTTON_BASE_CLASS} border border-slate-700 bg-slate-700 text-white hover:bg-slate-800`;
+const REFRESH_BUTTON_CLASS = "refresh-icon-button";
 const BACK_BUTTON_CLASS = `${ACTION_BUTTON_BASE_CLASS} border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200`;
 const RESET_BUTTON_CLASS = "reset-button w-full";
 const EXPORT_EXCEL_BUTTON_CLASS = "inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 shadow-sm shadow-emerald-100 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-100 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50";
@@ -376,9 +376,10 @@ const EnrollmentReport = ({ onBack }) => {
             onClick={() => loadReportSummary()}
             className={REFRESH_BUTTON_CLASS}
             disabled={loading}
+            title={loading ? "Loading" : "Refresh"}
+            aria-label={loading ? "Loading" : "Refresh"}
           >
-            <RefreshCcw size={16} />
-            {loading ? "Loading..." : "Refresh"}
+            <span className={`refresh-symbol ${loading ? "animate-spin" : ""}`} aria-hidden="true">↻</span>
           </button>
           <button
             type="button"

@@ -26,16 +26,6 @@ const PageTopbar = ({
   return (
     <div className="sticky top-0 z-20 flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
       <div className={TOPBAR_SLOT_WRAPPER_CLASS}>
-        {onToggleSidebar && (
-          <button
-            type="button"
-            onClick={() => onToggleSidebar()}
-            className={TOPBAR_ICON_BUTTON_CLASS}
-            title="Toggle sidebar"
-          >
-            ☰
-          </button>
-        )}
         {leftSlot}
         {titleSlot ? (
           titleSlot

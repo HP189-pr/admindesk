@@ -4,6 +4,7 @@ import { syncDocRecRemark, loadRecords as loadRecordsService, createRecord as cr
 import { useNavigate } from 'react-router-dom';
 import PanelToggleButton from "../components/PanelToggleButton";
 import PageTopbar from "../components/PageTopbar";
+import SearchField from '../components/SearchField';
 
 // Topbar actions available on this page
 const ACTIONS = ["➕", "✏️ Edit", "🔍", "📄 Report"];
@@ -508,17 +509,17 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
       />
 
       {/* Collapsible Action Box */}
-      <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
+      <div className="action-panel-shell">
         {/* Title / toggle row */}
-        <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
-          <div className="font-semibold">{getSelected() ? `${getSelected()} Panel` : "Action Panel"}</div>
+        <div className="action-panel-header">
+          <div className="action-panel-title">{getSelected() ? `${getSelected()} Panel` : "Action Panel"}</div>
           <PanelToggleButton open={panelOpen} onClick={() => setPanelOpen((o) => !o)} />
         </div>
 
         {panelOpen && (
           <>
             {/* Edit / Add form */}
-            <div ref={formRef} className="p-3 space-y-2">
+            <div ref={formRef} className="action-panel-body space-y-2">
               {/* Row 1 */}
               <div className="grid gap-3 md:grid-cols-[16ch_0.6fr_0.6fr_1.6fr] items-end">
                 {/* ...existing code... */}
@@ -830,8 +831,9 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
               {!(getSelected() === "✏️ Edit" || getSelected() === "➕") && (
                 <div className="flex items-center gap-2 xl:ml-auto min-w-0">
                   <label className="text-xs font-semibold whitespace-nowrap">Search:</label>
-                  <input
-                    className="border rounded p-1 text-sm w-56 max-w-full"
+                  <SearchField
+                    className="w-56 max-w-full"
+                    inputClassName="text-sm"
                     placeholder="Enroll / Temp / Name / Final / DocRec / Date"
                     value={q}
                     onChange={(e) => setQ(e.target.value)}

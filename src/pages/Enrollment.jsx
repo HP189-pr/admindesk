@@ -4,6 +4,7 @@ import { FaEdit, FaTrash } from "react-icons/fa";
 import { useNavigate } from 'react-router-dom';
 import PanelToggleButton from "../components/PanelToggleButton";
 import PageTopbar from "../components/PageTopbar";
+import SearchField from '../components/SearchField';
 import { 
   createEnrollment, 
   updateEnrollment, 
@@ -43,6 +44,10 @@ const CANCEL_ENTRY_MODE_OPTIONS = [
 
 const CANCEL_ACTION = "Cancel Admission";
 const BATCH_OPTIONS = [2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024,2025, 2026, 2027, 2028];
+const ENROLLMENT_FORM_PANEL_CLASS = "rounded-2xl border border-slate-200 bg-slate-100 p-4 md:p-5";
+const ENROLLMENT_FORM_LABEL_CLASS = "mb-1 block text-sm font-medium text-slate-800";
+const ENROLLMENT_FORM_FIELD_CLASS = "w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-slate-800 shadow-sm transition focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-100";
+const ENROLLMENT_FORM_FIELD_ERROR_CLASS = "border-red-500 focus:border-red-500 focus:ring-red-100";
 
   const buildCancelFormState = () => {
     return {
@@ -748,7 +753,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
                           {rights.can_edit && (
                             <button
                               title="Edit"
-                              className="w-5 h-5 flex items-center justify-center bg-yellow-500 text-white hover:bg-yellow-600 shadow-md rounded"
+                              className="w-5 h-5 flex items-center justify-center icon-edit-button shadow-md rounded"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 const hydrated = getHydratedEnrollment(enr);
@@ -764,7 +769,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
                           {rights.can_delete && (
                             <button
                               title="Delete"
-                              className="w-5 h-5 flex items-center justify-center bg-red-600 text-white hover:bg-red-700 shadow-md rounded"
+                              className="w-5 h-5 flex items-center justify-center icon-delete-button shadow-md rounded"
                               onClick={async (e) => {
                                 e.stopPropagation();
                                 try {
@@ -797,11 +802,13 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold">Cancel Admission</h2>
         <button
-          className="px-3 py-2 rounded bg-slate-200 text-sm"
+          className="refresh-icon-button"
           onClick={loadCancellationRecords}
           disabled={cancelLoading}
+          title={cancelLoading ? 'Refreshing' : 'Refresh'}
+          aria-label={cancelLoading ? 'Refreshing' : 'Refresh'}
         >
-          {cancelLoading ? 'Refreshing...' : 'Refresh'}
+          <span className={`refresh-symbol ${cancelLoading ? 'animate-spin' : ''}`} aria-hidden="true">↻</span>
         </button>
       </div>
       {cancelLoading ? (
@@ -852,8 +859,8 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
   );
 
   const renderFormView = () => (
-    <div>
-      <h2 className="text-lg font-semibold mb-4">
+    <div className={ENROLLMENT_FORM_PANEL_CLASS}>
+      <h2 className="text-lg font-semibold text-slate-800 mb-4">
         {formState.isEditing ? "Edit Enrollment" : "Add New Enrollment"}
       </h2>
       {!rights.can_create && !formState.isEditing && (
@@ -862,16 +869,16 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
       {!rights.can_edit && formState.isEditing && (
         <p className="text-sm text-red-600 mb-2">You do not have rights to edit enrollments.</p>
       )}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block mb-1">Enrollment Number</label>
+            <label className={ENROLLMENT_FORM_LABEL_CLASS}>Enrollment Number</label>
             <input
               type="text"
               name="enrollment_no"
               value={formState.data.enrollment_no}
               onChange={handleInputChange}
-              className={`border rounded px-3 py-2 w-full ${state.validationErrors.enrollment_no ? 'border-red-500' : ''}`}
+              className={`${ENROLLMENT_FORM_FIELD_CLASS} ${state.validationErrors.enrollment_no ? ENROLLMENT_FORM_FIELD_ERROR_CLASS : ''}`}
               disabled={formState.isEditing}
             />
             {state.validationErrors.enrollment_no && (
@@ -880,13 +887,13 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
           </div>
 
           <div>
-            <label className="block mb-1">Temporary Number</label>
+            <label className={ENROLLMENT_FORM_LABEL_CLASS}>Temporary Number</label>
             <input
               type="text"
               name="temp_enroll_no"
               value={formState.data.temp_enroll_no}
               onChange={handleInputChange}
-              className={`border rounded px-3 py-2 w-full ${state.validationErrors.temp_enroll_no ? 'border-red-500' : ''}`}
+              className={`${ENROLLMENT_FORM_FIELD_CLASS} ${state.validationErrors.temp_enroll_no ? ENROLLMENT_FORM_FIELD_ERROR_CLASS : ''}`}
             />
             {state.validationErrors.temp_enroll_no && (
               <p className="text-red-500 text-sm">{state.validationErrors.temp_enroll_no}</p>
@@ -894,13 +901,13 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
           </div>
 
           <div>
-            <label className="block mb-1">Student Name *</label>
+            <label className={ENROLLMENT_FORM_LABEL_CLASS}>Student Name *</label>
             <input
               type="text"
               name="student_name"
               value={formState.data.student_name}
               onChange={handleInputChange}
-              className={`border rounded px-3 py-2 w-full ${state.validationErrors.student_name ? 'border-red-500' : ''}`}
+              className={`${ENROLLMENT_FORM_FIELD_CLASS} ${state.validationErrors.student_name ? ENROLLMENT_FORM_FIELD_ERROR_CLASS : ''}`}
               required
             />
             {state.validationErrors.student_name && (
@@ -911,12 +918,12 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label className="block mb-1">Institute Code *</label>
+            <label className={ENROLLMENT_FORM_LABEL_CLASS}>Institute Code *</label>
             <select
               name="institute_id"
               value={formState.data.institute_id}
               onChange={handleInputChange}
-              className={`border rounded px-3 py-2 w-full ${state.validationErrors.institute_id ? 'border-red-500' : ''}`}
+              className={`${ENROLLMENT_FORM_FIELD_CLASS} ${state.validationErrors.institute_id ? ENROLLMENT_FORM_FIELD_ERROR_CLASS : ''}`}
               required
             >
               <option value="">Select institute</option>
@@ -934,12 +941,12 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
           </div>
 
           <div>
-            <label className="block mb-1">Course Code *</label>
+            <label className={ENROLLMENT_FORM_LABEL_CLASS}>Course Code *</label>
             <select
               name="maincourse_id"
               value={formState.data.maincourse_id}
               onChange={handleInputChange}
-              className={`border rounded px-3 py-2 w-full ${state.validationErrors.maincourse_id ? 'border-red-500' : ''}`}
+              className={`${ENROLLMENT_FORM_FIELD_CLASS} ${state.validationErrors.maincourse_id ? ENROLLMENT_FORM_FIELD_ERROR_CLASS : ''}`}
               required
             >
               <option value="">Select main course</option>
@@ -959,12 +966,12 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
           </div>
 
           <div>
-            <label className="block mb-1">Subcourse Name *</label>
+            <label className={ENROLLMENT_FORM_LABEL_CLASS}>Subcourse Name *</label>
             <select
               name="subcourse_id"
               value={formState.data.subcourse_id}
               onChange={handleInputChange}
-              className={`border rounded px-3 py-2 w-full ${state.validationErrors.subcourse_id ? 'border-red-500' : ''}`}
+              className={`${ENROLLMENT_FORM_FIELD_CLASS} ${state.validationErrors.subcourse_id ? ENROLLMENT_FORM_FIELD_ERROR_CLASS : ''}`}
               required
             >
               <option value="">Select subcourse</option>
@@ -984,12 +991,12 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
           </div>
 
           <div>
-            <label className="block mb-1">Batch *</label>
+            <label className={ENROLLMENT_FORM_LABEL_CLASS}>Batch *</label>
             <select
               name="batch"
               value={formState.data.batch}
               onChange={handleInputChange}
-              className={`border rounded px-3 py-2 w-full ${state.validationErrors.batch ? 'border-red-500' : ''}`}
+              className={`${ENROLLMENT_FORM_FIELD_CLASS} ${state.validationErrors.batch ? ENROLLMENT_FORM_FIELD_ERROR_CLASS : ''}`}
               required
             >
               <option value="">Select batch</option>
@@ -1397,9 +1404,9 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
       />
 
       {/* Collapsible Action Box */}
-      <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
-        <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
-          <div className="font-semibold">
+      <div className="action-panel-shell">
+        <div className="action-panel-header">
+          <div className="action-panel-title">
             {selectedAction ? `${(
               selectedAction === "➕" ? "ADD" :
               selectedAction === "🔍" ? "SEARCH" :
@@ -1411,7 +1418,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
           <PanelToggleButton open={panelOpen} onClick={() => setPanelOpen((o) => !o)} />
         </div>
         {panelOpen && selectedAction && (
-          <div className="p-4">
+          <div className="action-panel-body">
             {selectedAction === "➕" && renderFormView()}
             {selectedAction === "🔍" && (
               <div className="text-sm text-gray-600">Use the search table below.</div>
@@ -1446,10 +1453,9 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
 
             {activeTab === 'list' && (
               <>
-                <input
-                  type="text"
-                  placeholder="🔍 Search by enrollment no or name..."
-                  className="border rounded px-4 py-2 min-w-[280px] flex-1 max-w-[520px]"
+                <SearchField
+                  className="min-w-[280px] flex-1 max-w-[520px]"
+                  placeholder="Search by enrollment no or name..."
                   value={state.searchTerm}
                   onChange={(e) => setState(prev => ({ ...prev, searchTerm: e.target.value }))}
                 />

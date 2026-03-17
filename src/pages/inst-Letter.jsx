@@ -2,6 +2,7 @@ import useEnrollmentLookup from '../hooks/useEnrollmentLookup';
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import PanelToggleButton from "../components/PanelToggleButton";
 import PageTopbar from "../components/PageTopbar";
+import SearchField from '../components/SearchField';
 import { isoToDMY, dmyToISO } from "../utils/date";
 import InstVerReport from "../report/InstVerReport";
 import {
@@ -256,9 +257,7 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 	);
 	const [q, setQ] = useState("");
 	const [statusMessage, setStatusMessage] = useState("");
-	const [showInstitutePanel, setShowInstitutePanel] = useState(true);
-	const [showStudentsPanel, setShowStudentsPanel] = useState(true);
-	const [showRecordsPanel, setShowRecordsPanel] = useState(true);
+	const [showEditorPanels, setShowEditorPanels] = useState(true);
 	const [searchTerm, setSearchTerm] = useState("");
 	const [searchField, setSearchField] = useState("all");
 	const [searchResults, setSearchResults] = useState([]);
@@ -612,10 +611,16 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 	}, [nextStudentSr]);
 
 	useEffect(() => {
-		if (rights.can_view) {
-			loadList();
+		if (!rights.can_view) {
+			return undefined;
 		}
-	}, [rights.can_view, loadList]);
+
+		const handle = setTimeout(() => {
+			loadList(q);
+		}, 300);
+
+		return () => clearTimeout(handle);
+	}, [q, rights.can_view, loadList]);
 
 	useEffect(() => {
 		return () => {
@@ -783,8 +788,7 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 				await loadStudents(detail.doc_rec?.doc_rec_id || detail.doc_rec || "");
 				resetStudentForm();
 				setSelectedAction("✏️ Edit");
-				setShowInstitutePanel(true);
-				setShowStudentsPanel(true);
+				setShowEditorPanels(true);
 			} catch (err) {
 				console.error(err);
 				setStatus(err.message || "Unable to open record");
@@ -931,17 +935,18 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 		}
 	};
 
-	const handleAdvancedSearch = async (event) => {
-		event.preventDefault();
+	const runAdvancedSearch = useCallback(async (termValue = searchTerm, fieldValue = searchField) => {
 		if (!rights.can_view) return;
-		const term = searchTerm.trim();
+		const term = (termValue || '').trim();
 		if (!term) {
-			setSearchError("Enter a value to search.");
+			setSearchResults([]);
+			setHasSearchRun(false);
+			setSearchError("");
 			return;
 		}
 		setSearchError("");
 		setSearching(true);
-		const field = searchField;
+		const field = fieldValue;
 		const searchParams = { limit: 100 };
 		if (field === "iv_record_no") {
 			searchParams.ivRecordNo = term.replace(/\D/g, "");
@@ -966,7 +971,19 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 		} finally {
 			setSearching(false);
 		}
-	};
+	}, [rights.can_view, searchField, searchTerm]);
+
+	useEffect(() => {
+		if (!isSearchMode) {
+			return undefined;
+		}
+
+		const handle = setTimeout(() => {
+			runAdvancedSearch(searchTerm, searchField);
+		}, 300);
+
+		return () => clearTimeout(handle);
+	}, [isSearchMode, runAdvancedSearch, searchField, searchTerm]);
 
 	const resetSearchPanel = () => {
 		setSearchTerm("");
@@ -984,20 +1001,19 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 		setEditingStudentId(null);
 			autoDocRecRef.current = { created: false, creating: false };
 			setDocRecIsPreview(false);
-		setShowInstitutePanel(true);
-		setShowStudentsPanel(true);
+		setShowEditorPanels(true);
 		setSelectedAction("➕");
 	};
 
 	const renderSearchPanel = () => (
 		<>
 			<section className="rounded-2xl border bg-white p-4 shadow-sm">
-				<form className="space-y-4" onSubmit={handleAdvancedSearch}>
+				<div className="space-y-4">
 					<div className="grid gap-4 md:grid-cols-12">
 						<div className="md:col-span-6">
 							<label className="label">Search Value</label>
-							<input
-								className="input"
+							<SearchField
+								className="w-full"
 								value={searchTerm}
 								onChange={(e) => setSearchTerm(e.target.value)}
 								placeholder="Enrollment, IV record no, Doc Rec, institute…"
@@ -1013,14 +1029,8 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 								))}
 							</select>
 						</div>
-						<div className="md:col-span-3 flex items-end gap-2">
-							<button
-								type="submit"
-								disabled={searching}
-								className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60"
-							>
-								{searching ? "Searching…" : "Search"}
-							</button>
+						<div className="md:col-span-3 flex items-end justify-between gap-2">
+							<span className="text-xs text-slate-500">{searching ? 'Searching…' : 'Auto-searching'}</span>
 							<button
 								type="button"
 								onClick={resetSearchPanel}
@@ -1037,7 +1047,7 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 					{searchError && (
 						<div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{searchError}</div>
 					)}
-				</form>
+				</div>
 			</section>
 			<section className="rounded-2xl border bg-white p-4 shadow-sm">
 				<div className="mb-3 flex items-center justify-between">
@@ -1057,13 +1067,13 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 
 	const renderMainPanels = () => (
 		<>
-			<section className="rounded-2xl border bg-white p-4 shadow-sm space-y-4">
-				<div className="flex flex-wrap items-center justify-between gap-3">
-					<h3 className="text-lg font-semibold">Institutional Verification</h3>
-					<PanelToggleButton open={showInstitutePanel} onClick={() => setShowInstitutePanel((prev) => !prev)} />
+			<section className="action-panel-shell space-y-4">
+				<div className="action-panel-header">
+					<h3 className="action-panel-title">Institutional Verification</h3>
+					<PanelToggleButton open={showEditorPanels} onClick={() => setShowEditorPanels((prev) => !prev)} />
 				</div>
-				{showInstitutePanel && (
-				<fieldset className="space-y-4" disabled={detailLoading}>
+				{showEditorPanels && (
+				<fieldset className="action-panel-body space-y-4" disabled={detailLoading}>
 					<div className="grid gap-3 md:grid-cols-12">
 						<div className="md:col-span-2">
 							<label className="label">Doc Rec ID</label>
@@ -1316,161 +1326,144 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 				)}
 			</section>
 
-			<section className="rounded-2xl border bg-white p-4 shadow-sm space-y-5">
-				<div className="flex items-center justify-between">
-					<h3 className="text-lg font-semibold">Students</h3>
-					<div className="flex gap-2">
-						<PanelToggleButton open={showStudentsPanel} onClick={() => setShowStudentsPanel((prev) => !prev)} />
-						{editingStudentId && (
-							<button type="button" onClick={resetStudentForm} className="reset-button-compact">
-								Cancel Edit
-							</button>
-						)}
-						<button
-							type="button"
-							onClick={handleStudentSave}
-							disabled={savingStudent || (!rights.can_create && !rights.can_edit)}
-							className="save-button"
-						>
-							{savingStudent ? "Saving…" : editingStudentId ? "Update Student" : "Add Student"}
-						</button>
-					</div>
-				</div>
-
-				{showStudentsPanel && (
-				<>
-				<div className="grid gap-2 md:grid-cols-12">
-					<div className="md:col-span-1 max-w-[100]">
-						<label className="label">Sr No</label>
-						<input
-							className="input"
-							value={sform.sr_no}
-							onChange={(e) => setSForm((prev) => ({ ...prev, sr_no: e.target.value.replace(/\D/g, "") }))}
-						/>
-					</div>
-					<div className="md:col-span-2">
-						<label className="label">Enrollment</label>
-						<input className="input" value={sform.enrollment} onChange={(e) => setSForm((prev) => ({ ...prev, enrollment: e.target.value }))} />
-					</div>
-					<div className="md:col-span-2">
-						<label className="label">Student Name</label>
-						<input className="input" value={sform.student_name} onChange={(e) => setSForm((prev) => ({ ...prev, student_name: e.target.value }))} />
-					</div>
-					<div className="md:col-span-2">
-						<label className="label">Degree Name</label>
-						<input className="input" value={sform.iv_degree_name} onChange={(e) => setSForm((prev) => ({ ...prev, iv_degree_name: e.target.value }))} />
-					</div>
-					<div className="md:col-span-1">
-						<label className="label">Credential</label>
-						<input className="input" value={sform.type_of_credential} onChange={(e) => setSForm((prev) => ({ ...prev, type_of_credential: e.target.value }))} />
-					</div>
-					<div className="md:col-span-1">
-						<label className="label">Month / Year</label>
-						<input className="input" value={sform.month_year} onChange={(e) => setSForm((prev) => ({ ...prev, month_year: e.target.value }))} />
-					</div>
-					<div className="md:col-span-1">
-						<label className="label">Study Mode</label>
-						<select className="input" value={sform.study_mode} onChange={(e) => setSForm((prev) => ({ ...prev, study_mode: e.target.value }))}>
-							{['', ...STUDY_MODE_OPTIONS].map((opt) => (
-								<option key={opt || 'blank'} value={opt}>
-									{opt || '--'}
-								</option>
-							))}
-						</select>
-					</div>
-					<div className="md:col-span-2">
-						<label className="label">Status</label>
-						<input className="input" value={sform.verification_status} onChange={(e) => setSForm((prev) => ({ ...prev, verification_status: e.target.value }))} />
-					</div>
-				</div>
-
-				{studentsLoading ? (
-					<div className="rounded border p-4 text-center text-slate-500">Loading students…</div>
-				) : srows.length ? (
-					<div className="overflow-auto rounded border">
-						<table className="min-w-full text-sm">
-							<thead className="bg-slate-50">
-								<tr>
-									<th className="px-2 py-1 text-left">Sr</th>
-									<th className="px-2 py-1 text-left">Enrollment</th>
-									<th className="px-2 py-1 text-left">Student</th>
-									<th className="px-2 py-1 text-left">Degree</th>
-									<th className="px-2 py-1 text-left">Credential</th>
-									<th className="px-2 py-1 text-left">Month/Year</th>
-									<th className="px-2 py-1 text-left">Study Mode</th>
-									<th className="px-2 py-1 text-left">Status</th>
-									<th className="px-2 py-1 text-right">Actions</th>
-								</tr>
-							</thead>
-							<tbody>
-								{srows.map((row) => (
-									<tr key={row.id || row.sr_no} className="border-t">
-										<td className="px-2 py-1">{row.sr_no || "-"}</td>
-										<td className="px-2 py-1">{row.enrollment || row.enrollment_no_text || "-"}</td>
-										<td className="px-2 py-1">{row.student_name || "-"}</td>
-										<td className="px-2 py-1">{row.iv_degree_name || "-"}</td>
-										<td className="px-2 py-1">{row.type_of_credential || "-"}</td>
-										<td className="px-2 py-1">{row.month_year || "-"}</td>
-										<td className="px-2 py-1">{row.study_mode || "-"}</td>
-										<td className="px-2 py-1">{row.verification_status || "-"}</td>
-										<td className="px-2 py-1 text-right">
-											<div className="flex justify-end gap-2">
-												<button type="button" className="text-indigo-600" onClick={() => startEditStudent(row)}>
-													Edit
-												</button>
-												<button type="button" className="text-red-600" onClick={() => deleteStudent(row)}>
-													Delete
-												</button>
-											</div>
-										</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					</div>
-				) : (
-					<p className="text-sm text-slate-500">No students for this record.</p>
-				)}
-				</>
-				)}
-			</section>
-
-			<section className="rounded-2xl border bg-white p-4 shadow-sm">
-				<div className="mb-3 flex items-center justify-between">
-					<h3 className="text-lg font-semibold">Records</h3>
-					<PanelToggleButton open={showRecordsPanel} onClick={() => setShowRecordsPanel((prev) => !prev)} />
-				</div>
-				{showRecordsPanel && (
-					<>
-						<div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center">
-							<input
-								className="input flex-1"
-								placeholder="Search by Doc Rec / Inst Name / IV number"
-								value={q}
-								onChange={(e) => setQ(e.target.value)}
-							/>
+			{showEditorPanels && (
+				<section className="rounded-2xl border bg-white p-4 shadow-sm space-y-5">
+					<div className="flex items-center justify-between">
+						<h3 className="text-lg font-semibold">Students</h3>
+						<div className="flex gap-2">
+							{editingStudentId && (
+								<button type="button" onClick={resetStudentForm} className="reset-button-compact">
+									Cancel Edit
+								</button>
+							)}
 							<button
 								type="button"
-								onClick={() => loadList(q)}
-								disabled={loadingList}
-								className="rounded bg-blue-600 px-4 py-2 font-semibold text-white disabled:opacity-60"
+								onClick={handleStudentSave}
+								disabled={savingStudent || (!rights.can_create && !rights.can_edit)}
+								className="save-button"
 							>
-								{loadingList ? "Searching…" : "Search"}
+								{savingStudent ? "Saving…" : editingStudentId ? "Update Student" : "Add Student"}
 							</button>
 						</div>
-						{listError && (
-							<div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{listError}</div>
-						)}
-						<RecordsTable
-							records={list}
-							loading={loadingList || detailLoading}
-							emptyLabel="No records available"
-							onRowClick={handleRecordSelect}
-							clickable
-							activeId={selectedRecordId}
-						/>
-					</>
+					</div>
+
+					<div className="grid gap-2 md:grid-cols-12">
+						<div className="md:col-span-1 max-w-[100]">
+							<label className="label">Sr No</label>
+							<input
+								className="input"
+								value={sform.sr_no}
+								onChange={(e) => setSForm((prev) => ({ ...prev, sr_no: e.target.value.replace(/\D/g, "") }))}
+							/>
+						</div>
+						<div className="md:col-span-2">
+							<label className="label">Enrollment</label>
+							<input className="input" value={sform.enrollment} onChange={(e) => setSForm((prev) => ({ ...prev, enrollment: e.target.value }))} />
+						</div>
+						<div className="md:col-span-2">
+							<label className="label">Student Name</label>
+							<input className="input" value={sform.student_name} onChange={(e) => setSForm((prev) => ({ ...prev, student_name: e.target.value }))} />
+						</div>
+						<div className="md:col-span-2">
+							<label className="label">Degree Name</label>
+							<input className="input" value={sform.iv_degree_name} onChange={(e) => setSForm((prev) => ({ ...prev, iv_degree_name: e.target.value }))} />
+						</div>
+						<div className="md:col-span-1">
+							<label className="label">Credential</label>
+							<input className="input" value={sform.type_of_credential} onChange={(e) => setSForm((prev) => ({ ...prev, type_of_credential: e.target.value }))} />
+						</div>
+						<div className="md:col-span-1">
+							<label className="label">Month / Year</label>
+							<input className="input" value={sform.month_year} onChange={(e) => setSForm((prev) => ({ ...prev, month_year: e.target.value }))} />
+						</div>
+						<div className="md:col-span-1">
+							<label className="label">Study Mode</label>
+							<select className="input" value={sform.study_mode} onChange={(e) => setSForm((prev) => ({ ...prev, study_mode: e.target.value }))}>
+								{['', ...STUDY_MODE_OPTIONS].map((opt) => (
+									<option key={opt || 'blank'} value={opt}>
+										{opt || '--'}
+									</option>
+								))}
+							</select>
+						</div>
+						<div className="md:col-span-2">
+							<label className="label">Status</label>
+							<input className="input" value={sform.verification_status} onChange={(e) => setSForm((prev) => ({ ...prev, verification_status: e.target.value }))} />
+						</div>
+					</div>
+
+					{studentsLoading ? (
+						<div className="rounded border p-4 text-center text-slate-500">Loading students…</div>
+					) : srows.length ? (
+						<div className="overflow-auto rounded border">
+							<table className="min-w-full text-sm">
+								<thead className="bg-slate-50">
+									<tr>
+										<th className="px-2 py-1 text-left">Sr</th>
+										<th className="px-2 py-1 text-left">Enrollment</th>
+										<th className="px-2 py-1 text-left">Student</th>
+										<th className="px-2 py-1 text-left">Degree</th>
+										<th className="px-2 py-1 text-left">Credential</th>
+										<th className="px-2 py-1 text-left">Month/Year</th>
+										<th className="px-2 py-1 text-left">Study Mode</th>
+										<th className="px-2 py-1 text-left">Status</th>
+										<th className="px-2 py-1 text-right">Actions</th>
+									</tr>
+								</thead>
+								<tbody>
+									{srows.map((row) => (
+										<tr key={row.id || row.sr_no} className="border-t">
+											<td className="px-2 py-1">{row.sr_no || "-"}</td>
+											<td className="px-2 py-1">{row.enrollment || row.enrollment_no_text || "-"}</td>
+											<td className="px-2 py-1">{row.student_name || "-"}</td>
+											<td className="px-2 py-1">{row.iv_degree_name || "-"}</td>
+											<td className="px-2 py-1">{row.type_of_credential || "-"}</td>
+											<td className="px-2 py-1">{row.month_year || "-"}</td>
+											<td className="px-2 py-1">{row.study_mode || "-"}</td>
+											<td className="px-2 py-1">{row.verification_status || "-"}</td>
+											<td className="px-2 py-1 text-right">
+												<div className="flex justify-end gap-2">
+													<button type="button" className="edit-button-compact" onClick={() => startEditStudent(row)}>
+														Edit
+													</button>
+													<button type="button" className="delete-button-compact" onClick={() => deleteStudent(row)}>
+														Delete
+													</button>
+												</div>
+											</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					) : (
+						<p className="text-sm text-slate-500">No students for this record.</p>
+					)}
+				</section>
+			)}
+
+			<section className="rounded-2xl border bg-white p-4 shadow-sm">
+				<h3 className="mb-3 text-lg font-semibold">Records</h3>
+				<div className="mb-3 space-y-2">
+					<SearchField
+						className="w-full"
+						placeholder="Search by Doc Rec / Inst Name / IV number"
+						value={q}
+						onChange={(e) => setQ(e.target.value)}
+					/>
+					<p className="text-xs text-slate-500">Records refresh automatically while you type.</p>
+				</div>
+				{listError && (
+					<div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{listError}</div>
 				)}
+				<RecordsTable
+					records={list}
+					loading={loadingList || detailLoading}
+					emptyLabel="No records available"
+					onRowClick={handleRecordSelect}
+					clickable
+					activeId={selectedRecordId}
+				/>
 			</section>
 		</>
 	);

@@ -477,8 +477,8 @@ export default function DataAnalysis() {
                         <td className="pr-4 py-1">
                           {service === 'DEGREE' && (
                             <div className="flex gap-2">
-                              <button onClick={() => editRecord(r)} className="px-2 py-0.5 bg-yellow-600 text-white rounded text-xs">Edit</button>
-                              <button onClick={() => { setSelectedIds(new Set([r.id])); deleteSelected(); }} className="px-2 py-0.5 bg-red-600 text-white rounded text-xs">Delete</button>
+                              <button onClick={() => editRecord(r)} className="edit-button-compact">Edit</button>
+                              <button onClick={() => { setSelectedIds(new Set([r.id])); deleteSelected(); }} className="delete-button-compact">Delete</button>
                             </div>
                           )}
                         </td>

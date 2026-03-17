@@ -3,6 +3,7 @@ import { dmyToISO, isoToDMY } from "../utils/date";
 import { useNavigate } from 'react-router-dom';
 import PanelToggleButton from '../components/PanelToggleButton';
 import PageTopbar from "../components/PageTopbar";
+import SearchField from '../components/SearchField';
 import useEnrollmentLookup from '../hooks/useEnrollmentLookup';
 
 const ACTIONS = ["➕", "✏️ Edit", "🔍", "📄 Report"];
@@ -51,11 +52,12 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
-  const loadList = async () => {
+  const loadList = async (queryValue = q) => {
     setLoading(true);
     setError(null);
     try {
-      const url = q ? `/api/migration/?search=${encodeURIComponent(q)}` : `/api/migration/`;
+      const trimmedQuery = (queryValue || '').trim();
+      const url = trimmedQuery ? `/api/migration/?search=${encodeURIComponent(trimmedQuery)}` : `/api/migration/`;
       const res = await fetch(url, { headers: { ...authHeaders() } });
       if (!res.ok) {
         throw new Error(`Server error: ${res.status} ${res.statusText}`);
@@ -70,7 +72,13 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
     }
   };
 
-  useEffect(() => { loadList(); }, []);
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      loadList(q);
+    }, 300);
+
+    return () => clearTimeout(handle);
+  }, [q]);
 
   const setF = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -182,14 +190,14 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
       />
 
       {/* Collapsible Action Box */}
-      <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
-        <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
-          <div className="font-semibold">{selectedTopbarMenu || 'Panel'}</div>
+      <div className="action-panel-shell">
+        <div className="action-panel-header">
+          <div className="action-panel-title">{selectedTopbarMenu || 'Panel'}</div>
           <PanelToggleButton open={panelOpen} onClick={() => setPanelOpen((o) => !o)} />
         </div>
 
         {panelOpen && (selectedTopbarMenu === '➕' || selectedTopbarMenu === '✏️ Edit') && (
-          <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="action-panel-body grid grid-cols-1 md:grid-cols-4 gap-3">
             <div>
               <label className="text-sm">Doc Rec</label>
               <input className="w-full border rounded-lg p-2" placeholder="mg25000001" value={form.doc_rec} onChange={(e)=>setF('doc_rec', e.target.value)} />
@@ -259,9 +267,14 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
         )}
 
         {panelOpen && selectedTopbarMenu === '🔍' && (
-          <div className="p-4 flex gap-2">
-            <input className="flex-1 border rounded-lg p-2" placeholder="Search by MG No / Enrollment / Name" value={q} onChange={(e)=>setQ(e.target.value)} />
-            <button className="px-3 py-2 rounded-lg bg-blue-600 text-white" onClick={loadList}>Search</button>
+          <div className="action-panel-body space-y-2">
+            <SearchField
+              className="w-full"
+              placeholder="Search by MG No / Enrollment / Name"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+            <p className="text-xs text-slate-500">Results update automatically while you type.</p>
           </div>
         )}
       </div>

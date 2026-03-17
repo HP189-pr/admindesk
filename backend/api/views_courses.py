@@ -114,13 +114,17 @@ class SubBranchViewSet(viewsets.ModelViewSet):
 class InstituteViewSet(viewsets.ModelViewSet):
     queryset = Institute.objects.all()
     serializer_class = InstituteSerializer
+    pagination_class = None
 
     def get_queryset(self):
         qs = super().get_queryset()
-        search = self.request.query_params.get('search', '')
+        search = (self.request.query_params.get('search') or '').strip()
         if search:
-            qs = qs.filter(institute_name__icontains=search)
-        return qs.order_by('institute_name')
+            qs = qs.filter(
+                Q(institute_code__icontains=search) |
+                Q(institute_name__icontains=search)
+            )
+        return qs.order_by(Lower('institute_code'), Lower('institute_name'), 'institute_id')
 
 
 class InstituteCourseOfferingViewSet(viewsets.ModelViewSet):

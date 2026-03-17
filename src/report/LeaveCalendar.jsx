@@ -306,9 +306,11 @@ const LeaveCalendar = ({ user }) => {
             <button
               onClick={refresh}
               disabled={loading || !selectedEmpId}
-              className="rounded-full bg-amber-400 px-5 py-2 text-sm font-semibold text-slate-900 shadow disabled:cursor-not-allowed disabled:bg-amber-200"
+              className="refresh-icon-button"
+              title={loading ? 'Loading' : 'Refresh'}
+              aria-label={loading ? 'Loading' : 'Refresh'}
             >
-              {loading ? 'Loading…' : 'Refresh'}
+              <span className={`refresh-symbol ${loading ? 'animate-spin' : ''}`} aria-hidden="true">↻</span>
             </button>
 
             <button

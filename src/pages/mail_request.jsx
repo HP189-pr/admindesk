@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
+import { FaSave } from 'react-icons/fa';
 import PanelToggleButton from '../components/PanelToggleButton';
 import PageTopbar from '../components/PageTopbar';
+import SearchField from '../components/SearchField';
 import {
   fetchMailRequests,
   updateMailRequest,
@@ -50,7 +52,7 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   const [selectedIds, setSelectedIds] = useState([]);
   const [drafts, setDrafts] = useState({});
   const [updatingId, setUpdatingId] = useState(null);
-  const [refreshingIds, setRefreshingIds] = useState([]);
+  const [bulkRefreshing, setBulkRefreshing] = useState(false);
   const [lastLoadedAt, setLastLoadedAt] = useState(null);
   const [rights, setRights] = useState(RIGHTS_FALLBACK);
   const [rightsLoaded, setRightsLoaded] = useState(false);
@@ -371,8 +373,26 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
         });
         activeRowRef.current = updated;
       }
+
+      let autoRefreshed = false;
+      try {
+        const refreshed = await refreshMailRequest(rowId);
+        autoRefreshed = true;
+        setRows((prev) => prev.map((item) => (item.id === rowId ? refreshed : item)));
+        if (activeRowRef.current && activeRowRef.current.id === rowId) {
+          setActiveRow(refreshed);
+          setEditForm({
+            mail_status: refreshed.mail_status || 'pending',
+            remark: refreshed.remark || '',
+          });
+          activeRowRef.current = refreshed;
+        }
+      } catch {
+        autoRefreshed = false;
+      }
+
       await loadRows({ silent: true });
-      setFlashMessage('success', 'Mail request updated.');
+      setFlashMessage('success', autoRefreshed ? 'Mail request saved and refreshed.' : 'Mail request saved.');
     } catch (err) {
       if (isMailRequestMaybeCompletedError(err)) {
         setFlashMessage('info', 'Save response was delayed. Checking latest data...');
@@ -393,30 +413,12 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
     }
   };
 
-  const handleRefresh = async (rowId) => {
-    setRefreshingIds((prev) => [...prev, rowId]);
-    try {
-      const refreshed = await refreshMailRequest(rowId);
-      setRows((prev) => prev.map((item) => (item.id === rowId ? refreshed : item)));
-      setDrafts((prev) => {
-        const copy = { ...prev };
-        delete copy[rowId];
-        return copy;
-      });
-      setFlashMessage('success', 'Verification refreshed.');
-    } catch (err) {
-      setFlashMessage('error', err.message || 'Failed to refresh verification.');
-    } finally {
-      setRefreshingIds((prev) => prev.filter((id) => id !== rowId));
-    }
-  };
-
   const handleBulkRefresh = async () => {
     if (!selectedIds.length) {
       setFlashMessage('info', 'Select at least one submission.');
       return;
     }
-    setRefreshingIds((prev) => [...prev, ...selectedIds]);
+    setBulkRefreshing(true);
     try {
       await bulkRefreshMailRequests(selectedIds);
       await loadRows();
@@ -424,7 +426,7 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
     } catch (err) {
       setFlashMessage('error', err.message || 'Bulk refresh failed.');
     } finally {
-      setRefreshingIds([]);
+      setBulkRefreshing(false);
       setSelectedIds([]);
     }
   };
@@ -435,8 +437,6 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   const handleSyncAndReload = useCallback(() => {
     runSheetSyncRefresh({ silent: false, showModal: true });
   }, [runSheetSyncRefresh]);
-
-  const isRefreshing = (id) => refreshingIds.includes(id);
 
   const statusCounts = useMemo(() => {
     const counts = { pending: 0, progress: 0, done: 0, cancel: 0 };
@@ -516,10 +516,12 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
               </label>
               <button
                 onClick={handleSyncAndReload}
-                className="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 text-sm"
+                className="refresh-icon-button"
                 disabled={loading || sheetSyncing}
+                title={sheetSyncing ? 'Refreshing' : 'Refresh'}
+                aria-label={sheetSyncing ? 'Refreshing' : 'Refresh'}
               >
-                {sheetSyncing ? 'Refreshing...' : '↻ Refresh'}
+                <span className={`refresh-symbol ${sheetSyncing ? 'animate-spin' : ''}`} aria-hidden="true">↻</span>
               </button>
             </div>
           ) : null
@@ -540,19 +542,18 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
 
       {rightsLoaded && rights.can_view && (
         <>
-          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-            <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
-              <div className="font-semibold text-gray-800">{selectedAction}</div>
+          <div className="action-panel-shell">
+            <div className="action-panel-header">
+              <div className="action-panel-title">{selectedAction}</div>
               <PanelToggleButton open={panelOpen} onClick={() => setPanelOpen((open) => !open)} />
             </div>
 
             {panelOpen && selectedAction === ACTIONS[0] && (
-              <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="action-panel-body grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-600 mb-1">Search</label>
-                  <input
-                    type="search"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  <SearchField
+                    className="w-full"
                     placeholder="Enrollment number, student name, or email"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -583,7 +584,7 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
             )}
 
             {panelOpen && selectedAction === ACTIONS[1] && (
-              <div className="p-4 space-y-3 text-sm text-gray-700">
+              <div className="action-panel-body space-y-3 text-sm text-gray-700">
                 <p>
                   Use bulk tools to refresh multiple submissions at once. Select the rows from the records table below
                   and run a bulk refresh to re-check enrollment and student name verification.
@@ -591,10 +592,12 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={handleBulkRefresh}
-                    className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm disabled:bg-blue-300"
-                    disabled={!rights.can_edit || !selectedIds.length || loading}
+                    className="refresh-icon-button"
+                    disabled={!rights.can_edit || !selectedIds.length || loading || bulkRefreshing}
+                    title={bulkRefreshing ? 'Refreshing selected records' : 'Bulk Refresh'}
+                    aria-label={bulkRefreshing ? 'Refreshing selected records' : 'Bulk Refresh'}
                   >
-                    Bulk Refresh
+                    <span className={`refresh-symbol ${bulkRefreshing ? 'animate-spin' : ''}`} aria-hidden="true">↻</span>
                   </button>
                   <span className="text-xs text-gray-500">Currently selected: {selectedIds.length} submission(s).</span>
                 </div>
@@ -607,7 +610,7 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
             )}
 
             {panelOpen && selectedAction === ACTIONS[2] && (
-              <div className="p-4 space-y-4 text-sm text-gray-700">
+              <div className="action-panel-body space-y-4 text-sm text-gray-700">
                 {activeRow ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
@@ -726,10 +729,12 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                 <span>Selected: {selectedIds.length}</span>
                 <button
                   onClick={handleBulkRefresh}
-                  className="px-3 py-1.5 rounded bg-blue-600 text-white disabled:bg-blue-300"
-                  disabled={!rights.can_edit || !selectedIds.length || loading}
+                  className="refresh-icon-button"
+                  disabled={!rights.can_edit || !selectedIds.length || loading || bulkRefreshing}
+                  title={bulkRefreshing ? 'Refreshing selected records' : 'Bulk Refresh'}
+                  aria-label={bulkRefreshing ? 'Refreshing selected records' : 'Bulk Refresh'}
                 >
-                  Bulk Refresh
+                  <span className={`refresh-symbol ${bulkRefreshing ? 'animate-spin' : ''}`} aria-hidden="true">↻</span>
                 </button>
               </div>
             </div>
@@ -791,7 +796,6 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                     const mailStatus = draft.mail_status ?? row.mail_status ?? '';
                     const remark = draft.remark ?? row.remark ?? '';
                     const disabled = updatingId === row.id;
-                    const refreshLock = isRefreshing(row.id);
                     const selected = selectedIds.includes(row.id);
 
                     return (
@@ -857,20 +861,16 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                                 e.stopPropagation();
                                 applyUpdate(row.id);
                               }}
-                              className="save-button-compact"
+                              className="save-icon-button"
                               disabled={!rights.can_edit || disabled}
+                              title={disabled ? 'Saving' : 'Save and auto-refresh'}
+                              aria-label={disabled ? 'Saving' : 'Save and auto-refresh'}
                             >
-                              {updatingId === row.id ? 'Saving...' : 'Save'}
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRefresh(row.id);
-                              }}
-                              className="px-3 py-1.5 rounded bg-gray-700 text-white text-xs disabled:bg-gray-400"
-                              disabled={refreshLock}
-                            >
-                              {refreshLock ? 'Refreshing...' : 'Refresh Match'}
+                              {updatingId === row.id ? (
+                                <span className="save-symbol animate-pulse" aria-hidden="true">⏳</span>
+                              ) : (
+                                <FaSave className="save-symbol" size={14} aria-hidden="true" />
+                              )}
                             </button>
                           </div>
                         </td>

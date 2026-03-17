@@ -461,8 +461,8 @@ class CCTVOutwardViewSet(CctvPermissionMixin, viewsets.ModelViewSet):
         story.append(SP(2))
         story.append(HR())
         story.append(Paragraph("<b>Enclosures:</b>", st_bold_norm))
-        story.append(Paragraph(f"001.&nbsp;&nbsp;DVD No(s).: {dvd_label}", st_norm))
-        story.append(Paragraph(f"002.&nbsp;&nbsp;CCTV Observation Report No(s).: {outward.rep_nos or ''}", st_norm))
+        story.append(Paragraph(f"1.&nbsp;&nbsp;DVD No(s).: {dvd_label}", st_norm))
+        story.append(Paragraph(f"2.&nbsp;&nbsp;CCTV Observation Report No(s).: {outward.rep_nos or ''}", st_norm))
 
         doc.build(story)
         pdf_bytes = buf.getvalue()

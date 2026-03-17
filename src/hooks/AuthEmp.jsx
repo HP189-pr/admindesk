@@ -87,7 +87,9 @@ export default function AuthEmp() {
       <h3 className="text-lg font-semibold mb-3">Employee Profiles</h3>
 
       <div className="mb-3">
-        <button onClick={load} className="px-3 py-1 bg-blue-600 text-white rounded">Refresh</button>
+        <button onClick={load} className="refresh-icon-button" title="Refresh" aria-label="Refresh">
+          <span className="refresh-symbol" aria-hidden="true">↻</span>
+        </button>
         <button
             onClick={() => { openProfile({}, true); }}
           className="ml-2 px-3 py-1 bg-green-600 text-white rounded"
@@ -511,7 +513,7 @@ export default function AuthEmp() {
                 <td className="py-2 px-3">
                   <button
                     onClick={(e) => { e.stopPropagation(); openProfile(p, true); }}
-                    className="px-2 py-1 bg-yellow-500 text-white rounded"
+                    className="edit-button-compact"
                   >
                     Edit
                   </button>

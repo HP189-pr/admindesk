@@ -6,6 +6,7 @@ import {
   FiPaperclip,
   FiSmile,
 } from 'react-icons/fi';
+import SearchField from './SearchField';
 import { useAuth } from '../hooks/AuthContext';
 import ChatBoxService from '../services/chatboxservice';
 import { API_BASE_URL } from '../api/axiosInstance';
@@ -1085,12 +1086,12 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
                 </div>
 
                 <div className="p-2">
-                  <input
-                    type="text"
+                  <SearchField
+                    className="w-full"
+                    inputClassName="text-sm text-black"
                     value={userQuery}
                     onChange={(e) => setUserQuery(e.target.value)}
                     placeholder="Search"
-                    className="w-full text-black rounded px-2 py-1 text-sm"
                     aria-label="Search users"
                   />
                 </div>

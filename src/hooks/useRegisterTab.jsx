@@ -65,10 +65,16 @@ const useRegisterTab = ({
   }, []);
 
   useEffect(() => {
-    if (isActive) {
-      loadData();
+    if (!isActive) {
+      return undefined;
     }
-  }, [isActive]);
+
+    const handle = setTimeout(() => {
+      loadData(filters, filters.search || filters.type || filters.date_from || filters.date_to ? 'Failed to filter data' : 'Failed to load data');
+    }, 250);
+
+    return () => clearTimeout(handle);
+  }, [filters, isActive]);
 
   useEffect(() => {
     if (institutes.length === 0 || !extra.college || instCourses.length > 0) {

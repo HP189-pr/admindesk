@@ -36,6 +36,9 @@ export const updateCentre = (id, data) =>
 export const getDVDs = (params) =>
   API.get(`${API_BASE}/dvd/`, { params });
 
+export const getInstitutes = (params) =>
+  API.get(`${API_BASE}/institutes/`, { params });
+
 export const updateDVD = (id, data) =>
   API.patch(`${API_BASE}/dvd/${id}/`, data);
 

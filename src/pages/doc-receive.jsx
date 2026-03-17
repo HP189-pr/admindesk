@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState, useRef } from "react";
 import { dmyToISO, isoToDMY, pad2 } from "../utils/date";
 import PanelToggleButton from "../components/PanelToggleButton";
 import PageTopbar from "../components/PageTopbar";
+import SearchField from '../components/SearchField';
 import useEnrollmentLookup from '../hooks/useEnrollmentLookup';
 
 const ACTIONS = ["➕", "🔍", "📄 Report"];
@@ -346,14 +347,18 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     finally{ setRecentLoading(false); }
   };
 
-  // initial load
-  useEffect(()=>{ fetchRecentRecords('', serviceFilter); }, []);
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      fetchRecentRecords(searchTerm.trim(), serviceFilter);
+    }, 300);
+
+    return () => clearTimeout(handle);
+  }, [searchTerm, serviceFilter]);
 
   // When apply_for changes, align the service filter and refresh the list
   useEffect(()=>{
     const svc = serviceForApply(form.apply_for);
     setServiceFilter(svc);
-    fetchRecentRecords('', svc);
   }, [form.apply_for]);
 
   // For PR/MG: show issued warning when enrollment already exists in the same service
@@ -905,14 +910,14 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
       />
 
       {/* Collapsible Action Box */}
-      <div className="border rounded-2xl overflow-hidden shadow-sm">
-        <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
-          <div className="font-semibold">{selected ? `${selected} Panel` : "Action Panel"}</div>
+      <div className="action-panel-shell">
+        <div className="action-panel-header">
+          <div className="action-panel-title">{selected ? `${selected} Panel` : "Action Panel"}</div>
           <PanelToggleButton open={panelOpen} onClick={() => setPanelOpen((o) => !o)} />
         </div>
 
         {panelOpen && selected === "➕" && (
-          <div>
+          <div className="action-panel-body">
           <div className={`px-2 pt-2 pb-1 ${GRID24}`}>
             {/* doc_rec_date */}
             <div className="md:col-span-3">
@@ -1155,17 +1160,16 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
               <div className="lg:col-span-5">
                 <label className="text-sm font-medium text-gray-700">Search</label>
-                <input
-                  className="w-full border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-sky-200"
+                <SearchField
+                  className="w-full"
                   placeholder="Search by doc_rec_id, name, enrollment_no"
                   value={searchTerm}
-                  onChange={(e)=>{ setSearchTerm(e.target.value); }}
-                  onKeyDown={(e)=>{ if (e.key === 'Enter') fetchRecentRecords(searchTerm, serviceFilter); }}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
               <div className="lg:col-span-3">
                 <label className="text-sm font-medium text-gray-700">Record Type</label>
-                <select className="w-full border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-sky-200" value={serviceFilter} onChange={(e)=>{ setServiceFilter(e.target.value); fetchRecentRecords(searchTerm, e.target.value); }}>
+                <select className="w-full border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-sky-200" value={serviceFilter} onChange={(e)=>{ setServiceFilter(e.target.value); }}>
                   <option value="all">All</option>
                   <option value="migration">Migration</option>
                   <option value="provisional">Provisional</option>
@@ -1174,7 +1178,6 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
                 </select>
               </div>
               <div className="lg:col-span-4 flex items-end lg:justify-end gap-2">
-                <button className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-medium disabled:opacity-60" onClick={()=>fetchRecentRecords(searchTerm, serviceFilter)} disabled={recentLoading}>Search</button>
                 <button className="reset-button" onClick={()=>{ setSearchTerm(''); setServiceFilter('all'); fetchRecentRecords('', 'all'); }}>Reset</button>
               </div>
             </div>

@@ -1142,7 +1142,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                             type="button"
                             onClick={() => startEdit(entry)}
                             disabled={!canEditEntry}
-                            className="rounded border border-blue-200 px-3 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                            className="edit-button-compact"
                           >
                             Edit
                           </button>
@@ -1160,7 +1160,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                             <button
                               type="button"
                               onClick={() => handleDelete(entry)}
-                              className="rounded border border-red-200 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-50"
+                              className="delete-button-compact"
                             >
                               Delete
                             </button>

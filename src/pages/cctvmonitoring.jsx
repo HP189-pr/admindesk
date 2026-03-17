@@ -8,6 +8,7 @@ import {
   createOutward,
   getOutward,
   getDVDs,
+  getInstitutes,
   assignCcNumbers,
   updateOutward,
   deleteOutward,
@@ -20,6 +21,43 @@ const ACTIONS = ["CCTV Monitoring", "CCTV-Outward"];
 const EXAM_SESSIONS = ["2026-1", "2026-2", "2027-1", "2027-2", "2028-1", "2028-2"];
 const DEFAULT_PLACES = ["Kadi", "15-LDRP", "15VSITR", "23", "12"];
 const SESSION_OPTIONS = ["A", "B", "C", "D"];
+const EMPTY_OUTWARD_FORM = {
+  outward_date: "",
+  cctv_record_no: "",
+  college_name: "",
+  exam_on: "",
+  last_date: "",
+  cc_start_label: "",
+  no_of_dvd: "",
+  no_of_report: "",
+  rep_nos: "",
+  return_received: false,
+  case_found: false,
+  case_type: "",
+  case_details: "",
+  note: "",
+  id: null,
+};
+
+const toResultsArray = (payload) =>
+  Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.results)
+    ? payload.results
+    : [];
+
+const findInstituteMatch = (value, institutes) => {
+  const needle = String(value || "").trim().toLowerCase();
+  if (!needle) return null;
+
+  return (
+    institutes.find((item) => {
+      const code = String(item?.institute_code || "").trim().toLowerCase();
+      const name = String(item?.institute_name || "").trim().toLowerCase();
+      return needle === code || needle === name;
+    }) || null
+  );
+};
 
 const normalizeExamSlotSession = (value) => {
   const normalized = String(value || "").trim().toUpperCase();
@@ -43,6 +81,7 @@ const CCTVMonitoring = ({
   const [exams, setExams] = useState([]);
   const [centres, setCentres] = useState([]);
   const [dvds, setDvds] = useState([]);
+  const [institutes, setInstitutes] = useState([]);
   const [outwards, setOutwards] = useState([]);
   const [selectedAction, setSelectedAction] = useState(ACTIONS[0]);
   const [selectedSession, setSelectedSession] = useState("2026-1");
@@ -51,6 +90,7 @@ const CCTVMonitoring = ({
   const [irregularityByKey, setIrregularityByKey] = useState({});
   const [ccRequestByKey, setCcRequestByKey] = useState({});
   const [syncing, setSyncing] = useState(false);
+  const [institutesLoading, setInstitutesLoading] = useState(false);
   const [flash, setFlash] = useState(null);
 
   const [centreForm] = useState({
@@ -60,23 +100,7 @@ const CCTVMonitoring = ({
     no_of_cd: "",
   });
 
-  const [outwardForm, setOutwardForm] = useState({
-    outward_date: "",
-    cctv_record_no: "",
-    college_name: "",
-    exam_on: "",
-    last_date: "",
-    cc_start_label: "",
-    no_of_dvd: "",
-    no_of_report: "",
-    rep_nos: "",
-    return_received: false,
-    case_found: false,
-    case_type: "",
-    case_details: "",
-    note: "",
-    id: null,
-  });
+  const [outwardForm, setOutwardForm] = useState(EMPTY_OUTWARD_FORM);
 
   // ============================
   // Load Exams
@@ -88,6 +112,12 @@ const CCTVMonitoring = ({
     fetchCentres();
     fetchDvds();
   }, [rights.can_view]);
+
+  useEffect(() => {
+    if (!rights.can_view || selectedAction !== ACTIONS[1]) return;
+    fetchOutwards();
+    fetchInstitutes();
+  }, [rights.can_view, selectedAction]);
 
   useEffect(() => {
     setSessionByExam((prev) => {
@@ -152,11 +182,7 @@ const CCTVMonitoring = ({
     try {
       const params = session ? { exam_year_session: session } : undefined;
       const res = await getDVDs(params);
-      const data = Array.isArray(res?.data)
-        ? res.data
-        : Array.isArray(res?.data?.results)
-        ? res.data.results
-        : [];
+      const data = toResultsArray(res?.data);
       setDvds(data);
     } catch (err) {
       setDvds([]);
@@ -165,14 +191,24 @@ const CCTVMonitoring = ({
     }
   };
 
+  const fetchInstitutes = async () => {
+    setInstitutesLoading(true);
+    try {
+      const res = await getInstitutes();
+      setInstitutes(toResultsArray(res?.data));
+    } catch (err) {
+      setInstitutes([]);
+      const msg = err?.response?.data?.detail || err.message || "Failed to load institute codes.";
+      setFlashMessage("error", msg);
+    } finally {
+      setInstitutesLoading(false);
+    }
+  };
+
   const fetchOutwards = async () => {
     try {
       const res = await getOutward();
-      const data = Array.isArray(res?.data)
-        ? res.data
-        : Array.isArray(res?.data?.results)
-        ? res.data.results
-        : [];
+      const data = toResultsArray(res?.data);
       setOutwards(data);
     } catch (err) {
       setOutwards([]);
@@ -188,6 +224,11 @@ const CCTVMonitoring = ({
     }
     return exams.length ? exams[0] : null;
   }, [outwardForm.exam, exams]);
+
+  const selectedInstitute = useMemo(
+    () => findInstituteMatch(outwardForm.college_name, institutes),
+    [outwardForm.college_name, institutes]
+  );
 
   const examSession = selectedSession || selectedExam?.exam_year_session || "";
 
@@ -272,6 +313,18 @@ const CCTVMonitoring = ({
       });
   }, [exams]);
 
+  useEffect(() => {
+    if (!outwardForm.college_name || institutes.length === 0) return;
+
+    const match = findInstituteMatch(outwardForm.college_name, institutes);
+    if (!match?.institute_code || outwardForm.college_name === match.institute_code) return;
+
+    setOutwardForm((prev) => ({
+      ...prev,
+      college_name: match.institute_code,
+    }));
+  }, [outwardForm.college_name, institutes]);
+
   const setFlashMessage = (type, text) => {
     setFlash({ type, text });
     if (text) {
@@ -344,7 +397,7 @@ const CCTVMonitoring = ({
 
     const payload = {
       outward_date: outwardForm.outward_date || null,
-      college_name: outwardForm.college_name,
+      college_name: outwardForm.college_name || "",
       exam_on: outwardForm.exam_on,
       last_date: outwardForm.last_date || null,
       cc_start_label: outwardForm.cc_start_label,
@@ -372,23 +425,7 @@ const CCTVMonitoring = ({
       return;
     }
 
-    setOutwardForm({
-      outward_date: "",
-      cctv_record_no: "",
-      college_name: "",
-      exam_on: "",
-      last_date: "",
-      cc_start_label: "",
-      no_of_dvd: "",
-      no_of_report: "",
-      rep_nos: "",
-      return_received: false,
-      case_found: false,
-      case_type: "",
-      case_details: "",
-      note: "",
-      id: null,
-    });
+    setOutwardForm({ ...EMPTY_OUTWARD_FORM });
     fetchOutwards();
   };
 
@@ -436,7 +473,6 @@ const CCTVMonitoring = ({
         selected={selectedAction}
         onSelect={(action) => {
           setSelectedAction(action);
-          if (action === ACTIONS[1]) fetchOutwards();
         }}
         actionsOnLeft={false}
         onToggleSidebar={onToggleSidebar}
@@ -460,10 +496,12 @@ const CCTVMonitoring = ({
             <button
               type="button"
               onClick={handleRefresh}
-              className="px-3 py-2 rounded bg-slate-800 text-white text-sm hover:bg-slate-700 disabled:bg-slate-400"
+              className="refresh-icon-button"
               disabled={syncing || !rights.can_view}
+              title={syncing ? "Syncing" : "Refresh"}
+              aria-label={syncing ? "Syncing" : "Refresh"}
             >
-              {syncing ? "Syncing..." : "↻ Refresh"}
+              <span className={`refresh-symbol ${syncing ? "animate-spin" : ""}`} aria-hidden="true">↻</span>
             </button>
           </div>
         }
@@ -778,288 +816,387 @@ const CCTVMonitoring = ({
 
       {selectedAction === ACTIONS[1] && (
         <div className="border p-4 rounded space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="font-semibold">CCTV Outward</h2>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={fetchOutwards}
-                className="px-4 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700"
-              >
-                ↻ Reload
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  if (!outwards.length) {
-                    alert("No outward record available.");
-                    return;
-                  }
-                  const latest = outwards[0];
-                  try {
-                    const res = await downloadOutwardPDF(latest.id);
-                    const mime = "application/pdf";
-                    const url = URL.createObjectURL(new Blob([res.data], { type: mime }));
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = `${latest.cctv_record_no || "CCTV_Letter"}.pdf`;
-                    a.click();
-                    URL.revokeObjectURL(url);
-                  } catch {
-                    alert("Failed to generate letter.");
-                  }
-                }}
-                className="px-4 py-2 rounded bg-green-600 text-white text-sm hover:bg-green-700"
-              >
-                Generate Latest Letter
-              </button>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-100 text-gray-700 uppercase text-xs">
-                <tr>
-                  <th className="px-3 py-2 text-left">Date</th>
-                  <th className="px-3 py-2 text-left">Record No.</th>
-                  <th className="px-3 py-2 text-left">Outward No.</th>
-                  <th className="px-3 py-2 text-left">College</th>
-                  <th className="px-3 py-2 text-left">DVD No</th>
-                  <th className="px-3 py-2 text-left">Total DVD</th>
-                  <th className="px-3 py-2 text-left">Reports</th>
-                  <th className="px-3 py-2 text-left">Return</th>
-                  <th className="px-3 py-2 text-left">Case</th>
-                  <th className="px-3 py-2 text-left">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {outwards.length === 0 && (
-                  <tr>
-                    <td colSpan={10} className="px-4 py-6 text-center text-gray-500">
-                      No outward entries found.
-                    </td>
-                  </tr>
-                )}
-                {outwards.map((row) => {
-                  const cdLabel = [row.cc_start_label, row.cc_end_label]
-                    .filter(Boolean)
-                    .join(" - ");
-                  return (
-                    <tr key={row.id} className="border-b last:border-b-0">
-                      <td className="px-3 py-2 align-top">{row.outward_date || "—"}</td>
-                      <td className="px-3 py-2 align-top">{row.cctv_record_no || "—"}</td>
-                      <td className="px-3 py-2 align-top">{row.outward_no || "—"}</td>
-                      <td className="px-3 py-2 align-top">{row.college_name || "—"}</td>
-                      <td className="px-3 py-2 align-top">{cdLabel || "—"}</td>
-                      <td className="px-3 py-2 align-top">{row.no_of_dvd || "—"}</td>
-                      <td className="px-3 py-2 align-top">{row.no_of_report || "—"}</td>
-                      <td className="px-3 py-2 align-top">
-                        {row.return_received ? "Yes" : "No"}
-                      </td>
-                      <td className="px-3 py-2 align-top">
-                        {row.case_found ? row.case_type || "Yes" : "No"}
-                      </td>
-                      <td className="px-3 py-2 align-top">
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleOutwardEdit(row)}
-                            className="px-3 py-1.5 rounded bg-purple-600 text-white text-xs hover:bg-purple-700"
-                            disabled={!rights.can_edit}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleOutwardDelete(row)}
-                            className="px-3 py-1.5 rounded bg-red-600 text-white text-xs hover:bg-red-700"
-                            disabled={!rights.can_delete}
-                          >
-                            Delete
-                          </button>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              try {
-                                const res = await downloadOutwardPDF(row.id);
-                                const mime = "application/pdf";
-                                const url = URL.createObjectURL(new Blob([res.data], { type: mime }));
-                                const a = document.createElement("a");
-                                a.href = url;
-                                a.download = `${row.cctv_record_no || "CCTV_Letter"}.pdf`;
-                                a.click();
-                                URL.revokeObjectURL(url);
-                              } catch {
-                                alert("Failed to generate letter.");
-                              }
-                            }}
-                            className="px-3 py-1.5 rounded bg-green-600 text-white text-xs hover:bg-green-700"
-                          >
-                            Generate Letter
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
           <div className="border p-4 rounded">
             <h3 className="font-semibold mb-4">{outwardForm.id ? "Edit Outward" : "Create Outward"}</h3>
-            <form onSubmit={handleOutwardSubmit} className="grid md:grid-cols-2 gap-4">
-              <input
-                type="date"
-                value={toDateInput(outwardForm.outward_date)}
-                onChange={(e) =>
-                  setOutwardForm({ ...outwardForm, outward_date: e.target.value })
-                }
-              />
+            <form onSubmit={handleOutwardSubmit} className="space-y-4">
+              {outwardForm.id && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  Editing {outwardForm.cctv_record_no || "existing outward record"}
+                </div>
+              )}
 
-              <input
-                type="text"
-                placeholder="Record No"
-                value={outwardForm.cctv_record_no || ""}
-                disabled
-              />
-
-              <input
-                type="text"
-                placeholder="College Name"
-                value={outwardForm.college_name || ""}
-                onChange={(e) =>
-                  setOutwardForm({ ...outwardForm, college_name: e.target.value })
-                }
-              />
-
-              <input
-                type="text"
-                placeholder="Exam On (e.g. March 2026)"
-                value={outwardForm.exam_on || ""}
-                onChange={(e) =>
-                  setOutwardForm({ ...outwardForm, exam_on: e.target.value })
-                }
-              />
-
-              <input
-                type="date"
-                value={toDateInput(outwardForm.last_date || "")}
-                onChange={(e) =>
-                  setOutwardForm({ ...outwardForm, last_date: e.target.value })
-                }
-              />
-
-              <input
-                type="text"
-                placeholder="DVD No(S) (e.g. CC-001, CC-002)"
-                
-                value={outwardForm.cc_start_label}
-                onChange={(e) =>
-                  setOutwardForm({ ...outwardForm, cc_start_label: e.target.value })
-                }
-              />
-
-              <input
-                type="number"
-                placeholder="No of DVD"
-                value={outwardForm.no_of_dvd}
-                onChange={(e) =>
-                  setOutwardForm({ ...outwardForm, no_of_dvd: e.target.value })
-                }
-              />
-
-              <input
-                type="number"
-                placeholder="No of Report"
-                value={outwardForm.no_of_report || ""}
-                onChange={(e) =>
-                  setOutwardForm({ ...outwardForm, no_of_report: e.target.value })
-                }
-              />
-
-              <textarea
-                placeholder="Report No(s) (e.g. R-001, R-002)"
-                value={outwardForm.rep_nos || ""}
-                onChange={(e) =>
-                  setOutwardForm({ ...outwardForm, rep_nos: e.target.value })
-                }
-                className="md:col-span-2"
-              />
-
-              <label>
-                <input
-                  type="checkbox"
-                  checked={outwardForm.return_received}
-                  onChange={(e) =>
-                    setOutwardForm({
-                      ...outwardForm,
-                      return_received: e.target.checked,
-                    })
-                  }
-                />
-                Return Received
-              </label>
-
-              <label>
-                <input
-                  type="checkbox"
-                  checked={outwardForm.case_found}
-                  onChange={(e) =>
-                    setOutwardForm({
-                      ...outwardForm,
-                      case_found: e.target.checked,
-                    })
-                  }
-                />
-                Case Found
-              </label>
-
-              {outwardForm.case_found && (
-                <>
-                  <select
-                    value={outwardForm.case_type}
+              <div className="grid gap-3 md:grid-cols-12">
+                <div className="md:col-span-2">
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    value={toDateInput(outwardForm.outward_date)}
                     onChange={(e) =>
-                      setOutwardForm({
-                        ...outwardForm,
-                        case_type: e.target.value,
-                      })
+                      setOutwardForm({ ...outwardForm, outward_date: e.target.value })
                     }
-                  >
-                    <option value="">Select Case Type</option>
-                    <option value="CCTV">CCTV</option>
-                    <option value="Physical">Physical</option>
-                  </select>
+                    className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </div>
 
-                  <textarea
-                    placeholder="Case Details"
-                    value={outwardForm.case_details}
+                <div className="md:col-span-6">
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    Institute Code
+                  </label>
+                  <select
+                    value={outwardForm.college_name || ""}
+                    onChange={(e) =>
+                      setOutwardForm({ ...outwardForm, college_name: e.target.value })
+                    }
+                    className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                    disabled={institutesLoading}
+                  >
+                    <option value="">
+                      {institutesLoading ? "Loading institute codes..." : "Select institute code"}
+                    </option>
+                    {institutes.map((item) => {
+                      const code = item?.institute_code || "";
+                      const name = item?.institute_name || "";
+                      if (!code) return null;
+
+                      return (
+                        <option key={item?.institute_id || code} value={code}>
+                          {name ? `${code} - ${name}` : code}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  {selectedInstitute?.institute_name && (
+                    <p className="mt-1 text-xs text-slate-500">{selectedInstitute.institute_name}</p>
+                  )}
+                </div>
+
+                <div className="md:col-span-4">
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    Exam On
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. March 2026"
+                    value={outwardForm.exam_on || ""}
+                    onChange={(e) =>
+                      setOutwardForm({ ...outwardForm, exam_on: e.target.value })
+                    }
+                    className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    Last Date
+                  </label>
+                  <input
+                    type="date"
+                    value={toDateInput(outwardForm.last_date || "")}
+                    onChange={(e) =>
+                      setOutwardForm({ ...outwardForm, last_date: e.target.value })
+                    }
+                    className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </div>
+
+                <div className="md:col-span-3">
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    DVD No(s)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. CC-001, CC-002"
+                    value={outwardForm.cc_start_label}
+                    onChange={(e) =>
+                      setOutwardForm({ ...outwardForm, cc_start_label: e.target.value })
+                    }
+                    className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </div>
+
+                <div className="md:col-span-3">
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    Report No(s)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. R-001, R-002"
+                    value={outwardForm.rep_nos || ""}
+                    onChange={(e) =>
+                      setOutwardForm({ ...outwardForm, rep_nos: e.target.value })
+                    }
+                    className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    No of Report
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={outwardForm.no_of_report || ""}
+                    onChange={(e) =>
+                      setOutwardForm({ ...outwardForm, no_of_report: e.target.value })
+                    }
+                    className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    No of DVD
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={outwardForm.no_of_dvd}
+                    onChange={(e) =>
+                      setOutwardForm({ ...outwardForm, no_of_dvd: e.target.value })
+                    }
+                    className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-12 md:items-end">
+                <div className="md:col-span-6">
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    Remark / Note
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Remark / Note"
+                    value={outwardForm.note || ""}
+                    onChange={(e) =>
+                      setOutwardForm({ ...outwardForm, note: e.target.value })
+                    }
+                    className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </div>
+
+                <label className="inline-flex h-10 items-center gap-2 rounded border border-slate-200 px-3 py-2 text-sm text-slate-700 md:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={outwardForm.return_received}
                     onChange={(e) =>
                       setOutwardForm({
                         ...outwardForm,
-                        case_details: e.target.value,
+                        return_received: e.target.checked,
                       })
                     }
                   />
-                </>
+                  Return Received
+                </label>
+
+                <label className="inline-flex h-10 items-center gap-2 rounded border border-slate-200 px-3 py-2 text-sm text-slate-700 md:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={outwardForm.case_found}
+                    onChange={(e) =>
+                      setOutwardForm({
+                        ...outwardForm,
+                        case_found: e.target.checked,
+                      })
+                    }
+                  />
+                  Case Found
+                </label>
+
+                <button
+                  type="submit"
+                  className="save-button h-10 w-full md:col-span-2"
+                  disabled={outwardForm.id ? !rights.can_edit : !rights.can_create}
+                >
+                  Save
+                </button>
+              </div>
+
+              {outwardForm.case_found && (
+                <div className="grid gap-3 md:grid-cols-12">
+                  <div className="md:col-span-3">
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                      Case Type
+                    </label>
+                    <select
+                      value={outwardForm.case_type}
+                      onChange={(e) =>
+                        setOutwardForm({
+                          ...outwardForm,
+                          case_type: e.target.value,
+                        })
+                      }
+                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                    >
+                      <option value="">Select Case Type</option>
+                      <option value="CCTV">CCTV</option>
+                      <option value="Physical">Physical</option>
+                    </select>
+                  </div>
+
+                  <div className="md:col-span-9">
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                      Case Details
+                    </label>
+                    <textarea
+                      placeholder="Case details"
+                      value={outwardForm.case_details}
+                      onChange={(e) =>
+                        setOutwardForm({
+                          ...outwardForm,
+                          case_details: e.target.value,
+                        })
+                      }
+                      className="min-h-[96px] w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                    />
+                  </div>
+                </div>
               )}
 
-              <textarea
-                placeholder="Remark / Note"
-                value={outwardForm.note || ""}
-                onChange={(e) =>
-                  setOutwardForm({ ...outwardForm, note: e.target.value })
-                }
-                className="md:col-span-2"
-              />
-
-              <button
-                className="save-button md:col-span-2"
-                disabled={outwardForm.id ? !rights.can_edit : !rights.can_create}
-              >
-                {outwardForm.id ? "Update Outward" : "Create Outward"}
-              </button>
             </form>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="font-semibold">CCTV Outward</h2>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={fetchOutwards}
+                  className="refresh-icon-button"
+                  title="Reload"
+                  aria-label="Reload"
+                >
+                  <span className="refresh-symbol" aria-hidden="true">↻</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!outwards.length) {
+                      alert("No outward record available.");
+                      return;
+                    }
+                    const latest = outwards[0];
+                    try {
+                      const res = await downloadOutwardPDF(latest.id);
+                      const mime = "application/pdf";
+                      const url = URL.createObjectURL(new Blob([res.data], { type: mime }));
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `${latest.cctv_record_no || "CCTV_Letter"}.pdf`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    } catch {
+                      alert("Failed to generate letter.");
+                    }
+                  }}
+                  className="px-4 py-2 rounded bg-green-600 text-white text-sm hover:bg-green-700"
+                >
+                  Generate Latest Letter
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-100 text-gray-700 uppercase text-xs">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Date</th>
+                    <th className="px-3 py-2 text-left">Record No.</th>
+                    <th className="px-3 py-2 text-left">Outward No.</th>
+                    <th className="px-3 py-2 text-left">College</th>
+                    <th className="px-3 py-2 text-left">DVD No</th>
+                    <th className="px-3 py-2 text-left">Total DVD</th>
+                    <th className="px-3 py-2 text-left">Reports</th>
+                    <th className="px-3 py-2 text-left">Return</th>
+                    <th className="px-3 py-2 text-left">Case</th>
+                    <th className="px-3 py-2 text-left">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {outwards.length === 0 && (
+                    <tr>
+                      <td colSpan={10} className="px-4 py-6 text-center text-gray-500">
+                        No outward entries found.
+                      </td>
+                    </tr>
+                  )}
+                  {outwards.map((row) => {
+                    const institute = findInstituteMatch(row.college_name, institutes);
+                    const cdLabel = [row.cc_start_label, row.cc_end_label]
+                      .filter(Boolean)
+                      .join(" - ");
+                    return (
+                      <tr key={row.id} className="border-b last:border-b-0">
+                        <td className="px-3 py-2 align-top">{row.outward_date || "—"}</td>
+                        <td className="px-3 py-2 align-top">{row.cctv_record_no || "—"}</td>
+                        <td className="px-3 py-2 align-top">{row.outward_no || "—"}</td>
+                        <td className="px-3 py-2 align-top">
+                          <div className="font-medium text-slate-800">
+                            {institute?.institute_code || row.college_name || "—"}
+                          </div>
+                          {institute?.institute_name && (
+                            <div className="text-xs text-slate-500">{institute.institute_name}</div>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 align-top">{cdLabel || "—"}</td>
+                        <td className="px-3 py-2 align-top">{row.no_of_dvd || "—"}</td>
+                        <td className="px-3 py-2 align-top">{row.no_of_report || "—"}</td>
+                        <td className="px-3 py-2 align-top">
+                          {row.return_received ? "Yes" : "No"}
+                        </td>
+                        <td className="px-3 py-2 align-top">
+                          {row.case_found ? row.case_type || "Yes" : "No"}
+                        </td>
+                        <td className="px-3 py-2 align-top">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleOutwardEdit(row)}
+                              className="edit-button-compact"
+                              disabled={!rights.can_edit}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOutwardDelete(row)}
+                              className="delete-button-compact"
+                              disabled={!rights.can_delete}
+                            >
+                              Delete
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  const res = await downloadOutwardPDF(row.id);
+                                  const mime = "application/pdf";
+                                  const url = URL.createObjectURL(new Blob([res.data], { type: mime }));
+                                  const a = document.createElement("a");
+                                  a.href = url;
+                                  a.download = `${row.cctv_record_no || "CCTV_Letter"}.pdf`;
+                                  a.click();
+                                  URL.revokeObjectURL(url);
+                                } catch {
+                                  alert("Failed to generate letter.");
+                                }
+                              }}
+                              className="px-3 py-1.5 rounded bg-green-600 text-white text-xs hover:bg-green-700"
+                            >
+                              Generate Letter
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
