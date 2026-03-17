@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
-import { FaSave } from 'react-icons/fa';
+import { FaDownload } from 'react-icons/fa';
 import PanelToggleButton from '../components/PanelToggleButton';
 import PageTopbar from '../components/PageTopbar';
-import SearchField from '../components/SearchField';
 import {
   fetchMailRequests,
   updateMailRequest,
@@ -373,26 +372,8 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
         });
         activeRowRef.current = updated;
       }
-
-      let autoRefreshed = false;
-      try {
-        const refreshed = await refreshMailRequest(rowId);
-        autoRefreshed = true;
-        setRows((prev) => prev.map((item) => (item.id === rowId ? refreshed : item)));
-        if (activeRowRef.current && activeRowRef.current.id === rowId) {
-          setActiveRow(refreshed);
-          setEditForm({
-            mail_status: refreshed.mail_status || 'pending',
-            remark: refreshed.remark || '',
-          });
-          activeRowRef.current = refreshed;
-        }
-      } catch {
-        autoRefreshed = false;
-      }
-
       await loadRows({ silent: true });
-      setFlashMessage('success', autoRefreshed ? 'Mail request saved and refreshed.' : 'Mail request saved.');
+      setFlashMessage('success', 'Mail request updated.');
     } catch (err) {
       if (isMailRequestMaybeCompletedError(err)) {
         setFlashMessage('info', 'Save response was delayed. Checking latest data...');
@@ -542,18 +523,19 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
 
       {rightsLoaded && rights.can_view && (
         <>
-          <div className="action-panel-shell">
-            <div className="action-panel-header">
-              <div className="action-panel-title">{selectedAction}</div>
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+            <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
+              <div className="font-semibold text-gray-800">{selectedAction}</div>
               <PanelToggleButton open={panelOpen} onClick={() => setPanelOpen((open) => !open)} />
             </div>
 
             {panelOpen && selectedAction === ACTIONS[0] && (
-              <div className="action-panel-body grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-600 mb-1">Search</label>
-                  <SearchField
-                    className="w-full"
+                  <input
+                    type="search"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                     placeholder="Enrollment number, student name, or email"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -584,7 +566,7 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
             )}
 
             {panelOpen && selectedAction === ACTIONS[1] && (
-              <div className="action-panel-body space-y-3 text-sm text-gray-700">
+              <div className="p-4 space-y-3 text-sm text-gray-700">
                 <p>
                   Use bulk tools to refresh multiple submissions at once. Select the rows from the records table below
                   and run a bulk refresh to re-check enrollment and student name verification.
@@ -610,77 +592,89 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
             )}
 
             {panelOpen && selectedAction === ACTIONS[2] && (
-              <div className="action-panel-body space-y-4 text-sm text-gray-700">
+              <div className="p-4 space-y-4 text-sm text-gray-700">
                 {activeRow ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Submitted At</label>
-                      <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
-                        {formatDate(activeRow.submitted_at)}
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Submitted At</label>
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
+                          {formatDate(activeRow.submitted_at)}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Enrollment No</label>
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
+                          {activeRow.enrollment_no || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Student Name</label>
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
+                          {activeRow.student_name || 'N/A'}
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Enrollment No</label>
-                      <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
-                        {activeRow.enrollment_no || 'N/A'}
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Official Mail</label>
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 break-all">
+                          {activeRow.rec_official_mail || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Institute</label>
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
+                          {activeRow.rec_institute_name || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Document Type</label>
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
+                          {activeRow.send_doc_type || 'N/A'}
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Student Name</label>
-                      <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
-                        {activeRow.student_name || 'N/A'}
+
+                    <div className="grid grid-cols-1 md:grid-cols-[200px_minmax(260px,1fr)_auto] gap-3 items-end">
+                      <div>
+                        <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Status</label>
+                        <select
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          value={editForm.mail_status}
+                          onChange={(e) => setEditForm((prev) => ({ ...prev, mail_status: e.target.value }))}
+                          disabled={!rights.can_edit}
+                        >
+                          {STATUS_OPTIONS.filter((opt) => opt.value).map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
                       </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Official Mail</label>
-                      <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 break-all">
-                        {activeRow.rec_official_mail || 'N/A'}
+
+                      <div>
+                        <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Remark</label>
+                        <input
+                          type="text"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          value={editForm.remark}
+                          onChange={(e) => setEditForm((prev) => ({ ...prev, remark: e.target.value }))}
+                          disabled={!rights.can_edit}
+                          placeholder="Enter remark"
+                        />
                       </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Institute</label>
-                      <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
-                        {activeRow.rec_institute_name || 'N/A'}
+
+                      <div className="md:justify-self-end">
+                        <button
+                          onClick={() => activeRow && applyUpdate(activeRow.id, editForm)}
+                          className="save-button"
+                          disabled={!rights.can_edit || updatingId === activeRow.id}
+                        >
+                          {updatingId === activeRow?.id ? 'Saving...' : 'Save Changes'}
+                        </button>
                       </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Document Type</label>
-                      <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
-                        {activeRow.send_doc_type || 'N/A'}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Status</label>
-                      <select
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                        value={editForm.mail_status}
-                        onChange={(e) => setEditForm((prev) => ({ ...prev, mail_status: e.target.value }))}
-                        disabled={!rights.can_edit}
-                      >
-                        {STATUS_OPTIONS.filter((opt) => opt.value).map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Remark</label>
-                      <textarea
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm min-h-[3.5rem]"
-                        value={editForm.remark}
-                        onChange={(e) => setEditForm((prev) => ({ ...prev, remark: e.target.value }))}
-                        disabled={!rights.can_edit}
-                      />
-                    </div>
-                    <div className="md:col-span-2 flex justify-end">
-                      <button
-                        onClick={() => activeRow && applyUpdate(activeRow.id, editForm)}
-                        className="save-button"
-                        disabled={!rights.can_edit || updatingId === activeRow.id}
-                      >
-                        {updatingId === activeRow?.id ? 'Saving...' : 'Save Changes'}
-                      </button>
                     </div>
                   </div>
                 ) : (
@@ -869,7 +863,7 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                               {updatingId === row.id ? (
                                 <span className="save-symbol animate-pulse" aria-hidden="true">⏳</span>
                               ) : (
-                                <FaSave className="save-symbol" size={14} aria-hidden="true" />
+                                <FaDownload className="save-symbol" size={14} aria-hidden="true" />
                               )}
                             </button>
                           </div>
