@@ -174,23 +174,29 @@ const PopupSearch = () => {
   /* ================= UI ================= */
 
   return (
-    <div className="fixed right-24 bottom-2 z-30 w-[380px] max-w-full">
-      <div className="bg-white border shadow-xl rounded-2xl overflow-hidden">
+    <div className={`fixed right-24 bottom-2 z-30 ${open ? 'w-[380px] max-w-full' : 'w-auto'}`}>
+      <div className={open ? 'bg-white border shadow-xl rounded-2xl overflow-hidden' : 'w-fit ml-auto'}>
         {/* Header */}
         <div
-          className="flex items-center justify-between px-4 py-2 bg-indigo-600 text-white cursor-pointer"
+          className={
+            open
+              ? 'flex items-center justify-between px-4 py-2 bg-indigo-600 text-white cursor-pointer'
+              : 'flex items-center justify-between gap-3 min-w-[120px] px-4 py-3 bg-indigo-600 text-white cursor-pointer rounded-2xl shadow-xl'
+          }
           onClick={() => setOpen(!open)}
         >
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-full bg-white/20 flex items-center justify-center">
               <FaUserGraduate />
             </div>
-            <div className="leading-tight">
-              <div className="text-sm font-semibold">Student Search</div>
-              <div className="text-[11px] text-indigo-100">
-                Type Name, Enrollment No, Temp Enrollment No
+            {open && (
+              <div className="leading-tight">
+                <div className="text-sm font-semibold">Student Search</div>
+                <div className="text-[11px] text-indigo-100">
+                  Type Name, Enrollment No, Temp Enrollment No
+                </div>
               </div>
-            </div>
+            )}
           </div>
           <span aria-hidden="true" className="text-xl leading-none">{open ? '«' : '»'}</span>
         </div>

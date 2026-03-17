@@ -5,17 +5,16 @@ const Record = () => {
   const [activeTab, setActiveTab] = useState('Enrollment');
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
-      {/* Page Header & Tabs */}
-      <div className="bg-white shadow-sm border-b border-gray-200 px-6 pt-5">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Office Records</h1>
-        <div className="flex space-x-6">
+    <div className="flex h-full flex-col bg-slate-100 p-4 md:p-6">
+      <div className="rounded-2xl border border-slate-200 bg-white px-6 pt-5 shadow-sm">
+        <h1 className="text-3xl font-bold tracking-tight text-slate-800">Office Records</h1>
+        <div className="mt-4 flex items-center gap-2 border-b border-slate-200">
           <button
             onClick={() => setActiveTab('Enrollment')}
-            className={`pb-3 px-2 text-sm font-medium transition-colors duration-200 ${
+            className={`-mb-px rounded-t-xl px-4 py-2.5 text-sm font-medium transition-colors duration-200 ${
               activeTab === 'Enrollment'
-                ? 'border-b-2 border-blue-600 text-blue-600'
-                : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border border-slate-200 border-b-white bg-white font-semibold text-blue-600'
+                : 'text-slate-500 hover:text-slate-700'
             }`}
           >
             Enrollment State
@@ -23,9 +22,10 @@ const Record = () => {
         </div>
       </div>
 
-      {/* Tab Content */}
-      <div className="flex-1 overflow-auto p-6">
-        {activeTab === 'Enrollment' && <EnrollmentState />}
+      <div className="mt-4 flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="h-full overflow-auto p-4 md:p-5">
+          {activeTab === 'Enrollment' && <EnrollmentState />}
+        </div>
       </div>
     </div>
   );
