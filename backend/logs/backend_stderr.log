@@ -39689,3 +39689,10 @@ E:\admindesk\backend\backend\settings.py:76: UserWarning: channels is not instal
 INFO:waitress:Serving on http://127.0.0.1:8000
 Not Found: /ws/chat/
 WARNING:django.request:Not Found: /ws/chat/
+Unauthorized: /api/token/verify/
+WARNING:django.request:Unauthorized: /api/token/verify/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 3

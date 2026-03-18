@@ -55,6 +55,7 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
   const [securePage, setSecurePage] = useState(null);
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [activeMenu, setActiveMenu] = useState('');
   const [isAdminPanelFlow, setIsAdminPanelFlow] = useState(false);
   const [navModules, setNavModules] = useState([]);
   const [navLoading, setNavLoading] = useState(false);
@@ -244,6 +245,7 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
   };
 
   const handleMenuClick = (menuItem) => {
+    setActiveMenu(menuItem);
     if (menuItem === 'Admin Panel' || menuItem === 'Profile Settings') {
       handleSecurePageAccess(menuItem);
     } else {
@@ -255,7 +257,7 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
     <div
       className={`h-screen bg-gray-800 text-white transition-all ${
         isOpen ? 'w-60' : 'w-20'
-      } duration-300 p-4 relative flex flex-col`}
+      } duration-300 pl-4 pr-0 py-4 relative flex flex-col`}
     >
       {/* Profile Section */}
       <div className="flex items-center pt-4">
@@ -342,7 +344,26 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
                 key={item}
                 onClick={() => handleMenuClick(item)}
                 title={item}
-                className={`w-full px-4 py-2 hover:bg-gray-700 ${isOpen ? 'text-left' : 'text-center'}`}
+                className={`
+                  relative w-full px-4 py-3 transition-all duration-200
+                  ${isOpen ? 'text-left' : 'text-center'}
+                  ${
+                    activeMenu === item
+                      ? 'bg-gray-600 text-white font-medium'
+                      : 'hover:bg-gray-700 text-gray-200'
+                  }
+                `}
+                style={
+                  activeMenu === item
+                    ? {
+                        borderTopLeftRadius: '25px',
+                        borderBottomLeftRadius: '25px',
+                        borderTopRightRadius: '0px',
+                        borderBottomRightRadius: '0px',
+                        marginRight: '-4px',
+                      }
+                    : {}
+                }
               >
                 {isOpen ? item : String(item).split(' ')[0]}
               </button>
