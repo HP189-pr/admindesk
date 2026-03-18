@@ -6,6 +6,7 @@ __all__ = [
     "CCTVCentreEntry",
     "CCTVDVD",
     "CCTVOutward",
+    "CCTVCopyCase",
 ]
 
 
@@ -139,6 +140,7 @@ class CCTVOutward(models.Model):
     no_of_report = models.IntegerField(default=0)
 
     return_received = models.BooleanField(default=False)
+    receive_date = models.DateField(null=True, blank=True)
 
     case_found = models.BooleanField(default=False)
 
@@ -155,6 +157,8 @@ class CCTVOutward(models.Model):
     )
 
     case_details = models.TextField(blank=True)
+    course = models.CharField(max_length=120, blank=True, default="")
+    semester = models.CharField(max_length=30, blank=True, default="")
     note = models.TextField(blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -164,4 +168,26 @@ class CCTVOutward(models.Model):
 
     def __str__(self):
         return f"{self.cctv_record_no} - {self.outward_no}"
+
+
+class CCTVCopyCase(models.Model):
+    outward = models.ForeignKey(
+        CCTVOutward,
+        on_delete=models.CASCADE,
+        related_name="copy_cases",
+    )
+    college_name = models.CharField(max_length=200, blank=True, default="")
+    course = models.CharField(max_length=120, blank=True, default="")
+    semester = models.CharField(max_length=30, blank=True, default="")
+    dvd_no = models.CharField(max_length=200, blank=True, default="")
+    report_no = models.CharField(max_length=200, blank=True, default="")
+    no_of_student = models.PositiveIntegerField(default=0)
+    remark = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self):
+        return f"{self.outward.cctv_record_no or self.outward_id} / {self.college_name or '-'}"
 

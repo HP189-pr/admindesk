@@ -23,14 +23,16 @@ from .domain_cctv import (
     CCTVExam,
     CCTVCentreEntry,
     CCTVDVD,
-    CCTVOutward
+    CCTVOutward,
+    CCTVCopyCase,
 )
 
 from .serializers_cctv import (
     CCTVExamSerializer,
     CCTVCentreEntrySerializer,
     CCTVDVDSerializer,
-    CCTVOutwardSerializer
+    CCTVOutwardSerializer,
+    CCTVCopyCaseSerializer,
 )
 from ..sheets_sync import import_cctv_centres_from_sheet, import_cctv_exams_from_sheet
 
@@ -490,3 +492,17 @@ class CCTVOutwardViewSet(CctvPermissionMixin, viewsets.ModelViewSet):
         cctv_record_no = f"CCTV-REC-{str(next_record).zfill(4)}"
 
         serializer.save(outward_no=outward_no, cctv_record_no=cctv_record_no)
+
+
+class CCTVCopyCaseViewSet(CctvPermissionMixin, viewsets.ModelViewSet):
+    queryset = CCTVCopyCase.objects.select_related("outward").all()
+    serializer_class = CCTVCopyCaseSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = None
+
+    def get_queryset(self):
+        queryset = super().get_queryset().filter(outward__case_found=True)
+        outward_id = (self.request.query_params.get("outward") or "").strip()
+        if outward_id:
+            queryset = queryset.filter(outward_id=outward_id)
+        return queryset

@@ -68,3 +68,19 @@ export const syncCctvFromSheet = (sheetName) =>
 
 export const downloadOutwardPDF = (id) =>
   API.get(`${API_BASE}/cctv-outward/${id}/generate-pdf/`, { responseType: "blob" });
+
+// =========================
+// COPY CASE REPORTING
+// =========================
+
+export const getCctvCopyCases = (params) =>
+  API.get(`${API_BASE}/cctv-copy-cases/`, { params });
+
+export const createCctvCopyCase = (data) =>
+  API.post(`${API_BASE}/cctv-copy-cases/`, data);
+
+export const updateCctvCopyCase = (id, data) =>
+  API.patch(`${API_BASE}/cctv-copy-cases/${id}/`, data);
+
+export const deleteCctvCopyCase = (id) =>
+  API.delete(`${API_BASE}/cctv-copy-cases/${id}/`);

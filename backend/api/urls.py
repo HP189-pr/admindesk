@@ -102,6 +102,7 @@ try:
         CCTVCentreEntryViewSet,
         CCTVDVDViewSet,
         CCTVOutwardViewSet,
+        CCTVCopyCaseViewSet,
     )
 
 
@@ -151,6 +152,7 @@ try:
     router.register(r"centre", CCTVCentreEntryViewSet, basename="cctv-centre")
     router.register(r"dvd", CCTVDVDViewSet, basename="cctv-dvd")
     router.register(r"cctv-outward", CCTVOutwardViewSet, basename="cctv-outward")
+    router.register(r"cctv-copy-cases", CCTVCopyCaseViewSet, basename="cctv-copy-cases")
 
     urlpatterns = [
 

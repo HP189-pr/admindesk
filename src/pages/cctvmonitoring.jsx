@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { FaEdit, FaTrash } from "react-icons/fa";
 import PageTopbar from "../components/PageTopbar";
+import CCTVREPORT from "../report/CCTVREPORT";
 import { toDateInput } from "../utils/date";
 import {
   getExams,
@@ -17,7 +19,7 @@ import {
   downloadOutwardPDF,
 } from "../services/cctvservice";
 
-const ACTIONS = ["CCTV Monitoring", "CCTV-Outward"];
+const ACTIONS = ["CCTV Monitoring", "CCTV-Outward", "Copy Case Reporting"];
 const EXAM_SESSIONS = ["2026-1", "2026-2", "2027-1", "2027-2", "2028-1", "2028-2"];
 const DEFAULT_PLACES = ["Kadi", "15-LDRP", "15VSITR", "23", "12"];
 const SESSION_OPTIONS = ["A", "B", "C", "D"];
@@ -32,7 +34,10 @@ const EMPTY_OUTWARD_FORM = {
   no_of_report: "",
   rep_nos: "",
   return_received: false,
+  receive_date: "",
   case_found: false,
+  course: "",
+  semester: "",
   case_type: "",
   case_details: "",
   note: "",
@@ -45,6 +50,13 @@ const toResultsArray = (payload) =>
     : Array.isArray(payload?.results)
     ? payload.results
     : [];
+
+const pickReceiveDate = (row) =>
+  row?.receive_date ||
+  row?.receiveDate ||
+  row?.received_date ||
+  row?.return_received_date ||
+  "";
 
 const findInstituteMatch = (value, institutes) => {
   const needle = String(value || "").trim().toLowerCase();
@@ -101,6 +113,8 @@ const CCTVMonitoring = ({
   });
 
   const [outwardForm, setOutwardForm] = useState(EMPTY_OUTWARD_FORM);
+  const [showLetterPicker, setShowLetterPicker] = useState(false);
+  const [selectedLetterRecordId, setSelectedLetterRecordId] = useState("");
 
   // ============================
   // Load Exams
@@ -209,7 +223,12 @@ const CCTVMonitoring = ({
     try {
       const res = await getOutward();
       const data = toResultsArray(res?.data);
-      setOutwards(data);
+      setOutwards(
+        data.map((row) => ({
+          ...row,
+          receive_date: pickReceiveDate(row),
+        }))
+      );
     } catch (err) {
       setOutwards([]);
       const msg = err?.response?.data?.detail || err.message || "Failed to load outwards.";
@@ -395,6 +414,10 @@ const CCTVMonitoring = ({
       return;
     }
 
+    const resolvedReceiveDate = outwardForm.return_received
+      ? outwardForm.receive_date || null
+      : null;
+
     const payload = {
       outward_date: outwardForm.outward_date || null,
       college_name: outwardForm.college_name || "",
@@ -405,7 +428,10 @@ const CCTVMonitoring = ({
       no_of_report: outwardForm.no_of_report !== "" ? Number(outwardForm.no_of_report) : 0,
       rep_nos: outwardForm.rep_nos || "",
       return_received: outwardForm.return_received,
+      receive_date: resolvedReceiveDate,
       case_found: outwardForm.case_found,
+      course: outwardForm.case_found ? outwardForm.course || "" : "",
+      semester: outwardForm.case_found ? outwardForm.semester || "" : "",
       case_type: outwardForm.case_found ? outwardForm.case_type : null,
       case_details: outwardForm.case_found ? outwardForm.case_details : "",
       note: outwardForm.note || "",
@@ -443,7 +469,10 @@ const CCTVMonitoring = ({
       no_of_report: row.no_of_report || "",
       rep_nos: row.rep_nos || "",
       return_received: !!row.return_received,
+      receive_date: pickReceiveDate(row) || "",
       case_found: !!row.case_found,
+      course: row.course || "",
+      semester: row.semester || "",
       case_type: row.case_type || "",
       case_details: row.case_details || "",
       note: row.note || "",
@@ -458,6 +487,25 @@ const CCTVMonitoring = ({
     if (!confirm("Delete this outward entry?")) return;
     await deleteOutward(row.id);
     fetchOutwards();
+  };
+
+  const handleDownloadOutwardLetter = async (row) => {
+    if (!row?.id) {
+      alert("Invalid outward record.");
+      return;
+    }
+    try {
+      const res = await downloadOutwardPDF(row.id);
+      const mime = "application/pdf";
+      const url = URL.createObjectURL(new Blob([res.data], { type: mime }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${row.cctv_record_no || "CCTV_Letter"}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert("Failed to generate letter.");
+    }
   };
 
   return (
@@ -963,7 +1011,7 @@ const CCTVMonitoring = ({
               </div>
 
               <div className="grid gap-3 md:grid-cols-12 md:items-end">
-                <div className="md:col-span-6">
+                <div className="md:col-span-4">
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
                     Remark / Note
                   </label>
@@ -986,11 +1034,29 @@ const CCTVMonitoring = ({
                       setOutwardForm({
                         ...outwardForm,
                         return_received: e.target.checked,
+                        receive_date: e.target.checked
+                          ? outwardForm.receive_date
+                          : "",
                       })
                     }
                   />
                   Return Received
                 </label>
+
+                <div className="md:col-span-2">
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    Receive Date
+                  </label>
+                  <input
+                    type="date"
+                    value={toDateInput(outwardForm.receive_date || "")}
+                    onChange={(e) =>
+                      setOutwardForm({ ...outwardForm, receive_date: e.target.value })
+                    }
+                    disabled={!outwardForm.return_received}
+                    className="w-full rounded border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-100"
+                  />
+                </div>
 
                 <label className="inline-flex h-10 items-center gap-2 rounded border border-slate-200 px-3 py-2 text-sm text-slate-700 md:col-span-2">
                   <input
@@ -1000,6 +1066,8 @@ const CCTVMonitoring = ({
                       setOutwardForm({
                         ...outwardForm,
                         case_found: e.target.checked,
+                        course: e.target.checked ? outwardForm.course : "",
+                        semester: e.target.checked ? outwardForm.semester : "",
                       })
                     }
                   />
@@ -1017,6 +1085,42 @@ const CCTVMonitoring = ({
 
               {outwardForm.case_found && (
                 <div className="grid gap-3 md:grid-cols-12">
+                  <div className="md:col-span-3">
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                      Course
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Course"
+                      value={outwardForm.course || ""}
+                      onChange={(e) =>
+                        setOutwardForm({
+                          ...outwardForm,
+                          course: e.target.value,
+                        })
+                      }
+                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                      Semester
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Semester"
+                      value={outwardForm.semester || ""}
+                      onChange={(e) =>
+                        setOutwardForm({
+                          ...outwardForm,
+                          semester: e.target.value,
+                        })
+                      }
+                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                    />
+                  </div>
+
                   <div className="md:col-span-3">
                     <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
                       Case Type
@@ -1037,7 +1141,7 @@ const CCTVMonitoring = ({
                     </select>
                   </div>
 
-                  <div className="md:col-span-9">
+                  <div className="md:col-span-12">
                     <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
                       Case Details
                     </label>
@@ -1074,29 +1178,45 @@ const CCTVMonitoring = ({
                 </button>
                 <button
                   type="button"
-                  onClick={async () => {
+                  onClick={() => {
                     if (!outwards.length) {
                       alert("No outward record available.");
                       return;
                     }
-                    const latest = outwards[0];
-                    try {
-                      const res = await downloadOutwardPDF(latest.id);
-                      const mime = "application/pdf";
-                      const url = URL.createObjectURL(new Blob([res.data], { type: mime }));
-                      const a = document.createElement("a");
-                      a.href = url;
-                      a.download = `${latest.cctv_record_no || "CCTV_Letter"}.pdf`;
-                      a.click();
-                      URL.revokeObjectURL(url);
-                    } catch {
-                      alert("Failed to generate letter.");
-                    }
+                    setShowLetterPicker((prev) => !prev);
                   }}
                   className="px-4 py-2 rounded bg-green-600 text-white text-sm hover:bg-green-700"
                 >
-                  Generate Latest Letter
+                  Generate Letter
                 </button>
+                {showLetterPicker && (
+                  <select
+                    value={selectedLetterRecordId}
+                    onChange={async (e) => {
+                      const recordId = e.target.value;
+                      setSelectedLetterRecordId(recordId);
+                      if (!recordId) return;
+
+                      const target = outwards.find((item) => String(item.id) === String(recordId));
+                      if (!target) {
+                        alert("Selected record not found.");
+                        return;
+                      }
+
+                      await handleDownloadOutwardLetter(target);
+                      setShowLetterPicker(false);
+                      setSelectedLetterRecordId("");
+                    }}
+                    className="rounded border border-slate-300 px-3 py-2 text-sm bg-white"
+                  >
+                    <option value="">Select Record No</option>
+                    {outwards.map((row) => (
+                      <option key={row.id} value={row.id}>
+                        {row.cctv_record_no || row.outward_no || `Record ${row.id}`}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
             </div>
 
@@ -1112,14 +1232,16 @@ const CCTVMonitoring = ({
                     <th className="px-3 py-2 text-left">Total DVD</th>
                     <th className="px-3 py-2 text-left">Reports</th>
                     <th className="px-3 py-2 text-left">Return</th>
+                    <th className="px-3 py-2 text-left">Receive Date</th>
                     <th className="px-3 py-2 text-left">Case</th>
+                    <th className="px-3 py-2 text-left">Remark</th>
                     <th className="px-3 py-2 text-left">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {outwards.length === 0 && (
                     <tr>
-                      <td colSpan={10} className="px-4 py-6 text-center text-gray-500">
+                      <td colSpan={12} className="px-4 py-6 text-center text-gray-500">
                         No outward entries found.
                       </td>
                     </tr>
@@ -1149,45 +1271,42 @@ const CCTVMonitoring = ({
                           {row.return_received ? "Yes" : "No"}
                         </td>
                         <td className="px-3 py-2 align-top">
-                          {row.case_found ? row.case_type || "Yes" : "No"}
+                          {pickReceiveDate(row) || "—"}
                         </td>
+                        <td className="px-3 py-2 align-top">
+                          {row.case_found ? (
+                            <div>
+                              <div>{row.case_type || "Yes"}</div>
+                              {(row.course || row.semester) && (
+                                <div className="text-xs text-slate-500">
+                                  {[row.course, row.semester].filter(Boolean).join(" / ")}
+                                </div>
+                              )}
+                            </div>
+                          ) : "No"}
+                        </td>
+                        <td className="px-3 py-2 align-top">{row.note || "—"}</td>
                         <td className="px-3 py-2 align-top">
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
                               onClick={() => handleOutwardEdit(row)}
-                              className="edit-button-compact"
+                              className="w-7 h-7 inline-flex items-center justify-center rounded icon-edit-button"
                               disabled={!rights.can_edit}
+                              title="Edit"
+                              aria-label="Edit outward"
                             >
-                              Edit
+                              <FaEdit size={12} />
                             </button>
                             <button
                               type="button"
                               onClick={() => handleOutwardDelete(row)}
-                              className="delete-button-compact"
+                              className="w-7 h-7 inline-flex items-center justify-center rounded icon-delete-button"
                               disabled={!rights.can_delete}
+                              title="Delete"
+                              aria-label="Delete outward"
                             >
-                              Delete
-                            </button>
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                try {
-                                  const res = await downloadOutwardPDF(row.id);
-                                  const mime = "application/pdf";
-                                  const url = URL.createObjectURL(new Blob([res.data], { type: mime }));
-                                  const a = document.createElement("a");
-                                  a.href = url;
-                                  a.download = `${row.cctv_record_no || "CCTV_Letter"}.pdf`;
-                                  a.click();
-                                  URL.revokeObjectURL(url);
-                                } catch {
-                                  alert("Failed to generate letter.");
-                                }
-                              }}
-                              className="px-3 py-1.5 rounded bg-green-600 text-white text-xs hover:bg-green-700"
-                            >
-                              Generate Letter
+                              <FaTrash size={12} />
                             </button>
                           </div>
                         </td>
@@ -1198,6 +1317,12 @@ const CCTVMonitoring = ({
               </table>
             </div>
           </div>
+        </div>
+      )}
+
+      {selectedAction === ACTIONS[2] && (
+        <div className="border p-4 rounded">
+          <CCTVREPORT rights={rights} />
         </div>
       )}
     </div>
