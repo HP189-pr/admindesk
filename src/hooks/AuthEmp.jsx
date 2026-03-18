@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from '../api/axiosInstance';
 import { useAuth } from './AuthContext';
+import { FaEdit } from 'react-icons/fa';
 
 // Helpers for safe display and date handling
 const cleanValue = (v) => {
@@ -494,11 +495,12 @@ export default function AuthEmp() {
               <th className="py-2 px-3 text-left">Username / Usercode</th>
               <th className="py-2 px-3 text-left">Status</th>
               <th className="py-2 px-3 text-left">Institute</th>
+              <th className="py-2 px-3 text-left">Actions</th>
             </tr>
           </thead>
           <tbody>
             {profiles.length === 0 ? (
-              <tr><td colSpan={5} className="py-6 text-center text-gray-500">No employee profiles found</td></tr>
+              <tr><td colSpan={6} className="py-6 text-center text-gray-500">No employee profiles found</td></tr>
             ) : profiles.map(p => (
               <tr
                 key={p.id}
@@ -513,9 +515,11 @@ export default function AuthEmp() {
                 <td className="py-2 px-3">
                   <button
                     onClick={(e) => { e.stopPropagation(); openProfile(p, true); }}
-                    className="edit-button-compact"
+                    className="w-7 h-7 inline-flex items-center justify-center rounded icon-edit-button"
+                    title="Edit"
+                    aria-label="Edit employee profile"
                   >
-                    Edit
+                    <FaEdit size={12} />
                   </button>
                 </td>
               </tr>

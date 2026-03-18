@@ -282,19 +282,18 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
           <table className="min-w-[1100px] w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="text-left py-2 px-3">Doc Rec</th>
-                <th className="text-left py-2 px-3">Enroll</th>
-                <th className="text-left py-2 px-3">Name</th>
-                <th className="text-left py-2 px-3">Inst Code</th>
-                <th className="text-left py-2 px-3">Course Code</th>
-                <th className="text-left py-2 px-3">Subcourse</th>
-                <th className="text-left py-2 px-3">Class</th>
-                <th className="text-left py-2 px-3">Degree</th>
-                <th className="text-left py-2 px-3">PRV No</th>
-                <th className="text-left py-2 px-3">PRV Date</th>
-                <th className="text-left py-2 px-3">Pass Year</th>
-                <th className="text-left py-2 px-3">Status</th>
-                <th className="text-left py-2 px-3">Pay Rec</th>
+                <th className="text-left py-2 px-1 w-[64px] whitespace-nowrap">PRV No</th>
+                <th className="text-left py-2 px-1">Enroll</th>
+                <th className="text-left py-2 px-1">Name</th>
+                <th className="text-left py-2 px-1">Inst Code</th>
+                <th className="text-left py-2 px-1">Subcourse</th>
+                <th className="text-left py-2 px-1">Class</th>
+                <th className="text-left py-2 px-1">Degree</th>
+                <th className="text-left py-2 px-1 w-[96px] whitespace-nowrap">PRV Date</th>
+                <th className="text-left py-2 px-1 w-[80px] whitespace-nowrap">Pass Year</th>
+                <th className="text-left py-2 px-1">Status</th>
+                <th className="text-left py-2 px-1">Pay Rec</th>
+                <th className="text-left py-2 px-1 whitespace-nowrap">Doc Rec</th>
               </tr>
             </thead>
             <tbody>
@@ -324,19 +323,18 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
                     doc_remark: r.doc_remark || '',
                   });
                 }}>
-                  <td className="py-2 px-3">{r.doc_rec || r.doc_rec_id || '-'}</td>
-                  <td className="py-2 px-3">{r.enrollment || r.enrollment_no || '-'}</td>
-                  <td className="py-2 px-3">{r.student_name || '-'}</td>
-                  <td className="py-2 px-3">{r.institute_code || r.institute || r.institute_id || '-'}</td>
-                  <td className="py-2 px-3">{r.maincourse_code || r.maincourse || r.maincourse_id || '-'}</td>
-                  <td className="py-2 px-3">{r.subcourse_name || r.subcourse || r.subcourse_id || '-'}</td>
-                  <td className="py-2 px-3">{r.class_obtain || '-'}</td>
-                  <td className="py-2 px-3">{r.prv_degree_name || '-'}</td>
-                  <td className="py-2 px-3">{r.prv_number || '-'}</td>
-                  <td className="py-2 px-3">{r.prv_date || '-'}</td>
-                  <td className="py-2 px-3">{r.passing_year || '-'}</td>
-                  <td className="py-2 px-3">{r.prv_status || '-'}</td>
-                  <td className="py-2 px-3">{r.pay_rec_no || '-'}</td>
+                  <td className="py-2 px-1 w-[64px] whitespace-nowrap">{r.prv_number || '-'}</td>
+                  <td className="py-2 px-1">{r.enrollment || r.enrollment_no || '-'}</td>
+                  <td className="py-2 px-1">{r.student_name || '-'}</td>
+                  <td className="py-2 px-1">{r.institute_code || r.institute || r.institute_id || '-'}</td>
+                  <td className="py-2 px-1">{r.subcourse_name || r.subcourse || r.subcourse_id || '-'}</td>
+                  <td className="py-2 px-1">{r.class_obtain || '-'}</td>
+                  <td className="py-2 px-1">{r.prv_degree_name || '-'}</td>
+                  <td className="py-2 px-1 w-[96px] whitespace-nowrap">{r.prv_date || '-'}</td>
+                  <td className="py-2 px-1 w-[80px] whitespace-nowrap">{r.passing_year || '-'}</td>
+                  <td className="py-2 px-1">{r.prv_status || '-'}</td>
+                  <td className="py-2 px-1">{r.pay_rec_no || '-'}</td>
+                  <td className="py-2 px-1 whitespace-nowrap">{r.doc_rec || r.doc_rec_id || '-'}</td>
                 </tr>
               ))}
             </tbody>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from '../api/axiosInstance';
 import * as XLSX from 'xlsx';
 import { toDateInput } from '../utils/date';
+import { FaEdit, FaTrash } from 'react-icons/fa';
 
 export default function HolidayManager() {
   const [holidays, setHolidays] = useState([]);
@@ -355,15 +356,19 @@ export default function HolidayManager() {
                         <div className="flex gap-2">
                           <button 
                             onClick={() => handleEditStart(h)} 
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
+                            className="w-7 h-7 inline-flex items-center justify-center rounded icon-edit-button"
+                            title="Edit"
+                            aria-label="Edit holiday"
                           >
-                            Edit
+                            <FaEdit size={12} />
                           </button>
                           <button 
                             onClick={() => handleDelete(h.hdid)} 
-                            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
+                            className="w-7 h-7 inline-flex items-center justify-center rounded icon-delete-button"
+                            title="Delete"
+                            aria-label="Delete holiday"
                           >
-                            Delete
+                            <FaTrash size={12} />
                           </button>
                         </div>
                       </td>

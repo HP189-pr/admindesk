@@ -438,6 +438,8 @@ class MigrationRecordSerializer(serializers.ModelSerializer):
     doc_rec_key = serializers.CharField(write_only=True, required=False, allow_null=True, allow_blank=True)
     # Expose stored doc_rec_id (string)
     doc_rec = serializers.CharField(read_only=True)
+    # Expose related institute code for UI list display
+    institute_code = serializers.CharField(source='institute.institute_code', read_only=True, allow_null=True)
     class Meta:
         model = MigrationRecord
         fields = '__all__'

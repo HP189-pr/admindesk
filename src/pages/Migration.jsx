@@ -17,6 +17,7 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
   const [q, setQ] = useState("");
   const [error, setError] = useState(null);
   const [currentRow, setCurrentRow] = useState(null);
+  const [instCodeById, setInstCodeById] = useState({});
 
   const [form, setForm] = useState({
     id: null,
@@ -79,6 +80,52 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
 
     return () => clearTimeout(handle);
   }, [q]);
+
+  useEffect(() => {
+    const loadInstituteCodes = async () => {
+      try {
+        let url = '/api/institutes/';
+        const codeMap = {};
+        let safety = 0;
+
+        while (url && safety < 20) {
+          const res = await fetch(url, { headers: { ...authHeaders() } });
+          if (!res.ok) break;
+
+          const data = await res.json();
+          const rows = Array.isArray(data) ? data : data.results || [];
+
+          rows.forEach((item) => {
+            const key = item.institute_id ?? item.id;
+            const code = item.institute_code;
+            if (key != null && code) {
+              codeMap[String(key)] = code;
+            }
+          });
+
+          if (Array.isArray(data)) {
+            url = null;
+          } else {
+            const next = data.next;
+            if (next) {
+              const nextUrl = new URL(next, window.location.origin);
+              url = `${nextUrl.pathname}${nextUrl.search}`;
+            } else {
+              url = null;
+            }
+          }
+
+          safety += 1;
+        }
+
+        setInstCodeById(codeMap);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    loadInstituteCodes();
+  }, []);
 
   const setF = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -288,23 +335,19 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
           <table className="min-w-[1100px] w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="text-left py-2 px-3">Doc Rec</th>
+                <th className="text-left py-2 px-3 whitespace-nowrap">MG No</th>
                 <th className="text-left py-2 px-3">Enroll</th>
                 <th className="text-left py-2 px-3">Name</th>
-                <th className="text-left py-2 px-3">Inst</th>
-                <th className="text-left py-2 px-3">Main</th>
-                <th className="text-left py-2 px-3">Sub</th>
-                <th className="text-left py-2 px-3">MG No</th>
+                <th className="text-left py-2 px-3 whitespace-nowrap">Inst Code</th>
                 <th className="text-left py-2 px-3">MG Date</th>
-                <th className="text-left py-2 px-3">Exam Year</th>
-                <th className="text-left py-2 px-3">Admission</th>
                 <th className="text-left py-2 px-3">Status</th>
                 <th className="text-left py-2 px-3">Pay Rec</th>
+                <th className="text-left py-2 px-3 whitespace-nowrap">Doc Rec</th>
               </tr>
             </thead>
             <tbody>
               {list.length === 0 && !loading && (
-                <tr><td colSpan={13} className="py-6 text-center text-gray-500">No records</td></tr>
+                <tr><td colSpan={8} className="py-6 text-center text-gray-500">No records</td></tr>
               )}
               {list.map((r)=> (
                 <tr key={r.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={()=>{
@@ -329,19 +372,14 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
                     doc_rec_remark: r.doc_rec_remark || '',
                   });
                 }}>
-                  <td className="py-2 px-3">{r.doc_rec || r.doc_rec_id || '-'}</td>
+                  <td className="py-2 px-3 whitespace-nowrap">{r.mg_number || '-'}</td>
                   <td className="py-2 px-3">{r.enrollment || r.enrollment_no || '-'}</td>
                   <td className="py-2 px-3">{r.student_name || '-'}</td>
-                  <td className="py-2 px-3">{r.institute || r.institute_id || '-'}</td>
-                  <td className="py-2 px-3">{r.maincourse || r.maincourse_id || '-'}</td>
-                  <td className="py-2 px-3">{r.subcourse || r.subcourse_id || '-'}</td>
-                  <td className="py-2 px-3">{r.mg_number || '-'}</td>
+                  <td className="py-2 px-3 whitespace-nowrap">{r.institute_code || instCodeById[String(r.institute_id || r.institute || '')] || '-'}</td>
                   <td className="py-2 px-3">{r.mg_date || '-'}</td>
-                  <td className="py-2 px-3">{r.exam_year || '-'}</td>
-                  <td className="py-2 px-3">{r.admission_year || '-'}</td>
                   <td className="py-2 px-3">{r.mg_status || '-'}</td>
                   <td className="py-2 px-3">{r.pay_rec_no || '-'}</td>
-                  <td className="py-2 px-3">{r.doc_remark || '-'}</td>
+                  <td className="py-2 px-3 whitespace-nowrap">{r.doc_rec || r.doc_rec_id || '-'}</td>
                 </tr>
               ))}
             </tbody>

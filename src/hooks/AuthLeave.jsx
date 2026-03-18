@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from '../api/axiosInstance';
 import { toDateInput } from '../utils/date';
+import { FaEdit, FaTrash } from 'react-icons/fa';
 
 /**
  * AuthLeave component
@@ -384,18 +385,24 @@ export default function AuthLeave() {
                       <td className="border p-2">{a.used || 0}</td>
                       <td className="border p-2">{a.balance || a.allocated}</td>
                       <td className="border p-2">
-                        <button
-                          onClick={() => editAlloc(a)}
-                          className="edit-button-compact mr-2"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => deleteAlloc(a.id)}
-                          className="delete-button-compact"
-                        >
-                          Delete
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => editAlloc(a)}
+                            className="w-7 h-7 inline-flex items-center justify-center rounded icon-edit-button"
+                            title="Edit"
+                            aria-label="Edit allocation"
+                          >
+                            <FaEdit size={12} />
+                          </button>
+                          <button
+                            onClick={() => deleteAlloc(a.id)}
+                            className="w-7 h-7 inline-flex items-center justify-center rounded icon-delete-button"
+                            title="Delete"
+                            aria-label="Delete allocation"
+                          >
+                            <FaTrash size={12} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -474,9 +481,11 @@ export default function AuthLeave() {
                             setTypeForm(t);
                             setEditingTypeId(t.id);
                           }}
-                          className="edit-button-compact"
+                          className="w-7 h-7 inline-flex items-center justify-center rounded icon-edit-button"
+                          title="Edit"
+                          aria-label="Edit leave type"
                         >
-                          Edit
+                          <FaEdit size={12} />
                         </button>
                       </td>
                     </tr>
@@ -557,9 +566,11 @@ export default function AuthLeave() {
                             setPeriodForm(p);
                             setEditingPeriodId(p.id);
                           }}
-                          className="edit-button-compact"
+                          className="w-7 h-7 inline-flex items-center justify-center rounded icon-edit-button"
+                          title="Edit"
+                          aria-label="Edit leave period"
                         >
-                          Edit
+                          <FaEdit size={12} />
                         </button>
                       </td>
                     </tr>

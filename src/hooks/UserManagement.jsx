@@ -3,6 +3,7 @@ import { useAuth } from "./AuthContext";
 import axios from "../api/axiosInstance";
 import { DEFAULT_PROFILE_PIC, resolveProfilePicture } from "../utils/mediaUrl";
 import { toDateInput } from "../utils/date";
+import { FaEdit, FaTrash } from "react-icons/fa";
 
 const UserManagement = ({ selectedTopbarMenu }) => {
   const { fetchUsers, fetchUserDetail } = useAuth();
@@ -147,9 +148,11 @@ const UserManagement = ({ selectedTopbarMenu }) => {
                         <td className="px-4 py-2 border">
                           <button
                             onClick={() => handleEdit(user.id ?? user.username ?? user.usercode)}
-                            className="edit-button-compact"
+                            className="w-7 h-7 inline-flex items-center justify-center rounded icon-edit-button"
+                            title="Edit"
+                            aria-label="Edit user"
                           >
-                            Edit
+                            <FaEdit size={12} />
                           </button>
                         </td>
                         <td className="px-4 py-2 border">
@@ -163,9 +166,11 @@ const UserManagement = ({ selectedTopbarMenu }) => {
                         <td className="px-4 py-2 border">
                           <button
                             onClick={() => handleDelete(user.id ?? user.username ?? user.usercode)}
-                            className="bg-red-500 text-white px-3 py-1 rounded"
+                            className="w-7 h-7 inline-flex items-center justify-center rounded icon-delete-button"
+                            title="Delete"
+                            aria-label="Delete user"
                           >
-                            Delete
+                            <FaTrash size={12} />
                           </button>
                         </td>
                       </tr>
