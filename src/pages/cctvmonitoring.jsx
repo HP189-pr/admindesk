@@ -509,7 +509,7 @@ const CCTVMonitoring = ({
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-4 h-full">
+    <div className="p-2 md:p-3 space-y-4 h-full">
       <PageTopbar
         title="CCTV Monitoring"
         leftSlot={

@@ -31,9 +31,17 @@ const staticModules = [
       '📋 Doc Register',
       '🏖️ Leave Management',
       '📦 Inventory',
-      '📹 CCTV Monitoring',
-      '🗓️ Schedule',
+      '�️ Schedule',
       '📊 Record',
+    ],
+  },
+  {
+    id: 'exam',
+    name: 'Exam',
+    icon: '📝',
+    menu: [
+      '📋 Assessment Management',
+      '📹 CCTV Monitoring',
     ],
   },
   {
@@ -255,9 +263,9 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
 
   return (
     <div
-      className={`h-screen bg-gray-800 text-white transition-all ${
+      className={`h-full text-white transition-all ${
         isOpen ? 'w-60' : 'w-20'
-      } duration-300 pl-4 pr-0 py-4 relative flex flex-col`}
+      } duration-300 relative flex flex-col`}
     >
       {/* Profile Section */}
       <div className="flex items-center pt-4">

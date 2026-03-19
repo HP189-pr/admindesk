@@ -39696,3 +39696,22 @@ WARNING:waitress.queue:Task queue depth is 1
 WARNING:waitress.queue:Task queue depth is 2
 WARNING:waitress.queue:Task queue depth is 3
 WARNING:waitress.queue:Task queue depth is 3
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+E:\admindesk\backend\backend\settings.py:76: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+E:\admindesk\backend\backend\settings.py:76: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+Bad Request: /api/userpermissions/
+WARNING:django.request:Bad Request: /api/userpermissions/
+Bad Request: /api/userpermissions/
+WARNING:django.request:Bad Request: /api/userpermissions/
+E:\admindesk\backend\backend\settings.py:76: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000

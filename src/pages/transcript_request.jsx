@@ -553,7 +553,7 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-4 h-full">
+    <div className="p-2 md:p-3 space-y-4 h-full">
       <PageTopbar
         title="Transcript Requests"
         leftSlot={<div className="h-10 w-10 flex items-center justify-center rounded-xl bg-purple-600 text-white text-xl">📜</div>}

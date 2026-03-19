@@ -33,10 +33,12 @@ const Layout = () => {
     const [isChatboxOpen, setChatboxOpen] = useState(false);
 
     return (
-        <div className="h-screen overflow-hidden flex items-stretch gap-[1px]">
+        <div className="h-screen overflow-hidden flex items-stretch gap-1">
             <Suspense fallback={<FullScreenLoader message="Loading workspace..." />}>
                 {/* Left rail */}
-                <Sidebar isOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} setSelectedMenuItem={setSelectedMenuItem} />
+                <div className="bg-gray-800 pl-4 pr-0 py-4 h-screen shrink-0">
+                    <Sidebar isOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} setSelectedMenuItem={setSelectedMenuItem} />
+                </div>
 
                 {/* Work area (no side padding; gap is handled by parent flex gap + spacer) */}
                 <div className="flex-1 h-screen relative transition-all duration-300 overflow-hidden">

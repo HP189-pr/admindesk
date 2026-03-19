@@ -102,3 +102,7 @@ DEBUG: UserPermissionViewSet.update called. request.data= {'user': 2, 'module': 
 DEBUG: UserPermissionViewSet.update called. request.data= {'user': 2, 'module': 6, 'menu': 27, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
 DEBUG: UserPermissionViewSet.update called. request.data= {'user': 2, 'module': 6, 'menu': 28, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
 DEBUG: UserPermissionViewSet.update called. request.data= {'user': 2, 'module': 6, 'menu': 29, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+DEBUG: UserPermissionViewSet.create called. request.data= {'user': 2, 'module': 4, 'menu': 12, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+DEBUG: UserPermission create errors: {'non_field_errors': [ErrorDetail(string='The fields user, module, menu must make a unique set.', code='unique')]}
+DEBUG: UserPermissionViewSet.create called. request.data= {'user': 2, 'module': 4, 'menu': 12, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+DEBUG: UserPermission create errors: {'non_field_errors': [ErrorDetail(string='The fields user, module, menu must make a unique set.', code='unique')]}

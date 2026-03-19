@@ -18,6 +18,7 @@ const AuthDocRegister = lazy(() => import("../hooks/AuthDocRegister"));
 const AuthFees = lazy(() => import("../hooks/AuthFees"));
 const AuthCCTV = lazy(() => import("../hooks/AuthCCTV"));
 const AuthExamManage = lazy(() => import("../hooks/AuthExamManage"));
+const AuthAssessment = lazy(() => import("../hooks/AuthAssessment"));
 const Record = lazy(() => import("./Record"));
 
 
@@ -103,6 +104,7 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
   else if (l.includes("inventory")) key = "inventory";
   else if (l.includes("record")) key = "record";
   else if (l.includes("cctv")) key = "cctv_monitoring";
+  else if (l.includes("assessment")) key = "assessment";
   else if (l.includes("schedule")) key = "exam_schedule";
   else if (l.includes("leave management")) key = "emp_leave";
   else if (l.includes("leave report")) key = "emp_leave_report";
@@ -214,6 +216,13 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
       case "cctv_monitoring":
         return (
           <AuthCCTV
+            onToggleSidebar={onToggleSidebar}
+            onToggleChatbox={onToggleChatbox}
+          />
+        );
+      case "assessment":
+        return (
+          <AuthAssessment
             onToggleSidebar={onToggleSidebar}
             onToggleChatbox={onToggleChatbox}
           />

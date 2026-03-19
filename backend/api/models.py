@@ -24,6 +24,7 @@ from .domain_mail_request import *  # noqa: F401,F403
 from .domain_transcript_generate import *  # noqa: F401,F403
 from .domain_degree import *  # noqa: F401,F403
 from .domain_cash_register import *  # noqa: F401,F403
+from .exam.domain_assessment import *  # noqa: F401,F403
 from django.contrib.auth.models import User as DjangoAuthUser  # Export default auth user for serializers expecting it.
 
 # Optional: define __all__ explicitly to aggregate from submodules
@@ -37,6 +38,7 @@ from .domain_mail_request import __all__ as _mail_req_all  # type: ignore
 from .domain_transcript_generate import __all__ as _transcript_all  # type: ignore
 from .domain_degree import __all__ as _degree_all  # type: ignore
 from .domain_cash_register import __all__ as _cash_register_all  # type: ignore
+from .exam.domain_assessment import __all__ as _assessment_all  # type: ignore
 from .chatbox.models import ChatMessage  # Chat models
 
 # Import leave management models directly

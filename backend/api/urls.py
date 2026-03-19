@@ -105,6 +105,11 @@ try:
         CCTVCopyCaseViewSet,
     )
 
+    from .exam.views_assessment import (
+        AssessmentEntryViewSet,
+        AssessmentOutwardViewSet,
+    )
+
 
     router = DefaultRouter()
     # Core router registrations
@@ -153,6 +158,10 @@ try:
     router.register(r"dvd", CCTVDVDViewSet, basename="cctv-dvd")
     router.register(r"cctv-outward", CCTVOutwardViewSet, basename="cctv-outward")
     router.register(r"cctv-copy-cases", CCTVCopyCaseViewSet, basename="cctv-copy-cases")
+
+    # ASSESSMENT SYSTEM
+    router.register(r"assessment-entry", AssessmentEntryViewSet, basename="assessment-entry")
+    router.register(r"assessment-outward", AssessmentOutwardViewSet, basename="assessment-outward")
 
     urlpatterns = [
 

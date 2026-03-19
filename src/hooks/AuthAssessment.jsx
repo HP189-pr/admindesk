@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import API from "../api/axiosInstance";
-import CCTVMonitoring from "../pages/cctvmonitoring";
+import AssessmentPage from "../pages/assessment";
 
 const DEFAULT_RIGHTS = {
   can_view: false,
@@ -16,16 +16,21 @@ const FULL_RIGHTS = {
   can_delete: true,
 };
 
-const MENU_KEYWORDS = ["cctv", "cctv monitoring"];
+const MENU_KEYWORDS = [
+  "assessment",
+  "assessment entry",
+  "assessment outward",
+  "assessment receiver",
+];
 
 const AccessDenied = ({ message }) => (
   <div className="flex min-h-screen items-center justify-center bg-gray-50">
-    <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full text-center">
-      <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-red-100 flex items-center justify-center">
+    <div className="w-full max-w-md rounded-lg bg-white p-8 text-center shadow-lg">
+      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
         <span className="text-3xl">⚠️</span>
       </div>
-      <h2 className="text-2xl font-semibold text-gray-800 mb-2">Access Denied</h2>
-      <p className="text-gray-600 mb-6">{message}</p>
+      <h2 className="mb-2 text-2xl font-semibold text-gray-800">Access Denied</h2>
+      <p className="mb-6 text-gray-600">{message}</p>
       <button
         type="button"
         onClick={() => (window.location.href = "/dashboard")}
@@ -46,7 +51,7 @@ const LoadingState = () => (
   </div>
 );
 
-const AuthCCTV = ({ onToggleSidebar, onToggleChatbox }) => {
+const AuthAssessment = ({ onToggleSidebar, onToggleChatbox }) => {
   const [rights, setRights] = useState(DEFAULT_RIGHTS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -75,10 +80,9 @@ const AuthCCTV = ({ onToggleSidebar, onToggleChatbox }) => {
         const response = await API.get("/api/my-navigation/");
         const modules = response.data?.modules || [];
 
-        // CCTV Monitoring lives in the "Exam" module.
-        // Fall back to "Office Management" for backward compatibility
-        // with installs that haven't been migrated yet.
-        let targetModule =
+        // Assessment Management lives in the "Exam" module.
+        // Fall back to "Office Management" for backward compatibility.
+        const targetModule =
           modules.find((mod) =>
             (mod.name || "").toLowerCase().includes("exam")
           ) ||
@@ -109,10 +113,10 @@ const AuthCCTV = ({ onToggleSidebar, onToggleChatbox }) => {
 
         setRights(resolvedRights);
         if (!resolvedRights.can_view) {
-          setError("You do not have permission to access CCTV Monitoring.");
+          setError("You do not have permission to access Assessment.");
         }
       } catch (err) {
-        console.error("AuthCCTV permission error:", err);
+        console.error("AuthAssessment permission error:", err);
         setRights(DEFAULT_RIGHTS);
         setError("Failed to verify permissions. Please try again.");
       } finally {
@@ -124,13 +128,16 @@ const AuthCCTV = ({ onToggleSidebar, onToggleChatbox }) => {
   }, [keywords]);
 
   if (loading) return <LoadingState />;
-
   if (!rights.can_view) {
-    return <AccessDenied message={error || "You do not have permission to view this page."} />;
+    return (
+      <AccessDenied
+        message={error || "You do not have permission to view this page."}
+      />
+    );
   }
 
   return (
-    <CCTVMonitoring
+    <AssessmentPage
       rights={rights}
       onToggleSidebar={onToggleSidebar}
       onToggleChatbox={onToggleChatbox}
@@ -138,4 +145,4 @@ const AuthCCTV = ({ onToggleSidebar, onToggleChatbox }) => {
   );
 };
 
-export default AuthCCTV;
+export default AuthAssessment;

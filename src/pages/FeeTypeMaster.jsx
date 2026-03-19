@@ -119,7 +119,7 @@ const FeeTypeMaster = ({ rights = DEFAULT_RIGHTS }) => {
   }
 
   return (
-    <div className="min-h-full bg-slate-50 p-4 space-y-4">
+    <div className="h-full bg-slate-100 p-2 md:p-3 space-y-4">
       <PageTopbar
         title="Fee Type Master"
         rightSlot={
