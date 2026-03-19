@@ -31,7 +31,6 @@ const staticModules = [
       '📋 Doc Register',
       '🏖️ Leave Management',
       '📦 Inventory',
-      '�️ Schedule',
       '📊 Record',
     ],
   },
@@ -41,6 +40,7 @@ const staticModules = [
     icon: '📝',
     menu: [
       '📋 Assessment Management',
+      '🗓️ Schedule',
       '📹 CCTV Monitoring',
     ],
   },

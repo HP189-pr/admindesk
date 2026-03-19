@@ -64,6 +64,18 @@ const UserRights = ({ fetchUserPermissions, updateUserPermission }) => {
     }
   };
 
+  const fetchMenusFresh = async () => {
+    try {
+      const res = await axios.get("/api/menus/");
+      const fresh = Array.isArray(res.data) ? res.data : res.data?.results || [];
+      setMenus(fresh);
+      return fresh;
+    } catch (err) {
+      console.error("❌ Refresh Menus Error:", err);
+      return menus;
+    }
+  };
+
   /* ===================== HELPERS ===================== */
 
   const getUserKey = (u) =>
@@ -126,13 +138,19 @@ const UserRights = ({ fetchUserPermissions, updateUserPermission }) => {
     try {
       toast.info("Saving permissions...");
 
+      // Re-fetch menus to get fresh IDs (avoids stale data if menus changed since page load)
+      const freshMenus = await fetchMenusFresh();
+
       const enrichedMenus = {};
 
       for (const [menuId, perms] of Object.entries(selectedMenus)) {
-        const menuObj = menus.find(
-          (m) => getMenuKey(m) === String(menuId)
-        );
+        // Try to find the menu in fresh list; fall back to stale list
+        let menuObj = freshMenus.find((m) => getMenuKey(m) === String(menuId));
+        if (!menuObj) menuObj = menus.find((m) => getMenuKey(m) === String(menuId));
         const moduleId = menuObj ? getMenuModuleKey(menuObj) : undefined;
+
+        // Skip menus that no longer exist in DB
+        if (!menuObj) continue;
 
         enrichedMenus[menuId] = {
           ...perms,

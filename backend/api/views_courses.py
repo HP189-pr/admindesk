@@ -53,6 +53,26 @@ class MenuViewSet(viewsets.ModelViewSet):
 class UserPermissionViewSet(viewsets.ModelViewSet):
     queryset = UserPermission.objects.all()
     serializer_class = UserPermissionSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user_id = self.request.query_params.get("user")
+        module_id = self.request.query_params.get("module")
+        menu_id = self.request.query_params.get("menu")
+
+        if user_id:
+            qs = qs.filter(user_id=user_id)
+        if module_id:
+            qs = qs.filter(module_id=module_id)
+        if menu_id is not None:
+            v = str(menu_id).strip().lower()
+            if v in {"", "null", "none"}:
+                qs = qs.filter(menu__isnull=True)
+            else:
+                qs = qs.filter(menu_id=menu_id)
+
+        return qs.order_by("permitid")
     
     # Temporary debug helpers: capture incoming data and serializer errors
     def create(self, request, *args, **kwargs):

@@ -20,7 +20,9 @@ const AdminDashboard = ({ selectedTopbarMenu, onToggleSidebar, onToggleChatbox, 
   // Real implementations wired to backend userpermissions endpoints
   const fetchUserPermissions = async (userId) => {
     try {
-      const res = await axios.get(`/api/userpermissions/`);
+      const res = await axios.get(`/api/userpermissions/`, {
+        params: { user: userId, limit: 1000, offset: 0 },
+      });
       const all = Array.isArray(res.data) ? res.data : (res.data?.results || []);
       // filter rows for this user
       const rows = all.filter((r) => {
@@ -61,7 +63,9 @@ const AdminDashboard = ({ selectedTopbarMenu, onToggleSidebar, onToggleChatbox, 
   const updateUserPermission = async (userId, payload) => {
     // payload: { menus: {menuId: {view,add,edit,delete}}, modules: [moduleIds] }
     try {
-      const res = await axios.get(`/api/userpermissions/`);
+      const res = await axios.get(`/api/userpermissions/`, {
+        params: { user: userId, limit: 1000, offset: 0 },
+      });
       const all = Array.isArray(res.data) ? res.data : (res.data?.results || []);
       const existing = all.filter((r) => {
         const rUser = r.user && typeof r.user === 'object' ? r.user.id : r.user;
@@ -98,13 +102,37 @@ const AdminDashboard = ({ selectedTopbarMenu, onToggleSidebar, onToggleChatbox, 
           console.debug('DEBUG: updateUserPermission call body=', body, 'existing=', !!ex);
         } catch (e) {}
 
-        if (ex) {
+        const pk = ex?.id ?? ex?.permitid ?? ex?.pk ?? perms?._pk;
+        if (pk) {
           // update
-          const pk = ex.id ?? ex.permitid ?? ex.pk;
           await axios.put(`/api/userpermissions/${pk}/`, body);
         } else {
           // create
-          await axios.post(`/api/userpermissions/`, body);
+          try {
+            await axios.post(`/api/userpermissions/`, body);
+          } catch (postErr) {
+            const serverData = postErr?.response?.data;
+            const text = String(JSON.stringify(serverData || {})).toLowerCase();
+            const isUniqueConflict = text.includes('unique') || text.includes('must make a unique set');
+
+            if (!isUniqueConflict) throw postErr;
+
+            // Race/pagination fallback: re-fetch and update the found record.
+            const retryRes = await axios.get(`/api/userpermissions/`, {
+              params: { user: userId, limit: 1000, offset: 0 },
+            });
+            const retryAll = Array.isArray(retryRes.data) ? retryRes.data : (retryRes.data?.results || []);
+            const retryExisting = retryAll.find((r) => {
+              const rUser = r.user && typeof r.user === 'object' ? r.user.id : r.user;
+              let rMenu = r.menu ?? r.menuid ?? r.menu_id;
+              if (rMenu && typeof rMenu === 'object') rMenu = rMenu.id || rMenu.menuid;
+              return String(rUser) === String(userId) && String(rMenu) === String(menuId);
+            });
+
+            const retryPk = retryExisting?.id ?? retryExisting?.permitid ?? retryExisting?.pk;
+            if (!retryPk) throw postErr;
+            await axios.put(`/api/userpermissions/${retryPk}/`, body);
+          }
         }
       }
 
@@ -120,7 +148,7 @@ const AdminDashboard = ({ selectedTopbarMenu, onToggleSidebar, onToggleChatbox, 
 
       return true;
     } catch (e) {
-      console.error('Update permissions error', e);
+      console.error('Update permissions error', e?.response?.data || e);
       return false;
     }
   };

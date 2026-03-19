@@ -74,18 +74,18 @@ const AuthExamManage = ({ onToggleSidebar, onToggleChatbox }) => {
 
         const response = await API.get("/api/my-navigation/");
         const modules = response.data?.modules || [];
-        const officeModule = modules.find((mod) =>
-          (mod.name || "").toLowerCase().includes("office")
+        const examModule = modules.find((mod) =>
+          (mod.name || "").toLowerCase().includes("exam")
         );
 
-        if (!officeModule) {
-          setError("Office Management module permissions are not configured.");
+        if (!examModule) {
+          setError("Exam module permissions are not configured.");
           setRights(DEFAULT_RIGHTS);
           return;
         }
 
         let resolvedRights = DEFAULT_RIGHTS;
-        for (const menu of officeModule.menus || []) {
+        for (const menu of examModule.menus || []) {
           const menuName = (menu.name || "").toLowerCase();
           if (keywords.some((keyword) => menuName.includes(keyword))) {
             resolvedRights = {

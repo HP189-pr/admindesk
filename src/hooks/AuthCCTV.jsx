@@ -75,16 +75,9 @@ const AuthCCTV = ({ onToggleSidebar, onToggleChatbox }) => {
         const response = await API.get("/api/my-navigation/");
         const modules = response.data?.modules || [];
 
-        // CCTV Monitoring lives in the "Exam" module.
-        // Fall back to "Office Management" for backward compatibility
-        // with installs that haven't been migrated yet.
-        let targetModule =
-          modules.find((mod) =>
-            (mod.name || "").toLowerCase().includes("exam")
-          ) ||
-          modules.find((mod) =>
-            (mod.name || "").toLowerCase().includes("office")
-          );
+        const targetModule = modules.find((mod) =>
+          (mod.name || "").toLowerCase().includes("exam")
+        );
 
         if (!targetModule) {
           setError("Exam module permissions are not configured.");
