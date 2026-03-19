@@ -57,8 +57,11 @@ class AssessmentEntry(models.Model):
     STATUS_CHOICES = [
         ("Pending", "Pending"),
         ("Outward", "Outward"),
+        ("InProgress", "In Progress"),
         ("PartiallyReceived", "Partially Received"),
         ("Received", "Received"),
+        ("Returned", "Returned"),
+        ("Completed", "Completed"),
     ]
 
     entry_date = models.DateField()
@@ -66,6 +69,7 @@ class AssessmentEntry(models.Model):
     examiner_name = models.CharField(max_length=255)
     dummy_number = models.CharField(max_length=100)
     total_answer_sheet = models.IntegerField()
+    remark = models.TextField(blank=True, default="")
 
     added_by = models.ForeignKey(
         User,
@@ -94,9 +98,19 @@ class AssessmentEntry(models.Model):
 
 
 class AssessmentOutwardDetails(models.Model):
-    """Per-entry row within an outward, tracks receive status."""
+    """Per-entry row within an outward, tracks receive/return/final-receive status."""
 
     RECEIVE_STATUS_CHOICES = [
+        ("Pending", "Pending"),
+        ("Received", "Received"),
+    ]
+
+    RETURN_STATUS_CHOICES = [
+        ("Pending", "Pending"),
+        ("Returned", "Returned"),
+    ]
+
+    FINAL_RECEIVE_STATUS_CHOICES = [
         ("Pending", "Pending"),
         ("Received", "Received"),
     ]
@@ -123,6 +137,31 @@ class AssessmentOutwardDetails(models.Model):
     )
     received_date = models.DateTimeField(null=True, blank=True)
     receive_remark = models.TextField(blank=True)
+    return_status = models.CharField(
+        max_length=20, choices=RETURN_STATUS_CHOICES, default="Pending"
+    )
+    returned_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assessment_returns",
+    )
+    returned_date = models.DateTimeField(null=True, blank=True)
+    return_remark = models.TextField(blank=True)
+    return_outward_no = models.CharField(max_length=50, blank=True, default="")
+    final_received_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assessment_final_receipts",
+    )
+    final_received_date = models.DateTimeField(null=True, blank=True)
+    final_receive_remark = models.TextField(blank=True)
+    final_receive_status = models.CharField(
+        max_length=20, choices=FINAL_RECEIVE_STATUS_CHOICES, default="Pending"
+    )
 
     class Meta:
         db_table = "assessment_outward_details"

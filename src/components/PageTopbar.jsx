@@ -1,5 +1,6 @@
 import React from "react";
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from "../hooks/AuthContext";
 
 const TOPBAR_ICON_BUTTON_CLASS = "inline-flex h-10 min-w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-800 px-3 text-sm font-semibold text-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-slate-700";
 const TOPBAR_ACTION_BUTTON_BASE_CLASS = "inline-flex h-10 items-center justify-center rounded-xl border px-4 text-sm font-semibold shadow-sm transition duration-200 hover:-translate-y-0.5";
@@ -21,6 +22,7 @@ const PageTopbar = ({
   showHomeButton = true,
   homePath = '/dashboard',
 }) => {
+  const { isAdmin } = useAuth();
   const navigate = useNavigate();
 
   return (
@@ -71,7 +73,7 @@ const PageTopbar = ({
             {action}
           </button>
         ))}
-        {showHomeButton && (
+        {showHomeButton && isAdmin && (
           <button
             type="button"
             onClick={() => {

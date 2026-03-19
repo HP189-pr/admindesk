@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./hooks/AuthContext.jsx";
 
@@ -27,17 +27,32 @@ const ProtectedRoute = ({ children }) => {
 
 // ✅ Layout component with Sidebar & WorkArea
 const Layout = () => {
-    // Default to Dashboard so that, after login, the main dashboard page opens first
-    const [selectedMenuItem, setSelectedMenuItem] = useState('Dashboard');
+    const { isAdmin } = useAuth();
+    // Admin opens on Dashboard; others open on first permitted module/menu.
+    const [selectedMenuItem, setSelectedMenuItem] = useState(isAdmin ? 'Dashboard' : '');
     const [isSidebarOpen, setSidebarOpen] = useState(true);
     const [isChatboxOpen, setChatboxOpen] = useState(false);
+
+    useEffect(() => {
+        if (isAdmin && !selectedMenuItem) {
+            setSelectedMenuItem('Dashboard');
+        }
+        if (!isAdmin && String(selectedMenuItem || '').toLowerCase().includes('dash')) {
+            setSelectedMenuItem('');
+        }
+    }, [isAdmin, selectedMenuItem]);
 
     return (
         <div className="h-screen overflow-hidden flex items-stretch gap-1">
             <Suspense fallback={<FullScreenLoader message="Loading workspace..." />}>
                 {/* Left rail */}
                 <div className="bg-gray-800 pl-4 pr-0 py-4 h-screen shrink-0">
-                    <Sidebar isOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} setSelectedMenuItem={setSelectedMenuItem} />
+                    <Sidebar
+                        isOpen={isSidebarOpen}
+                        setSidebarOpen={setSidebarOpen}
+                        setSelectedMenuItem={setSelectedMenuItem}
+                        selectedMenuItem={selectedMenuItem}
+                    />
                 </div>
 
                 {/* Work area (no side padding; gap is handled by parent flex gap + spacer) */}
@@ -53,8 +68,8 @@ const Layout = () => {
                         setSidebarOpen={setSidebarOpen}
                         DashboardComponent={CustomDashboard}
                     />
-                    {/* Floating student search stays on every page */}
-                    <PopupSearch />
+                    {/* Global popup search is admin/controller only */}
+                    {isAdmin && <PopupSearch />}
                 </div>
 
                 {/* Right spacer to maintain a constant gap to the chat (collapsed/expanded) */}

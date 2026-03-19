@@ -1,9 +1,12 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PageTopbar from "../components/PageTopbar";
 import API from "../api/axiosInstance";
+import AsstReceiver from "./asst_receiver";
 import {
   createAssessmentEntry,
   deleteAssessmentEntry,
+  finalReceiveAssessmentEntry,
+  generateReturnAssessmentOutward,
   getAllAssessmentEntries,
   getAssessmentEntries,
   getAssessmentOutwards,
@@ -11,6 +14,7 @@ import {
   getPendingAssessmentEntries,
   generateAssessmentOutward,
   receiveAssessmentEntry,
+  returnAssessmentEntry,
 } from "../services/assessmentService";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -36,12 +40,16 @@ const statusColor = (s) => {
       return "bg-yellow-100 text-yellow-800";
     case "Outward":
       return "bg-blue-100 text-blue-800";
+    case "InProgress":
+      return "bg-orange-100 text-orange-800";
     case "PartiallyReceived":
       return "bg-orange-100 text-orange-800";
     case "Received":
       return "bg-green-100 text-green-800";
+    case "Returned":
+      return "bg-purple-100 text-purple-800";
     case "Completed":
-      return "bg-green-100 text-green-800";
+      return "bg-emerald-100 text-emerald-800";
     default:
       return "bg-gray-100 text-gray-700";
   }
@@ -55,7 +63,9 @@ const Badge = ({ label }) => (
   </span>
 );
 
-const ACTIONS = ["Entry", "Pending", "Outward", "Receiver"];
+const CONTROLLER_ACTIONS = ["Entry", "Pending", "Outward", "Receiver"];
+const ENTRY_USER_ACTIONS = ["Entry"];
+const RECEIVER_ACTIONS = ["Receiver"];
 
 const DEFAULT_ENTRY_FORM = {
   entry_date: today(),
@@ -63,6 +73,7 @@ const DEFAULT_ENTRY_FORM = {
   examiner_name: "",
   dummy_number: "",
   total_answer_sheet: "",
+  remark: "",
 };
 
 const EMPTY_GENERATE_FORM = { receiver_user: "", remarks: "" };
@@ -172,6 +183,18 @@ const EntryForm = ({ onSaved, rights }) => {
             required
           />
         </div>
+        <div className="sm:col-span-2 lg:col-span-3">
+          <label className="mb-1 block text-xs font-medium text-slate-600">
+            Entry Remark
+          </label>
+          <input
+            type="text"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            value={form.remark}
+            onChange={set("remark")}
+            placeholder="Optional entry-level remark"
+          />
+        </div>
       </div>
 
       {flash && (
@@ -202,6 +225,9 @@ const EntryForm = ({ onSaved, rights }) => {
 const MyEntriesTable = ({ refresh, rights }) => {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [finalizing, setFinalizing] = useState(null);
+  const [finalRemark, setFinalRemark] = useState({});
+  const [flash, setFlash] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -219,6 +245,26 @@ const MyEntriesTable = ({ refresh, rights }) => {
     load();
   }, [load, refresh]);
 
+  const handleFinalReceive = async (detailId, remark) => {
+    if (!detailId) return;
+    setFinalizing(detailId);
+    setFlash(null);
+    try {
+      await finalReceiveAssessmentEntry({
+        detail_id: detailId,
+        remark: remark || "",
+      });
+      setFlash({ type: "success", msg: "Final received successfully." });
+      await load();
+    } catch (err) {
+      const detail =
+        err?.response?.data?.detail || "Failed to complete final receive.";
+      setFlash({ type: "error", msg: detail });
+    } finally {
+      setFinalizing(null);
+    }
+  };
+
   if (loading)
     return (
       <p className="py-8 text-center text-sm text-slate-500">Loading…</p>
@@ -232,48 +278,125 @@ const MyEntriesTable = ({ refresh, rights }) => {
     );
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-      <table className="min-w-full divide-y divide-slate-200 text-sm">
-        <thead className="bg-slate-50">
-          <tr>
-            {[
-              "#",
-              "Date",
-              "Exam",
-              "Examiner",
-              "Dummy No.",
-              "Sheets",
-              "Outward No.",
-              "Status",
-            ].map((h) => (
-              <th
-                key={h}
-                className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"
-              >
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {entries.map((e, i) => (
-            <tr key={e.id} className="hover:bg-slate-50">
-              <td className="px-4 py-3 text-slate-500">{i + 1}</td>
-              <td className="px-4 py-3">{fmtDate(e.entry_date)}</td>
-              <td className="px-4 py-3 font-medium">{e.exam_name}</td>
-              <td className="px-4 py-3">{e.examiner_name}</td>
-              <td className="px-4 py-3">{e.dummy_number}</td>
-              <td className="px-4 py-3">{e.total_answer_sheet}</td>
-              <td className="px-4 py-3 font-mono text-xs">
-                {e.outward_no || "—"}
-              </td>
-              <td className="px-4 py-3">
-                <Badge label={e.status} />
-              </td>
+    <div className="space-y-2">
+      {flash && (
+        <p
+          className={`text-sm ${
+            flash.type === "success" ? "text-green-700" : "text-red-600"
+          }`}
+        >
+          {flash.msg}
+        </p>
+      )}
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+        <table className="min-w-full divide-y divide-slate-200 text-sm">
+          <thead className="bg-slate-50">
+            <tr>
+              {[
+                "#",
+                "Date",
+                "Exam",
+                "Examiner",
+                "Dummy No.",
+                "Sheets",
+                "Entry Remark",
+                "Outward No.",
+                "Status",
+                "Return Status",
+                "Return Outward No.",
+                "Return Remark",
+                "Final Receive Status",
+                "Final Receive Remark",
+                "Action",
+              ].map((h) => (
+                <th
+                  key={h}
+                  className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                >
+                  {h}
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {entries.map((e, i) => (
+              <tr key={e.id} className="hover:bg-slate-50">
+                <td className="px-4 py-3 text-slate-500">{i + 1}</td>
+                <td className="px-4 py-3">{fmtDate(e.entry_date)}</td>
+                <td className="px-4 py-3 font-medium">{e.exam_name}</td>
+                <td className="px-4 py-3">{e.examiner_name}</td>
+                <td className="px-4 py-3">{e.dummy_number}</td>
+                <td className="px-4 py-3">{e.total_answer_sheet}</td>
+                <td className="px-4 py-3 text-xs text-slate-500">
+                  {e.remark || "—"}
+                </td>
+                <td className="px-4 py-3 font-mono text-xs">
+                  {e.outward_no || "—"}
+                </td>
+                <td className="px-4 py-3">
+                  <Badge label={e.status} />
+                </td>
+                <td className="px-4 py-3">
+                  {e.return_status ? <Badge label={e.return_status} /> : "—"}
+                </td>
+                <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                  {e.return_outward_no || "—"}
+                </td>
+                <td className="px-4 py-3 text-xs text-slate-500">
+                  {e.return_remark || "—"}
+                </td>
+                <td className="px-4 py-3">
+                  {e.final_receive_status ? (
+                    <Badge label={e.final_receive_status} />
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="px-4 py-3 text-xs text-slate-500">
+                  {e.final_receive_remark || "—"}
+                </td>
+                <td className="px-4 py-3">
+                  {e.status === "Returned" && e.detail_id ? (
+                    <>
+                      <input
+                        type="text"
+                        placeholder="Final receive remark"
+                        className="w-40 rounded border border-slate-300 px-2 py-1 text-xs"
+                        value={finalRemark[e.detail_id] || ""}
+                        onChange={(ev) =>
+                          setFinalRemark((r) => ({
+                            ...r,
+                            [e.detail_id]: ev.target.value,
+                          }))
+                        }
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleFinalReceive(e.detail_id, finalRemark[e.detail_id])
+                        }
+                        disabled={finalizing === e.detail_id}
+                        className="ml-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                      >
+                        {finalizing === e.detail_id ? "Receiving…" : "Receive Back"}
+                      </button>
+                    </>
+                  ) : e.status === "Completed" ? (
+                    <div className="text-xs text-emerald-700">
+                      ✔ Completed
+                      {e.final_receive_remark && (
+                        <div className="text-slate-500">{e.final_receive_remark}</div>
+                      )}
+                    </div>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
@@ -491,6 +614,7 @@ const PendingTab = ({ rights }) => {
                   <td className="px-4 py-3">{e.examiner_name}</td>
                   <td className="px-4 py-3">{e.dummy_number}</td>
                   <td className="px-4 py-3">{e.total_answer_sheet}</td>
+                  <td className="px-4 py-3 text-xs text-slate-500">{e.remark || "—"}</td>
                   <td className="px-4 py-3 text-slate-500">
                     {e.added_by_name || "—"}
                   </td>
@@ -571,6 +695,8 @@ const OutwardTab = ({ rights }) => {
               <span>
                 {o.received_count}/{o.total_entries} received
               </span>
+              <span>{o.returned_count || 0} returned</span>
+              <span>{o.final_received_count || 0} final received</span>
               <span className="text-slate-400">
                 {expanded === o.id ? "▲" : "▼"}
               </span>
@@ -593,9 +719,14 @@ const OutwardTab = ({ rights }) => {
                       "Exam",
                       "Examiner",
                       "Sheets",
+                      "Entry Remark",
                       "Receive Status",
+                      "Return Status",
+                      "Return Outward No.",
+                      "Completed",
                       "Received By",
                       "Received Date",
+                      "Return Remark",
                     ].map((h) => (
                       <th
                         key={h}
@@ -621,14 +752,33 @@ const OutwardTab = ({ rights }) => {
                       <td className="px-3 py-2">
                         {d.entry_detail?.total_answer_sheet}
                       </td>
+                      <td className="px-3 py-2 text-xs text-slate-500">
+                        {d.entry_detail?.remark || "—"}
+                      </td>
                       <td className="px-3 py-2">
                         <Badge label={d.receive_status} />
+                      </td>
+                      <td className="px-3 py-2">
+                        <Badge label={d.return_status || "Pending"} />
+                      </td>
+                      <td className="px-3 py-2 font-mono text-xs text-slate-600">
+                        {d.return_outward_no || "—"}
+                      </td>
+                      <td className="px-3 py-2">
+                        {d.entry_detail?.status === "Completed" ? (
+                          <Badge label="Completed" />
+                        ) : (
+                          "—"
+                        )}
                       </td>
                       <td className="px-3 py-2 text-slate-500">
                         {d.received_by_name || "—"}
                       </td>
                       <td className="px-3 py-2 text-slate-500">
                         {d.received_date ? fmtDate(d.received_date) : "—"}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-slate-500">
+                        {d.return_remark || "—"}
                       </td>
                     </tr>
                   ))}
@@ -649,8 +799,13 @@ const ReceiverTab = () => {
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(null);
   const [remark, setRemark] = useState({});
+  const [returnRemark, setReturnRemark] = useState({});
   const [receiving, setReceiving] = useState(null);
+  const [returning, setReturning] = useState(null);
+  const [batchReturning, setBatchReturning] = useState(false);
+  const [selectedReturns, setSelectedReturns] = useState({});
   const [flash, setFlash] = useState({});
+  const [returnSummary, setReturnSummary] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -693,6 +848,90 @@ const ReceiverTab = () => {
     }
   };
 
+  const handleReturn = async (detailId) => {
+    setReturning(detailId);
+    setFlash((f) => ({ ...f, [detailId]: null }));
+    try {
+      await returnAssessmentEntry({
+        detail_id: detailId,
+        remark: returnRemark[detailId] || "",
+      });
+      setFlash((f) => ({
+        ...f,
+        [detailId]: { type: "success", msg: "Returned successfully." },
+      }));
+      load();
+    } catch (err) {
+      const detail = err?.response?.data?.detail || "Failed to return entry.";
+      setFlash((f) => ({
+        ...f,
+        [detailId]: { type: "error", msg: detail },
+      }));
+    } finally {
+      setReturning(null);
+    }
+  };
+
+  const toggleReturnSelection = (outwardId, detailId) => {
+    setSelectedReturns((prev) => {
+      const key = String(outwardId);
+      const current = new Set(prev[key] || []);
+      if (current.has(detailId)) current.delete(detailId);
+      else current.add(detailId);
+      return {
+        ...prev,
+        [key]: current,
+      };
+    });
+  };
+
+  const handleGenerateReturnOutward = async (outwardId) => {
+    const key = String(outwardId);
+    const flashKey = `outward_${key}`;
+    const selected = Array.from(selectedReturns[key] || []);
+    if (!selected.length) {
+      return;
+    }
+
+    const payload = selected.map((detailId) => ({
+      detail_id: detailId,
+      remark: returnRemark[detailId] || "",
+    }));
+
+    setBatchReturning(true);
+    try {
+      const res = await generateReturnAssessmentOutward(payload);
+      const no = res?.data?.return_outward_no || "";
+      const returnCount = res?.data?.count || selected.length;
+      const returnDate = new Date().toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+      setReturnSummary({ no, count: returnCount, date: returnDate });
+      setFlash((f) => ({
+        ...f,
+        [flashKey]: {
+          type: "success",
+          msg: no
+            ? `Return outward generated: ${no}`
+            : "Return outward generated successfully.",
+        },
+      }));
+      setSelectedReturns((prev) => ({ ...prev, [key]: new Set() }));
+      await load();
+    } catch (err) {
+      const detail =
+        err?.response?.data?.detail || "Failed to generate return outward.";
+      setFlash((f) => ({
+        ...f,
+        [flashKey]: { type: "error", msg: detail },
+      }));
+    } finally {
+      setBatchReturning(false);
+    }
+  };
+
   if (loading)
     return (
       <p className="py-8 text-center text-sm text-slate-500">Loading…</p>
@@ -706,6 +945,36 @@ const ReceiverTab = () => {
 
   return (
     <div className="space-y-3">
+      {returnSummary && (
+        <div className="rounded-xl border border-purple-200 bg-purple-50 p-4">
+          <div className="flex items-start justify-between">
+            <div>
+              <h4 className="mb-1 text-sm font-semibold text-purple-800">
+                ✔ Return Outward Generated
+              </h4>
+              <div className="flex flex-wrap gap-4 text-sm text-purple-700">
+                <span>
+                  Return No:{" "}
+                  <strong className="font-mono">{returnSummary.no || "—"}</strong>
+                </span>
+                <span>
+                  Items Returned: <strong>{returnSummary.count}</strong>
+                </span>
+                <span>
+                  Date: <strong>{returnSummary.date}</strong>
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setReturnSummary(null)}
+              className="ml-4 text-xs text-purple-400 hover:text-purple-600"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
       {outwards.map((o) => (
         <div
           key={o.id}
@@ -738,6 +1007,34 @@ const ReceiverTab = () => {
 
           {expanded === o.id && (
             <div className="border-t border-slate-100 px-5 pb-4 pt-3 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-100 bg-white px-4 py-3">
+                <p className="text-xs text-slate-600">
+                  Select received items to generate one return outward number.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => handleGenerateReturnOutward(o.id)}
+                  disabled={batchReturning || !(selectedReturns[String(o.id)]?.size > 0)}
+                  className="rounded-lg bg-purple-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {batchReturning
+                    ? "Generating…"
+                    : `Generate Return Outward (${selectedReturns[String(o.id)]?.size || 0})`}
+                </button>
+              </div>
+
+              {flash[`outward_${String(o.id)}`] && (
+                <p
+                  className={`text-xs ${
+                    flash[`outward_${String(o.id)}`].type === "success"
+                      ? "text-green-700"
+                      : "text-red-600"
+                  }`}
+                >
+                  {flash[`outward_${String(o.id)}`].msg}
+                </p>
+              )}
+
               {(o.details || []).map((d) => (
                 <div
                   key={d.id}
@@ -753,13 +1050,30 @@ const ReceiverTab = () => {
                       {d.entry_detail?.examiner_name}
                     </p>
                   </div>
+                  {d.receive_status === "Received" && d.return_status !== "Returned" ? (
+                    <input
+                      type="checkbox"
+                      checked={!!selectedReturns[String(o.id)]?.has(d.id)}
+                      onChange={() => toggleReturnSelection(o.id, d.id)}
+                      className="rounded"
+                      title="Select for return outward"
+                    />
+                  ) : (
+                    <span className="text-xs text-slate-400">—</span>
+                  )}
                   <Badge label={d.receive_status} />
+                  <Badge label={d.return_status || "Pending"} />
+                  {d.return_outward_no ? (
+                    <span className="font-mono text-xs text-purple-700">
+                      {d.return_outward_no}
+                    </span>
+                  ) : null}
                   {d.receive_status === "Pending" ? (
                     <>
                       <input
                         type="text"
                         className="w-44 rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
-                        placeholder="Remark (optional)"
+                        placeholder="Receive remark"
                         value={remark[d.id] || ""}
                         onChange={(e) =>
                           setRemark((r) => ({
@@ -774,13 +1088,40 @@ const ReceiverTab = () => {
                         onClick={() => handleReceive(d.id)}
                         className="rounded-lg bg-green-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50"
                       >
-                        {receiving === d.id ? "Saving…" : "Mark Received"}
+                        {receiving === d.id ? "Saving…" : "Receive"}
+                      </button>
+                    </>
+                  ) : d.receive_status === "Received" && d.return_status !== "Returned" ? (
+                    <>
+                      <input
+                        type="text"
+                        className="w-44 rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+                        placeholder="Return remark"
+                        value={returnRemark[d.id] || ""}
+                        onChange={(e) =>
+                          setReturnRemark((r) => ({
+                            ...r,
+                            [d.id]: e.target.value,
+                          }))
+                        }
+                      />
+                      <button
+                        type="button"
+                        disabled={returning === d.id}
+                        onClick={() => handleReturn(d.id)}
+                        className="rounded-lg bg-purple-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-50"
+                      >
+                        {returning === d.id ? "Returning…" : "Return"}
                       </button>
                     </>
                   ) : (
                     <div className="text-xs text-slate-500">
+                      {d.return_status === "Returned" && <span>Returned ✔</span>}
                       {d.receive_remark && (
-                        <span>Remark: {d.receive_remark}</span>
+                        <span className="ml-2">Receive: {d.receive_remark}</span>
+                      )}
+                      {d.return_remark && (
+                        <span className="ml-2">Return: {d.return_remark}</span>
                       )}
                     </div>
                   )}
@@ -816,21 +1157,40 @@ const DEFAULT_RIGHTS = {
 
 const AssessmentPage = ({
   rights = DEFAULT_RIGHTS,
+  role = "entry",
+  isAdmin = false,
   onToggleSidebar,
   onToggleChatbox,
 }) => {
-  const [selectedAction, setSelectedAction] = useState(ACTIONS[0]);
+  const availableActions = useMemo(() => {
+    if (isAdmin || role === "controller") return CONTROLLER_ACTIONS;
+    return ENTRY_USER_ACTIONS;
+  }, [isAdmin, role]);
+
+  const [selectedAction, setSelectedAction] = useState(availableActions[0]);
   const [entryRefresh, setEntryRefresh] = useState(0);
+
+  useEffect(() => {
+    if (!availableActions.includes(selectedAction)) {
+      setSelectedAction(availableActions[0]);
+    }
+  }, [availableActions, selectedAction]);
+
+  // Receiver role: dedicated panel with tab-based UI
+  if (role === "receiver") {
+    return <AsstReceiver onToggleSidebar={onToggleSidebar} />;
+  }
 
   return (
     <div className="flex h-full flex-col">
       <PageTopbar
         title="Assessment System"
-        actions={ACTIONS}
+        actions={availableActions}
         selected={selectedAction}
         onSelect={setSelectedAction}
         onToggleSidebar={onToggleSidebar}
         onToggleChatbox={onToggleChatbox}
+        showHomeButton={isAdmin}
       />
 
       <div className="flex-1 overflow-auto px-2 py-4">
@@ -844,11 +1204,13 @@ const AssessmentPage = ({
           </div>
         )}
 
-        {selectedAction === "Pending" && <PendingTab rights={rights} />}
+        {selectedAction === "Pending" && (isAdmin || role === "controller") && (
+          <PendingTab rights={rights} />
+        )}
 
-        {selectedAction === "Outward" && <OutwardTab rights={rights} />}
-
-        {selectedAction === "Receiver" && <ReceiverTab />}
+        {selectedAction === "Outward" && (isAdmin || role === "controller") && (
+          <OutwardTab rights={rights} />
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import React, { Suspense, lazy, useEffect, useState } from "react";
+import { useAuth } from "../hooks/AuthContext";
 
 const Verification = lazy(() => import("./verification"));
 const Migration = lazy(() => import("./Migration"));
@@ -32,6 +33,7 @@ const PageLoader = () => (
 );
 
 const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebarOpen, isChatboxOpen, setSelectedMenuItem, selectedMenuItem, setSidebarOpen, DashboardComponent }) => {
+  const { isAdmin } = useAuth();
   // Keep a per-page ephemeral action if a page needs it
   const [selectedTopbarMenu, setSelectedTopbarMenu] = useState(null);
 
@@ -44,7 +46,7 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
   useEffect(() => {
     const handleGoHome = () => {
       if (typeof setSelectedMenuItem === 'function') {
-        setSelectedMenuItem('Dashboard');
+        if (isAdmin) setSelectedMenuItem('Dashboard');
       }
     };
 
@@ -59,7 +61,7 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
         window.removeEventListener('admindesk_go_home', handleGoHome);
       } catch (e) {}
     };
-  }, [setSelectedMenuItem]);
+  }, [isAdmin, setSelectedMenuItem]);
 
   // Small navigation handoff: if other pages set admindesk_navigate and admindesk_docrec in localStorage,
   // consume them to switch to the appropriate page and clear the keys.
@@ -153,6 +155,13 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
           />
         );
       case "dashboard":
+        if (!isAdmin) {
+          return (
+            <h1 style={{ padding: "20px", fontSize: "20px", fontWeight: "bold" }}>
+              Dashboard access is restricted for this role.
+            </h1>
+          );
+        }
         if (DashboardComponent) {
           return (
             <DashboardComponent

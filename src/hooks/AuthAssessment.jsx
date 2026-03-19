@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import API from "../api/axiosInstance";
 import AssessmentPage from "../pages/assessment";
+import { useAuth } from "./AuthContext";
 
 const DEFAULT_RIGHTS = {
   can_view: false,
@@ -52,9 +53,11 @@ const LoadingState = () => (
 );
 
 const AuthAssessment = ({ onToggleSidebar, onToggleChatbox }) => {
+  const { isAdmin } = useAuth();
   const [rights, setRights] = useState(DEFAULT_RIGHTS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [role, setRole] = useState("entry");
 
   const keywords = useMemo(() => MENU_KEYWORDS, []);
 
@@ -72,23 +75,18 @@ const AuthAssessment = ({ onToggleSidebar, onToggleChatbox }) => {
         }
 
         const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
-        if (storedUser?.is_admin || storedUser?.is_superuser) {
+        if (storedUser?.is_admin || storedUser?.is_superuser || isAdmin) {
           setRights(FULL_RIGHTS);
+          setRole("controller");
           return;
         }
 
         const response = await API.get("/api/my-navigation/");
         const modules = response.data?.modules || [];
 
-        // Assessment Management lives in the "Exam" module.
-        // Fall back to "Office Management" for backward compatibility.
-        const targetModule =
-          modules.find((mod) =>
-            (mod.name || "").toLowerCase().includes("exam")
-          ) ||
-          modules.find((mod) =>
-            (mod.name || "").toLowerCase().includes("office")
-          );
+        const targetModule = modules.find((mod) =>
+          (mod.name || "").toLowerCase().includes("exam")
+        );
 
         if (!targetModule) {
           setError("Exam module permissions are not configured.");
@@ -112,12 +110,41 @@ const AuthAssessment = ({ onToggleSidebar, onToggleChatbox }) => {
         }
 
         setRights(resolvedRights);
+
         if (!resolvedRights.can_view) {
           setError("You do not have permission to access Assessment.");
+        } else {
+          // Ask the backend for the authoritative role.
+          // Falls back through two levels so receiver users are always
+          // identified correctly even on older server builds.
+          let detectedRole = "entry";
+          try {
+            const roleRes = await API.get("/api/assessment-outward/my-role/");
+            detectedRole = roleRes.data?.role || "entry";
+          } catch {
+            // my-role not available on this server build; try the older
+            // receiver-assigned-outwards endpoint as a second signal.
+            try {
+              const myRes = await API.get("/api/assessment-outward/my/");
+              // If the user has outwards assigned, they are definitely a receiver.
+              // An empty array means no outwards assigned yet; fall back to the
+              // can_create heuristic for that edge case.
+              if (Array.isArray(myRes.data) && myRes.data.length > 0) {
+                detectedRole = "receiver";
+              } else {
+                detectedRole = resolvedRights.can_create ? "entry" : "receiver";
+              }
+            } catch {
+              // Final fallback: view-only permission → receiver; otherwise entry.
+              detectedRole = resolvedRights.can_create ? "entry" : "receiver";
+            }
+          }
+          setRole(detectedRole);
         }
       } catch (err) {
         console.error("AuthAssessment permission error:", err);
         setRights(DEFAULT_RIGHTS);
+        setRole("entry");
         setError("Failed to verify permissions. Please try again.");
       } finally {
         setLoading(false);
@@ -125,7 +152,7 @@ const AuthAssessment = ({ onToggleSidebar, onToggleChatbox }) => {
     };
 
     checkPermissions();
-  }, [keywords]);
+  }, [keywords, isAdmin]);
 
   if (loading) return <LoadingState />;
   if (!rights.can_view) {
@@ -139,6 +166,8 @@ const AuthAssessment = ({ onToggleSidebar, onToggleChatbox }) => {
   return (
     <AssessmentPage
       rights={rights}
+      role={role}
+      isAdmin={isAdmin}
       onToggleSidebar={onToggleSidebar}
       onToggleChatbox={onToggleChatbox}
     />

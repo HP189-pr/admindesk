@@ -36,6 +36,19 @@ export const generateAssessmentOutward = (data) =>
 export const receiveAssessmentEntry = (data) =>
   API.post(`${BASE}/assessment-outward/receive-entry/`, data);
 
+// Single-item return — payload: { detail_id, remark }
+// Backend also accepts batch via `items` array; both use the same endpoint.
+export const returnAssessmentEntry = (data) =>
+  API.post(`${BASE}/assessment-outward/return-entry/`, data);
+
+// Batch return — send items: [{ detail_id, remark }, ...] from any outward.
+// Returns { return_outward_no, count } for a single shared return number.
+export const generateReturnAssessmentOutward = (items) =>
+  API.post(`${BASE}/assessment-outward/return-entry/`, { items });
+
+export const finalReceiveAssessmentEntry = (data) =>
+  API.post(`${BASE}/assessment-outward/final-receive/`, data);
+
 // ─── Users (receiver dropdown) ─────────────────────────────────────────────
 
 export const getUsers = () => API.get(`${BASE}/users/`);

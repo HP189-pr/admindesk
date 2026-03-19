@@ -52,7 +52,7 @@ const staticModules = [
   },
 ];
 
-const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
+const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem, selectedMenuItem }) => {
   const navigate = useNavigate();
   const { user, profilePicture, logout, verifyPassword, verifyAdminPanelPassword, isAdminPanelVerified, isAdmin } = useAuth();
 
@@ -201,6 +201,27 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
     if (!exists) setSelectedModule(null);
   }, [displayModules, selectedModule]);
 
+  useEffect(() => {
+    // For non-admin users, auto-open the first visible menu and avoid Dashboard landing.
+    if (navLoading) return;
+    if (isAdmin || (user && user.is_admin)) return;
+    if (!displayModules.length) return;
+
+    const normalizedSelected = String(selectedMenuItem || '').toLowerCase();
+    const hasSelectedVisible = displayModules.some((mod) =>
+      (mod.menu || []).some((menuName) => String(menuName || '').toLowerCase() === normalizedSelected)
+    );
+    if (hasSelectedVisible) return;
+
+    const firstModule = displayModules[0];
+    const firstMenu = firstModule?.menu?.[0];
+    if (!firstModule || !firstMenu) return;
+
+    setSelectedModule(firstModule.id);
+    setActiveMenu(firstMenu);
+    setSelectedMenuItem(firstMenu);
+  }, [displayModules, isAdmin, navLoading, selectedMenuItem, setSelectedMenuItem, user]);
+
   const handleModuleSelect = (moduleId) => {
     setSelectedModule(moduleId);
     setShowDropdown(false);
@@ -300,15 +321,19 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem }) => {
 
       <hr className="border-gray-600 my-2" />
 
-      {/* Dashboard Button */}
-      <button
-        onClick={() => handleMenuClick('Dashboard')}
-        className="w-full text-left px-4 py-2 rounded hover:bg-gray-700"
-      >
-        {isOpen ? '🏠 Dashboard' : '🏠'}
-      </button>
+      {/* Dashboard Button (controller/admin only) */}
+      {(isAdmin || (user && user.is_admin)) && (
+        <>
+          <button
+            onClick={() => handleMenuClick('Dashboard')}
+            className="w-full text-left px-4 py-2 rounded hover:bg-gray-700"
+          >
+            {isOpen ? '🏠 Dashboard' : '🏠'}
+          </button>
 
-      <hr className="border-gray-600 my-2" />
+          <hr className="border-gray-600 my-2" />
+        </>
+      )}
 
       {/* Module Selection */}
       <div className="relative">
@@ -435,6 +460,7 @@ Sidebar.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   setSidebarOpen: PropTypes.func.isRequired,
   setSelectedMenuItem: PropTypes.func.isRequired,
+  selectedMenuItem: PropTypes.string,
 };
 
 export default Sidebar;

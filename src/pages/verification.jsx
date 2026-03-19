@@ -788,7 +788,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
       {getSelected() !== "➕" && (
         <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm flex-1 flex flex-col min-h-0">
           <div className="flex flex-wrap items-center gap-3 p-3 bg-gray-50 border-b">
-            <div className="font-semibold whitespace-nowrap">Last Verification Records</div>
+            <div className="font-semibold whitespace-nowrap">Recent Records</div>
             <div className="flex flex-wrap items-center gap-3 xl:gap-4 xl:ml-4 flex-1 min-w-0">
               <div className="flex items-center gap-1 whitespace-nowrap">
                 <label className="text-xs font-semibold">Status:</label>
