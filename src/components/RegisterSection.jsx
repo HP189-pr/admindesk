@@ -1,3 +1,4 @@
+﻿// src/components/RegisterSection.jsx
 import React from 'react';
 import {
   FileText,

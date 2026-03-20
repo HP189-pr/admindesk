@@ -1,3 +1,4 @@
+﻿# backend/api/migrations/0095_receipt_cancellation_fields.py
 from django.conf import settings
 from django.db import migrations, models
 import django.db.models.deletion

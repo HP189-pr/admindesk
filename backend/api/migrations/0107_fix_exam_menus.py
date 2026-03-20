@@ -1,3 +1,4 @@
+﻿# backend/api/migrations/0107_fix_exam_menus.py
 """
 Fix Exam module menus:
 - Delete stale plain-name duplicates (Assessment Management, CCTV Monitoring)

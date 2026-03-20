@@ -1,3 +1,4 @@
+# backend/api/auth_backends.py
 """Deprecated: legacy authentication backend (username or ID) no longer in use.
 
 This module is retained only to avoid import errors from stale references.

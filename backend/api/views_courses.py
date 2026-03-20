@@ -1,3 +1,4 @@
+﻿# backend/api/views_courses.py
 """Course, institute, and enrollment related viewsets.
 
 Extracted from the transitional `views.py` to reduce its size and improve maintainability.

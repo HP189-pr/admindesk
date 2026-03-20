@@ -1,3 +1,4 @@
+﻿// src/hooks/AuthDocRegister.jsx
 /**
  * AuthDocRegister.jsx
  * Permission checking component for Doc Register (Inward/Outward Register) module

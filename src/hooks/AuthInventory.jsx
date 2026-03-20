@@ -1,3 +1,4 @@
+﻿// src/hooks/AuthInventory.jsx
 /**
  * AuthInventory.jsx
  * Permission checking component for Inventory module

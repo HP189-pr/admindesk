@@ -1,3 +1,4 @@
+﻿# backend/api/middleware_logs.py
 import json
 import traceback
 from django.utils.deprecation import MiddlewareMixin

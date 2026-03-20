@@ -1,3 +1,4 @@
+﻿# backend/api/migrations/0045_add_fts_search_vectors.py
 """
 Migration to add PostgreSQL Full-Text Search (GIN + tsvector)
 Adds search_vector fields and GIN indexes for faster search (100× improvement)

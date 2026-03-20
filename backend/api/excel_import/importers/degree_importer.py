@@ -1,3 +1,4 @@
+﻿# backend/api/excel_import/importers/degree_importer.py
 """Student degree importer shared by admin and bulk upload flows."""
 
 from ..helpers import clean_cell

@@ -1,3 +1,4 @@
+# backend/api/domain_core.py
 """Domain Core Models
 Contains general system models: Holiday, UserProfile, Module, Menu, UserPermission.
 Split from monolithic models.py (Phase 2 refactor). No schema changes.

@@ -1,3 +1,4 @@
+﻿# backend/api/migrations/0076_move_study_mode_to_student.py
 from django.db import migrations, models
 
 

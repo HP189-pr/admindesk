@@ -1,3 +1,4 @@
+﻿// src/services/cashRegisterService.js
 /**
  * Cash Register service helpers
  * FINAL – stable & future-safe

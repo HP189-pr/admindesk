@@ -1,3 +1,4 @@
+﻿# backend/api/serializers_courses.py
 """File: backend/api/serializers_courses.py
 Course, institute, and enrollment related serializers.
 Extraction from monolithic serializers.py (no behavior change).

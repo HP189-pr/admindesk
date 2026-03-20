@@ -1,3 +1,4 @@
+﻿# backend/api/inventory.py
 """
 Inventory Management System
 Models, Serializers, and ViewSets for Inventory Management

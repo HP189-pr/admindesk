@@ -1,3 +1,4 @@
+﻿# backend/api/view_bulkupload.py
 """Bulk upload API adapter built on the shared Excel import engine."""
 
 import logging

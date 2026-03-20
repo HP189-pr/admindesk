@@ -1,3 +1,4 @@
+﻿// src/hooks/AuthEmp.jsx
 import React, { useEffect, useState } from 'react';
 import axios from '../api/axiosInstance';
 import { useAuth } from './AuthContext';

@@ -1,3 +1,4 @@
+﻿// src/utils/print.js
 // print.js — TRUE-CENTERED PRINT ENGINE (MULTI-REPORT SAFE)
 
 const PRINT_HOST_ID = "admindesk-print-host";

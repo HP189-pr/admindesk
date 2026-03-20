@@ -41265,3 +41265,11 @@ Traceback (most recent call last):
   File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\db\models\query.py", line 2372, in prefetch_related_objects
     raise AttributeError(
 AttributeError: Cannot find 'final_received_by' on AssessmentOutwardDetails object, 'details__final_received_by' is an invalid parameter to prefetch_related()
+E:\admindesk\backend\backend\settings.py:76: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+Not Found: /ws/chat/
+WARNING:django.request:Not Found: /ws/chat/
+E:\admindesk\backend\backend\settings.py:76: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000

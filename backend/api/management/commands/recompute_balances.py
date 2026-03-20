@@ -1,3 +1,4 @@
+﻿# backend/api/management/commands/recompute_balances.py
 from django.core.management.base import BaseCommand
 from api.domain_leave_balance import compute_and_persist_leave_balances
 

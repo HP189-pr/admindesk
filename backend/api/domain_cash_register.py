@@ -1,3 +1,4 @@
+# backend/api/domain_cash_register.py
 # Robust, case-insensitive fee code alias mapping for Excel uploads
 # Always use .lower() on input before lookup
 FEE_ALIAS = {

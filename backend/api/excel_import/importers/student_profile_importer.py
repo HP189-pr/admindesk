@@ -1,3 +1,4 @@
+﻿# backend/api/excel_import/importers/student_profile_importer.py
 """StudentProfile importer adapter for shared engine dispatch."""
 
 from ..enrollment_profile import process_student_profile_row

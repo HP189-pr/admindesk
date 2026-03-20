@@ -1,3 +1,4 @@
+﻿// src/utils/mediaUrl.js
 import { API_BASE_URL } from "../api/axiosInstance";
 
 const isAbsoluteUrl = (value) => /^https?:\/\//i.test(value);

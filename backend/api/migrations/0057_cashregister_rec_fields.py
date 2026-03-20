@@ -1,3 +1,4 @@
+﻿# backend/api/migrations/0057_cashregister_rec_fields.py
 from django.db import migrations, models
 
 

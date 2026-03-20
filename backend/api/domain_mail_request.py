@@ -1,3 +1,4 @@
+﻿# backend/api/domain_mail_request.py
 """Domain models for handling mail request / Google Form submissions."""
 
 from __future__ import annotations

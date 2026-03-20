@@ -1,3 +1,4 @@
+﻿// src/hooks/AuthFees.jsx
 /**
  * AuthFees.jsx
  * Permission gate for Fees module (Cash Register / Fee Type / Student Fees)

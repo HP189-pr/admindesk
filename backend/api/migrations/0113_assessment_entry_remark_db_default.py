@@ -1,3 +1,4 @@
+﻿# backend/api/migrations/0113_assessment_entry_remark_db_default.py
 # Hand-written migration: add PostgreSQL-level DEFAULT '' to assessment_entry.remark
 # so that the column default is enforced at DB level (not just in ORM/Python).
 # Required because the old running server process omits `remark` in INSERT payloads.

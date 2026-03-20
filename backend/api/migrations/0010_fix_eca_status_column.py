@@ -1,3 +1,4 @@
+﻿# backend/api/migrations/0010_fix_eca_status_column.py
 """
 Migration to ensure verification has column named `eca_status` (models use db_column='eca_status').
 This will add `eca_status` if missing, copy values from `eca_mail_status` when present, and drop the wrong column.

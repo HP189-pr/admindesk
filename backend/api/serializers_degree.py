@@ -1,3 +1,4 @@
+﻿# backend/api/serializers_degree.py
 """Serializers for Degree Management"""
 from rest_framework import serializers
 from .domain_degree import StudentDegree, ConvocationMaster

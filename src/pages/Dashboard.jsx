@@ -1,3 +1,4 @@
+﻿// src/pages/Dashboard.jsx
 import React, { useState, useEffect, useMemo } from "react";
 import Sidebar from "../Menu/Sidebar.jsx";
 import WorkArea from "./WorkArea.jsx";

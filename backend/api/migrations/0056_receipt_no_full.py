@@ -1,3 +1,4 @@
+﻿# backend/api/migrations/0056_receipt_no_full.py
 from django.db import migrations, models
 
 

@@ -1,3 +1,4 @@
+﻿// src/hooks/AuthExamManage.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import API from "../api/axiosInstance";
 import ExamManagePage from "../pages/examemanage";

@@ -1,3 +1,4 @@
+﻿# backend/api/views_mail_request.py
 """API views for Google Form / mail request submissions."""
 
 from __future__ import annotations

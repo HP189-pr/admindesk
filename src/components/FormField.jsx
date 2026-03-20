@@ -1,3 +1,4 @@
+﻿// src/components/FormField.jsx
 import React from 'react';
 
 const BASE_CLASS = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';

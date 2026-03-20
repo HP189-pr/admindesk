@@ -1,3 +1,4 @@
+﻿# backend/api/migrations/0106_exam_module_data.py
 """
 Data migration: Create "Exam" module with menus
   - Assessment Management

@@ -1,3 +1,4 @@
+﻿# backend/api/migrations/0013_remove_ver_status_default.py
 # Migration: remove default value for verification.status
 from django.db import migrations
 

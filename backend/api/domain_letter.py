@@ -1,3 +1,4 @@
+﻿# backend/api/domain_letter.py
 """Institutional Letter Models (formerly InstVerificationMain/Student)"""
 
 from django.db import models

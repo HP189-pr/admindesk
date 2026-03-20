@@ -1,3 +1,4 @@
+﻿# backend/api/migrations/0024_instverificationmain_doc_types.py
 """Safely add doc_types column if missing.
 
 Convert auto-generated AddField to a RunPython that only adds the

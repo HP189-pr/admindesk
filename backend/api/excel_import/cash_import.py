@@ -1,3 +1,4 @@
+﻿# backend/api/excel_import/cash_import.py
 # CashRegister and Receipt Excel import logic (FINAL – PRODUCTION SAFE)
 
 from decimal import Decimal

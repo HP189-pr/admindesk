@@ -1,3 +1,4 @@
+﻿# backend/api/domain_verification.py
 """Domain Verification & Related (Verification, InstVerification*, Migration, Provisional, Status enums)
 """
 from django.db import models

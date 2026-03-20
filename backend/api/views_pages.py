@@ -1,3 +1,4 @@
+﻿# backend/api/views_pages.py
 """Deprecated duplicate view module.
 
 All functionality moved to modular view files (views_auth.py, views_courses.py, etc.).

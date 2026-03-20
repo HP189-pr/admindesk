@@ -1,3 +1,4 @@
+﻿# backend/api/cctv/serializers_cctv.py
 from rest_framework import serializers
 from .domain_cctv import (
     CCTVExam,

@@ -1,3 +1,4 @@
+﻿# backend/api/migrations/0096_add_shotchat_to_auth_user.py
 from django.db import migrations
 
 

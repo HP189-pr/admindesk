@@ -1,3 +1,4 @@
+﻿# backend/api/excel_import/helpers.py
 # Shared Excel parsing and cleaning helpers for import logic
 
 # --- Excel/CSV helpers moved from admin.py ---

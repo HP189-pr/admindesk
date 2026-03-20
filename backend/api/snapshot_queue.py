@@ -1,3 +1,4 @@
+﻿# backend/api/snapshot_queue.py
 import os
 import uuid
 import json

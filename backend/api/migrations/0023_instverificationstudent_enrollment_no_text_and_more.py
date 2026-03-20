@@ -1,3 +1,4 @@
+﻿# backend/api/migrations/0023_instverificationstudent_enrollment_no_text_and_more.py
 """Safe add of three nullable text columns.
 
 This migration was originally auto-generated and attempted to AddField() which

@@ -1,3 +1,4 @@
+﻿// src/pages/StudentFees.jsx
 /**
  * StudentFees.jsx
  * Entry-first layout (like Enrollment): Topbar + collapsible action panel + records section

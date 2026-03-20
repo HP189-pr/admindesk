@@ -1,3 +1,4 @@
+﻿# backend/api/migrations/0062_remove_cashregister.py
 from django.db import migrations
 
 

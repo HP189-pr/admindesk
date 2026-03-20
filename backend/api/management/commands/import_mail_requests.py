@@ -1,3 +1,4 @@
+﻿# backend/api/management/commands/import_mail_requests.py
 """Management command to pull Google Form mail requests into the local DB."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+﻿# backend/api/excel_import/engine.py
 """Shared row-processing engine for admin and bulk Excel import flows."""
 
 from typing import Any, Callable, List, Optional

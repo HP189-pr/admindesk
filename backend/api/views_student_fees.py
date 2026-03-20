@@ -1,3 +1,4 @@
+﻿# backend/api/views_student_fees.py
 """Views for Student Fees Management"""
 from rest_framework import viewsets, status
 from rest_framework.decorators import action

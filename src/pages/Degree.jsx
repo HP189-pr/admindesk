@@ -1,3 +1,4 @@
+﻿// src/pages/Degree.jsx
 /**
  * Degree.jsx
  * Main degree management component with CRUD operations

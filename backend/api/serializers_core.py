@@ -1,3 +1,4 @@
+﻿# backend/api/serializers_core.py
 """File: backend/api/serializers_core.py
 Core/user/navigation related serializers split from monolithic serializers.py.
 Safe extraction: imports original models via facade. No behavior changes.

@@ -1,3 +1,4 @@
+﻿# backend/api/serializers_mail_request.py
 """Serializers for Google Form mail request submissions."""
 
 from __future__ import annotations

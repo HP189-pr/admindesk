@@ -1,3 +1,4 @@
+﻿# backend/api/management/commands/sync_transcript_queue.py
 """
 Management command to manually process queued transcript syncs.
 """

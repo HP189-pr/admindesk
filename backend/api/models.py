@@ -1,3 +1,4 @@
+﻿# backend/api/models.py
 """File: backend/api/models.py
 Facade module re-exporting split domain model groups.
 

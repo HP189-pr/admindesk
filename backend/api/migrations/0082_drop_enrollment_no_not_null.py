@@ -1,3 +1,4 @@
+﻿# backend/api/migrations/0082_drop_enrollment_no_not_null.py
 from django.db import migrations
 
 

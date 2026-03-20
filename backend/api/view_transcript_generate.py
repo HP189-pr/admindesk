@@ -1,3 +1,4 @@
+﻿# backend/api/view_transcript_generate.py
 """Viewset exposing transcript generation requests."""
 
 from __future__ import annotations

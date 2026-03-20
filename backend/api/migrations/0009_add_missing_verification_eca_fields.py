@@ -1,3 +1,4 @@
+﻿# backend/api/migrations/0009_add_missing_verification_eca_fields.py
 """
 Migration to add missing ECA columns to verification table if they don't exist.
 This uses Postgres 'ADD COLUMN IF NOT EXISTS' to safely alter existing databases.

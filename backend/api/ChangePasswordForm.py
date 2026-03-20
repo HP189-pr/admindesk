@@ -1,3 +1,4 @@
+# backend/api/ChangePasswordForm.py
 """Deprecated legacy Django ModelForm for changing password.
 
 All password change logic is now handled via API (`ChangePasswordView`).

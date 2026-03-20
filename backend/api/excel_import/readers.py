@@ -1,3 +1,4 @@
+﻿# backend/api/excel_import/readers.py
 """Shared Excel workbook readers for admin and API bulk-upload flows."""
 
 import csv

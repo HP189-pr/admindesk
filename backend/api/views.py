@@ -1,3 +1,4 @@
+﻿# backend/api/views.py
 """File: backend/api/views.py
 Primary API view layer (TRANSITIONAL after beginning modular split).
 

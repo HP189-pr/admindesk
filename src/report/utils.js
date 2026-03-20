@@ -1,3 +1,4 @@
+﻿// src/report/utils.js
 // Shared helpers for leave reporting screens
 export const normalize = (data) => {
   if (!data) return [];

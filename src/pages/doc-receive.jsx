@@ -1,3 +1,4 @@
+﻿// src/pages/doc-receive.jsx
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { dmyToISO, isoToDMY, pad2 } from "../utils/date";
 import PanelToggleButton from "../components/PanelToggleButton";

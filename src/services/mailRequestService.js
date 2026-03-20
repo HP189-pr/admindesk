@@ -1,3 +1,4 @@
+﻿// src/services/mailRequestService.js
 import API, { LONG_API } from '../api/axiosInstance';
 
 const BASE_PATH = '/api/mail-requests/';

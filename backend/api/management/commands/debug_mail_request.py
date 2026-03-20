@@ -1,3 +1,4 @@
+﻿# backend/api/management/commands/debug_mail_request.py
 from __future__ import annotations
 
 from typing import Optional

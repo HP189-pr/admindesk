@@ -1,3 +1,4 @@
+﻿// src/services/inventoryService.js
 /**
  * Inventory Service
  * API calls for Inventory Management System

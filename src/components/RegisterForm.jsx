@@ -1,3 +1,4 @@
+﻿// src/components/RegisterForm.jsx
 import React from 'react';
 
 import FormField from './FormField';

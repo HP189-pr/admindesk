@@ -1,3 +1,4 @@
+﻿# backend/api/management/commands/check_tr_records.py
 from django.core.management.base import BaseCommand
 import json
 

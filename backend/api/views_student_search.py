@@ -1,3 +1,4 @@
+﻿# backend/api/views_student_search.py
 """
 Student Search View
 Comprehensive student information search across all services

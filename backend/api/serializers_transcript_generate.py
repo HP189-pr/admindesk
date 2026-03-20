@@ -1,3 +1,4 @@
+﻿# backend/api/serializers_transcript_generate.py
 """Serializers for transcript PDF generation requests."""
 
 from __future__ import annotations

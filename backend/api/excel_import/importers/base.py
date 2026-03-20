@@ -1,3 +1,4 @@
+﻿# backend/api/excel_import/importers/base.py
 """Base types shared by service-specific Excel importers."""
 
 from dataclasses import dataclass

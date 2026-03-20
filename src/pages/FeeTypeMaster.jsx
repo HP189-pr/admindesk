@@ -1,3 +1,4 @@
+﻿// src/pages/FeeTypeMaster.jsx
 import React, { useCallback, useEffect, useState } from 'react';
 import { fetchFeeTypes, createFeeType, updateFeeType } from '../services/feeTypeService';
 import PageTopbar from '../components/PageTopbar';

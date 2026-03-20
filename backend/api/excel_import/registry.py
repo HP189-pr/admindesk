@@ -1,3 +1,4 @@
+﻿# backend/api/excel_import/registry.py
 """Central registry for bulk/admin Excel import services and importer adapters."""
 
 from dataclasses import dataclass

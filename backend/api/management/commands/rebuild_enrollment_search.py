@@ -1,3 +1,4 @@
+﻿# backend/api/management/commands/rebuild_enrollment_search.py
 """
 Management command to rebuild search_vector for all Enrollment records
 Run: python manage.py rebuild_enrollment_search

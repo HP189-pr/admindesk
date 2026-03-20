@@ -1,3 +1,4 @@
+﻿# backend/api/views_auth.py
 """Auth, profile, navigation, and user management related API views.
 
 Extracted from the former monolithic `views.py` as part of Phase 2 modularization.

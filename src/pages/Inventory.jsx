@@ -1,3 +1,4 @@
+﻿// src/pages/Inventory.jsx
 /**
  * Inventory Management System
  * 4-Tab Layout: Stock Summary | Inward Entry | Outward Entry | Item Master

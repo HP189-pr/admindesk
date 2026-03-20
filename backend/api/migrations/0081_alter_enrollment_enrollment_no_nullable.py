@@ -1,3 +1,4 @@
+﻿# backend/api/migrations/0081_alter_enrollment_enrollment_no_nullable.py
 from django.db import migrations, models
 
 

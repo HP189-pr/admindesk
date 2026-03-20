@@ -1,3 +1,4 @@
+﻿# backend/api/migrations/0021_instverificationstudent_enrollment_no_text.py
 """Add enrollment_no_text to inst_verification_student (safe migration).
 
 Adds a nullable varchar column `enrollment_no_text` to store the raw enrollment

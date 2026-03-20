@@ -1,3 +1,4 @@
+﻿# backend/api/management/commands/seed_leave_allocations.py
 from django.core.management.base import BaseCommand
 from api.domain_emp import LeavePeriod, LeaveAllocation, LeaveType, EmpProfile
 from django.db import transaction

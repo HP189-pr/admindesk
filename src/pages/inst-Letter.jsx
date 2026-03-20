@@ -1,3 +1,4 @@
+﻿// src/pages/inst-Letter.jsx
 import useEnrollmentLookup from '../hooks/useEnrollmentLookup';
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import PanelToggleButton from "../components/PanelToggleButton";

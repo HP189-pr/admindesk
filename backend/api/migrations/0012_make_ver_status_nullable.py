@@ -1,3 +1,4 @@
+﻿# backend/api/migrations/0012_make_ver_status_nullable.py
 # Generated safe migration: make verification.status nullable
 from django.db import migrations
 

@@ -1,3 +1,4 @@
+﻿// src/report/LeaveReport.jsx
 // LeaveReport.jsx (Report tab)
 import React, { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';

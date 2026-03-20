@@ -1,3 +1,4 @@
+﻿# backend/api/serializers.py
 """File: backend/api/serializers.py
 Legacy aggregated serializer module.
 

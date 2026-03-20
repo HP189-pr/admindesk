@@ -1,3 +1,4 @@
+﻿# backend/api/utils.py
 """File: backend/api/utils.py
 Utility helpers (JWT claims augmentation, etc.).
 

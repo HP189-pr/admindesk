@@ -1,3 +1,4 @@
+﻿# backend/api/management/commands/convert_docrec_ids.py
 # Management command to convert file-path style doc_rec_id to sequential format (e.g., vr26000001)
 # Usage: python manage.py convert_docrec_ids
 

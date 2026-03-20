@@ -1,3 +1,4 @@
+﻿// src/pages/inout_register.jsx
 import React, { useEffect, useState } from 'react';
 import { Inbox, Send } from 'lucide-react';
 import PageTopbar from '../components/PageTopbar';

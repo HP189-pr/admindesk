@@ -1,3 +1,4 @@
+﻿# backend/api/migrations/0062_remove_receipt_unique_constraints.py
 from django.db import migrations, models
 
 class Migration(migrations.Migration):

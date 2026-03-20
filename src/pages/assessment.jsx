@@ -1,3 +1,4 @@
+﻿// src/pages/assessment.jsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PageTopbar from "../components/PageTopbar";
 import API from "../api/axiosInstance";
@@ -24,13 +25,18 @@ const today = () => new Date().toISOString().slice(0, 10);
 const fmtDate = (d) => {
   if (!d) return "—";
   try {
-    return new Date(d).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
+    // Avoid UTC-midnight offset for date-only strings
+    const dt =
+      typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)
+        ? new Date(d + "T12:00:00")
+        : new Date(d);
+    if (isNaN(dt.getTime())) return String(d);
+    const day = String(dt.getDate()).padStart(2, "0");
+    const month = String(dt.getMonth() + 1).padStart(2, "0");
+    const year = dt.getFullYear();
+    return `${day}-${month}-${year}`;
   } catch {
-    return d;
+    return String(d);
   }
 };
 
@@ -63,8 +69,8 @@ const Badge = ({ label }) => (
   </span>
 );
 
-const CONTROLLER_ACTIONS = ["Entry", "Pending", "Outward", "Receiver"];
-const ENTRY_USER_ACTIONS = ["Entry"];
+const CONTROLLER_ACTIONS = ["Entry", "Pending", "Outward", "Return", "Receiver"];
+const ENTRY_USER_ACTIONS = ["Entry", "Return"];
 const RECEIVER_ACTIONS = ["Receiver"];
 
 const DEFAULT_ENTRY_FORM = {
@@ -303,6 +309,8 @@ const MyEntriesTable = ({ refresh, rights }) => {
                 "Outward No.",
                 "Status",
                 "Return Status",
+                "Returned By",
+                "Return Date",
                 "Return Outward No.",
                 "Return Remark",
                 "Final Receive Status",
@@ -338,6 +346,12 @@ const MyEntriesTable = ({ refresh, rights }) => {
                 </td>
                 <td className="px-4 py-3">
                   {e.return_status ? <Badge label={e.return_status} /> : "—"}
+                </td>
+                <td className="px-4 py-3 text-xs font-medium text-purple-700">
+                  {e.returned_by_name || "—"}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-xs text-slate-500">
+                  {e.returned_date ? fmtDate(e.returned_date) : "—"}
                 </td>
                 <td className="px-4 py-3 font-mono text-xs text-slate-600">
                   {e.return_outward_no || "—"}
@@ -386,6 +400,194 @@ const MyEntriesTable = ({ refresh, rights }) => {
                       ✔ Completed
                       {e.final_receive_remark && (
                         <div className="text-slate-500">{e.final_receive_remark}</div>
+                      )}
+                    </div>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+// ─── Return Tab (A / B / C – returned items + final receive) ─────────────────
+
+const ReturnTab = ({ rights }) => {
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [finalizing, setFinalizing] = useState(null);
+  const [finalRemark, setFinalRemark] = useState({});
+  const [flash, setFlash] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await getAssessmentEntries();
+      const all = res.data?.results ?? res.data ?? [];
+      setEntries(
+        all.filter((e) => ["Returned", "Completed"].includes(e.status))
+      );
+    } catch {
+      setEntries([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const handleFinalReceive = async (detailId, remark) => {
+    if (!detailId) return;
+    setFinalizing(detailId);
+    setFlash(null);
+    try {
+      await finalReceiveAssessmentEntry({
+        detail_id: detailId,
+        remark: remark || "",
+      });
+      setFlash({ type: "success", msg: "Final received successfully." });
+      await load();
+    } catch (err) {
+      setFlash({
+        type: "error",
+        msg: err?.response?.data?.detail || "Failed to complete final receive.",
+      });
+    } finally {
+      setFinalizing(null);
+    }
+  };
+
+  if (loading)
+    return (
+      <p className="py-8 text-center text-sm text-slate-500">Loading…</p>
+    );
+
+  if (!entries.length)
+    return (
+      <p className="py-8 text-center text-sm text-slate-500">
+        No returned entries yet.
+      </p>
+    );
+
+  return (
+    <div className="space-y-2">
+      {flash && (
+        <p
+          className={`text-sm ${
+            flash.type === "success" ? "text-green-700" : "text-red-600"
+          }`}
+        >
+          {flash.msg}
+        </p>
+      )}
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+        <table className="min-w-full divide-y divide-slate-200 text-sm">
+          <thead className="bg-slate-50">
+            <tr>
+              {[
+                "#",
+                "Date",
+                "Exam",
+                "Dummy No.",
+                "Outward No.",
+                "Status",
+                "Returned By (D)",
+                "Return Date",
+                "Return Outward No.",
+                "Return Remark",
+                "Final Status",
+                "Final Remark",
+                "Action",
+              ].map((h) => (
+                <th
+                  key={h}
+                  className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {entries.map((e, i) => (
+              <tr key={e.id} className="hover:bg-slate-50">
+                <td className="px-4 py-3 text-slate-500">{i + 1}</td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  {fmtDate(e.entry_date)}
+                </td>
+                <td className="px-4 py-3 font-medium">{e.exam_name}</td>
+                <td className="px-4 py-3">{e.dummy_number}</td>
+                <td className="px-4 py-3 font-mono text-xs">
+                  {e.outward_no || "—"}
+                </td>
+                <td className="px-4 py-3">
+                  <Badge label={e.status} />
+                </td>
+                <td className="px-4 py-3 text-xs font-semibold text-purple-700">
+                  {e.returned_by_name || "—"}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-xs text-slate-500">
+                  {e.returned_date ? fmtDate(e.returned_date) : "—"}
+                </td>
+                <td className="px-4 py-3 font-mono text-xs text-purple-700">
+                  {e.return_outward_no || "—"}
+                </td>
+                <td className="px-4 py-3 text-xs text-slate-500">
+                  {e.return_remark || "—"}
+                </td>
+                <td className="px-4 py-3">
+                  {e.final_receive_status === "Received" || e.status === "Completed" ? (
+                    <Badge label="Received Back" />
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="px-4 py-3 text-xs text-slate-500">
+                  {e.final_receive_remark || "—"}
+                </td>
+                <td className="px-4 py-3">
+                  {e.status === "Returned" && e.detail_id ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder="Final receive remark"
+                        className="w-36 rounded border border-slate-300 px-2 py-1 text-xs"
+                        value={finalRemark[e.detail_id] || ""}
+                        onChange={(ev) =>
+                          setFinalRemark((r) => ({
+                            ...r,
+                            [e.detail_id]: ev.target.value,
+                          }))
+                        }
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleFinalReceive(
+                            e.detail_id,
+                            finalRemark[e.detail_id]
+                          )
+                        }
+                        disabled={finalizing === e.detail_id}
+                        className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                      >
+                        {finalizing === e.detail_id ? "Receiving…" : "✔ Receive Back"}
+                      </button>
+                    </div>
+                  ) : e.status === "Completed" ? (
+                    <div className="text-xs text-emerald-700">
+                      ✔ Completed
+                      {e.final_received_by_name && (
+                        <div className="text-slate-500">
+                          By: {e.final_received_by_name}
+                        </div>
                       )}
                     </div>
                   ) : (
@@ -723,10 +925,14 @@ const OutwardTab = ({ rights }) => {
                       "Receive Status",
                       "Return Status",
                       "Return Outward No.",
+                      "Returned By",
+                      "Return Date",
                       "Completed",
                       "Received By",
                       "Received Date",
                       "Return Remark",
+                      "Final Status",
+                      "Final Remark",
                     ].map((h) => (
                       <th
                         key={h}
@@ -764,6 +970,12 @@ const OutwardTab = ({ rights }) => {
                       <td className="px-3 py-2 font-mono text-xs text-slate-600">
                         {d.return_outward_no || "—"}
                       </td>
+                      <td className="px-3 py-2 text-xs font-medium text-purple-700">
+                        {d.returned_by_name || "—"}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-500">
+                        {d.returned_date ? fmtDate(d.returned_date) : "—"}
+                      </td>
                       <td className="px-3 py-2">
                         {d.entry_detail?.status === "Completed" ? (
                           <Badge label="Completed" />
@@ -779,6 +991,16 @@ const OutwardTab = ({ rights }) => {
                       </td>
                       <td className="px-3 py-2 text-xs text-slate-500">
                         {d.return_remark || "—"}
+                      </td>
+                      <td className="px-3 py-2">
+                        {d.final_receive_status === "Received" ? (
+                          <Badge label="Received Back" />
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-slate-500">
+                        {d.final_receive_remark || "—"}
                       </td>
                     </tr>
                   ))}
@@ -1202,6 +1424,10 @@ const AssessmentPage = ({
             />
             <MyEntriesTable refresh={entryRefresh} rights={rights} />
           </div>
+        )}
+
+        {selectedAction === "Return" && (
+          <ReturnTab rights={rights} />
         )}
 
         {selectedAction === "Pending" && (isAdmin || role === "controller") && (

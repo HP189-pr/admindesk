@@ -1,3 +1,4 @@
+﻿// src/components/AdminBulkUpload.jsx
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import * as XLSX from 'xlsx';
 

@@ -1,3 +1,4 @@
+﻿# backend/api/excel_import/column_mapper.py
 """Column alias maps and header resolution helpers for Excel import workflows."""
 
 import re

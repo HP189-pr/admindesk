@@ -1,3 +1,4 @@
+﻿# backend/api/domain_documents.py
 """Domain Document Receipt & Related (DocRec, Eca, PayPrefixRule)
 """
 from django.db import models

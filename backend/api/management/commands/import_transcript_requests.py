@@ -1,3 +1,4 @@
+﻿# backend/api/management/commands/import_transcript_requests.py
 """Import transcript PDF generation requests from Google Sheets."""
 
 from __future__ import annotations

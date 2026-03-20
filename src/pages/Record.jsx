@@ -1,3 +1,4 @@
+﻿// src/pages/Record.jsx
 import React, { useState } from 'react';
 import EnrollmentState from '../utils/EnrollmentState';
 

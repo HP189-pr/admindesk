@@ -1,3 +1,4 @@
+﻿// src/hooks/AuthContext.jsx
 import { createContext, useContext, useState, useEffect } from "react";
 import API from "../api/axiosInstance";
 import { DEFAULT_PROFILE_PIC, resolveProfilePicture } from "../utils/mediaUrl";

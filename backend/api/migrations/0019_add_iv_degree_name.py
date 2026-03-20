@@ -1,3 +1,4 @@
+﻿# backend/api/migrations/0019_add_iv_degree_name.py
 """Add iv_degree_name to inst_verification_student if missing (safe migration).
 
 This migration will add a nullable varchar column `iv_degree_name` to the

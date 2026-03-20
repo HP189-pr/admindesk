@@ -1,3 +1,4 @@
+﻿# backend/api/sheets_sync.py
 """Helpers to push mail and transcript updates back to Google Sheets."""
 
 from __future__ import annotations

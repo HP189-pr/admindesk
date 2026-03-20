@@ -1,3 +1,4 @@
+﻿# backend/api/excel_import/import_specs.py
 """Per-model import specifications for Excel upload workflows."""
 
 from typing import Any, Dict

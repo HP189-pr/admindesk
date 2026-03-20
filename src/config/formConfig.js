@@ -1,3 +1,4 @@
+﻿// src/config/formConfig.js
 export const FORM_CONFIG = {
   Gen: {
     External: [

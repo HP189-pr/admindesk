@@ -1,3 +1,4 @@
+﻿// src/hooks/UserRights.jsx
 import React, { useEffect, useState } from "react";
 import axios from "../api/axiosInstance";
 import { toast, ToastContainer } from "react-toastify";

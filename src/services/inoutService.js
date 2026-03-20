@@ -1,3 +1,4 @@
+﻿// src/services/inoutService.js
 /**
  * Inward/Outward Register Service
  * API calls for In/Out Register Management System

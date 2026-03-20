@@ -1,3 +1,4 @@
+﻿# backend/api/cctv/domain_cctv.py
 from django.db import models
 from django.db.models import Max
 

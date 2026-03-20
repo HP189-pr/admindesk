@@ -1,3 +1,4 @@
+﻿# backend/api/in_out_register.py
 """
 Inward/Outward Register Management System
 Single file containing Models, Serializers, Views, and URL patterns

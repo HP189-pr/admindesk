@@ -1,3 +1,4 @@
+﻿# backend/api/migrations/0006_add_usr_birth_date_to_auth_user.py
 from django.db import migrations
 
 

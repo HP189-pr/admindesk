@@ -1,4 +1,4 @@
-
+# backend/api/admin.py
 from django.contrib import admin
 from .domain_cash_register import Receipt, ReceiptItem, FeeType, normalize_receipt_no, split_receipt
 from django.db import models as djmodels

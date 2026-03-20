@@ -1,3 +1,4 @@
+﻿# backend/api/search_utils.py
 """
 PostgreSQL Full-Text Search Utilities
 GIN + tsvector for 100× faster search on large datasets

@@ -1,3 +1,4 @@
+﻿# backend/api/excel_import/importers/verification_importer.py
 """Verification importer shared by admin and bulk upload flows."""
 
 from django.utils import timezone

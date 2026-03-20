@@ -1,3 +1,4 @@
+﻿# backend/api/excel_import/validators.py
 """Small shared validation and row-scope helpers for importers."""
 
 from typing import Any, Iterable, Optional, Set

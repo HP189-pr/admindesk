@@ -1,3 +1,4 @@
+﻿// src/hooks/AuthDegree.jsx
 /**
  * AuthDegree.jsx
  * Permission checking component for Degree module

@@ -1,3 +1,4 @@
+﻿# backend/api/domain_transcript_generate.py
 """Domain model for transcript PDF generation requests imported from Google Sheets."""
 
 from __future__ import annotations

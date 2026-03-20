@@ -1,3 +1,4 @@
+﻿# backend/api/migrations/0114_assessment_remove_final_received.py
 # Cleans up FinalReceived status:
 # 1. Data migration: any existing FinalReceived rows → Completed
 # 2. AlterField: remove FinalReceived from choices

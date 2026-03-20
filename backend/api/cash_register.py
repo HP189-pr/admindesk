@@ -1,4 +1,4 @@
-
+# backend/api/cash_register.py
 from __future__ import annotations
 from django.utils.dateparse import parse_date
 from django.db.models import Sum, Min, Max, F, Func

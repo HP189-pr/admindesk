@@ -1,3 +1,4 @@
+﻿# backend/api/serializers_enrollment.py
 """Enrollment-focused serializers."""
 from rest_framework import serializers
 

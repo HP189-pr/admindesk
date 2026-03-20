@@ -1,3 +1,4 @@
+﻿// src/pages/asst_receiver.jsx
 /**
  * Assessment Receiver Page
  * Dedicated UI for the Receiver (D-role) user.
@@ -20,13 +21,18 @@ import {
 const fmtDate = (d) => {
   if (!d) return "—";
   try {
-    return new Date(d).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
+    // Avoid UTC-midnight offset for date-only strings
+    const dt =
+      typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)
+        ? new Date(d + "T12:00:00")
+        : new Date(d);
+    if (isNaN(dt.getTime())) return String(d);
+    const day = String(dt.getDate()).padStart(2, "0");
+    const month = String(dt.getMonth() + 1).padStart(2, "0");
+    const year = dt.getFullYear();
+    return `${day}-${month}-${year}`;
   } catch {
-    return d;
+    return String(d);
   }
 };
 
@@ -395,6 +401,11 @@ const ReceiveTab = () => {
                         {d.entry_detail?.total_answer_sheet} &bull; Examiner:{" "}
                         {d.entry_detail?.examiner_name}
                       </p>
+                      {d.entry_detail?.remark && (
+                        <p className="mt-0.5 text-xs text-slate-400">
+                          Entry remark: {d.entry_detail.remark}
+                        </p>
+                      )}
                     </div>
 
                     {/* Checkbox for batch return */}
@@ -782,6 +793,7 @@ const AllRecordsTab = () => {
                 "Exam",
                 "Examiner",
                 "Sheets",
+                "Entry Remark",
                 "Status",
                 "Return Outward No.",
                 "Received By",
@@ -789,6 +801,8 @@ const AllRecordsTab = () => {
                 "Return Remark",
                 "Returned By",
                 "Returned Date",
+                "Final Status",
+                "Final Remark",
               ].map((h) => (
                 <th
                   key={h}
@@ -841,6 +855,9 @@ const AllRecordsTab = () => {
                   <td className="px-4 py-3">
                     {d.entry_detail?.total_answer_sheet}
                   </td>
+                  <td className="px-4 py-3 text-xs text-slate-500">
+                    {d.entry_detail?.remark || "—"}
+                  </td>
                   <td className="px-4 py-3">
                     <ReceiverStatusBadge d={d} />
                   </td>
@@ -877,13 +894,25 @@ const AllRecordsTab = () => {
                   <td className="px-4 py-3 text-xs text-slate-500">
                     {d.returned_date ? fmtDate(d.returned_date) : "—"}
                   </td>
+                  <td className="px-4 py-3">
+                    {d.final_receive_status === "Received" ? (
+                      <span className="inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+                        Received Back
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-slate-500">
+                    {d.final_receive_remark || "—"}
+                  </td>
                 </tr>
               );
             })}
             {filtered.length === 0 && (
               <tr>
                 <td
-                  colSpan={15}
+                  colSpan={17}
                   className="px-4 py-8 text-center text-sm text-slate-400"
                 >
                   No records match the selected filter.

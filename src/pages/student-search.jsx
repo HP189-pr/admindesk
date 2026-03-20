@@ -1,3 +1,4 @@
+﻿// src/pages/student-search.jsx
 import React, { useEffect, useState } from "react";
 import { searchStudent, formatDate, getStatusColor } from "../services/studentSearchService";
 import { FaSearch, FaUser, FaUniversity, FaPhone, FaEnvelope, FaFileAlt, FaMoneyBillWave } from "react-icons/fa";

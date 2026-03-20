@@ -1,3 +1,4 @@
+﻿# backend/api/views_admin.py
 import json
 import logging
 

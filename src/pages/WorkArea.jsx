@@ -1,3 +1,4 @@
+﻿// src/pages/WorkArea.jsx
 import React, { Suspense, lazy, useEffect, useState } from "react";
 import { useAuth } from "../hooks/AuthContext";
 

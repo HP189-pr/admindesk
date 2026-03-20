@@ -1,3 +1,4 @@
+﻿// src/hooks/DataAnalysis.jsx
 import React, { useState } from 'react';
 import { useAuth } from './AuthContext.jsx';
 

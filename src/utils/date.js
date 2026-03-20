@@ -1,3 +1,4 @@
+﻿// src/utils/date.js
 // Shared date helpers: convert between ISO (yyyy-mm-dd) and DMY (dd-mm-yyyy)
 
 export function pad2(n) {

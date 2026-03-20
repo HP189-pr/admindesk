@@ -1,3 +1,4 @@
+﻿# backend/api/excel_import/specs.py
 """Backward-compatible facade for Excel import specs and registry helpers."""
 
 from .column_mapper import (

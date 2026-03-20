@@ -1,3 +1,4 @@
+﻿# backend/api/excel_import/importers/common.py
 """Shared helpers reused by multiple Excel importer modules."""
 
 from decimal import Decimal, InvalidOperation

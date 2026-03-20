@@ -1,3 +1,4 @@
+﻿# backend/api/serializers_documents.py
 """File: backend/api/serializers_documents.py
 DocRec, Verification, Migration, Provisional, InstVerification, ECA related serializers.
 Extraction; no logic change.

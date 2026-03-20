@@ -1,3 +1,4 @@
+﻿# backend/api/management/commands/normalize_iv_docrec_ids.py
 """Normalize IV doc_rec_id values to the new format.
 
 Transforms legacy Institutional Verification doc_rec_id strings like

@@ -1,3 +1,4 @@
+﻿# backend/api/migrations/0047_add_sandwich_to_leaveallocation.py
 from django.db import migrations, models
 
 class Migration(migrations.Migration):
