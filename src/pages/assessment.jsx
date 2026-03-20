@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { FaFileExcel, FaFilePdf } from "react-icons/fa6";
+import { FaEdit, FaTrash } from "react-icons/fa";
 import PageTopbar from "../components/PageTopbar";
 import API from "../api/axiosInstance";
 import AsstReceiver from "./asst_receiver";
@@ -342,167 +343,162 @@ const EntryDetailPanel = ({ entry, onClose, onSaved, onDeleted, rights }) => {
   const canDelete = rights.can_delete && entry.status === "Pending";
 
   return (
-    <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />
-      {/* Drawer */}
-      <div className="fixed right-0 top-0 z-50 flex h-full w-full max-w-lg flex-col bg-white shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-          <div>
-            <h3 className="text-base font-semibold text-slate-800">
-              {editMode ? "Edit Entry" : "Entry Details"}
-            </h3>
-            <p className="text-xs text-slate-400">ID #{entry.id}</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+    <div className="action-panel-shell">
+      {/* Header */}
+      <div className="action-panel-header">
+        <div className="action-panel-title">
+          {editMode
+            ? `Edit Entry${entry.exam_name ? " — " + entry.exam_name : ""}`
+            : `Entry Details${entry.exam_name ? " — " + entry.exam_name : ""}`}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="rounded-full p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Body */}
+      <div className="action-panel-body">
+        {flash && (
+          <p
+            className={`mb-3 rounded-lg px-3 py-2 text-sm ${
+              flash.type === "success"
+                ? "bg-green-50 text-green-700"
+                : "bg-red-50 text-red-600"
+            }`}
           >
-            ✕
-          </button>
-        </div>
+            {flash.msg}
+          </p>
+        )}
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-5">
-          {flash && (
-            <p
-              className={`mb-3 rounded-lg px-3 py-2 text-sm ${
-                flash.type === "success"
-                  ? "bg-green-50 text-green-700"
-                  : "bg-red-50 text-red-600"
-              }`}
-            >
-              {flash.msg}
-            </p>
-          )}
-
-          {editMode ? (
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">
-                  Entry Date
-                </label>
-                <input
-                  type="date"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  value={form.entry_date}
-                  onChange={set("entry_date")}
-                  required
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">
-                  Exam Name
-                </label>
-                <input
-                  type="text"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  value={form.exam_name}
-                  onChange={set("exam_name")}
-                  required
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">
-                  Examiner Name
-                </label>
-                <input
-                  type="text"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  value={form.examiner_name}
-                  onChange={set("examiner_name")}
-                  required
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">
-                  Dummy Number
-                </label>
-                <input
-                  type="text"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  value={form.dummy_number}
-                  onChange={set("dummy_number")}
-                  required
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">
-                  Total Answer Sheets
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  value={form.total_answer_sheet}
-                  onChange={set("total_answer_sheet")}
-                  required
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">
-                  Entry Remark
-                </label>
-                <input
-                  type="text"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  value={form.remark}
-                  onChange={set("remark")}
-                  placeholder="Optional"
-                />
-              </div>
+        {editMode ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                Entry Date
+              </label>
+              <input
+                type="date"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                value={form.entry_date}
+                onChange={set("entry_date")}
+                required
+              />
             </div>
-          ) : (
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-              {[
-                ["Date", fmtDate(entry.entry_date)],
-                ["Exam", entry.exam_name],
-                ["Examiner", entry.examiner_name],
-                ["Dummy No.", entry.dummy_number],
-                ["Sheets", entry.total_answer_sheet],
-                ["Entry Remark", entry.remark || "—"],
-                ["Outward No.", entry.outward_no || "—"],
-                ["Status", <Badge key="s" label={entry.status} />],
-                [
-                  "Return Status",
-                  entry.return_status ? (
-                    <Badge key="rs" label={entry.return_status} />
-                  ) : (
-                    "—"
-                  ),
-                ],
-                ["Returned By (D)", entry.returned_by_name || "—"],
-                [
-                  "Return Date",
-                  entry.returned_date ? fmtDate(entry.returned_date) : "—",
-                ],
-                ["Return Outward No.", entry.return_outward_no || "—"],
-                ["Return Remark", entry.return_remark || "—"],
-                [
-                  "Final Status",
-                  entry.final_receive_status ? (
-                    <Badge key="fs" label={entry.final_receive_status} />
-                  ) : (
-                    "—"
-                  ),
-                ],
-                ["Final Remark", entry.final_receive_remark || "—"],
-              ].map(([label, val]) => (
-                <div key={label} className="col-span-1">
-                  <dt className="text-xs font-medium text-slate-500">{label}</dt>
-                  <dd className="mt-0.5 font-medium text-slate-800">{val}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-        </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                Exam Name
+              </label>
+              <input
+                type="text"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                value={form.exam_name}
+                onChange={set("exam_name")}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                Examiner Name
+              </label>
+              <input
+                type="text"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                value={form.examiner_name}
+                onChange={set("examiner_name")}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                Dummy Number
+              </label>
+              <input
+                type="text"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                value={form.dummy_number}
+                onChange={set("dummy_number")}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                Total Answer Sheets
+              </label>
+              <input
+                type="number"
+                min="1"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                value={form.total_answer_sheet}
+                onChange={set("total_answer_sheet")}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                Entry Remark
+              </label>
+              <input
+                type="text"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                value={form.remark}
+                onChange={set("remark")}
+                placeholder="Optional"
+              />
+            </div>
+          </div>
+        ) : (
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm md:grid-cols-3 lg:grid-cols-5">
+            {[
+              ["Date", fmtDate(entry.entry_date)],
+              ["Exam", entry.exam_name],
+              ["Examiner", entry.examiner_name],
+              ["Dummy No.", entry.dummy_number],
+              ["Sheets", entry.total_answer_sheet],
+              ["Entry Remark", entry.remark || "—"],
+              ["Outward No.", entry.outward_no || "—"],
+              ["Status", <Badge key="s" label={entry.status} />],
+              [
+                "Return Status",
+                entry.return_status ? (
+                  <Badge key="rs" label={entry.return_status} />
+                ) : (
+                  "—"
+                ),
+              ],
+              ["Returned By (D)", entry.returned_by_name || "—"],
+              [
+                "Return Date",
+                entry.returned_date ? fmtDate(entry.returned_date) : "—",
+              ],
+              ["Return Outward No.", entry.return_outward_no || "—"],
+              ["Return Remark", entry.return_remark || "—"],
+              [
+                "Final Status",
+                entry.final_receive_status ? (
+                  <Badge key="fs" label={entry.final_receive_status} />
+                ) : (
+                  "—"
+                ),
+              ],
+              ["Final Remark", entry.final_receive_remark || "—"],
+            ].map(([label, val]) => (
+              <div key={label}>
+                <dt className="text-xs font-medium text-slate-500">{label}</dt>
+                <dd className="mt-0.5 font-medium text-slate-800">{val}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
 
-        {/* Footer */}
-        <div className="border-t border-slate-200 px-5 py-4">
+        {/* Action buttons */}
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3">
           {confirmDelete ? (
-            <div className="flex items-center gap-3">
+            <>
               <span className="text-sm font-medium text-red-700">
                 Delete this entry?
               </span>
@@ -521,9 +517,9 @@ const EntryDetailPanel = ({ entry, onClose, onSaved, onDeleted, rights }) => {
               >
                 Cancel
               </button>
-            </div>
+            </>
           ) : editMode ? (
-            <div className="flex gap-3">
+            <>
               <button
                 type="button"
                 disabled={saving}
@@ -542,9 +538,9 @@ const EntryDetailPanel = ({ entry, onClose, onSaved, onDeleted, rights }) => {
               >
                 Cancel
               </button>
-            </div>
+            </>
           ) : (
-            <div className="flex flex-wrap gap-3">
+            <>
               {canEdit && (
                 <button
                   type="button"
@@ -570,11 +566,11 @@ const EntryDetailPanel = ({ entry, onClose, onSaved, onDeleted, rights }) => {
               >
                 Close
               </button>
-            </div>
+            </>
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 };
 
@@ -667,6 +663,22 @@ const MyEntriesTable = ({ refresh, rights }) => {
           <FaFilePdf size={20} color="#D32F2F" />
         </button>
       </div>
+
+      {/* Detail / Edit panel — above the table */}
+      {selectedEntry && (
+        <EntryDetailPanel
+          entry={selectedEntry}
+          rights={rights}
+          onClose={() => setSelectedEntry(null)}
+          onSaved={() => {
+            load();
+            setSelectedEntry(null);
+          }}
+          onDeleted={() => {
+            load();
+          }}
+        />
+      )}
 
       {flash && (
         <p
@@ -762,26 +774,26 @@ const MyEntriesTable = ({ refresh, rights }) => {
                   onClick={(ev) => ev.stopPropagation()}
                 >
                   <div className="flex flex-wrap items-center gap-1">
-                    {rights.can_edit && e.status === "Pending" && (
+                    {rights.can_edit && (
                       <button
                         type="button"
                         title="Edit"
                         onClick={() =>
                           setSelectedEntry({ ...e, _openEdit: true })
                         }
-                        className="icon-edit-button"
+                        className="w-5 h-5 flex items-center justify-center icon-edit-button shadow-md rounded"
                       >
-                        ✏
+                        <FaEdit size={12} />
                       </button>
                     )}
-                    {rights.can_delete && e.status === "Pending" && (
+                    {rights.can_delete && (
                       <button
                         type="button"
                         title="Delete"
                         onClick={() => setSelectedEntry(e)}
-                        className="icon-delete-button"
+                        className="w-5 h-5 flex items-center justify-center icon-delete-button shadow-md rounded"
                       >
-                        🗑
+                        <FaTrash size={12} />
                       </button>
                     )}
                     {e.status === "Returned" && e.detail_id && (
@@ -827,22 +839,6 @@ const MyEntriesTable = ({ refresh, rights }) => {
           </tbody>
         </table>
       </div>
-
-      {/* Detail / Edit panel */}
-      {selectedEntry && (
-        <EntryDetailPanel
-          entry={selectedEntry}
-          rights={rights}
-          onClose={() => setSelectedEntry(null)}
-          onSaved={() => {
-            load();
-            setSelectedEntry(null);
-          }}
-          onDeleted={() => {
-            load();
-          }}
-        />
-      )}
     </div>
   );
 };
@@ -878,131 +874,131 @@ const ReturnEntryPanel = ({ entry, rights, onClose, onSaved }) => {
   };
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-40 bg-black/30"
-        onClick={onClose}
-      />
-      {/* Drawer */}
-      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col overflow-hidden rounded-l-2xl bg-white shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-6 py-4">
-          <h3 className="text-base font-semibold text-slate-800">
-            Assessment Entry — Returned
-          </h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
-          >
-            ✕
-          </button>
+    <div className="action-panel-shell">
+      {/* Header */}
+      <div className="action-panel-header">
+        <div className="action-panel-title">
+          {`Returned Entry${entry.exam_name ? " — " + entry.exam_name : ""}`}
         </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="rounded-full p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+        >
+          ✕
+        </button>
+      </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {/* Return Remark Banner (from D) */}
-          {entry.return_remark && (
-            <div className="rounded-xl border border-purple-300 bg-purple-50 px-4 py-3">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-purple-600">
-                Return Remark from Receiver (D)
-              </p>
-              <p className="text-sm font-medium text-purple-900">
-                "{entry.return_remark}"
-              </p>
-              <div className="mt-1 flex flex-wrap gap-4 text-xs text-purple-700">
-                {entry.returned_by_name && (
-                  <span>By: <strong>{entry.returned_by_name}</strong></span>
-                )}
-                {entry.returned_date && (
-                  <span>Date: <strong>{fmtDate(entry.returned_date)}</strong></span>
-                )}
-                {entry.return_outward_no && (
-                  <span>Return Outward: <strong>{entry.return_outward_no}</strong></span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Entry details */}
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-            {[
-              ["Entry Date", fmtDate(entry.entry_date)],
-              ["Exam Name", entry.exam_name],
-              ["Examiner Name", entry.examiner_name],
-              ["Dummy Number", entry.dummy_number],
-              ["Total Answer Sheets", entry.total_answer_sheet],
-              ["Outward No.", entry.outward_no || "—"],
-              ["Status", <Badge key="s" label={entry.status} />],
-              ["Return Status", entry.return_status ? <Badge key="rs" label={entry.return_status} /> : "—"],
-              ["Final Status", entry.final_receive_status || "—"],
-              ["Final Remark", entry.final_receive_remark || "—"],
-              ["Remark", entry.remark || "—"],
-            ].map(([label, val]) => (
-              <div key={label}>
-                <dt className="text-xs font-medium text-slate-500">{label}</dt>
-                <dd className="mt-0.5 text-slate-800">{val}</dd>
-              </div>
-            ))}
-          </dl>
-
-          {/* Flash */}
-          {flash && (
-            <p
-              className={`text-sm ${
-                flash.type === "success" ? "text-green-700" : "text-red-600"
-              }`}
-            >
-              {flash.msg}
+      {/* Body */}
+      <div className="action-panel-body space-y-3">
+        {/* Return Remark Banner (from D) */}
+        {entry.return_remark && (
+          <div className="rounded-xl border border-purple-300 bg-purple-50 px-4 py-3">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-purple-600">
+              Return Remark from Receiver (D)
             </p>
-          )}
-        </div>
+            <p className="text-sm font-medium text-purple-900">
+              "{entry.return_remark}"
+            </p>
+            <div className="mt-1 flex flex-wrap gap-4 text-xs text-purple-700">
+              {entry.returned_by_name && (
+                <span>
+                  By: <strong>{entry.returned_by_name}</strong>
+                </span>
+              )}
+              {entry.returned_date && (
+                <span>
+                  Date: <strong>{fmtDate(entry.returned_date)}</strong>
+                </span>
+              )}
+              {entry.return_outward_no && (
+                <span>
+                  Return Outward: <strong>{entry.return_outward_no}</strong>
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
-        {/* Footer */}
-        <div className="border-t border-slate-200 bg-slate-50 px-6 py-4">
-          {entry.status === "Returned" && entry.detail_id ? (
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-slate-600">
-                Final Receive Remark
-              </p>
+        {/* Entry details */}
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm md:grid-cols-3 lg:grid-cols-5">
+          {[
+            ["Entry Date", fmtDate(entry.entry_date)],
+            ["Exam Name", entry.exam_name],
+            ["Examiner Name", entry.examiner_name],
+            ["Dummy Number", entry.dummy_number],
+            ["Total Answer Sheets", entry.total_answer_sheet],
+            ["Outward No.", entry.outward_no || "—"],
+            ["Status", <Badge key="s" label={entry.status} />],
+            [
+              "Return Status",
+              entry.return_status ? (
+                <Badge key="rs" label={entry.return_status} />
+              ) : (
+                "—"
+              ),
+            ],
+            ["Final Status", entry.final_receive_status || "—"],
+            ["Final Remark", entry.final_receive_remark || "—"],
+            ["Remark", entry.remark || "—"],
+          ].map(([label, val]) => (
+            <div key={label}>
+              <dt className="text-xs font-medium text-slate-500">{label}</dt>
+              <dd className="mt-0.5 font-medium text-slate-800">{val}</dd>
+            </div>
+          ))}
+        </dl>
+
+        {/* Final receive action */}
+        {entry.status === "Returned" && entry.detail_id && (
+          <div className="border-t border-slate-200 pt-3">
+            <p className="mb-1 text-xs font-medium text-slate-600">
+              Final Receive Remark
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
               <input
                 type="text"
                 placeholder="Enter final receive remark…"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                className="w-64 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                 value={finalRemark}
                 onChange={(e) => setFinalRemark(e.target.value)}
               />
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={handleFinalReceive}
-                  disabled={finalizing}
-                  className="save-button-compact"
-                >
-                  {finalizing ? "Receiving…" : "✔ Final Receive"}
-                </button>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="reset-button-compact"
-                >
-                  Close
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleFinalReceive}
+                disabled={finalizing}
+                className="save-button-compact"
+              >
+                {finalizing ? "Receiving…" : "✔ Final Receive"}
+              </button>
             </div>
-          ) : (
-            <button
-              type="button"
-              onClick={onClose}
-              className="reset-button-compact"
-            >
-              Close
-            </button>
-          )}
+          </div>
+        )}
+
+        {/* Flash */}
+        {flash && (
+          <p
+            className={`text-sm ${
+              flash.type === "success" ? "text-green-700" : "text-red-600"
+            }`}
+          >
+            {flash.msg}
+          </p>
+        )}
+
+        {/* Close */}
+        <div className="border-t border-slate-200 pt-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="reset-button-compact"
+          >
+            Close
+          </button>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 
@@ -1131,6 +1127,16 @@ const ReturnTab = ({ rights }) => {
         </button>
       </div>
 
+      {/* Detail Panel — above the table */}
+      {selectedEntry && (
+        <ReturnEntryPanel
+          entry={selectedEntry}
+          rights={rights}
+          onClose={() => setSelectedEntry(null)}
+          onSaved={() => load()}
+        />
+      )}
+
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50">
@@ -1148,6 +1154,7 @@ const ReturnTab = ({ rights }) => {
                 "Return Remark",
                 "Final Status",
                 "Final Remark",
+                "Action",
               ].map((h) => (
                 <th
                   key={h}
@@ -1199,21 +1206,24 @@ const ReturnTab = ({ rights }) => {
                 <td className="px-4 py-3 text-xs text-slate-500">
                   {e.final_receive_remark || "—"}
                 </td>
+                {/* Action */}
+                <td className="px-4 py-3" onClick={(ev) => ev.stopPropagation()}>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      title="View / Final Receive"
+                      onClick={() => setSelectedEntry(e)}
+                      className="w-5 h-5 flex items-center justify-center icon-edit-button shadow-md rounded"
+                    >
+                      <FaEdit size={12} />
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-
-      {/* Detail Panel */}
-      {selectedEntry && (
-        <ReturnEntryPanel
-          entry={selectedEntry}
-          rights={rights}
-          onClose={() => setSelectedEntry(null)}
-          onSaved={() => load()}
-        />
-      )}
     </div>
   );
 };

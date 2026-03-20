@@ -10,6 +10,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { FaEdit } from "react-icons/fa";
 import {
   generateReturnAssessmentOutward,
   getMyAssessmentOutwards,
@@ -604,6 +605,7 @@ const AllRecordsTab = () => {
   const [batchReturning, setBatchReturning] = useState(false);
   const [flash, setFlash] = useState(null);
   const [returnSummary, setReturnSummary] = useState(null);
+  const [selectedRow, setSelectedRow] = useState(null); // row clicked for view panel
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -848,6 +850,62 @@ const AllRecordsTab = () => {
         </p>
       )}
 
+      {/* Row detail view panel — above the table */}
+      {selectedRow && (
+        <div className="action-panel-shell">
+          <div className="action-panel-header">
+            <div className="action-panel-title">
+              {`Record Details${selectedRow.entry_detail?.exam_name ? " — " + selectedRow.entry_detail.exam_name : ""}`}
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedRow(null)}
+              aria-label="Close"
+              className="rounded-full p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="action-panel-body">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm md:grid-cols-3 lg:grid-cols-5">
+              {[
+                ["Outward No.", selectedRow._outward?.outward_no || "—"],
+                ["Admin Remark", selectedRow._outward?.remarks || "—"],
+                ["Dummy No.", selectedRow.entry_detail?.dummy_number || "—"],
+                ["Exam", selectedRow.entry_detail?.exam_name || "—"],
+                ["Examiner", selectedRow.entry_detail?.examiner_name || "—"],
+                ["Total Sheets", selectedRow.entry_detail?.total_answer_sheet || "—"],
+                ["Entry Remark", selectedRow.entry_detail?.remark || "—"],
+                ["Status", <ReceiverStatusBadge key="st" d={selectedRow} />],
+                ["Work Status", selectedRow.work_status || "—"],
+                ["Return Outward No.", selectedRow.return_outward_no || "—"],
+                ["Received By", selectedRow.received_by_name || "—"],
+                ["Received Date", selectedRow.received_date ? fmtDate(selectedRow.received_date) : "—"],
+                ["Return Remark", selectedRow.return_remark || "—"],
+                ["Returned By", selectedRow.returned_by_name || "—"],
+                ["Returned Date", selectedRow.returned_date ? fmtDate(selectedRow.returned_date) : "—"],
+                ["Final Status", selectedRow.final_receive_status || "—"],
+                ["Final Remark", selectedRow.final_receive_remark || "—"],
+              ].map(([label, val]) => (
+                <div key={label}>
+                  <dt className="text-xs font-medium text-slate-500">{label}</dt>
+                  <dd className="mt-0.5 font-medium text-slate-800">{val}</dd>
+                </div>
+              ))}
+            </dl>
+            <div className="mt-4 border-t border-slate-200 pt-3">
+              <button
+                type="button"
+                onClick={() => setSelectedRow(null)}
+                className="reset-button-compact"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
@@ -883,6 +941,7 @@ const AllRecordsTab = () => {
                 "Returned Date",
                 "Final Status",
                 "Final Remark",
+                "Action",
               ].map((h) => (
                 <th
                   key={h}
@@ -902,17 +961,16 @@ const AllRecordsTab = () => {
               return (
                 <tr
                   key={d.id}
-                  onClick={() => toggleRow(d.id)}
-                  className={`${canSelect ? "cursor-pointer hover:bg-slate-50" : ""} ${selected.has(d.id) ? "bg-indigo-50" : ""}`}
+                  className="cursor-pointer hover:bg-slate-50"
+                  onClick={() => setSelectedRow(d)}
                 >
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" onClick={(ev) => ev.stopPropagation()}>
                     {canSelect ? (
                       <input
                         type="checkbox"
                         className="rounded"
                         checked={selected.has(d.id)}
                         onChange={() => toggleRow(d.id)}
-                        onClick={(ev) => ev.stopPropagation()}
                       />
                     ) : (
                       <span className="text-slate-300">—</span>
@@ -1002,13 +1060,24 @@ const AllRecordsTab = () => {
                   <td className="px-4 py-3 text-xs text-slate-500">
                     {d.final_receive_remark || "—"}
                   </td>
+                  {/* Action */}
+                  <td className="px-4 py-3" onClick={(ev) => ev.stopPropagation()}>
+                    <button
+                      type="button"
+                      title="View Details"
+                      onClick={() => setSelectedRow(d)}
+                      className="w-5 h-5 flex items-center justify-center icon-edit-button shadow-md rounded"
+                    >
+                      <FaEdit size={12} />
+                    </button>
+                  </td>
                 </tr>
               );
             })}
             {filtered.length === 0 && (
               <tr>
                 <td
-                  colSpan={18}
+                  colSpan={19}
                   className="px-4 py-8 text-center text-sm text-slate-400"
                 >
                   No records match the selected filter.
