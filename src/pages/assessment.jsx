@@ -25,16 +25,16 @@ const today = () => new Date().toISOString().slice(0, 10);
 const fmtDate = (d) => {
   if (!d) return "—";
   try {
-    // Avoid UTC-midnight offset for date-only strings
+    // Always use only the YYYY-MM-DD portion to avoid UTC-offset day-shift
+    const s = typeof d === "string" ? d.slice(0, 10) : null;
     const dt =
-      typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)
-        ? new Date(d + "T12:00:00")
+      s && /^\d{4}-\d{2}-\d{2}$/.test(s)
+        ? new Date(s + "T12:00:00")
         : new Date(d);
     if (isNaN(dt.getTime())) return String(d);
     const day = String(dt.getDate()).padStart(2, "0");
     const month = String(dt.getMonth() + 1).padStart(2, "0");
-    const year = dt.getFullYear();
-    return `${day}-${month}-${year}`;
+    return `${day}-${month}-${dt.getFullYear()}`;
   } catch {
     return String(d);
   }
