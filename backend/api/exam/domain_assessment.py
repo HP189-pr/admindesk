@@ -164,8 +164,29 @@ class AssessmentOutwardDetails(models.Model):
         max_length=20, choices=FINAL_RECEIVE_STATUS_CHOICES, default="Pending"
     )
 
+    # ─── Work-process tracking (added for Receiver's grading workflow) ───────
+    WORK_STATUS_CHOICES = [
+        ("Pending", "Pending"),
+        ("InProgress", "In Progress"),
+        ("Done", "Done"),
+    ]
+    work_status = models.CharField(
+        max_length=20, choices=WORK_STATUS_CHOICES, default="Pending"
+    )
+    work_remark = models.TextField(blank=True)
+    work_updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assessment_work_updates",
+    )
+    work_updated_date = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         db_table = "assessment_outward_details"
+        # Prevent the same entry being added to the same outward twice
+        unique_together = [["outward", "entry"]]
 
     def __str__(self):
         return f"{self.outward.outward_no} – {self.entry.dummy_number}"

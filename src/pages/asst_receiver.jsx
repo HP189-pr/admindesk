@@ -14,6 +14,7 @@ import {
   generateReturnAssessmentOutward,
   getMyAssessmentOutwards,
   receiveAssessmentEntry,
+  updateWorkStatus,
 } from "../services/assessmentService";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -147,6 +148,9 @@ const ReceiveTab = () => {
   const [selected, setSelected] = useState({}); // { outwardId: Set<detailId> }
   const [flash, setFlash] = useState({});
   const [returnSummary, setReturnSummary] = useState(null); // last generated
+  const [workStatusMap, setWorkStatusMap] = useState({}); // { detailId: "InProgress"|"Done" }
+  const [workRemark, setWorkRemark] = useState({});
+  const [updatingWork, setUpdatingWork] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -185,6 +189,29 @@ const ReceiveTab = () => {
       );
     } finally {
       setReceiving(null);
+    }
+  };
+
+  const handleUpdateWork = async (detailId, statusVal) => {
+    setUpdatingWork(detailId);
+    setFlash((f) => ({ ...f, [detailId]: null }));
+    try {
+      await updateWorkStatus({
+        detail_id: detailId,
+        status: statusVal,
+        remark: workRemark[detailId] || "",
+      });
+      setWorkStatusMap((m) => ({ ...m, [detailId]: statusVal }));
+      setFlashMsg(detailId, "success", `Work status set to ${statusVal}.`);
+      load();
+    } catch (err) {
+      setFlashMsg(
+        detailId,
+        "error",
+        err?.response?.data?.detail || "Failed to update work status.",
+      );
+    } finally {
+      setUpdatingWork(null);
     }
   };
 
@@ -385,6 +412,9 @@ const ReceiveTab = () => {
                 const isPending = d.receive_status === "Pending";
                 const isReceived = d.receive_status === "Received";
                 const isReturned = d.return_status === "Returned";
+                // Use live map if user changed it this session, otherwise fall back to server value
+                const currentWork = workStatusMap[d.id] ?? d.work_status ?? "Pending";
+                const workDone = currentWork === "Done";
 
                 return (
                   <div
@@ -408,14 +438,12 @@ const ReceiveTab = () => {
                       )}
                     </div>
 
-                    {/* Checkbox for batch return */}
-                    {isReceived && !isReturned ? (
+                    {/* Checkbox for batch return — only when work is Done */}
+                    {isReceived && !isReturned && workDone ? (
                       <input
                         type="checkbox"
                         title="Select for return outward"
-                        checked={
-                          !!selected[String(o.id)]?.has(d.id)
-                        }
+                        checked={!!selected[String(o.id)]?.has(d.id)}
                         onChange={() => toggleSelect(o.id, d.id)}
                         className="h-4 w-4 rounded"
                       />
@@ -423,8 +451,27 @@ const ReceiveTab = () => {
                       <span className="w-4" />
                     )}
 
-                    {/* Single composite status badge — receiver perspective */}
+                    {/* Composite status badge */}
                     <ReceiverStatusBadge d={d} />
+
+                    {/* Work status badge */}
+                    {isReceived && !isReturned && (
+                      <span
+                        className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
+                          currentWork === "Done"
+                            ? "bg-green-100 text-green-800"
+                            : currentWork === "InProgress"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {currentWork === "Done"
+                          ? "🟢 Done"
+                          : currentWork === "InProgress"
+                          ? "🔵 In Progress"
+                          : "⚪ Work Pending"}
+                      </span>
+                    )}
 
                     {d.return_outward_no && (
                       <span className="font-mono text-xs text-purple-700">
@@ -432,7 +479,7 @@ const ReceiveTab = () => {
                       </span>
                     )}
 
-                    {/* Actions based on state */}
+                    {/* Receive action */}
                     {isPending && (
                       <>
                         <input
@@ -458,8 +505,36 @@ const ReceiveTab = () => {
                       </>
                     )}
 
-                    {/* canReturn: has it, hasn't returned it yet */}
-                    {isReceived && (!d.return_status || !isReturned) && (
+                    {/* Work status controls — show when received and not yet returned */}
+                    {isReceived && !isReturned && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <select
+                          className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs"
+                          value={currentWork}
+                          disabled={updatingWork === d.id || isReturned}
+                          onChange={(e) => handleUpdateWork(d.id, e.target.value)}
+                        >
+                          <option value="Pending">Work Pending</option>
+                          <option value="InProgress">In Progress</option>
+                          <option value="Done">Done</option>
+                        </select>
+                        <input
+                          type="text"
+                          className="w-36 rounded-lg border border-slate-300 px-2 py-1.5 text-xs"
+                          placeholder="Work remark"
+                          value={workRemark[d.id] || ""}
+                          onChange={(e) =>
+                            setWorkRemark((r) => ({
+                              ...r,
+                              [d.id]: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                    )}
+
+                    {/* Return remark — only enabled when work is Done */}
+                    {isReceived && !isReturned && workDone && (
                       <input
                         type="text"
                         className="w-40 rounded-lg border border-slate-300 px-3 py-1.5 text-xs"
@@ -497,7 +572,9 @@ const ReceiveTab = () => {
                     {/* Per-item flash */}
                     {flash[d.id] && (
                       <p
-                        className={`w-full text-xs ${flash[d.id].type === "success" ? "text-green-700" : "text-red-600"}`}
+                        className={`w-full text-xs ${
+                          flash[d.id].type === "success" ? "text-green-700" : "text-red-600"
+                        }`}
                       >
                         {flash[d.id].msg}
                       </p>
@@ -561,7 +638,9 @@ const AllRecordsTab = () => {
     filtered
       .filter(
         (d) =>
-          d.receive_status === "Received" && d.return_status !== "Returned"
+          d.receive_status === "Received" &&
+          d.return_status !== "Returned" &&
+          d.work_status === "Done"
       )
       .map((d) => d.id)
   );
@@ -795,6 +874,7 @@ const AllRecordsTab = () => {
                 "Sheets",
                 "Entry Remark",
                 "Status",
+                "Work Status",
                 "Return Outward No.",
                 "Received By",
                 "Received Date",
@@ -817,7 +897,8 @@ const AllRecordsTab = () => {
             {filtered.map((d) => {
               const canSelect =
                 d.receive_status === "Received" &&
-                d.return_status !== "Returned";
+                d.return_status !== "Returned" &&
+                d.work_status === "Done";
               return (
                 <tr
                   key={d.id}
@@ -860,6 +941,21 @@ const AllRecordsTab = () => {
                   </td>
                   <td className="px-4 py-3">
                     <ReceiverStatusBadge d={d} />
+                  </td>
+                  <td className="px-4 py-3">
+                    {d.work_status === "Done" ? (
+                      <span className="inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
+                        🟢 Done
+                      </span>
+                    ) : d.work_status === "InProgress" ? (
+                      <span className="inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">
+                        🔵 In Progress
+                      </span>
+                    ) : (
+                      <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                        Pending
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-purple-700">
                     {d.return_outward_no || "—"}
@@ -912,7 +1008,7 @@ const AllRecordsTab = () => {
             {filtered.length === 0 && (
               <tr>
                 <td
-                  colSpan={17}
+                  colSpan={18}
                   className="px-4 py-8 text-center text-sm text-slate-400"
                 >
                   No records match the selected filter.

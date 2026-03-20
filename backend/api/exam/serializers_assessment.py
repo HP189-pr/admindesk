@@ -111,6 +111,7 @@ class AssessmentOutwardDetailsSerializer(serializers.ModelSerializer):
     received_by_name = serializers.SerializerMethodField(read_only=True)
     returned_by_name = serializers.SerializerMethodField(read_only=True)
     final_received_by_name = serializers.SerializerMethodField(read_only=True)
+    work_updated_by_name = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = AssessmentOutwardDetails
@@ -129,6 +130,11 @@ class AssessmentOutwardDetailsSerializer(serializers.ModelSerializer):
     def get_final_received_by_name(self, obj):
         if obj.final_received_by:
             return obj.final_received_by.get_full_name() or obj.final_received_by.username
+        return None
+
+    def get_work_updated_by_name(self, obj):
+        if obj.work_updated_by:
+            return obj.work_updated_by.get_full_name() or obj.work_updated_by.username
         return None
 
 

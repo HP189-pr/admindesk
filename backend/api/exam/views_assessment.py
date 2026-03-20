@@ -557,6 +557,12 @@ class AssessmentOutwardViewSet(ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
+            if detail.work_status != "Done":
+                return Response(
+                    {"detail": f"Detail {detail.id}: work must be marked Done before return."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             if detail.return_status == "Returned":
                 return Response(
                     {"detail": f"Detail {detail.id} already returned."},
@@ -660,3 +666,221 @@ class AssessmentOutwardViewSet(ModelViewSet):
         detail.entry.save(update_fields=["status"])
 
         return Response({"message": "Final received successfully."})
+
+    # ─── POST /api/assessment-outward/update-work-status/ ─────────────────
+    @action(detail=False, methods=["post"], url_path="update-work-status")
+    def update_work_status(self, request):
+        """
+        Receiver marks grading work status on a detail row.
+
+        Payload: { "detail_id": <int>, "status": "InProgress"|"Done", "remark": "" }
+        """
+        detail_id = request.data.get("detail_id")
+        status_val = request.data.get("status")
+        remark = request.data.get("remark", "")
+
+        if status_val not in ("Pending", "InProgress", "Done"):
+            return Response(
+                {"detail": "status must be Pending, InProgress, or Done."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not detail_id:
+            return Response(
+                {"detail": "detail_id is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            detail = AssessmentOutwardDetails.objects.select_related(
+                "outward"
+            ).get(id=detail_id)
+        except AssessmentOutwardDetails.DoesNotExist:
+            return Response(
+                {"detail": "Detail record not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not (
+            _is_admin_like(request.user)
+            or detail.outward.receiver_user == request.user
+        ):
+            return Response(
+                {"detail": "Permission denied."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if detail.receive_status != "Received":
+            return Response(
+                {"detail": "Item must be received before updating work status."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        detail.work_status = status_val
+        detail.work_remark = remark
+        detail.work_updated_by = request.user
+        detail.work_updated_date = timezone.now()
+        detail.save(
+            update_fields=[
+                "work_status",
+                "work_remark",
+                "work_updated_by",
+                "work_updated_date",
+            ]
+        )
+        return Response({"message": "Work status updated.", "work_status": status_val})
+
+    # ─── GET /api/assessment-outward/report/ ─────────────────────────────
+    @action(detail=False, methods=["get"], url_path="report")
+    def report(self, request):
+        """Filterable flat report for any role."""
+        user = request.user
+        rights = _assessment_rights(user)
+        if not rights["can_view"]:
+            return self._deny("Assessment module access denied.")
+
+        start = request.query_params.get("start_date")
+        end = request.query_params.get("end_date")
+        rpt_status = request.query_params.get("status")
+
+        qs = AssessmentOutwardDetails.objects.select_related(
+            "entry", "entry__added_by",
+            "outward", "outward__receiver_user",
+            "received_by", "returned_by",
+            "final_received_by", "work_updated_by",
+        )
+
+        if _is_admin_like(user):
+            pass  # all records
+        elif _is_receiver_only(user):
+            qs = qs.filter(outward__receiver_user=user)
+        else:
+            qs = qs.filter(entry__added_by=user)
+
+        if start:
+            qs = qs.filter(entry__entry_date__gte=start)
+        if end:
+            qs = qs.filter(entry__entry_date__lte=end)
+        if rpt_status:
+            qs = qs.filter(entry__status=rpt_status)
+
+        serializer = AssessmentOutwardDetailsSerializer(qs.order_by("-id"), many=True)
+        return Response(serializer.data)
+
+    # ─── GET /api/assessment-outward/dashboard/ ───────────────────────────
+    @action(detail=False, methods=["get"], url_path="dashboard")
+    def dashboard(self, request):
+        """Summary counts for the assessment dashboard widget."""
+        rights = _assessment_rights(request.user)
+        if not rights["can_view"]:
+            return self._deny("Assessment module access denied.")
+
+        user = request.user
+        base = AssessmentEntry.objects
+
+        if not _is_admin_like(user) and not _is_receiver_only(user):
+            base = base.filter(added_by=user)
+        elif _is_receiver_only(user):
+            # receivers count entries linked to their assigned outwards
+            base = base.filter(outward__receiver_user=user)
+
+        return Response({
+            "pending":   base.filter(status="Pending").count(),
+            "outward":   base.filter(status="Outward").count(),
+            "inprogress": base.filter(status="InProgress").count(),
+            "returned":  base.filter(status="Returned").count(),
+            "completed": base.filter(status="Completed").count(),
+        })
+
+    # ─── GET /api/assessment-outward/export-excel/ ───────────────────────
+    @action(detail=False, methods=["get"], url_path="export-excel")
+    def export_excel(self, request):
+        """Download an Excel report of all outward-detail rows the caller may see."""
+        import openpyxl
+        from django.http import HttpResponse as DjangoHttpResponse
+
+        rights = _assessment_rights(request.user)
+        if not rights["can_view"]:
+            return self._deny("Assessment module access denied.")
+
+        user = request.user
+        qs = AssessmentOutwardDetails.objects.select_related(
+            "entry", "outward", "outward__receiver_user",
+            "received_by", "returned_by", "final_received_by",
+        )
+
+        if _is_admin_like(user):
+            pass
+        elif _is_receiver_only(user):
+            qs = qs.filter(outward__receiver_user=user)
+        else:
+            qs = qs.filter(entry__added_by=user)
+
+        start = request.query_params.get("start_date")
+        end = request.query_params.get("end_date")
+        if start:
+            qs = qs.filter(entry__entry_date__gte=start)
+        if end:
+            qs = qs.filter(entry__entry_date__lte=end)
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Assessment Report"
+
+        headers = [
+            "Entry Date", "Exam Name", "Dummy No.", "Sheets",
+            "Entry Remark", "Added By",
+            "Outward No.", "Outward Date", "Receiver",
+            "Receive Status", "Received By", "Received Date", "Receive Remark",
+            "Work Status", "Work Remark",
+            "Return Status", "Return Outward No.", "Returned By", "Returned Date", "Return Remark",
+            "Final Receive Status", "Final Received By", "Final Received Date", "Final Remark",
+            "Entry Status",
+        ]
+        ws.append(headers)
+
+        def fmtd(dt):
+            if not dt:
+                return ""
+            try:
+                return str(dt)[:10]
+            except Exception:
+                return str(dt)
+
+        for d in qs.order_by("-id"):
+            ws.append([
+                fmtd(d.entry.entry_date),
+                d.entry.exam_name,
+                d.entry.dummy_number,
+                d.entry.total_answer_sheet,
+                d.entry.remark or "",
+                d.entry.added_by.get_full_name() or d.entry.added_by.username if d.entry.added_by else "",
+                d.outward.outward_no,
+                fmtd(d.outward.outward_date),
+                d.outward.receiver_user.get_full_name() or d.outward.receiver_user.username if d.outward.receiver_user else "",
+                d.receive_status,
+                d.received_by.get_full_name() or d.received_by.username if d.received_by else "",
+                fmtd(d.received_date),
+                d.receive_remark or "",
+                d.work_status,
+                d.work_remark or "",
+                d.return_status,
+                d.return_outward_no or "",
+                d.returned_by.get_full_name() or d.returned_by.username if d.returned_by else "",
+                fmtd(d.returned_date),
+                d.return_remark or "",
+                d.final_receive_status,
+                d.final_received_by.get_full_name() or d.final_received_by.username if d.final_received_by else "",
+                fmtd(d.final_received_date),
+                d.final_receive_remark or "",
+                d.entry.status,
+            ])
+
+        http_response = DjangoHttpResponse(
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        http_response["Content-Disposition"] = (
+            'attachment; filename="assessment_report.xlsx"'
+        )
+        wb.save(http_response)
+        return http_response

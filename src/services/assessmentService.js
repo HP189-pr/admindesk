@@ -50,6 +50,21 @@ export const generateReturnAssessmentOutward = (items) =>
 export const finalReceiveAssessmentEntry = (data) =>
   API.post(`${BASE}/assessment-outward/final-receive/`, data);
 
+export const updateWorkStatus = (data) =>
+  API.post(`${BASE}/assessment-outward/update-work-status/`, data);
+
+export const getAssessmentReport = (params) =>
+  API.get(`${BASE}/assessment-outward/report/`, { params });
+
+export const getAssessmentDashboard = () =>
+  API.get(`${BASE}/assessment-outward/dashboard/`);
+
+export const exportAssessmentExcel = (params) =>
+  API.get(`${BASE}/assessment-outward/export-excel/`, {
+    params,
+    responseType: "blob",
+  });
+
 // ─── Users (receiver dropdown) ─────────────────────────────────────────────
 
 export const getUsers = () => API.get(`${BASE}/users/`);

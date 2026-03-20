@@ -41279,3 +41279,9 @@ INFO:waitress:Serving on http://127.0.0.1:8000
 E:\admindesk\backend\backend\settings.py:76: UserWarning: channels is not installed. Install it with: pip install channels
   warnings.warn("channels is not installed. Install it with: pip install channels")
 INFO:waitress:Serving on http://127.0.0.1:8000
+E:\admindesk\backend\backend\settings.py:76: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+E:\admindesk\backend\backend\settings.py:76: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000

@@ -1,11 +1,15 @@
 ﻿// src/pages/assessment.jsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { FaFileExcel, FaFilePdf } from "react-icons/fa6";
 import PageTopbar from "../components/PageTopbar";
 import API from "../api/axiosInstance";
 import AsstReceiver from "./asst_receiver";
 import {
   createAssessmentEntry,
   deleteAssessmentEntry,
+  exportAssessmentExcel,
   finalReceiveAssessmentEntry,
   generateReturnAssessmentOutward,
   getAllAssessmentEntries,
@@ -16,6 +20,7 @@ import {
   generateAssessmentOutward,
   receiveAssessmentEntry,
   returnAssessmentEntry,
+  updateAssessmentEntry,
 } from "../services/assessmentService";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -72,6 +77,52 @@ const Badge = ({ label }) => (
 const CONTROLLER_ACTIONS = ["Entry", "Pending", "Outward", "Return", "Receiver"];
 const ENTRY_USER_ACTIONS = ["Entry", "Return"];
 const RECEIVER_ACTIONS = ["Receiver"];
+
+// ─── PDF / Excel helpers ──────────────────────────────────────────────────────
+
+const generateEntriesPdf = (entries, title = "Assessment Entries") => {
+  const doc = new jsPDF();
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text(title, 14, 18);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Generated: ${new Date().toLocaleDateString("en-IN")}`, 14, 25);
+  autoTable(doc, {
+    startY: 30,
+    head: [["#", "Date", "Exam", "Examiner", "Dummy No.", "Sheets", "Status", "Outward No.", "Return Status", "Returned By", "Return Date"]],
+    body: entries.map((e, i) => [
+      i + 1,
+      fmtDate(e.entry_date),
+      e.exam_name || "—",
+      e.examiner_name || "—",
+      e.dummy_number || "—",
+      e.total_answer_sheet || "—",
+      e.status || "—",
+      e.outward_no || "—",
+      e.return_status || "—",
+      e.returned_by_name || "—",
+      e.returned_date ? fmtDate(e.returned_date) : "—",
+    ]),
+    styles: { fontSize: 7.5 },
+    headStyles: { fillColor: [79, 70, 229] },
+  });
+  doc.save(`${title.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`);
+};
+
+const downloadEntriesExcel = async () => {
+  try {
+    const res = await exportAssessmentExcel({});
+    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Assessment_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  } catch {
+    alert("Excel download failed.");
+  }
+};
 
 const DEFAULT_ENTRY_FORM = {
   entry_date: today(),
@@ -226,6 +277,307 @@ const EntryForm = ({ onSaved, rights }) => {
   );
 };
 
+// ─── Entry Detail / Edit Panel ────────────────────────────────────────────────
+
+const EntryDetailPanel = ({ entry, onClose, onSaved, onDeleted, rights }) => {
+  const [editMode, setEditMode] = useState(!!entry._openEdit);
+  const [form, setForm] = useState({
+    entry_date: entry.entry_date || today(),
+    exam_name: entry.exam_name || "",
+    examiner_name: entry.examiner_name || "",
+    dummy_number: entry.dummy_number || "",
+    total_answer_sheet: entry.total_answer_sheet || "",
+    remark: entry.remark || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [flash, setFlash] = useState(null);
+
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const handleSave = async () => {
+    setSaving(true);
+    setFlash(null);
+    try {
+      await updateAssessmentEntry(entry.id, {
+        ...form,
+        total_answer_sheet: parseInt(form.total_answer_sheet, 10),
+      });
+      setFlash({ type: "success", msg: "Entry updated successfully." });
+      setEditMode(false);
+      if (onSaved) onSaved();
+    } catch (err) {
+      setFlash({
+        type: "error",
+        msg:
+          err?.response?.data?.detail ||
+          JSON.stringify(err?.response?.data) ||
+          "Failed to update.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    setFlash(null);
+    try {
+      await deleteAssessmentEntry(entry.id);
+      if (onDeleted) onDeleted();
+      onClose();
+    } catch (err) {
+      setFlash({
+        type: "error",
+        msg: err?.response?.data?.detail || "Failed to delete entry.",
+      });
+      setConfirmDelete(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const canEdit = rights.can_edit && entry.status === "Pending";
+  const canDelete = rights.can_delete && entry.status === "Pending";
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />
+      {/* Drawer */}
+      <div className="fixed right-0 top-0 z-50 flex h-full w-full max-w-lg flex-col bg-white shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div>
+            <h3 className="text-base font-semibold text-slate-800">
+              {editMode ? "Edit Entry" : "Entry Details"}
+            </h3>
+            <p className="text-xs text-slate-400">ID #{entry.id}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-5">
+          {flash && (
+            <p
+              className={`mb-3 rounded-lg px-3 py-2 text-sm ${
+                flash.type === "success"
+                  ? "bg-green-50 text-green-700"
+                  : "bg-red-50 text-red-600"
+              }`}
+            >
+              {flash.msg}
+            </p>
+          )}
+
+          {editMode ? (
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">
+                  Entry Date
+                </label>
+                <input
+                  type="date"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  value={form.entry_date}
+                  onChange={set("entry_date")}
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">
+                  Exam Name
+                </label>
+                <input
+                  type="text"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  value={form.exam_name}
+                  onChange={set("exam_name")}
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">
+                  Examiner Name
+                </label>
+                <input
+                  type="text"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  value={form.examiner_name}
+                  onChange={set("examiner_name")}
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">
+                  Dummy Number
+                </label>
+                <input
+                  type="text"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  value={form.dummy_number}
+                  onChange={set("dummy_number")}
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">
+                  Total Answer Sheets
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  value={form.total_answer_sheet}
+                  onChange={set("total_answer_sheet")}
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">
+                  Entry Remark
+                </label>
+                <input
+                  type="text"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  value={form.remark}
+                  onChange={set("remark")}
+                  placeholder="Optional"
+                />
+              </div>
+            </div>
+          ) : (
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+              {[
+                ["Date", fmtDate(entry.entry_date)],
+                ["Exam", entry.exam_name],
+                ["Examiner", entry.examiner_name],
+                ["Dummy No.", entry.dummy_number],
+                ["Sheets", entry.total_answer_sheet],
+                ["Entry Remark", entry.remark || "—"],
+                ["Outward No.", entry.outward_no || "—"],
+                ["Status", <Badge key="s" label={entry.status} />],
+                [
+                  "Return Status",
+                  entry.return_status ? (
+                    <Badge key="rs" label={entry.return_status} />
+                  ) : (
+                    "—"
+                  ),
+                ],
+                ["Returned By (D)", entry.returned_by_name || "—"],
+                [
+                  "Return Date",
+                  entry.returned_date ? fmtDate(entry.returned_date) : "—",
+                ],
+                ["Return Outward No.", entry.return_outward_no || "—"],
+                ["Return Remark", entry.return_remark || "—"],
+                [
+                  "Final Status",
+                  entry.final_receive_status ? (
+                    <Badge key="fs" label={entry.final_receive_status} />
+                  ) : (
+                    "—"
+                  ),
+                ],
+                ["Final Remark", entry.final_receive_remark || "—"],
+              ].map(([label, val]) => (
+                <div key={label} className="col-span-1">
+                  <dt className="text-xs font-medium text-slate-500">{label}</dt>
+                  <dd className="mt-0.5 font-medium text-slate-800">{val}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-slate-200 px-5 py-4">
+          {confirmDelete ? (
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-red-700">
+                Delete this entry?
+              </span>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={handleDelete}
+                className="delete-button-compact"
+              >
+                {deleting ? "Deleting…" : "Yes, Delete"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(false)}
+                className="reset-button-compact"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : editMode ? (
+            <div className="flex gap-3">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={handleSave}
+                className="save-button-compact"
+              >
+                {saving ? "Saving…" : "Save Changes"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditMode(false);
+                  setFlash(null);
+                }}
+                className="reset-button-compact"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => setEditMode(true)}
+                  className="edit-button-compact"
+                >
+                  ✏ Edit
+                </button>
+              )}
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(true)}
+                  className="delete-button-compact"
+                >
+                  🗑 Delete
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onClose}
+                className="reset-button-compact"
+              >
+                Close
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+};
+
 // ─── My Entries Table ─────────────────────────────────────────────────────────
 
 const MyEntriesTable = ({ refresh, rights }) => {
@@ -234,6 +586,8 @@ const MyEntriesTable = ({ refresh, rights }) => {
   const [finalizing, setFinalizing] = useState(null);
   const [finalRemark, setFinalRemark] = useState({});
   const [flash, setFlash] = useState(null);
+  const [selectedEntry, setSelectedEntry] = useState(null);
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -271,6 +625,12 @@ const MyEntriesTable = ({ refresh, rights }) => {
     }
   };
 
+  const handleExcel = async () => {
+    setDownloadingExcel(true);
+    await downloadEntriesExcel();
+    setDownloadingExcel(false);
+  };
+
   if (loading)
     return (
       <p className="py-8 text-center text-sm text-slate-500">Loading…</p>
@@ -285,6 +645,29 @@ const MyEntriesTable = ({ refresh, rights }) => {
 
   return (
     <div className="space-y-2">
+      {/* Export buttons */}
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <button
+          type="button"
+          disabled={downloadingExcel}
+          onClick={handleExcel}
+          title="Export Excel"
+          aria-label="Export Excel"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 shadow transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <FaFileExcel size={20} color="#1D6F42" />
+        </button>
+        <button
+          type="button"
+          onClick={() => generateEntriesPdf(entries, "My Assessment Entries")}
+          title="Export PDF"
+          aria-label="Export PDF"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 shadow transition hover:bg-rose-100"
+        >
+          <FaFilePdf size={20} color="#D32F2F" />
+        </button>
+      </div>
+
       {flash && (
         <p
           className={`text-sm ${
@@ -328,7 +711,11 @@ const MyEntriesTable = ({ refresh, rights }) => {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {entries.map((e, i) => (
-              <tr key={e.id} className="hover:bg-slate-50">
+              <tr
+                key={e.id}
+                className="cursor-pointer hover:bg-slate-50"
+                onClick={() => setSelectedEntry(e)}
+              >
                 <td className="px-4 py-3 text-slate-500">{i + 1}</td>
                 <td className="px-4 py-3">{fmtDate(e.entry_date)}</td>
                 <td className="px-4 py-3 font-medium">{e.exam_name}</td>
@@ -369,49 +756,253 @@ const MyEntriesTable = ({ refresh, rights }) => {
                 <td className="px-4 py-3 text-xs text-slate-500">
                   {e.final_receive_remark || "—"}
                 </td>
-                <td className="px-4 py-3">
-                  {e.status === "Returned" && e.detail_id ? (
-                    <>
-                      <input
-                        type="text"
-                        placeholder="Final receive remark"
-                        className="w-40 rounded border border-slate-300 px-2 py-1 text-xs"
-                        value={finalRemark[e.detail_id] || ""}
-                        onChange={(ev) =>
-                          setFinalRemark((r) => ({
-                            ...r,
-                            [e.detail_id]: ev.target.value,
-                          }))
-                        }
-                      />
+                {/* Action column — stop propagation so clicks here don't open panel */}
+                <td
+                  className="px-4 py-3"
+                  onClick={(ev) => ev.stopPropagation()}
+                >
+                  <div className="flex flex-wrap items-center gap-1">
+                    {rights.can_edit && e.status === "Pending" && (
                       <button
                         type="button"
+                        title="Edit"
                         onClick={() =>
-                          handleFinalReceive(e.detail_id, finalRemark[e.detail_id])
+                          setSelectedEntry({ ...e, _openEdit: true })
                         }
-                        disabled={finalizing === e.detail_id}
-                        className="ml-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                        className="icon-edit-button"
                       >
-                        {finalizing === e.detail_id ? "Receiving…" : "Receive Back"}
+                        ✏
                       </button>
-                    </>
-                  ) : e.status === "Completed" ? (
-                    <div className="text-xs text-emerald-700">
-                      ✔ Completed
-                      {e.final_receive_remark && (
-                        <div className="text-slate-500">{e.final_receive_remark}</div>
-                      )}
-                    </div>
-                  ) : (
-                    "—"
-                  )}
+                    )}
+                    {rights.can_delete && e.status === "Pending" && (
+                      <button
+                        type="button"
+                        title="Delete"
+                        onClick={() => setSelectedEntry(e)}
+                        className="icon-delete-button"
+                      >
+                        🗑
+                      </button>
+                    )}
+                    {e.status === "Returned" && e.detail_id && (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="text"
+                          placeholder="Final remark"
+                          className="w-28 rounded border border-slate-300 px-2 py-1 text-xs"
+                          value={finalRemark[e.detail_id] || ""}
+                          onChange={(ev) =>
+                            setFinalRemark((r) => ({
+                              ...r,
+                              [e.detail_id]: ev.target.value,
+                            }))
+                          }
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleFinalReceive(
+                              e.detail_id,
+                              finalRemark[e.detail_id],
+                            )
+                          }
+                          disabled={finalizing === e.detail_id}
+                          className="save-button-compact"
+                        >
+                          {finalizing === e.detail_id
+                            ? "Receiving…"
+                            : "✔ Receive"}
+                        </button>
+                      </div>
+                    )}
+                    {e.status === "Completed" && (
+                      <span className="text-xs text-emerald-700">
+                        ✔ Completed
+                      </span>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Detail / Edit panel */}
+      {selectedEntry && (
+        <EntryDetailPanel
+          entry={selectedEntry}
+          rights={rights}
+          onClose={() => setSelectedEntry(null)}
+          onSaved={() => {
+            load();
+            setSelectedEntry(null);
+          }}
+          onDeleted={() => {
+            load();
+          }}
+        />
+      )}
     </div>
+  );
+};
+
+// ─── Return Entry Panel (read-only with return remark from D + final receive) ──
+
+const ReturnEntryPanel = ({ entry, rights, onClose, onSaved }) => {
+  const [finalRemark, setFinalRemark] = useState("");
+  const [finalizing, setFinalizing] = useState(false);
+  const [flash, setFlash] = useState(null);
+
+  const handleFinalReceive = async () => {
+    setFinalizing(true);
+    setFlash(null);
+    try {
+      await finalReceiveAssessmentEntry({
+        detail_id: entry.detail_id,
+        remark: finalRemark,
+      });
+      setFlash({ type: "success", msg: "Final received successfully." });
+      setTimeout(() => {
+        onSaved();
+        onClose();
+      }, 900);
+    } catch (err) {
+      setFlash({
+        type: "error",
+        msg: err?.response?.data?.detail || "Failed to finalise.",
+      });
+    } finally {
+      setFinalizing(false);
+    }
+  };
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-40 bg-black/30"
+        onClick={onClose}
+      />
+      {/* Drawer */}
+      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col overflow-hidden rounded-l-2xl bg-white shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-6 py-4">
+          <h3 className="text-base font-semibold text-slate-800">
+            Assessment Entry — Returned
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          {/* Return Remark Banner (from D) */}
+          {entry.return_remark && (
+            <div className="rounded-xl border border-purple-300 bg-purple-50 px-4 py-3">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-purple-600">
+                Return Remark from Receiver (D)
+              </p>
+              <p className="text-sm font-medium text-purple-900">
+                "{entry.return_remark}"
+              </p>
+              <div className="mt-1 flex flex-wrap gap-4 text-xs text-purple-700">
+                {entry.returned_by_name && (
+                  <span>By: <strong>{entry.returned_by_name}</strong></span>
+                )}
+                {entry.returned_date && (
+                  <span>Date: <strong>{fmtDate(entry.returned_date)}</strong></span>
+                )}
+                {entry.return_outward_no && (
+                  <span>Return Outward: <strong>{entry.return_outward_no}</strong></span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Entry details */}
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+            {[
+              ["Entry Date", fmtDate(entry.entry_date)],
+              ["Exam Name", entry.exam_name],
+              ["Examiner Name", entry.examiner_name],
+              ["Dummy Number", entry.dummy_number],
+              ["Total Answer Sheets", entry.total_answer_sheet],
+              ["Outward No.", entry.outward_no || "—"],
+              ["Status", <Badge key="s" label={entry.status} />],
+              ["Return Status", entry.return_status ? <Badge key="rs" label={entry.return_status} /> : "—"],
+              ["Final Status", entry.final_receive_status || "—"],
+              ["Final Remark", entry.final_receive_remark || "—"],
+              ["Remark", entry.remark || "—"],
+            ].map(([label, val]) => (
+              <div key={label}>
+                <dt className="text-xs font-medium text-slate-500">{label}</dt>
+                <dd className="mt-0.5 text-slate-800">{val}</dd>
+              </div>
+            ))}
+          </dl>
+
+          {/* Flash */}
+          {flash && (
+            <p
+              className={`text-sm ${
+                flash.type === "success" ? "text-green-700" : "text-red-600"
+              }`}
+            >
+              {flash.msg}
+            </p>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-slate-200 bg-slate-50 px-6 py-4">
+          {entry.status === "Returned" && entry.detail_id ? (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-slate-600">
+                Final Receive Remark
+              </p>
+              <input
+                type="text"
+                placeholder="Enter final receive remark…"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                value={finalRemark}
+                onChange={(e) => setFinalRemark(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleFinalReceive}
+                  disabled={finalizing}
+                  className="save-button-compact"
+                >
+                  {finalizing ? "Receiving…" : "✔ Final Receive"}
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="reset-button-compact"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onClose}
+              className="reset-button-compact"
+            >
+              Close
+            </button>
+          )}
+        </div>
+      </div>
+    </>
   );
 };
 
@@ -420,9 +1011,9 @@ const MyEntriesTable = ({ refresh, rights }) => {
 const ReturnTab = ({ rights }) => {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [finalizing, setFinalizing] = useState(null);
-  const [finalRemark, setFinalRemark] = useState({});
   const [flash, setFlash] = useState(null);
+  const [selectedEntry, setSelectedEntry] = useState(null);
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -430,7 +1021,7 @@ const ReturnTab = ({ rights }) => {
       const res = await getAssessmentEntries();
       const all = res.data?.results ?? res.data ?? [];
       setEntries(
-        all.filter((e) => ["Returned", "Completed"].includes(e.status))
+        all.filter((e) => ["Returned", "Completed"].includes(e.status)),
       );
     } catch {
       setEntries([]);
@@ -443,26 +1034,24 @@ const ReturnTab = ({ rights }) => {
     load();
   }, [load]);
 
-  const handleFinalReceive = async (detailId, remark) => {
-    if (!detailId) return;
-    setFinalizing(detailId);
-    setFlash(null);
+  const handleExcel = async () => {
+    setDownloadingExcel(true);
     try {
-      await finalReceiveAssessmentEntry({
-        detail_id: detailId,
-        remark: remark || "",
-      });
-      setFlash({ type: "success", msg: "Final received successfully." });
-      await load();
-    } catch (err) {
-      setFlash({
-        type: "error",
-        msg: err?.response?.data?.detail || "Failed to complete final receive.",
-      });
+      const res = await exportAssessmentExcel({ status: "Returned,Completed" });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "return_entries.xlsx";
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      /* silent */
     } finally {
-      setFinalizing(null);
+      setDownloadingExcel(false);
     }
   };
+
+  const handlePdf = () => generateEntriesPdf(entries, "Return Entries");
 
   if (loading)
     return (
@@ -476,8 +1065,11 @@ const ReturnTab = ({ rights }) => {
       </p>
     );
 
+  /* Entries that carry a return remark from receiver D */
+  const withRemark = entries.filter((e) => e.return_remark);
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {flash && (
         <p
           className={`text-sm ${
@@ -487,6 +1079,58 @@ const ReturnTab = ({ rights }) => {
           {flash.msg}
         </p>
       )}
+
+      {/* Return remarks banner */}
+      {withRemark.length > 0 && (
+        <div className="rounded-xl border border-purple-200 bg-purple-50 px-4 py-3">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-purple-600">
+            Return Remarks from Receiver (D)
+          </p>
+          <ul className="space-y-1">
+            {withRemark.map((e) => (
+              <li key={e.id} className="text-sm text-purple-900">
+                <span className="font-medium">{e.exam_name}</span>
+                {e.dummy_number && (
+                  <span className="ml-1 text-purple-700">
+                    #{e.dummy_number}
+                  </span>
+                )}
+                {" — "}
+                <span className="italic">"{e.return_remark}"</span>
+                {e.returned_by_name && (
+                  <span className="ml-2 text-xs text-purple-500">
+                    by {e.returned_by_name}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Export buttons */}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={handleExcel}
+          disabled={downloadingExcel}
+          title="Export Excel"
+          aria-label="Export Excel"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 shadow transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <FaFileExcel size={20} color="#1D6F42" />
+        </button>
+        <button
+          type="button"
+          onClick={handlePdf}
+          title="Export PDF"
+          aria-label="Export PDF"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 shadow transition hover:bg-rose-100"
+        >
+          <FaFilePdf size={20} color="#D32F2F" />
+        </button>
+      </div>
+
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50">
@@ -504,11 +1148,10 @@ const ReturnTab = ({ rights }) => {
                 "Return Remark",
                 "Final Status",
                 "Final Remark",
-                "Action",
               ].map((h) => (
                 <th
                   key={h}
-                  className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                  className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500"
                 >
                   {h}
                 </th>
@@ -517,7 +1160,11 @@ const ReturnTab = ({ rights }) => {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {entries.map((e, i) => (
-              <tr key={e.id} className="hover:bg-slate-50">
+              <tr
+                key={e.id}
+                className="cursor-pointer hover:bg-purple-50"
+                onClick={() => setSelectedEntry(e)}
+              >
                 <td className="px-4 py-3 text-slate-500">{i + 1}</td>
                 <td className="px-4 py-3 whitespace-nowrap">
                   {fmtDate(e.entry_date)}
@@ -539,11 +1186,11 @@ const ReturnTab = ({ rights }) => {
                 <td className="px-4 py-3 font-mono text-xs text-purple-700">
                   {e.return_outward_no || "—"}
                 </td>
-                <td className="px-4 py-3 text-xs text-slate-500">
+                <td className="px-4 py-3 max-w-[180px] truncate text-xs text-slate-700">
                   {e.return_remark || "—"}
                 </td>
                 <td className="px-4 py-3">
-                  {e.final_receive_status === "Received" || e.status === "Completed" ? (
+                  {e.status === "Completed" ? (
                     <Badge label="Received Back" />
                   ) : (
                     "—"
@@ -552,53 +1199,21 @@ const ReturnTab = ({ rights }) => {
                 <td className="px-4 py-3 text-xs text-slate-500">
                   {e.final_receive_remark || "—"}
                 </td>
-                <td className="px-4 py-3">
-                  {e.status === "Returned" && e.detail_id ? (
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        placeholder="Final receive remark"
-                        className="w-36 rounded border border-slate-300 px-2 py-1 text-xs"
-                        value={finalRemark[e.detail_id] || ""}
-                        onChange={(ev) =>
-                          setFinalRemark((r) => ({
-                            ...r,
-                            [e.detail_id]: ev.target.value,
-                          }))
-                        }
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleFinalReceive(
-                            e.detail_id,
-                            finalRemark[e.detail_id]
-                          )
-                        }
-                        disabled={finalizing === e.detail_id}
-                        className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-                      >
-                        {finalizing === e.detail_id ? "Receiving…" : "✔ Receive Back"}
-                      </button>
-                    </div>
-                  ) : e.status === "Completed" ? (
-                    <div className="text-xs text-emerald-700">
-                      ✔ Completed
-                      {e.final_received_by_name && (
-                        <div className="text-slate-500">
-                          By: {e.final_received_by_name}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    "—"
-                  )}
-                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Detail Panel */}
+      {selectedEntry && (
+        <ReturnEntryPanel
+          entry={selectedEntry}
+          rights={rights}
+          onClose={() => setSelectedEntry(null)}
+          onSaved={() => load()}
+        />
+      )}
     </div>
   );
 };
