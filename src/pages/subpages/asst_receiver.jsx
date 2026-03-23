@@ -1,66 +1,38 @@
-﻿// src/pages/asst_receiver.jsx
+// src/pages/subpages/asst_receiver.jsx
 /**
  * Assessment Receiver Page
  * Dedicated UI for the Receiver (D-role) user.
  *
- * Tab 1 – Receive   : pending items to receive + batch return outward generation
+ * Tab 1 – Receive     : pending items to receive + batch return outward generation
  * Tab 2 – All Records : flat table of all assigned entries, select-based return
  *                       outward + PDF download
+ *
+ * PDF/date helpers imported from ../../report/assessment_report to avoid duplication.
  */
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import React, { useCallback, useEffect, useState } from "react";
 import { FaEdit } from "react-icons/fa";
+import {
+  fmtDate,
+  generateReceiverReturnPdf,
+} from "../../report/assessment_report";
 import {
   generateReturnAssessmentOutward,
   getMyAssessmentOutwards,
   receiveAssessmentEntry,
   updateWorkStatus,
-} from "../services/assessmentService";
+} from "../../services/assessmentService";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const fmtDate = (d) => {
-  if (!d) return "—";
-  try {
-    // Always use only the YYYY-MM-DD portion to avoid UTC-offset day-shift
-    const s = typeof d === "string" ? d.slice(0, 10) : null;
-    const dt =
-      s && /^\d{4}-\d{2}-\d{2}$/.test(s)
-        ? new Date(s + "T12:00:00")
-        : new Date(d);
-    if (isNaN(dt.getTime())) return String(d);
-    const day = String(dt.getDate()).padStart(2, "0");
-    const month = String(dt.getMonth() + 1).padStart(2, "0");
-    return `${day}-${month}-${dt.getFullYear()}`;
-  } catch {
-    return String(d);
-  }
-};
-
-const today = () =>
-  new Date().toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+// ─── Local helpers ────────────────────────────────────────────────────────────
 
 const statusColor = (s) => {
   switch (s) {
-    case "Pending":
-      return "bg-yellow-100 text-yellow-800";
-    case "Outward":
-      return "bg-blue-100 text-blue-800";
-    case "InProgress":
-      return "bg-orange-100 text-orange-800";
-    case "Received":
-      return "bg-green-100 text-green-800";
-    case "Returned":
-      return "bg-purple-100 text-purple-800";
-    case "Completed":
-      return "bg-emerald-100 text-emerald-800";
-    default:
-      return "bg-gray-100 text-gray-700";
+    case "Pending":        return "bg-yellow-100 text-yellow-800";
+    case "Outward":        return "bg-blue-100 text-blue-800";
+    case "InProgress":     return "bg-orange-100 text-orange-800";
+    case "Received":       return "bg-green-100 text-green-800";
+    case "Returned":       return "bg-purple-100 text-purple-800";
+    case "Completed":      return "bg-emerald-100 text-emerald-800";
+    default:               return "bg-gray-100 text-gray-700";
   }
 };
 
@@ -73,11 +45,7 @@ const Badge = ({ label }) => (
 );
 
 /**
- * Single composite status label from the RECEIVER's perspective:
- *  - "Pending"       = not yet received by receiver
- *  - "In Hand"       = receiver collected it (receive_status=Received)
- *  - "Returned"      = receiver sent it back
- *  - "Received Back" = entry user / admin confirmed receipt (entry.status=Completed)
+ * Single composite status label from the RECEIVER's perspective.
  */
 const receiverItemStatus = (d) => {
   if (d.final_receive_status === "Received" || d.entry_detail?.status === "Completed")
@@ -98,44 +66,6 @@ const ReceiverStatusBadge = ({ d }) => {
   );
 };
 
-// ─── PDF generator ────────────────────────────────────────────────────────────
-
-const generateReturnOutwardPdf = ({ returnNo, receiverName, items, outwardNo }) => {
-  const doc = new jsPDF();
-
-  // Title
-  doc.setFontSize(14);
-  doc.setFont("helvetica", "bold");
-  doc.text("Assessment Return Outward", 14, 18);
-
-  // Meta
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.text(`Return Outward No: ${returnNo || "—"}`, 14, 28);
-  doc.text(`Outward Ref: ${outwardNo || "—"}`, 14, 35);
-  doc.text(`Receiver: ${receiverName || "—"}`, 14, 42);
-  doc.text(`Date: ${today()}`, 14, 49);
-
-  // Table
-  autoTable(doc, {
-    startY: 56,
-    head: [["#", "Dummy No.", "Exam", "Examiner", "Sheets", "Return Remark"]],
-    body: items.map((item, i) => [
-      i + 1,
-      item.dummy_number ?? "—",
-      item.exam_name ?? "—",
-      item.examiner_name ?? "—",
-      item.total_answer_sheet ?? "—",
-      item.return_remark || "—",
-    ]),
-    styles: { fontSize: 9, cellPadding: 3 },
-    headStyles: { fillColor: [79, 70, 229] },
-    alternateRowStyles: { fillColor: [248, 248, 248] },
-  });
-
-  doc.save(`Return_Outward_${returnNo || "draft"}.pdf`);
-};
-
 // ─── Tab 1 – Receive ──────────────────────────────────────────────────────────
 
 const ReceiveTab = () => {
@@ -148,7 +78,7 @@ const ReceiveTab = () => {
   const [batchReturning, setBatchReturning] = useState(false);
   const [selected, setSelected] = useState({}); // { outwardId: Set<detailId> }
   const [flash, setFlash] = useState({});
-  const [returnSummary, setReturnSummary] = useState(null); // last generated
+  const [returnSummary, setReturnSummary] = useState(null);
   const [workStatusMap, setWorkStatusMap] = useState({}); // { detailId: "InProgress"|"Done" }
   const [workRemark, setWorkRemark] = useState({});
   const [updatingWork, setUpdatingWork] = useState(null);
@@ -165,9 +95,7 @@ const ReceiveTab = () => {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   const setFlashMsg = (key, type, msg) =>
     setFlash((f) => ({ ...f, [key]: { type, msg } }));
@@ -183,11 +111,7 @@ const ReceiveTab = () => {
       setFlashMsg(detailId, "success", "Marked as received.");
       load();
     } catch (err) {
-      setFlashMsg(
-        detailId,
-        "error",
-        err?.response?.data?.detail || "Failed to mark received.",
-      );
+      setFlashMsg(detailId, "error", err?.response?.data?.detail || "Failed to mark received.");
     } finally {
       setReceiving(null);
     }
@@ -206,11 +130,7 @@ const ReceiveTab = () => {
       setFlashMsg(detailId, "success", `Work status set to ${statusVal}.`);
       load();
     } catch (err) {
-      setFlashMsg(
-        detailId,
-        "error",
-        err?.response?.data?.detail || "Failed to update work status.",
-      );
+      setFlashMsg(detailId, "error", err?.response?.data?.detail || "Failed to update work status.");
     } finally {
       setUpdatingWork(null);
     }
@@ -245,7 +165,6 @@ const ReceiveTab = () => {
         outwardNo: outward.outward_no,
         receiverName: outward.receiver_name,
         count: res?.data?.count || detailIds.length,
-        date: today(),
         items: detailIds.map((did) => {
           const detail = (outward.details || []).find((d) => d.id === did);
           return {
@@ -257,36 +176,18 @@ const ReceiveTab = () => {
           };
         }),
       });
-      setFlashMsg(
-        flashKey,
-        "success",
-        returnNo
-          ? `Return outward generated: ${returnNo}`
-          : "Return outward generated.",
-      );
+      setFlashMsg(flashKey, "success", returnNo ? `Return outward generated: ${returnNo}` : "Return outward generated.");
       setSelected((prev) => ({ ...prev, [key]: new Set() }));
       await load();
     } catch (err) {
-      setFlashMsg(
-        flashKey,
-        "error",
-        err?.response?.data?.detail || "Failed to generate return outward.",
-      );
+      setFlashMsg(flashKey, "error", err?.response?.data?.detail || "Failed to generate return outward.");
     } finally {
       setBatchReturning(false);
     }
   };
 
-  if (loading)
-    return (
-      <p className="py-8 text-center text-sm text-slate-500">Loading…</p>
-    );
-  if (!outwards.length)
-    return (
-      <p className="py-8 text-center text-sm text-slate-500">
-        No outwards assigned to you.
-      </p>
-    );
+  if (loading) return <p className="py-8 text-center text-sm text-slate-500">Loading…</p>;
+  if (!outwards.length) return <p className="py-8 text-center text-sm text-slate-500">No outwards assigned to you.</p>;
 
   return (
     <div className="space-y-3">
@@ -295,76 +196,45 @@ const ReceiveTab = () => {
         <div className="rounded-xl border border-purple-200 bg-purple-50 p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="mb-1 text-sm font-semibold text-purple-800">
-                ✔ Return Outward Generated
-              </p>
+              <p className="mb-1 text-sm font-semibold text-purple-800">✔ Return Outward Generated</p>
               <div className="flex flex-wrap gap-4 text-sm text-purple-700">
-                <span>
-                  Return No:{" "}
-                  <strong className="font-mono">
-                    {returnSummary.returnNo || "—"}
-                  </strong>
-                </span>
-                <span>
-                  Items: <strong>{returnSummary.count}</strong>
-                </span>
-                <span>
-                  Date: <strong>{returnSummary.date}</strong>
-                </span>
+                <span>Return No: <strong className="font-mono">{returnSummary.returnNo || "—"}</strong></span>
+                <span>Items: <strong>{returnSummary.count}</strong></span>
               </div>
             </div>
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() =>
-                  generateReturnOutwardPdf({
-                    returnNo: returnSummary.returnNo,
-                    outwardNo: returnSummary.outwardNo,
-                    receiverName: returnSummary.receiverName,
-                    items: returnSummary.items,
-                  })
-                }
+                onClick={() => generateReceiverReturnPdf({
+                  returnNo: returnSummary.returnNo,
+                  outwardNo: returnSummary.outwardNo,
+                  receiverName: returnSummary.receiverName,
+                  items: returnSummary.items,
+                })}
                 className="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple-700"
               >
                 ⬇ Download PDF
               </button>
-              <button
-                type="button"
-                onClick={() => setReturnSummary(null)}
-                className="text-xs text-purple-400 hover:text-purple-600"
-              >
-                ✕
-              </button>
+              <button type="button" onClick={() => setReturnSummary(null)} className="text-xs text-purple-400 hover:text-purple-600">✕</button>
             </div>
           </div>
         </div>
       )}
 
       {outwards.map((o) => (
-        <div
-          key={o.id}
-          className="rounded-xl border border-slate-200 bg-white shadow-sm"
-        >
+        <div key={o.id} className="rounded-xl border border-slate-200 bg-white shadow-sm">
           {/* Accordion header */}
           <div
             className="flex cursor-pointer items-center justify-between px-5 py-4"
-            onClick={() =>
-              setExpanded((p) => (p === o.id ? null : o.id))
-            }
+            onClick={() => setExpanded((p) => (p === o.id ? null : o.id))}
           >
             <div className="flex items-center gap-3">
-              <span className="font-mono text-sm font-bold text-indigo-700">
-                {o.outward_no}
-              </span>
-              <span className="text-xs text-slate-400">
-                {fmtDate(o.outward_date)}
-              </span>
+              <span className="font-mono text-sm font-bold text-indigo-700">{o.outward_no}</span>
+              <span className="text-xs text-slate-400">{fmtDate(o.outward_date)}</span>
               <Badge label={o.status} />
             </div>
             <div className="flex items-center gap-4 text-xs text-slate-500">
-              <span>
-                {o.received_count}/{o.total_entries} received
-              </span>
+              <span>{o.received_count}/{o.total_entries} received</span>
               <span>{o.returned_count || 0} returned</span>
               <span>{expanded === o.id ? "▲" : "▼"}</span>
             </div>
@@ -373,7 +243,6 @@ const ReceiveTab = () => {
           {/* Expanded details */}
           {expanded === o.id && (
             <div className="space-y-3 border-t border-slate-100 px-5 pb-4 pt-3">
-              {/* Admin remark on this outward */}
               {o.remarks && (
                 <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-2">
                   <span className="text-xs font-semibold text-blue-600">Admin note: </span>
@@ -383,28 +252,19 @@ const ReceiveTab = () => {
 
               {/* Batch return controls */}
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50 px-4 py-3">
-                <p className="text-xs text-slate-600">
-                  Select received items to generate one return outward number.
-                </p>
+                <p className="text-xs text-slate-600">Select received items to generate one return outward number.</p>
                 <button
                   type="button"
-                  disabled={
-                    batchReturning ||
-                    !(selected[String(o.id)]?.size > 0)
-                  }
+                  disabled={batchReturning || !(selected[String(o.id)]?.size > 0)}
                   onClick={() => handleGenerateReturn(o)}
                   className="rounded-lg bg-purple-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-purple-700 disabled:opacity-50"
                 >
-                  {batchReturning
-                    ? "Generating…"
-                    : `Generate Return Outward (${selected[String(o.id)]?.size || 0})`}
+                  {batchReturning ? "Generating…" : `Generate Return Outward (${selected[String(o.id)]?.size || 0})`}
                 </button>
               </div>
 
               {flash[`outward_${o.id}`] && (
-                <p
-                  className={`text-xs ${flash[`outward_${o.id}`].type === "success" ? "text-green-700" : "text-red-600"}`}
-                >
+                <p className={`text-xs ${flash[`outward_${o.id}`].type === "success" ? "text-green-700" : "text-red-600"}`}>
                   {flash[`outward_${o.id}`].msg}
                 </p>
               )}
@@ -413,33 +273,23 @@ const ReceiveTab = () => {
                 const isPending = d.receive_status === "Pending";
                 const isReceived = d.receive_status === "Received";
                 const isReturned = d.return_status === "Returned";
-                // Use live map if user changed it this session, otherwise fall back to server value
                 const currentWork = workStatusMap[d.id] ?? d.work_status ?? "Pending";
                 const workDone = currentWork === "Done";
 
                 return (
-                  <div
-                    key={d.id}
-                    className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 px-4 py-3"
-                  >
+                  <div key={d.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 px-4 py-3">
                     {/* Entry info */}
                     <div className="min-w-[180px] flex-1">
-                      <p className="text-sm font-medium text-slate-800">
-                        {d.entry_detail?.exam_name}
-                      </p>
+                      <p className="text-sm font-medium text-slate-800">{d.entry_detail?.exam_name}</p>
                       <p className="text-xs text-slate-500">
-                        Dummy: {d.entry_detail?.dummy_number} &bull; Sheets:{" "}
-                        {d.entry_detail?.total_answer_sheet} &bull; Examiner:{" "}
-                        {d.entry_detail?.examiner_name}
+                        Dummy: {d.entry_detail?.dummy_number} &bull; Sheets: {d.entry_detail?.total_answer_sheet} &bull; Examiner: {d.entry_detail?.examiner_name}
                       </p>
                       {d.entry_detail?.remark && (
-                        <p className="mt-0.5 text-xs text-slate-400">
-                          Entry remark: {d.entry_detail.remark}
-                        </p>
+                        <p className="mt-0.5 text-xs text-slate-400">Entry remark: {d.entry_detail.remark}</p>
                       )}
                     </div>
 
-                    {/* Checkbox for batch return — only when work is Done */}
+                    {/* Checkbox — only when work is Done */}
                     {isReceived && !isReturned && workDone ? (
                       <input
                         type="checkbox"
@@ -452,32 +302,21 @@ const ReceiveTab = () => {
                       <span className="w-4" />
                     )}
 
-                    {/* Composite status badge */}
                     <ReceiverStatusBadge d={d} />
 
                     {/* Work status badge */}
                     {isReceived && !isReturned && (
-                      <span
-                        className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
-                          currentWork === "Done"
-                            ? "bg-green-100 text-green-800"
-                            : currentWork === "InProgress"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        {currentWork === "Done"
-                          ? "🟢 Done"
-                          : currentWork === "InProgress"
-                          ? "🔵 In Progress"
-                          : "⚪ Work Pending"}
+                      <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
+                        currentWork === "Done" ? "bg-green-100 text-green-800"
+                          : currentWork === "InProgress" ? "bg-blue-100 text-blue-800"
+                          : "bg-gray-100 text-gray-600"
+                      }`}>
+                        {currentWork === "Done" ? "🟢 Done" : currentWork === "InProgress" ? "🔵 In Progress" : "⚪ Work Pending"}
                       </span>
                     )}
 
                     {d.return_outward_no && (
-                      <span className="font-mono text-xs text-purple-700">
-                        {d.return_outward_no}
-                      </span>
+                      <span className="font-mono text-xs text-purple-700">{d.return_outward_no}</span>
                     )}
 
                     {/* Receive action */}
@@ -488,12 +327,7 @@ const ReceiveTab = () => {
                           className="w-40 rounded-lg border border-slate-300 px-3 py-1.5 text-xs"
                           placeholder="Receive remark"
                           value={receiveRemark[d.id] || ""}
-                          onChange={(e) =>
-                            setReceiveRemark((r) => ({
-                              ...r,
-                              [d.id]: e.target.value,
-                            }))
-                          }
+                          onChange={(e) => setReceiveRemark((r) => ({ ...r, [d.id]: e.target.value }))}
                         />
                         <button
                           type="button"
@@ -506,7 +340,7 @@ const ReceiveTab = () => {
                       </>
                     )}
 
-                    {/* Work status controls — show when received and not yet returned */}
+                    {/* Work status controls */}
                     {isReceived && !isReturned && (
                       <div className="flex flex-wrap items-center gap-2">
                         <select
@@ -524,29 +358,19 @@ const ReceiveTab = () => {
                           className="w-36 rounded-lg border border-slate-300 px-2 py-1.5 text-xs"
                           placeholder="Work remark"
                           value={workRemark[d.id] || ""}
-                          onChange={(e) =>
-                            setWorkRemark((r) => ({
-                              ...r,
-                              [d.id]: e.target.value,
-                            }))
-                          }
+                          onChange={(e) => setWorkRemark((r) => ({ ...r, [d.id]: e.target.value }))}
                         />
                       </div>
                     )}
 
-                    {/* Return remark — only enabled when work is Done */}
+                    {/* Return remark — only when work Done */}
                     {isReceived && !isReturned && workDone && (
                       <input
                         type="text"
                         className="w-40 rounded-lg border border-slate-300 px-3 py-1.5 text-xs"
                         placeholder="Return remark"
                         value={returnRemark[d.id] || ""}
-                        onChange={(e) =>
-                          setReturnRemark((r) => ({
-                            ...r,
-                            [d.id]: e.target.value,
-                          }))
-                        }
+                        onChange={(e) => setReturnRemark((r) => ({ ...r, [d.id]: e.target.value }))}
                       />
                     )}
 
@@ -558,25 +382,13 @@ const ReceiveTab = () => {
 
                     {d.final_receive_status === "Received" && (
                       <div className="text-xs text-emerald-700">
-                        ✔ Received by sender
-                        {d.final_received_by_name
-                          ? ` (${d.final_received_by_name})`
-                          : ""}
-                        {d.final_receive_remark && (
-                          <div className="text-slate-500">
-                            Remark: {d.final_receive_remark}
-                          </div>
-                        )}
+                        ✔ Received by sender{d.final_received_by_name ? ` (${d.final_received_by_name})` : ""}
+                        {d.final_receive_remark && <div className="text-slate-500">Remark: {d.final_receive_remark}</div>}
                       </div>
                     )}
 
-                    {/* Per-item flash */}
                     {flash[d.id] && (
-                      <p
-                        className={`w-full text-xs ${
-                          flash[d.id].type === "success" ? "text-green-700" : "text-red-600"
-                        }`}
-                      >
+                      <p className={`w-full text-xs ${flash[d.id].type === "success" ? "text-green-700" : "text-red-600"}`}>
                         {flash[d.id].msg}
                       </p>
                     )}
@@ -592,20 +404,17 @@ const ReceiveTab = () => {
 };
 
 // ─── Tab 2 – All Records ──────────────────────────────────────────────────────
-// Shows a flat table of ALL details across ALL assigned outwards.
-// Receiver can select any received items (from any outward) and generate
-// one batch return outward number in a single operation.
 
 const AllRecordsTab = () => {
   const [outwards, setOutwards] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [filter, setFilter] = useState("all"); // all | pending | received | returned
-  const [selected, setSelected] = useState(new Set()); // Set<detailId>
+  const [filter, setFilter] = useState("all");
+  const [selected, setSelected] = useState(new Set());
   const [returnRemark, setReturnRemark] = useState({});
   const [batchReturning, setBatchReturning] = useState(false);
   const [flash, setFlash] = useState(null);
   const [returnSummary, setReturnSummary] = useState(null);
-  const [selectedRow, setSelectedRow] = useState(null); // row clicked for view panel
+  const [selectedRow, setSelectedRow] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -619,31 +428,22 @@ const AllRecordsTab = () => {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
-  // Flatten all details across all outwards
   const allRows = outwards.flatMap((o) =>
     (o.details || []).map((d) => ({ ...d, _outward: o }))
   );
 
   const filtered = allRows.filter((d) => {
-    if (filter === "pending") return d.receive_status === "Pending";
-    if (filter === "received")
-      return d.receive_status === "Received" && d.return_status !== "Returned";
+    if (filter === "pending")  return d.receive_status === "Pending";
+    if (filter === "received") return d.receive_status === "Received" && d.return_status !== "Returned";
     if (filter === "returned") return d.return_status === "Returned";
     return true;
   });
 
   const receivableIds = new Set(
     filtered
-      .filter(
-        (d) =>
-          d.receive_status === "Received" &&
-          d.return_status !== "Returned" &&
-          d.work_status === "Done"
-      )
+      .filter((d) => d.receive_status === "Received" && d.return_status !== "Returned" && d.work_status === "Done")
       .map((d) => d.id)
   );
 
@@ -656,29 +456,20 @@ const AllRecordsTab = () => {
     });
   };
 
-  const toggleAll = () => {
-    if (selected.size === receivableIds.size) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(receivableIds));
-    }
-  };
+  const toggleAll = () =>
+    setSelected(selected.size === receivableIds.size ? new Set() : new Set(receivableIds));
 
   const handleGenerateReturn = async () => {
     const detailIds = Array.from(selected);
     if (!detailIds.length) return;
 
-    const payload = detailIds.map((did) => ({
-      detail_id: did,
-      remark: returnRemark[did] || "",
-    }));
+    const payload = detailIds.map((did) => ({ detail_id: did, remark: returnRemark[did] || "" }));
 
     setBatchReturning(true);
     setFlash(null);
     try {
       const res = await generateReturnAssessmentOutward(payload);
       const returnNo = res?.data?.return_outward_no || "";
-      // Build items for PDF
       const items = detailIds.map((did) => {
         const row = allRows.find((d) => d.id === did);
         return {
@@ -689,48 +480,28 @@ const AllRecordsTab = () => {
           return_remark: returnRemark[did] || "",
         };
       });
-      const receiverName =
-        allRows.find((d) => d.id === detailIds[0])?._outward?.receiver_name ||
-        "";
-      const outwardNo =
-        allRows.find((d) => d.id === detailIds[0])?._outward?.outward_no || "";
-      setReturnSummary({ returnNo, receiverName, outwardNo, count: res?.data?.count || detailIds.length, date: today(), items });
-      setFlash({
-        type: "success",
-        msg: returnNo
-          ? `Return outward generated: ${returnNo}`
-          : "Return outward generated.",
-      });
+      const receiverName = allRows.find((d) => d.id === detailIds[0])?._outward?.receiver_name || "";
+      const outwardNo   = allRows.find((d) => d.id === detailIds[0])?._outward?.outward_no || "";
+      setReturnSummary({ returnNo, receiverName, outwardNo, count: res?.data?.count || detailIds.length, items });
+      setFlash({ type: "success", msg: returnNo ? `Return outward generated: ${returnNo}` : "Return outward generated." });
       setSelected(new Set());
       await load();
     } catch (err) {
-      setFlash({
-        type: "error",
-        msg:
-          err?.response?.data?.detail || "Failed to generate return outward.",
-      });
+      setFlash({ type: "error", msg: err?.response?.data?.detail || "Failed to generate return outward." });
     } finally {
       setBatchReturning(false);
     }
   };
 
   const FILTERS = [
-    { key: "all", label: "All" },
-    { key: "pending", label: "Pending" },
+    { key: "all",      label: "All" },
+    { key: "pending",  label: "Pending" },
     { key: "received", label: "Received" },
     { key: "returned", label: "Returned" },
   ];
 
-  if (loading)
-    return (
-      <p className="py-8 text-center text-sm text-slate-500">Loading…</p>
-    );
-  if (!allRows.length)
-    return (
-      <p className="py-8 text-center text-sm text-slate-500">
-        No records found.
-      </p>
-    );
+  if (loading)    return <p className="py-8 text-center text-sm text-slate-500">Loading…</p>;
+  if (!allRows.length) return <p className="py-8 text-center text-sm text-slate-500">No records found.</p>;
 
   return (
     <div className="space-y-3">
@@ -739,60 +510,38 @@ const AllRecordsTab = () => {
         <div className="rounded-xl border border-purple-200 bg-purple-50 p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="mb-1 text-sm font-semibold text-purple-800">
-                ✔ Return Outward Generated
-              </p>
+              <p className="mb-1 text-sm font-semibold text-purple-800">✔ Return Outward Generated</p>
               <div className="flex flex-wrap gap-4 text-sm text-purple-700">
-                <span>
-                  Return No:{" "}
-                  <strong className="font-mono">
-                    {returnSummary.returnNo || "—"}
-                  </strong>
-                </span>
-                <span>
-                  Items: <strong>{returnSummary.count}</strong>
-                </span>
-                <span>
-                  Date: <strong>{returnSummary.date}</strong>
-                </span>
+                <span>Return No: <strong className="font-mono">{returnSummary.returnNo || "—"}</strong></span>
+                <span>Items: <strong>{returnSummary.count}</strong></span>
               </div>
             </div>
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() =>
-                  generateReturnOutwardPdf({
-                    returnNo: returnSummary.returnNo,
-                    outwardNo: returnSummary.outwardNo,
-                    receiverName: returnSummary.receiverName,
-                    items: returnSummary.items,
-                  })
-                }
+                onClick={() => generateReceiverReturnPdf({
+                  returnNo: returnSummary.returnNo,
+                  outwardNo: returnSummary.outwardNo,
+                  receiverName: returnSummary.receiverName,
+                  items: returnSummary.items,
+                })}
                 className="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple-700"
               >
                 ⬇ Download PDF
               </button>
-              <button
-                type="button"
-                onClick={() => setReturnSummary(null)}
-                className="text-xs text-purple-400 hover:text-purple-600"
-              >
-                ✕
-              </button>
+              <button type="button" onClick={() => setReturnSummary(null)} className="text-xs text-purple-400 hover:text-purple-600">✕</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Cross-outward batch return hint */}
+      {/* Cross-outward hint */}
       <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-2 text-xs text-blue-700">
-        You can select items from <strong>any outward</strong> and generate one
-        return outward number for all of them in a single click.
+        You can select items from <strong>any outward</strong> and generate one return outward number for all of them in a single click.
       </div>
 
       {/* Controls row */}
       <div className="flex flex-wrap items-center gap-3">
-        {/* Filter pills */}
         <div className="flex gap-1">
           {FILTERS.map((f) => (
             <button
@@ -800,9 +549,7 @@ const AllRecordsTab = () => {
               type="button"
               onClick={() => setFilter(f.key)}
               className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                filter === f.key
-                  ? "bg-indigo-600 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                filter === f.key ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
               {f.label}
@@ -811,7 +558,6 @@ const AllRecordsTab = () => {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          {/* Return remark for all selected */}
           {selected.size > 0 && (
             <input
               type="text"
@@ -821,9 +567,7 @@ const AllRecordsTab = () => {
                 const val = e.target.value;
                 setReturnRemark((r) => {
                   const next = { ...r };
-                  Array.from(selected).forEach((id) => {
-                    next[id] = val;
-                  });
+                  Array.from(selected).forEach((id) => { next[id] = val; });
                   return next;
                 });
               }}
@@ -835,57 +579,47 @@ const AllRecordsTab = () => {
             onClick={handleGenerateReturn}
             className="rounded-lg bg-purple-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-purple-700 disabled:opacity-50"
           >
-            {batchReturning
-              ? "Generating…"
-              : `Generate Return Outward (${selected.size})`}
+            {batchReturning ? "Generating…" : `Generate Return Outward (${selected.size})`}
           </button>
         </div>
       </div>
 
       {flash && (
-        <p
-          className={`text-sm ${flash.type === "success" ? "text-green-700" : "text-red-600"}`}
-        >
+        <p className={`text-sm ${flash.type === "success" ? "text-green-700" : "text-red-600"}`}>
           {flash.msg}
         </p>
       )}
 
-      {/* Row detail view panel — above the table */}
+      {/* Row detail view panel */}
       {selectedRow && (
         <div className="action-panel-shell">
           <div className="action-panel-header">
             <div className="action-panel-title">
               {`Record Details${selectedRow.entry_detail?.exam_name ? " — " + selectedRow.entry_detail.exam_name : ""}`}
             </div>
-            <button
-              type="button"
-              onClick={() => setSelectedRow(null)}
-              aria-label="Close"
-              className="rounded-full p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
-            >
-              ✕
-            </button>
+            <button type="button" onClick={() => setSelectedRow(null)} aria-label="Close"
+              className="rounded-full p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700">✕</button>
           </div>
           <div className="action-panel-body">
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm md:grid-cols-3 lg:grid-cols-5">
               {[
-                ["Outward No.", selectedRow._outward?.outward_no || "—"],
-                ["Admin Remark", selectedRow._outward?.remarks || "—"],
-                ["Dummy No.", selectedRow.entry_detail?.dummy_number || "—"],
-                ["Exam", selectedRow.entry_detail?.exam_name || "—"],
-                ["Examiner", selectedRow.entry_detail?.examiner_name || "—"],
-                ["Total Sheets", selectedRow.entry_detail?.total_answer_sheet || "—"],
-                ["Entry Remark", selectedRow.entry_detail?.remark || "—"],
-                ["Status", <ReceiverStatusBadge key="st" d={selectedRow} />],
-                ["Work Status", selectedRow.work_status || "—"],
+                ["Outward No.",      selectedRow._outward?.outward_no || "—"],
+                ["Admin Remark",     selectedRow._outward?.remarks || "—"],
+                ["Dummy No.",        selectedRow.entry_detail?.dummy_number || "—"],
+                ["Exam",             selectedRow.entry_detail?.exam_name || "—"],
+                ["Examiner",         selectedRow.entry_detail?.examiner_name || "—"],
+                ["Total Sheets",     selectedRow.entry_detail?.total_answer_sheet || "—"],
+                ["Entry Remark",     selectedRow.entry_detail?.remark || "—"],
+                ["Status",           <ReceiverStatusBadge key="st" d={selectedRow} />],
+                ["Work Status",      selectedRow.work_status || "—"],
                 ["Return Outward No.", selectedRow.return_outward_no || "—"],
-                ["Received By", selectedRow.received_by_name || "—"],
-                ["Received Date", selectedRow.received_date ? fmtDate(selectedRow.received_date) : "—"],
-                ["Return Remark", selectedRow.return_remark || "—"],
-                ["Returned By", selectedRow.returned_by_name || "—"],
-                ["Returned Date", selectedRow.returned_date ? fmtDate(selectedRow.returned_date) : "—"],
-                ["Final Status", selectedRow.final_receive_status || "—"],
-                ["Final Remark", selectedRow.final_receive_remark || "—"],
+                ["Received By",      selectedRow.received_by_name || "—"],
+                ["Received Date",    selectedRow.received_date ? fmtDate(selectedRow.received_date) : "—"],
+                ["Return Remark",    selectedRow.return_remark || "—"],
+                ["Returned By",      selectedRow.returned_by_name || "—"],
+                ["Returned Date",    selectedRow.returned_date ? fmtDate(selectedRow.returned_date) : "—"],
+                ["Final Status",     selectedRow.final_receive_status || "—"],
+                ["Final Remark",     selectedRow.final_receive_remark || "—"],
               ].map(([label, val]) => (
                 <div key={label}>
                   <dt className="text-xs font-medium text-slate-500">{label}</dt>
@@ -894,13 +628,7 @@ const AllRecordsTab = () => {
               ))}
             </dl>
             <div className="mt-4 border-t border-slate-200 pt-3">
-              <button
-                type="button"
-                onClick={() => setSelectedRow(null)}
-                className="reset-button-compact"
-              >
-                Close
-              </button>
+              <button type="button" onClick={() => setSelectedRow(null)} className="reset-button-compact">Close</button>
             </div>
           </div>
         </div>
@@ -915,40 +643,16 @@ const AllRecordsTab = () => {
                 <input
                   type="checkbox"
                   className="rounded"
-                  checked={
-                    receivableIds.size > 0 &&
-                    selected.size === receivableIds.size
-                  }
+                  checked={receivableIds.size > 0 && selected.size === receivableIds.size}
                   onChange={toggleAll}
                   title="Select all receivable"
                 />
               </th>
-              {[
-                "Outward No.",
-                "Admin Remark",
-                "Dummy No.",
-                "Exam",
-                "Examiner",
-                "Sheets",
-                "Entry Remark",
-                "Status",
-                "Work Status",
-                "Return Outward No.",
-                "Received By",
-                "Received Date",
-                "Return Remark",
-                "Returned By",
-                "Returned Date",
-                "Final Status",
-                "Final Remark",
-                "Action",
-              ].map((h) => (
-                <th
-                  key={h}
-                  className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500"
-                >
-                  {h}
-                </th>
+              {["Outward No.", "Admin Remark", "Dummy No.", "Exam", "Examiner", "Sheets",
+                "Entry Remark", "Status", "Work Status", "Return Outward No.", "Received By",
+                "Received Date", "Return Remark", "Returned By", "Returned Date", "Final Status",
+                "Final Remark", "Action"].map((h) => (
+                <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">{h}</th>
               ))}
             </tr>
           </thead>
@@ -959,71 +663,34 @@ const AllRecordsTab = () => {
                 d.return_status !== "Returned" &&
                 d.work_status === "Done";
               return (
-                <tr
-                  key={d.id}
-                  className="cursor-pointer hover:bg-slate-50"
-                  onClick={() => setSelectedRow(d)}
-                >
+                <tr key={d.id} className="cursor-pointer hover:bg-slate-50" onClick={() => setSelectedRow(d)}>
                   <td className="px-4 py-3" onClick={(ev) => ev.stopPropagation()}>
                     {canSelect ? (
-                      <input
-                        type="checkbox"
-                        className="rounded"
-                        checked={selected.has(d.id)}
-                        onChange={() => toggleRow(d.id)}
-                      />
+                      <input type="checkbox" className="rounded" checked={selected.has(d.id)} onChange={() => toggleRow(d.id)} />
                     ) : (
                       <span className="text-slate-300">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-indigo-700">
-                    {d._outward?.outward_no || "—"}
-                  </td>
-                  <td className="px-4 py-3 max-w-[140px] text-xs text-blue-700">
-                    {d._outward?.remarks || "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    {d.entry_detail?.dummy_number}
-                  </td>
-                  <td className="px-4 py-3 font-medium">
-                    {d.entry_detail?.exam_name}
-                  </td>
-                  <td className="px-4 py-3">
-                    {d.entry_detail?.examiner_name}
-                  </td>
-                  <td className="px-4 py-3">
-                    {d.entry_detail?.total_answer_sheet}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-500">
-                    {d.entry_detail?.remark || "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <ReceiverStatusBadge d={d} />
-                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-indigo-700">{d._outward?.outward_no || "—"}</td>
+                  <td className="px-4 py-3 max-w-[140px] text-xs text-blue-700">{d._outward?.remarks || "—"}</td>
+                  <td className="px-4 py-3">{d.entry_detail?.dummy_number}</td>
+                  <td className="px-4 py-3 font-medium">{d.entry_detail?.exam_name}</td>
+                  <td className="px-4 py-3">{d.entry_detail?.examiner_name}</td>
+                  <td className="px-4 py-3">{d.entry_detail?.total_answer_sheet}</td>
+                  <td className="px-4 py-3 text-xs text-slate-500">{d.entry_detail?.remark || "—"}</td>
+                  <td className="px-4 py-3"><ReceiverStatusBadge d={d} /></td>
                   <td className="px-4 py-3">
                     {d.work_status === "Done" ? (
-                      <span className="inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
-                        🟢 Done
-                      </span>
+                      <span className="inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">🟢 Done</span>
                     ) : d.work_status === "InProgress" ? (
-                      <span className="inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">
-                        🔵 In Progress
-                      </span>
+                      <span className="inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">🔵 In Progress</span>
                     ) : (
-                      <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
-                        Pending
-                      </span>
+                      <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">Pending</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-purple-700">
-                    {d.return_outward_no || "—"}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-500">
-                    {d.received_by_name || "—"}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-500">
-                    {d.received_date ? fmtDate(d.received_date) : "—"}
-                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-purple-700">{d.return_outward_no || "—"}</td>
+                  <td className="px-4 py-3 text-xs text-slate-500">{d.received_by_name || "—"}</td>
+                  <td className="px-4 py-3 text-xs text-slate-500">{d.received_date ? fmtDate(d.received_date) : "—"}</td>
                   <td className="px-4 py-3 text-xs text-slate-500">
                     {canSelect ? (
                       <input
@@ -1031,36 +698,21 @@ const AllRecordsTab = () => {
                         className="w-36 rounded border border-slate-300 px-2 py-1 text-xs"
                         placeholder="Return remark"
                         value={returnRemark[d.id] || ""}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          const val = e.target.value;
-                          setReturnRemark((r) => ({ ...r, [d.id]: val }));
-                        }}
+                        onChange={(e) => { e.stopPropagation(); const val = e.target.value; setReturnRemark((r) => ({ ...r, [d.id]: val })); }}
                         onClick={(e) => e.stopPropagation()}
                       />
                     ) : (
                       d.return_remark || "—"
                     )}
                   </td>
-                  <td className="px-4 py-3 text-xs text-slate-500">
-                    {d.returned_by_name || "—"}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-500">
-                    {d.returned_date ? fmtDate(d.returned_date) : "—"}
-                  </td>
+                  <td className="px-4 py-3 text-xs text-slate-500">{d.returned_by_name || "—"}</td>
+                  <td className="px-4 py-3 text-xs text-slate-500">{d.returned_date ? fmtDate(d.returned_date) : "—"}</td>
                   <td className="px-4 py-3">
                     {d.final_receive_status === "Received" ? (
-                      <span className="inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
-                        Received Back
-                      </span>
-                    ) : (
-                      "—"
-                    )}
+                      <span className="inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">Received Back</span>
+                    ) : "—"}
                   </td>
-                  <td className="px-4 py-3 text-xs text-slate-500">
-                    {d.final_receive_remark || "—"}
-                  </td>
-                  {/* Action */}
+                  <td className="px-4 py-3 text-xs text-slate-500">{d.final_receive_remark || "—"}</td>
                   <td className="px-4 py-3" onClick={(ev) => ev.stopPropagation()}>
                     <button
                       type="button"
@@ -1076,10 +728,7 @@ const AllRecordsTab = () => {
             })}
             {filtered.length === 0 && (
               <tr>
-                <td
-                  colSpan={19}
-                  className="px-4 py-8 text-center text-sm text-slate-400"
-                >
+                <td colSpan={19} className="px-4 py-8 text-center text-sm text-slate-400">
                   No records match the selected filter.
                 </td>
               </tr>
@@ -1112,12 +761,7 @@ const AsstReceiver = ({ onToggleSidebar }) => {
             ☰
           </button>
         )}
-
-        <span className="text-sm font-semibold text-slate-700">
-          Assessment – Receiver Panel
-        </span>
-
-        {/* Tab buttons */}
+        <span className="text-sm font-semibold text-slate-700">Assessment – Receiver Panel</span>
         <div className="flex gap-1">
           {TABS.map((tab) => (
             <button
@@ -1125,9 +769,7 @@ const AsstReceiver = ({ onToggleSidebar }) => {
               type="button"
               onClick={() => setActiveTab(tab)}
               className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
-                activeTab === tab
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                activeTab === tab ? "bg-indigo-600 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
               {tab}
@@ -1138,7 +780,7 @@ const AsstReceiver = ({ onToggleSidebar }) => {
 
       {/* Body */}
       <div className="flex-1 overflow-auto px-2 py-4">
-        {activeTab === "Receive" && <ReceiveTab />}
+        {activeTab === "Receive"     && <ReceiveTab />}
         {activeTab === "All Records" && <AllRecordsTab />}
       </div>
     </div>

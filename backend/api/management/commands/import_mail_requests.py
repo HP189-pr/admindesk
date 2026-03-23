@@ -34,6 +34,9 @@ FIELD_ALIASES: Dict[str, Tuple[str, ...]] = {
         "enrollment_no",
         "Enrollment",
         "Enrollment Number",
+        "KSV Enrollment Number",
+        "KSV Enrollment No",
+        "Enrollment No.",
     ),
     "student_name": (
         "Student Name",
@@ -44,26 +47,43 @@ FIELD_ALIASES: Dict[str, Tuple[str, ...]] = {
         "Institute Name",
         "rec_institute_name",
         "Institution",
+        "Application for Admission to [University/Institute]",
+        "University/Institute",
+        "University or Institute",
     ),
     "rec_official_mail": (
         "Official Mail",
         "rec_official_mail",
         "Official Email",
+        "E-Mail (Official Email id for document receiving)",
+        "Official Email id for document receiving",
+        "Official Email for document receiving",
     ),
     "rec_ref_id": (
         "Ref ID",
         "rec_ref_id",
         "Reference Id",
+        "Student ID / Application No",
+        "Student ID",
+        "Application No",
+        "Application Number",
     ),
     "send_doc_type": (
         "Document Type",
         "send_doc_type",
         "Document",
+        "Select documents for mail attachment ( Marksheet and Degree)",
+        "Select documents for mail attachment (Marksheet and Degree)",
+        "Select documents for mail attachment",
+        "Documents for mail attachment",
     ),
     "form_submit_mail": (
         "Form Submit Mail",
         "form_submit_mail",
         "Email",
+        "Email Address",
+        "Email address",
+        "email address",
     ),
     "remark": (
         "remark",
@@ -381,25 +401,49 @@ class Command(BaseCommand):
                     if isinstance(k, str) and k.startswith('__'):
                         normalized.pop(k, None)
 
-                if not enrollment_no and not rec_official_mail:
+                mail_req_no_val = normalized.get("mail_req_no")
+
+                if not mail_req_no_val and not enrollment_no and not rec_official_mail:
                     skipped.append("missing identifiers")
                     continue
 
-                lookup: Dict[str, Any] = {"submitted_at": submitted_at}
-                if enrollment_no:
-                    lookup["enrollment_no"] = enrollment_no
-                if rec_official_mail:
-                    lookup["rec_official_mail"] = rec_official_mail
-
-                _, was_created = GoogleFormSubmission.objects.update_or_create(
-                    defaults=normalized,
-                    **lookup,
-                )
-
-                if was_created:
-                    created += 1
+                # Prefer mail_req_no as the unique key (most reliable)
+                if mail_req_no_val:
+                    lookup: Dict[str, Any] = {"mail_req_no": mail_req_no_val}
                 else:
-                    updated += 1
+                    lookup = {"submitted_at": submitted_at}
+                    if enrollment_no:
+                        lookup["enrollment_no"] = enrollment_no
+                    if rec_official_mail:
+                        lookup["rec_official_mail"] = rec_official_mail
+
+                defaults = {k: v for k, v in normalized.items() if k not in lookup}
+                defaults["submitted_at"] = submitted_at  # always carry submitted_at in defaults
+
+                if mail_req_no_val:
+                    # mail_req_no may have duplicates historically — handle gracefully
+                    qs = GoogleFormSubmission.objects.filter(**lookup)
+                    count = qs.count()
+                    if count == 0:
+                        GoogleFormSubmission.objects.create(**lookup, **defaults)
+                        created += 1
+                    elif count == 1:
+                        qs.update(**defaults)
+                        updated += 1
+                    else:
+                        # Duplicate mail_req_no — update the latest record, skip rest
+                        latest = qs.order_by('-id').first()
+                        GoogleFormSubmission.objects.filter(pk=latest.pk).update(**defaults)
+                        updated += 1
+                else:
+                    _, was_created = GoogleFormSubmission.objects.update_or_create(
+                        defaults=defaults,
+                        **lookup,
+                    )
+                    if was_created:
+                        created += 1
+                    else:
+                        updated += 1
 
             if dry_run:
                 transaction.set_rollback(True)

@@ -2,7 +2,7 @@
 """
 Assessment System – DRF ViewSets
 """
-from datetime import date
+from datetime import date, datetime
 
 from django.db.models import Q
 from django.utils import timezone
@@ -310,9 +310,16 @@ class AssessmentOutwardViewSet(ModelViewSet):
 
         outward_no = generate_outward_no()
 
+        # Accept optional outward_date from request; fallback to today
+        outward_date_str = request.data.get("outward_date")
+        try:
+            outward_date_val = datetime.strptime(outward_date_str, "%Y-%m-%d").date() if outward_date_str else date.today()
+        except (ValueError, TypeError):
+            outward_date_val = date.today()
+
         outward = AssessmentOutward.objects.create(
             outward_no=outward_no,
-            outward_date=date.today(),
+            outward_date=outward_date_val,
             generated_by=request.user,
             receiver_user_id=receiver_id,
             remarks=remarks,
@@ -816,6 +823,14 @@ class AssessmentOutwardViewSet(ModelViewSet):
         else:
             qs = qs.filter(entry__added_by=user)
 
+        outward_no_filter = request.query_params.get("outward_no")
+        if outward_no_filter:
+            qs = qs.filter(outward__outward_no=outward_no_filter)
+
+        return_outward_no_filter = request.query_params.get("return_outward_no")
+        if return_outward_no_filter:
+            qs = qs.filter(return_outward_no=return_outward_no_filter)
+
         start = request.query_params.get("start_date")
         end = request.query_params.get("end_date")
         if start:
@@ -835,7 +850,7 @@ class AssessmentOutwardViewSet(ModelViewSet):
             "Work Status", "Work Remark",
             "Return Status", "Return Outward No.", "Returned By", "Returned Date", "Return Remark",
             "Final Receive Status", "Final Received By", "Final Received Date", "Final Remark",
-            "Entry Status",
+            "Entry Status", "Sign",
         ]
         ws.append(headers)
 
@@ -874,6 +889,7 @@ class AssessmentOutwardViewSet(ModelViewSet):
                 fmtd(d.final_received_date),
                 d.final_receive_remark or "",
                 d.entry.status,
+                "",
             ])
 
         http_response = DjangoHttpResponse(

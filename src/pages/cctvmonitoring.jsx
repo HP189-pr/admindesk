@@ -8,6 +8,7 @@ import {
   getExams,
   createCentre,
   getCentres,
+  updateCentre,
   createOutward,
   getOutward,
   getDVDs,
@@ -23,7 +24,7 @@ import {
 const ACTIONS = ["CCTV Monitoring", "CCTV-Outward", "Copy Case Reporting"];
 const EXAM_SESSIONS = ["2026-1", "2026-2", "2027-1", "2027-2", "2028-1", "2028-2"];
 const DEFAULT_PLACES = ["Kadi", "15-LDRP", "15VSITR", "23", "12"];
-const SESSION_OPTIONS = ["A", "B", "C", "D"];
+const SESSION_OPTIONS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 const EMPTY_OUTWARD_FORM = {
   outward_date: "",
   cctv_record_no: "",
@@ -741,20 +742,31 @@ const CCTVMonitoring = ({
                                         onBlur={async (e) => {
                                           const value = Number(e.target.value);
                                           if (!value || value <= 0) return;
-                                          if (!rights.can_create) return;
-                                          await createCentre({
-                                            exam: exam.id,
-                                            session: sessionByExam[exam.id] || "A",
-                                            place,
-                                            no_of_cd: value,
-                                          });
+                                          const canAct = centreRow
+                                            ? rights.can_edit
+                                            : rights.can_create;
+                                          if (!canAct) return;
+                                          if (centreRow) {
+                                            // Update existing centre — backend recalculates DVD range
+                                            if (Number(centreRow.no_of_cd) !== value) {
+                                              await updateCentre(centreRow.id, { no_of_cd: value });
+                                            }
+                                          } else {
+                                            // Create new centre with auto-assigned DVD sequence
+                                            await createCentre({
+                                              exam: exam.id,
+                                              session: sessionByExam[exam.id] || "A",
+                                              place,
+                                              no_of_cd: value,
+                                            });
+                                          }
                                           setPlaceInputByKey((prev) => {
                                             const next = { ...prev };
                                             delete next[placeKey];
                                             return next;
                                           });
-                                          fetchCentres();
-                                          fetchDvds();
+                                          await fetchCentres();
+                                          await fetchDvds();
                                         }}
                                       />
                                     </td>

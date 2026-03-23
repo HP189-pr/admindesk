@@ -212,6 +212,40 @@ class CCTVCentreEntryViewSet(CctvPermissionMixin, viewsets.ModelViewSet):
                     label=f"{session}-{i}"
                 )
 
+    def perform_update(self, serializer):
+        old_no_of_cd = serializer.instance.no_of_cd
+        centre = serializer.save()
+        new_no_of_cd = centre.no_of_cd
+
+        if old_no_of_cd == new_no_of_cd or centre.start_number is None:
+            return
+
+        # Recalculate end_number keeping start_number fixed
+        new_end = centre.start_number + new_no_of_cd - 1
+        centre.end_number = new_end
+        centre.end_label = f"{centre.session}-{new_end}"
+        centre.save(update_fields=["end_number", "end_label"])
+
+        # Create any missing DVD records (when count increased)
+        existing_numbers = set(
+            CCTVDVD.objects.filter(centre=centre).values_list("number", flat=True)
+        )
+        for i in range(centre.start_number, new_end + 1):
+            if i not in existing_numbers:
+                CCTVDVD.objects.create(
+                    centre=centre,
+                    number=i,
+                    label=f"{centre.session}-{i}",
+                )
+
+        # Remove excess DVDs when count decreased (only unassigned ones)
+        if new_no_of_cd < old_no_of_cd:
+            CCTVDVD.objects.filter(
+                centre=centre,
+                number__gt=new_end,
+                cc_number__isnull=True,
+            ).delete()
+
 
 # ============================
 # DVD
@@ -426,9 +460,19 @@ class CCTVOutwardViewSet(CctvPermissionMixin, viewsets.ModelViewSet):
             "Clearly mention in the report whether the student\u2019s case should be considered a copy "
             "case or not. If the student is involved in a copy case, ensure that proper CCTV footage "
             "evidence is available and documented.",
+            "If the CCTV observation report includes students from multiple institutions, and any "
+            "student from your institution is identified in the report, kindly forward a copy of the "
+            "report and CD to the respective institution. If no student from your institution is "
+            "identified, please submit a Nil report to the university.",
         ]
         for idx, item in enumerate(items, 1):
-            story.append(Paragraph(f"{idx}.&nbsp;&nbsp;{item}", st_list))
+            if idx == 6:
+                story.append(Paragraph(
+                    f"<i>{idx}.&nbsp;&nbsp;{item}</i>",
+                    S(alignment=TA_JUSTIFY, leftIndent=18, firstLineIndent=-18, spaceAfter=3)
+                ))
+            else:
+                story.append(Paragraph(f"{idx}.&nbsp;&nbsp;{item}", st_list))
 
         story.append(SP(2))
 
@@ -437,22 +481,6 @@ class CCTVOutwardViewSet(CctvPermissionMixin, viewsets.ModelViewSet):
             "Additionally, after verification, the original report and CD enclosed with this "
             "letter must be returned to the university.",
             st_just,
-        ))
-
-        # ── Custom Note (if filled) ────────────────────────────────────────────
-        if outward.note:
-            story.append(SP(1))
-            story.append(Paragraph(f"<b>Note:</b> {outward.note}", st_just))
-
-        # ── Institutional Note ─────────────────────────────────────────────────
-        story.append(SP(2))
-        story.append(Paragraph(
-            f"<i><b>Note:</b> If the CCTV observation report includes students from multiple "
-            f"institutions, and any student from your institution is identified in the report, "
-            f"kindly forward a copy of the report and CD to the respective institution. If no "
-            f"student from your institution is identified, please submit a Nil report to the "
-            f"university.</i>",
-            st_italic_just,
         ))
 
         # ── Signature (right-aligned) ──────────────────────────────────────────
@@ -464,8 +492,17 @@ class CCTVOutwardViewSet(CctvPermissionMixin, viewsets.ModelViewSet):
         story.append(SP(2))
         story.append(HR())
         story.append(Paragraph("<b>Enclosures:</b>", st_bold_norm))
-        story.append(Paragraph(f"1.&nbsp;&nbsp;DVD No(s).: {dvd_label}", st_norm))
+        story.append(Paragraph(f"1.&nbsp;&nbsp;DVD No(s).: {dvd_label}", S(spaceAfter=1)))
         story.append(Paragraph(f"2.&nbsp;&nbsp;CCTV Observation Report No(s).: {outward.rep_nos or ''}", st_norm))
+
+        story.append(SP(10))
+
+        # ── Remark (after Enclosures) ─────────────────────────────────────────
+        if outward.note:
+            story.append(Paragraph(
+                f'<font size="10"><b>Note :</b> {outward.note}</font>',
+                S(fontSize=10, alignment=TA_JUSTIFY, spaceBefore=2)
+            ))
 
         doc.build(story)
         pdf_bytes = buf.getvalue()
