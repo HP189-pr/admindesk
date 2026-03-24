@@ -74,6 +74,7 @@ try:
         EmployeeDateRangeView,
         EmployeeMultiYearView,
         AllEmployeesBalanceView,
+        NoEmployeeLeaveView,
     )
 
     from .views_student_search import StudentSearchViewSet
@@ -213,6 +214,7 @@ try:
         path("leave-report/employee-range/", EmployeeDateRangeView.as_view(), name="employee-range"),
         path("leave-report/multi-year/", EmployeeMultiYearView.as_view(), name="employee-multi-year"),
         path("leave-report/all-employees-balance/", AllEmployeesBalanceView.as_view(), name="all-employees-balance"),
+        path("leave-report/no-employee-leave/", NoEmployeeLeaveView.as_view(), name="no-employee-leave"),
 
         # USER MANAGEMENT
         path("users/", UserAPIView.as_view(), name="user-list-create"),

@@ -4,6 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
 from .leave_engine import compute_leave_balances
+from .domain_emp import LeaveEntry, EmpProfile
 
 class LeaveReportView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -264,4 +265,122 @@ class AllEmployeesBalanceView(APIView):
         return Response({
             "period": {"id": period.id, "name": period.period_name, "start": period.start_date.strftime("%d-%m-%Y"), "end": period.end_date.strftime("%d-%m-%Y")},
             "employees": employees_out
+        })
+
+
+class NoEmployeeLeaveView(APIView):
+    """Returns individual leave records for a specific employee."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        if not _is_manager(request.user):
+            return Response({"error": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
+
+        emp_code = request.query_params.get("emp_code")
+        year = request.query_params.get("year")
+        
+        if not emp_code:
+            return Response({"error": "emp_code is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not year:
+            return Response({"error": "year is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Find the employee
+            emp = EmpProfile.objects.get(emp_id=emp_code)
+        except EmpProfile.DoesNotExist:
+            return Response({
+                "error": f"Employee with code '{emp_code}' not found",
+                "emp_code": emp_code,
+                "employees": []
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            year_int = int(year)
+        except ValueError:
+            return Response({"error": "year must be a valid number"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Find the LeavePeriod for this allocation year
+        from .domain_emp import LeavePeriod
+        from django.db.models import Q
+        from datetime import date
+        
+        # Try multiple approaches to find the period
+        period = None
+        
+        # Approach 1: Search by year in period_name
+        period = LeavePeriod.objects.filter(
+            period_name__icontains=str(year_int)
+        ).first()
+        
+        if not period:
+            # Approach 2: Find period where start_date or end_date falls in this year
+            period = LeavePeriod.objects.filter(
+                Q(start_date__year=year_int) | Q(end_date__year=year_int)
+            ).first()
+        
+        if not period:
+            # Approach 3: Find period that contains this year (June to May pattern)
+            # For year 2025, try June 1, 2025 to May 31, 2026
+            try:
+                june_start = date(year_int, 6, 1)
+                may_end = date(year_int + 1, 5, 31)
+                period = LeavePeriod.objects.filter(
+                    start_date__lte=june_start,
+                    end_date__gte=june_start
+                ).first()
+            except:
+                pass
+        
+        if not period:
+            # Return list of available periods for debugging
+            available_periods = LeavePeriod.objects.all().values('id', 'period_name', 'start_date', 'end_date')[:10]
+            return Response({
+                "error": f"No allocation period found for year {year_int}. Please check available periods.",
+                "year": year_int,
+                "employees": [],
+                "available_periods": list(available_periods)
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # Get leave entries for this employee within the allocation period date range
+        print(f"[DEBUG] Filtering leaves for emp={emp.emp_id}, period={period.period_name}, dates={period.start_date} to {period.end_date}")
+        
+        leave_entries = LeaveEntry.objects.filter(
+            emp=emp,
+            start_date__gte=period.start_date,
+            start_date__lte=period.end_date,
+            status="Approved"  # Only show approved leaves
+        ).order_by("-start_date")
+        
+        print(f"[DEBUG] Found {leave_entries.count()} leave entries")
+
+        # Serialize the leave entries
+        records = []
+        for entry in leave_entries:
+            records.append({
+                "id": entry.id,
+                "report_no": entry.leave_report_no or f"L{entry.id}",
+                "start_date": entry.start_date.strftime("%d-%m-%Y") if entry.start_date else "",
+                "end_date": entry.end_date.strftime("%d-%m-%Y") if entry.end_date else "",
+                "leave_type": entry.leave_type.leave_code if entry.leave_type else "",
+                "leave_type_name": entry.leave_type.leave_name if entry.leave_type else "",
+                "total_days": float(entry.total_days) if entry.total_days else 0,
+                "status": entry.status,
+                "reason": entry.reason or ""
+            })
+
+        return Response({
+            "emp_code": emp.emp_id,
+            "emp_name": emp.emp_name,
+            "emp_id": emp.emp_id,
+            "emp_short": emp.emp_short,
+            "year": year_int,
+            "period": {
+                "id": period.id,
+                "name": period.period_name,
+                "start_date": period.start_date.strftime("%d-%m-%Y"),
+                "end_date": period.end_date.strftime("%d-%m-%Y")
+            },
+            "employees": records,
+            "debug": f"Showing {len(records)} leaves for period {period.period_name}"
         })

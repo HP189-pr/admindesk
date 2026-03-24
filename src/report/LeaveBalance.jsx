@@ -16,6 +16,7 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
   const [internalPeriod, setInternalPeriod] = useState('');
   const [balanceMode, setBalanceMode] = useState('all-employees');
   const [selectedEmpId, setSelectedEmpId] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [leaveGroupFilter, setLeaveGroupFilter] = useState('all');
@@ -114,6 +115,15 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
           endpoint = 'all-employees-balance';
           params = { period_id: selectedPeriod };
           break;
+        case 'no-employee-leave':
+          if (!selectedEmpId || !selectedYear) {
+            setBalanceError('Please enter Employee Code / ID and select Year');
+            setLoading(false);
+            return;
+          }
+          endpoint = 'no-employee-leave';
+          params = { emp_code: selectedEmpId, year: selectedYear };
+          break;
         default:
           setLoading(false);
           return;
@@ -121,13 +131,20 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
 
       try {
         const data = await fetchLeaveReport(endpoint, params);
+        console.log('[DEBUG] API Response:', data);
+        console.log('[DEBUG] Year:', data.year, '| Period:', data.period?.name, '| Records:', data.employees?.length);
         setBalanceData(data);
         setBalanceError(null);
       } catch (error) {
         let errorMsg = 'Failed to load balance data';
         if (error.response) {
           if (error.response.status === 404) {
-            errorMsg = 'No data found for the selected employee or period.';
+            errorMsg = error.response.data?.error || 'No data found for the selected employee or period.';
+            // Show available periods if provided
+            if (error.response.data?.available_periods?.length > 0) {
+              const periods = error.response.data.available_periods.map(p => `${p.period_name} (${p.start_date} to ${p.end_date})`).join('; ');
+              errorMsg += `\n\nAvailable periods: ${periods}`;
+            }
           } else if (error.response.status === 403) {
             errorMsg = 'You do not have permission to view this data.';
           } else {
@@ -136,6 +153,7 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
         } else {
           errorMsg = error.message || errorMsg;
         }
+        console.error('[DEBUG] API Error:', errorMsg, error.response?.data);
         setBalanceError(errorMsg);
         setBalanceData(null);
       }
@@ -201,126 +219,163 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
       <div className="text-lg font-semibold mb-4">Leave Balance</div>
 
       <div className="mb-4 p-4 bg-gray-50 rounded border">
-        <label className="block text-sm font-medium mb-2">Select Report Mode</label>
-        <select
-          value={balanceMode}
-          onChange={(e) => setBalanceMode(e.target.value)}
-          className="block w-full md:w-1/2 p-2 border rounded mb-4"
-        >
-          <option value="employee-summary">1. Employee Yearly Summary</option>
-          <option value="employee-range">2. Employee Date Range</option>
-          <option value="multi-year">3. Multi-Year Employee Report</option>
-          <option value="all-employees">4. All Employees for Year</option>
-          <option value="certificate-range">5. Certificate (From → To)</option>
-        </select>
+        <div className="flex flex-nowrap gap-3 items-end overflow-x-auto">
+          <div className="flex-shrink-0 min-w-[250px]">
+            <label className="block text-sm font-medium mb-2">Select Report Mode</label>
+            <select
+              value={balanceMode}
+              onChange={(e) => setBalanceMode(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              <option value="employee-summary">1. Employee Yearly Summary</option>
+              <option value="employee-range">2. Employee Date Range</option>
+              <option value="multi-year">3. Multi-Year Employee Report</option>
+              <option value="all-employees">4. All Employees for Year</option>
+              <option value="certificate-range">5. Certificate (From → To)</option>
+              <option value="no-employee-leave">6. Employee Leave Reports</option>
+            </select>
+          </div>
 
-        {balanceMode === 'employee-summary' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1">Employee ID *</label>
+          {balanceMode === 'employee-summary' && (
+            <>
+              <div className="flex-shrink-0 min-w-[200px]">
+                <label className="block text-sm font-medium mb-2">Employee ID *</label>
+                <input
+                  type="text"
+                  value={selectedEmpId}
+                  onChange={(e) => setSelectedEmpId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+              <div className="flex-shrink-0 min-w-[200px]">
+                <label className="block text-sm font-medium mb-2">Period *</label>
+                <select value={selectedPeriod} onChange={(e) => setSelectedPeriod(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                  <option value="">Select Period</option>
+                  {periods.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.period_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
+
+          {(balanceMode === 'employee-range' || balanceMode === 'certificate-range') && (
+            <>
+              <div className="flex-shrink-0 min-w-[200px]">
+                <label className="block text-sm font-medium mb-2">Employee ID *</label>
+                <input
+                  type="text"
+                  value={selectedEmpId}
+                  onChange={(e) => setSelectedEmpId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+              <div className="flex-shrink-0 min-w-[150px]">
+                <label className="block text-sm font-medium mb-2">From Date *</label>
+                <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" />
+              </div>
+              <div className="flex-shrink-0 min-w-[150px]">
+                <label className="block text-sm font-medium mb-2">To Date *</label>
+                <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" />
+              </div>
+            </>
+          )}
+
+          {balanceMode === 'multi-year' && (
+            <div className="flex-shrink-0 min-w-[200px]">
+              <label className="block text-sm font-medium mb-2">Employee ID *</label>
               <input
                 type="text"
                 value={selectedEmpId}
                 onChange={(e) => setSelectedEmpId(e.target.value)}
-                className="w-full p-2 border rounded"
+                className="w-full px-3 py-2 border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Period *</label>
-              <select value={selectedPeriod} onChange={(e) => setSelectedPeriod(e.target.value)} className="w-full p-2 border rounded">
-                <option value="">Select Period</option>
-                {periods.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.period_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
+          )}
 
-        {(balanceMode === 'employee-range' || balanceMode === 'certificate-range') && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1">Employee ID *</label>
-              <input
-                type="text"
-                value={selectedEmpId}
-                onChange={(e) => setSelectedEmpId(e.target.value)}
-                className="w-full p-2 border rounded"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">From Date *</label>
-              <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-full p-2 border rounded" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">To Date *</label>
-              <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-full p-2 border rounded" />
-            </div>
-          </div>
-        )}
+          {balanceMode === 'all-employees' && (
+            <>
+              <div className="flex-shrink-0 min-w-[200px]">
+                <label className="block text-sm font-medium mb-2">Period *</label>
+                <select value={selectedPeriod} onChange={(e) => setSelectedPeriod(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                  <option value="">Select Period</option>
+                  {periods.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.period_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex-shrink-0 min-w-[150px]">
+                <label className="block text-sm font-medium mb-2">Leave Group</label>
+                <select value={leaveGroupFilter} onChange={(e) => setLeaveGroupFilter(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                  <option value="all">All (VC & EL)</option>
+                  <option value="vc">Vacation (VC)</option>
+                  <option value="el">EL only</option>
+                </select>
+              </div>
+              <div className="flex-shrink-0 min-w-[150px]">
+                <label className="block text-sm font-medium mb-2">Filter Name</label>
+                <input
+                  type="text"
+                  placeholder="Employee name"
+                  value={nameFilter}
+                  onChange={(e) => setNameFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  disabled={loading}
+                />
+              </div>
+            </>
+          )}
 
-        {balanceMode === 'multi-year' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1">Employee ID *</label>
-              <input
-                type="text"
-                value={selectedEmpId}
-                onChange={(e) => setSelectedEmpId(e.target.value)}
-                className="w-full p-2 border rounded"
-              />
-            </div>
-          </div>
-        )}
+          {balanceMode === 'no-employee-leave' && (
+            <>
+              <div className="flex-shrink-0 min-w-[200px]">
+                <label className="block text-sm font-medium mb-2">Employee Code / ID *</label>
+                <input
+                  type="text"
+                  value={selectedEmpId}
+                  onChange={(e) => setSelectedEmpId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="Enter employee code or ID"
+                />
+              </div>
+              <div className="flex-shrink-0 min-w-[150px]">
+                <label className="block text-sm font-medium mb-2">Allocation Year *</label>
+                <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                  <option value="">Select Year</option>
+                  <option value="2023">2023</option>
+                  <option value="2024">2024</option>
+                  <option value="2025">2025</option>
+                  <option value="2026">2026</option>
+                  <option value="2027">2027</option>
+                  <option value="2028">2028</option>
+                </select>
+              </div>
+            </>
+          )}
 
-        {balanceMode === 'all-employees' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1">Period *</label>
-              <select value={selectedPeriod} onChange={(e) => setSelectedPeriod(e.target.value)} className="w-full p-2 border rounded">
-                <option value="">Select Period</option>
-                {periods.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.period_name}
-                  </option>
-                ))}
-              </select>
+          {balanceError && (
+            <div className="flex-shrink-0 text-red-700 text-sm" style={{marginTop: '24px'}}>
+              ⚠️
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Leave Group Filter</label>
-              <select value={leaveGroupFilter} onChange={(e) => setLeaveGroupFilter(e.target.value)} className="w-full p-2 border rounded">
-                <option value="all">All (VC & EL)</option>
-                <option value="vc">Vacation (VC) only</option>
-                <option value="el">EL only</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Filter by Name</label>
-              <input
-                type="text"
-                placeholder="Employee name"
-                value={nameFilter}
-                onChange={(e) => setNameFilter(e.target.value)}
-                className="w-full p-2 border rounded"
-                disabled={loading}
-              />
-            </div>
-          </div>
-        )}
+          )}
+
+          <button
+            onClick={loadBalanceData}
+            disabled={loading}
+            className="flex-shrink-0 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 font-medium"
+            style={{marginTop: '24px'}}
+          >
+            {loading ? 'Loading...' : 'Show Report'}
+          </button>
+        </div>
 
         {balanceError && (
-          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">{balanceError}</div>
+          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">{balanceError}</div>
         )}
-
-        <button
-          onClick={loadBalanceData}
-          disabled={loading}
-          className="mt-4 px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
-        >
-          {loading ? 'Loading...' : 'Show Report'}
-        </button>
       </div>
 
       {balanceData && balanceMode === 'certificate-range' && balanceData.period && (
@@ -612,8 +667,59 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
           </div>
         </div>
       )}
+
+      {balanceMode === 'no-employee-leave' && balanceData && filteredEmployees.length > 0 && (
+        <div id="no-employee-leave-print" className="bg-white border rounded p-4">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h3 className="text-lg font-semibold">
+                Employee Leave Report - {balanceData?.emp_name || balanceData?.emp_code || ''} (#{balanceData?.emp_short || balanceData?.emp_id || ''})
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Allocation Year {balanceData?.year}: {balanceData?.period?.name} ({balanceData?.period?.start_date} to {balanceData?.period?.end_date})
+              </p>
+            </div>
+            <div>
+              <button onClick={() => handlePrintClick('#no-employee-leave-print')} className="px-3 py-1 bg-blue-600 text-white rounded text-sm no-print">
+                Print / Save PDF
+              </button>
+            </div>
+          </div>
+
+          <div className="overflow-auto" data-print-expand>
+            <table className="min-w-full text-sm border-collapse">
+              <thead>
+                <tr className="bg-gray-100 text-center font-semibold">
+                  <th className="p-2 border">Report No</th>
+                  <th className="p-2 border">Start Date</th>
+                  <th className="p-2 border">End Date</th>
+                  <th className="p-2 border">Leave Type</th>
+                  <th className="p-2 border text-right">Total Leave Days</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredEmployees.length > 0 ? (
+                  filteredEmployees.map((leave, idx) => (
+                    <tr key={idx} className="border-b hover:bg-gray-50">
+                      <td className="p-2 border text-center">{leave.report_no || leave.id || idx + 1}</td>
+                      <td className="p-2 border text-center">{fmtDate(leave.start_date || leave.from_date || '')}</td>
+                      <td className="p-2 border text-center">{fmtDate(leave.end_date || leave.to_date || '')}</td>
+                      <td className="p-2 border text-center font-semibold">{leave.leave_type || leave.leave_type_name || '-'}</td>
+                      <td className="p-2 border text-right font-semibold">{roundLeave(leave.total_days || leave.days || 0, 'CL')}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="5" className="p-4 text-center text-gray-500">No leave records found for this employee.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
-};
+}
 
 export default LeaveBalance;
