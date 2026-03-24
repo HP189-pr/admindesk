@@ -629,10 +629,10 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                 </div>
               </div>
 
-              {/* Row 3: ECA and conditional doc_remark/button */}
-              {/* Row 3 : ECA row (always exists) */}
-              <div className="grid gap-1 md:[grid-template-columns:repeat(24,minmax(0,1fr))] items-end">
-                <div className="md:col-span-2">
+              {/* Row 3: Unified ECA + Doc Remark + Button (all on ONE line, no wrap) */}
+              <div className="flex flex-nowrap gap-2 items-end overflow-x-auto">
+                {/* ECA */}
+                <div className="w-[120px] flex-shrink-0">
                   <label className="block text-sm mb-1">ECA?</label>
                   <select
                     className="w-full border rounded-lg p-2"
@@ -643,9 +643,10 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                     <option value="yes">Yes</option>
                   </select>
                 </div>
+
                 {form.eca_required && (
                   <>
-                    <div className="md:col-span-2">
+                    <div className="w-[140px] flex-shrink-0">
                       <label className="block text-sm mb-1">ECA Name</label>
                       <select
                         className="w-full border rounded-lg p-2"
@@ -662,7 +663,8 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                         <option value="CAPR">CAPR</option>
                       </select>
                     </div>
-                    <div className="md:col-span-3">
+
+                    <div className="w-[160px] flex-shrink-0">
                       <label className="block text-sm mb-1">ECA Ref No</label>
                       <input
                         className="w-full border rounded-lg p-2"
@@ -670,7 +672,8 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                         onChange={(e) => handleChange("eca_ref_no", e.target.value)}
                       />
                     </div>
-                    <div className="md:col-span-3">
+
+                    <div className="w-[140px] flex-shrink-0">
                       <label className="block text-sm mb-1">ECA Send Date</label>
                       <input
                         type="date"
@@ -679,7 +682,8 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                         onChange={(e) => handleChange("eca_send_date", e.target.value)}
                       />
                     </div>
-                    <div className="md:col-span-2">
+
+                    <div className="w-[120px] flex-shrink-0">
                       <label className="block text-sm mb-1">ECA Status</label>
                       <select
                         className="w-full border rounded-lg p-2"
@@ -693,7 +697,8 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                         <option value="REJECTED">REJECTED</option>
                       </select>
                     </div>
-                    <div className="md:col-span-3">
+
+                    <div className="w-[150px] flex-shrink-0">
                       <label className="block text-sm mb-1">ECA Resubmit Date</label>
                       <input
                         type="date"
@@ -704,54 +709,19 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                     </div>
                   </>
                 )}
-                {/* ECA = NO → Doc Remark + Button stay in Row 3 */}
-                {!form.eca_required && (
-                  <>
-                    <div className="md:col-span-3">
-                      <label className="block text-sm mb-1">Doc Remark</label>
-                      <input
-                        className="w-full border rounded-lg p-2"
-                        value={form.doc_remark}
-                        onChange={(e) => handleChange("doc_remark", e.target.value)}
-                      />
-                    </div>
-                    <div className="flex items-end">
-                      <button
-                        onClick={async () => {
-                          try {
-                            if (getSelected() === "✏️ Edit") {
-                              await updateRecord(currentRow?.id);
-                            } else {
-                              await createRecord();
-                            }
-                            setFlashMsg("Saved successfully!");
-                            setTimeout(() => setFlashMsg(""), 2000);
-                          } catch (e) {
-                            setFlashMsg(e.message || "Failed");
-                            setTimeout(() => setFlashMsg(""), 2500);
-                          }
-                        }}
-                        className="save-button"
-                      >
-                        {getSelected() === "✏️ Edit" ? "Update" : "Save"}
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
 
-              {/* Row 4 : Doc Remark + Button (only when ECA = YES) */}
-              {form.eca_required && (
-                <div className="grid gap-3 md:grid-cols-[1fr_auto] items-end">
-                  <div>
-                    <label className="block text-sm mb-1">Doc Remark</label>
-                    <input
-                      className="w-full border rounded-lg p-2"
-                      value={form.doc_remark}
-                      onChange={(e) => handleChange("doc_remark", e.target.value)}
-                    />
-                  </div>
+                {/* Doc Remark (larger proportion to match other fields) */}
+                <div className={form.eca_required ? "w-[320px] flex-shrink-0" : "flex-1 min-w-[250px]"}>
+                  <label className="block text-sm mb-1">Doc Remark</label>
+                  <input
+                    className="w-full border rounded-lg p-2"
+                    value={form.doc_remark}
+                    onChange={(e) => handleChange("doc_remark", e.target.value)}
+                  />
+                </div>
 
+                {/* Update / Save Button (at end of row) */}
+                <div className="flex items-end flex-shrink-0">
                   <button
                     onClick={async () => {
                       try {
@@ -772,7 +742,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                     {getSelected() === "✏️ Edit" ? "Update" : "Save"}
                   </button>
                 </div>
-              )}
+              </div>
             </div>
           </>
         )}
