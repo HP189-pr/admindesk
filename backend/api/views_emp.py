@@ -284,7 +284,8 @@ class LeaveEntryViewSet(viewsets.ModelViewSet):
                 return qs.none()
             qs = qs.filter(start_date__lte=start_lte)
 
-        return qs
+        # Prefer latest report numbers first (by report number and latest start date)
+        return qs.order_by('-leave_report_no', '-start_date', '-id')
 
     def perform_create(self, serializer):
         user = self.request.user

@@ -21,6 +21,15 @@ const normalize = (data) => {
   return [];
 };
 
+const computeDays = (start, end) => {
+  const startDate = parseDMY(start);
+  const endDate = parseDMY(end);
+  if (!startDate || !endDate) return '';
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const diff = Math.round((endDate.getTime() - startDate.getTime()) / msPerDay) + 1;
+  return diff > 0 ? diff : 0;
+};
+
 // Removed duplicate local definition of parseDMY. Using imported version from '../report/utils'.
 
 // Removed duplicate local definition of fmtDate. Using imported version from '../report/utils'.
@@ -90,12 +99,12 @@ function EmpLeavePage() {
 
   // Load leave entries (filtered by selected period)
   useEffect(() => {
-    const params = { page_size: 9999 };
+    const params = { limit: 9999 };
     if (selectedPeriod) {
       params.period = selectedPeriod;
     }
     axios.get('/api/leaveentry/', { params })
-      .then(r => setLeaveEntries(normalize(r.data)))
+      .then(r => setLeaveEntries(sortLeaveEntries(normalize(r.data))))
       .catch(() => setLeaveEntries([]));
   }, [selectedPeriod]);
 
@@ -159,8 +168,8 @@ function EmpLeavePage() {
       } else {
         await axios.post('/api/leaveentry/', payload);
       }
-      const r = await axios.get('/api/leaveentry/?page_size=9999');
-      setLeaveEntries(normalize(r.data));
+      const r = await axios.get('/api/leaveentry/?limit=9999');
+      setLeaveEntries(sortLeaveEntries(normalize(r.data)));
       setForm({
         report_no: '',
         emp_id: '',
@@ -183,12 +192,26 @@ function EmpLeavePage() {
   };
 
   function getReportOrderValue(reportNo) {
-    // Implement your report ordering logic here if needed
-    // For now, just parse as int if possible
-    const n = parseInt(reportNo, 10);
-    return isNaN(n) ? 0 : n;
+    // Convert report numbers like 25044 or 25044/2025 to numeric for consistent ordering.
+    if (reportNo === null || reportNo === undefined || reportNo === '') return Number.MIN_SAFE_INTEGER;
+    const normalized = String(reportNo).trim();
+    // Extract digits from report no; fallback to full string order if no digits
+    const match = normalized.match(/\d+/g);
+    if (!match) return Number.MIN_SAFE_INTEGER;
+    const n = parseInt(match.join(''), 10);
+    return Number.isFinite(n) ? n : Number.MIN_SAFE_INTEGER;
   }
 
+  function sortLeaveEntries(entries) {
+    return [...entries].sort((a, b) => {
+      const reportA = getReportOrderValue(a.leave_report_no);
+      const reportB = getReportOrderValue(b.leave_report_no);
+      if (reportB !== reportA) return reportB - reportA;
+      const dateA = parseDMY(a.start_date)?.getTime() || 0;
+      const dateB = parseDMY(b.start_date)?.getTime() || 0;
+      return dateB - dateA;
+    });
+  }
 
   const handleTopbar = (p) => {
     if (selectedPanel === p) {
@@ -217,14 +240,14 @@ function EmpLeavePage() {
       })
       .sort((a, b) => {
         // Sort by report number (latest/highest first)
-        const reportA = parseInt(a.leave_report_no, 10) || 0;
-        const reportB = parseInt(b.leave_report_no, 10) || 0;
-        
+        const reportA = getReportOrderValue(a.leave_report_no);
+        const reportB = getReportOrderValue(b.leave_report_no);
+
         if (reportB !== reportA) {
           return reportB - reportA; // Descending order (latest on top)
         }
-        
-        // If report numbers are equal, sort by start date (most recent first)
+
+        // If report numbers are equal or not numeric, sort by start date (most recent first)
         const dateA = parseDMY(a.start_date)?.getTime() || 0;
         const dateB = parseDMY(b.start_date)?.getTime() || 0;
         return dateB - dateA;
@@ -341,14 +364,14 @@ function EmpLeavePage() {
                   </div>
 
                   <div className="flex flex-col gap-3 md:flex-row">
-                    <div className="flex flex-col gap-1 md:w-28">
+                    <div className="flex flex-col gap-1 md:w-32">
                       <label className="text-xs text-gray-600">Start Date</label>
-                      <input name="start_date" value={form.start_date} onChange={handleChange} placeholder="dd-mm-yyyy" className={baseFieldClass} />
+                      <input type="date" name="start_date" value={form.start_date} onChange={handleChange} className={baseFieldClass} />
                     </div>
 
-                    <div className="flex flex-col gap-1 md:w-28">
+                    <div className="flex flex-col gap-1 md:w-32">
                       <label className="text-xs text-gray-600">End Date</label>
-                      <input name="end_date" value={form.end_date} onChange={handleChange} placeholder="dd-mm-yyyy" className={baseFieldClass} />
+                      <input type="date" name="end_date" value={form.end_date} onChange={handleChange} className={baseFieldClass} />
                     </div>
 
                     <div className="flex flex-col gap-1 md:w-40">
@@ -384,7 +407,7 @@ function EmpLeavePage() {
                       </select>
                     </div>
 
-                    <div className="flex flex-col gap-1 md:flex-[1.2]">
+                    <div className="flex flex-col gap-1 md:flex-[0.8]">
                       <label className="text-xs text-gray-600">Remark</label>
                       <input name="remark" value={form.remark} onChange={handleChange} className={baseFieldClass} />
                     </div>
@@ -423,7 +446,7 @@ function EmpLeavePage() {
               <div className="p-3 border-b bg-gray-50 flex justify-between">
                 <div className="font-semibold">Last Leave Records</div>
                 <button
-                  onClick={() => axios.get('/api/leaveentry/?page_size=9999').then(r => setLeaveEntries(normalize(r.data)))}
+                  onClick={() => axios.get('/api/leaveentry/?limit=9999').then(r => setLeaveEntries(sortLeaveEntries(normalize(r.data))))}
                   className="refresh-icon-button"
                   title="Refresh"
                   aria-label="Refresh"
@@ -482,8 +505,8 @@ function EmpLeavePage() {
                             emp_id: p?.emp_id || '',
                             emp_name: le.emp_name,
                             leave_type: le.leave_type,
-                            start_date: le.start_date,
-                            end_date: le.end_date,
+                            start_date: fmtDate(le.start_date),
+                            end_date: fmtDate(le.end_date),
                             remark: le.remark || le.reason || '',
                             total_days: le.total_days,
                             status: le.status,

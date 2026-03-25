@@ -109,3 +109,7 @@ DEBUG: UserPermission create errors: {'non_field_errors': [ErrorDetail(string='T
 DEBUG: UserPermissionViewSet.update called. request.data= {'user': 5, 'module': 7, 'menu': 36, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
 DEBUG: UserPermissionViewSet.update called. request.data= {'user': 5, 'module': 7, 'menu': 37, 'can_view': False, 'can_create': False, 'can_edit': False, 'can_delete': False}
 DEBUG: UserPermissionViewSet.update called. request.data= {'user': 5, 'module': 7, 'menu': 38, 'can_view': False, 'can_create': False, 'can_edit': False, 'can_delete': False}
+[DEBUG] Filtering leaves for emp=17, period=2025, dates=2025-06-01 to 2026-05-31
+[DEBUG] Found 14 leave entries
+[DEBUG] Filtering leaves for emp=17, period=2025, dates=2025-06-01 to 2026-05-31
+[DEBUG] Found 14 leave entries

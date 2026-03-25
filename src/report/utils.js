@@ -14,9 +14,10 @@ export const parseDMY = (value) => {
     const [, yyyy, mm, dd] = isoMatch;
     return new Date(Number(yyyy), Number(mm) - 1, Number(dd));
   }
-  const dmyMatch = String(value).match(/^(\d{2})[-/](\d{2})[-/](\d{4})$/);
+  const dmyMatch = String(value).match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})$/);
   if (dmyMatch) {
-    const [, dd, mm, yyyy] = dmyMatch;
+    let [, dd, mm, yyyy] = dmyMatch;
+    if (yyyy.length === 2) yyyy = '20' + yyyy;
     return new Date(Number(yyyy), Number(mm) - 1, Number(dd));
   }
   const date = new Date(value);
@@ -33,7 +34,11 @@ export const fmtDate = (value) => {
 
 export const toISO = (value) => {
   const dt = parseDMY(value);
-  return dt ? dt.toISOString().slice(0, 10) : null;
+  if (!dt) return null;
+  const yyyy = dt.getFullYear().toString().padStart(4, '0');
+  const mm = (dt.getMonth() + 1).toString().padStart(2, '0');
+  const dd = dt.getDate().toString().padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 };
 
 export const roundLeave = (value, leaveType) => {
