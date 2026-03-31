@@ -149,6 +149,7 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
   const [downloadDirLabel, setDownloadDirLabel] = useState('Not set');
   const [autoDownload, setAutoDownload] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [isScreenSharingActive, setIsScreenSharingActive] = useState(false);
   const EMOJIS = useMemo(() => ['😀', '😁', '😂', '🥰', '😍', '👍', '👏', '🙏', '🎉', '✅', '❌', '🔥', '⭐', '📝', '📎', '📁', '💬'], []);
   const [isPageVisible, setIsPageVisible] = useState(() =>
     typeof document !== 'undefined' ? !document.hidden : true
@@ -415,7 +416,10 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
         pc.ontrack = (trackEvent) => {
           if (remoteVideoRef.current) {
             const stream = trackEvent.streams?.[0] || null;
-            if (stream) remoteVideoRef.current.srcObject = stream;
+            if (stream) {
+              remoteVideoRef.current.srcObject = stream;
+              setIsScreenSharingActive(true);
+            }
           }
         };
 
@@ -754,6 +758,12 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
       await ChatBoxService.clear(selectedUser.id, type);
       if (type === 'all' || type === 'messages') {
         setMessages((prev) => ({ ...prev, [selectedUser.id]: [] }));
+        setLastMessages((prev) => {
+          const next = { ...prev };
+          delete next[selectedUser.id];
+          return next;
+        });
+        setUnreadCounts((prev) => ({ ...prev, [selectedUser.id]: 0 }));
       }
       if (type === 'all' || type === 'files') {
         setFilesTab((prev) => ({ ...prev, [selectedUser.id]: [] }));
@@ -779,6 +789,7 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
     if (remoteVideoRef.current) {
       remoteVideoRef.current.srcObject = null;
     }
+    setIsScreenSharingActive(false);
   };
 
   const startScreenShare = async () => {
@@ -1215,14 +1226,28 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
                   )}
 
                   <div className="font-semibold text-lg flex-1 truncate">{formatName(selectedUser)}</div>
+                  <button
+                    onClick={() => {
+                      if (window.confirm('Clear chat history for this conversation? This removes messages from your view only.')) {
+                        clearHistory('all');
+                      }
+                    }}
+                    className="text-xs px-2 py-1 border border-white/30 rounded hover:bg-white/10"
+                    title="Clear chat history"
+                    type="button"
+                  >
+                    Clear History
+                  </button>
                 </div>
 
-                <video
-                  ref={remoteVideoRef}
-                  autoPlay
-                  playsInline
-                  className="w-full max-h-[300px] bg-black rounded mb-2"
-                />
+                {isScreenSharingActive && (
+                  <video
+                    ref={remoteVideoRef}
+                    autoPlay
+                    playsInline
+                    className="w-full max-h-[300px] rounded mb-2"
+                  />
+                )}
 
                 <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-3 space-y-3 bg-gradient-to-b from-gray-100 to-gray-200">
                   {(messages[selectedUser.id] || []).map((msg) => {
