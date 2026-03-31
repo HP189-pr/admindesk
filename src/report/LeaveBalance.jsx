@@ -169,6 +169,25 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
   const allocated = balanceData?.allocated || { CL: 0, SL: 0, EL: 0, VAC: 0 };
   const used = balanceData?.used || { CL: 0, SL: 0, EL: 0, VAC: 0, DL: 0, LWP: 0, ML: 0, PL: 0 };
   const closing = balanceData?.closing || { CL: 0, SL: 0, EL: 0, VAC: 0 };
+  const employeeSummaryLeaveCodes = React.useMemo(() => {
+    const codes = new Set([
+      ...Object.keys(opening || {}),
+      ...Object.keys(allocated || {}),
+      ...Object.keys(used || {}),
+      ...Object.keys(closing || {}),
+    ]);
+    const order = ['CL', 'SL', 'EL', 'VAC', 'DL', 'LWP', 'ML', 'PL'];
+    return Array.from(codes)
+      .filter(Boolean)
+      .sort((a, b) => {
+        const ai = order.indexOf(a);
+        const bi = order.indexOf(b);
+        if (ai !== -1 || bi !== -1) {
+          return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+        }
+        return String(a).localeCompare(b);
+      });
+  }, [opening, allocated, used, closing]);
   const yearsArr = Array.isArray(balanceData?.years) ? balanceData.years : [];
   const employeesArr = Array.isArray(balanceData?.employees) ? balanceData.employees : [];
 
@@ -458,100 +477,105 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="border rounded p-3 bg-blue-50">
-              <h4 className="font-semibold mb-2">Opening Balance</h4>
-              <div className="space-y-1 text-sm">
-                <div>CL: {roundLeave(opening.CL ?? 0, 'CL')}</div>
-                <div>SL: {roundLeave(opening.SL ?? 0, 'SL')}</div>
-                <div>EL: {roundLeave(opening.EL ?? 0, 'EL')}</div>
-                <div>VAC: {roundLeave(opening.VAC ?? 0, 'VAC')}</div>
-              </div>
-            </div>
-            <div className="border rounded p-3 bg-green-50">
-              <h4 className="font-semibold mb-2">Allocated</h4>
-              <div className="space-y-1 text-sm">
-                <div>CL: {roundLeave(allocated.CL ?? 0, 'CL')}</div>
-                <div>SL: {roundLeave(allocated.SL ?? 0, 'SL')}</div>
-                <div>EL: {roundLeave(allocated.EL ?? 0, 'EL')}</div>
-                <div>VAC: {roundLeave(allocated.VAC ?? 0, 'VAC')}</div>
-              </div>
-            </div>
-            <div className="border rounded p-3 bg-orange-50">
-              <h4 className="font-semibold mb-2">Used Leaves</h4>
-              <div className="space-y-1 text-sm">
-                <div>CL: {roundLeave(used.CL ?? 0, 'CL')}</div>
-                <div>SL: {roundLeave(used.SL ?? 0, 'SL')}</div>
-                <div>EL: {roundLeave(used.EL ?? 0, 'EL')}</div>
-                <div>VAC: {roundLeave(used.VAC ?? 0, 'VAC')}</div>
-                <div>DL: {used.DL}</div>
-                <div>LWP: {used.LWP}</div>
-                <div>ML: {used.ML}</div>
-                <div>PL: {used.PL}</div>
-              </div>
-            </div>
+          <div className="overflow-auto mb-4" data-print-expand>
+            <table className="min-w-full text-sm border-collapse">
+              <thead>
+                <tr className="bg-gray-100 text-left">
+                  <th className="p-2 border">Leave Type</th>
+                  <th className="p-2 border text-right">Opening</th>
+                  <th className="p-2 border text-right">Allocated</th>
+                  <th className="p-2 border text-right">Used</th>
+                  <th className="p-2 border text-right">Closing</th>
+                </tr>
+              </thead>
+              <tbody>
+                {employeeSummaryLeaveCodes.map((code) => (
+                  <tr key={code} className="border-b hover:bg-gray-50">
+                    <td className="p-2 border font-semibold">{code}</td>
+                    <td className="p-2 border text-right">{roundLeave(opening[code] ?? 0, code)}</td>
+                    <td className="p-2 border text-right">{roundLeave(allocated[code] ?? 0, code)}</td>
+                    <td className="p-2 border text-right">{roundLeave(used[code] ?? 0, code)}</td>
+                    <td className="p-2 border text-right font-semibold">{roundLeave(closing[code] ?? 0, code)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
-          <div className="mt-4 border rounded p-3 bg-purple-50">
-            <h4 className="font-semibold mb-2">Closing Balance</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-              <div>CL: <span className="font-semibold">{roundLeave(closing.CL ?? 0, 'CL')}</span></div>
-              <div>SL: <span className="font-semibold">{roundLeave(closing.SL ?? 0, 'SL')}</span></div>
-              <div>EL: <span className="font-semibold">{roundLeave(closing.EL ?? 0, 'EL')}</span></div>
-              <div>VAC: <span className="font-semibold">{roundLeave(closing.VAC ?? 0, 'VAC')}</span></div>
+          {(['DL', 'LWP', 'ML', 'PL'].some((code) => (used[code] || 0) !== 0)) && (
+            <div className="overflow-auto mb-4">
+              <table className="min-w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-gray-100 text-left">
+                    <th className="p-2 border">Leave Type</th>
+                    <th className="p-2 border text-right">Used</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {['DL', 'LWP', 'ML', 'PL'].map((code) => (
+                    <tr key={code} className="border-b hover:bg-gray-50">
+                      <td className="p-2 border font-semibold">{code}</td>
+                      <td className="p-2 border text-right">{roundLeave(used[code] ?? 0, code)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </div>
+          )}
         </div>
       )}
 
       {balanceMode === 'multi-year' && yearsArr.length > 0 && (
         <div id="multi-year-print" className="bg-white border rounded p-4">
-          <div className="flex justify-end mb-3">
+          <div className="flex justify-between items-center mb-3">
+            <div>
+              <h3 className="text-lg font-semibold">
+                {balanceData?.emp_name || ''} (#{balanceData?.emp_short || ''})
+              </h3>
+              <p className="text-sm text-gray-600">
+                Multi-Year Leave Report
+              </p>
+            </div>
             <button onClick={() => handlePrintClick('#multi-year-print')} className="px-3 py-1 bg-blue-600 text-white rounded text-sm no-print">
               Print / Save PDF
             </button>
           </div>
-          <h3 className="text-lg font-semibold mb-4">
-            {balanceData?.emp_name || ''} (#{balanceData?.emp_short || ''})
-          </h3>
-          <div className="space-y-4">
-            {yearsArr.map((year, idx) => (
-              <div key={idx} className="border rounded p-3 bg-gray-50">
-                <h4 className="font-semibold mb-2">{year.period?.name || ''}</h4>
-                <p className="text-xs text-gray-600 mb-2">
-                  {year.period?.start || ''} to {year.period?.end || ''}
-                </p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                  <div>
-                    <div className="font-medium text-blue-600">Opening</div>
-                    <div>SL: {roundLeave(year.opening?.SL || 0, 'SL')}</div>
-                    <div>EL: {roundLeave(year.opening?.EL || 0, 'EL')}</div>
-                    <div>VAC: {roundLeave(year.opening?.VAC || 0, 'VAC')}</div>
-                  </div>
-                  <div>
-                    <div className="font-medium text-green-600">Allocated</div>
-                    <div>CL: {roundLeave(year.allocated?.CL || 0, 'CL')}</div>
-                    <div>SL: {roundLeave(year.allocated?.SL || 0, 'SL')}</div>
-                    <div>EL: {roundLeave(year.allocated?.EL || 0, 'EL')}</div>
-                    <div>VAC: {roundLeave(year.allocated?.VAC || 0, 'VAC')}</div>
-                  </div>
-                  <div>
-                    <div className="font-medium text-orange-600">Used</div>
-                    <div>CL: {roundLeave(year.used?.CL || 0, 'CL')}</div>
-                    <div>SL: {roundLeave(year.used?.SL || 0, 'SL')}</div>
-                    <div>EL: {roundLeave(year.used?.EL || 0, 'EL')}</div>
-                    <div>VAC: {roundLeave(year.used?.VAC || 0, 'VAC')}</div>
-                  </div>
-                  <div>
-                    <div className="font-medium text-purple-600">Closing</div>
-                    <div>CL: {roundLeave(year.closing?.CL || 0, 'CL')}</div>
-                    <div>SL: {roundLeave(year.closing?.SL || 0, 'SL')}</div>
-                    <div>EL: {roundLeave(year.closing?.EL || 0, 'EL')}</div>
-                    <div>VAC: {roundLeave(year.closing?.VAC || 0, 'VAC')}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
+
+          <div className="overflow-auto" data-print-expand>
+            <table className="min-w-full text-sm border-collapse">
+              <thead>
+                <tr className="bg-gray-100 text-left">
+                  <th className="p-2 border">Year</th>
+                  <th className="p-2 border">Period</th>
+                  <th className="p-2 border">Leave Type</th>
+                  <th className="p-2 border text-right">Opening</th>
+                  <th className="p-2 border text-right">Allocated</th>
+                  <th className="p-2 border text-right">Used</th>
+                  <th className="p-2 border text-right">Closing</th>
+                </tr>
+              </thead>
+              <tbody>
+                {yearsArr.flatMap((year, yearIdx) => {
+                  const yearLabel = year.period?.name || `Year ${yearIdx + 1}`;
+                  const periodLabel = `${year.period?.start || ''} to ${year.period?.end || ''}`;
+                  return ['CL', 'SL', 'EL', 'VAC'].map((code, rowIdx) => (
+                    <tr key={`${yearIdx}-${code}`} className="border-b hover:bg-gray-50">
+                      <td className="p-2 border text-sm" style={{ verticalAlign: 'top' }}>
+                        {rowIdx === 0 ? yearLabel : ''}
+                      </td>
+                      <td className="p-2 border text-sm" style={{ verticalAlign: 'top' }}>
+                        {rowIdx === 0 ? periodLabel : ''}
+                      </td>
+                      <td className="p-2 border font-semibold">{code}</td>
+                      <td className="p-2 border text-right">{roundLeave(year.opening?.[code] || 0, code)}</td>
+                      <td className="p-2 border text-right">{roundLeave(year.allocated?.[code] || 0, code)}</td>
+                      <td className="p-2 border text-right">{roundLeave(year.used?.[code] || 0, code)}</td>
+                      <td className="p-2 border text-right">{roundLeave(year.closing?.[code] || 0, code)}</td>
+                    </tr>
+                  ));
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
