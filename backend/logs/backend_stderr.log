@@ -41729,3 +41729,16 @@ Bad Request: /api/enrollments/60804/
 WARNING:django.request:Bad Request: /api/enrollments/60804/
 Bad Request: /api/enrollments/60804/
 WARNING:django.request:Bad Request: /api/enrollments/60804/
+E:\admindesk\backend\backend\settings.py:76: UserWarning: channels is not installed. Install it with: pip install channels
+  warnings.warn("channels is not installed. Install it with: pip install channels")
+INFO:waitress:Serving on http://127.0.0.1:8000
+Unauthorized: /api/users/
+WARNING:django.request:Unauthorized: /api/users/
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 3
+WARNING:waitress.queue:Task queue depth is 4
+WARNING:waitress.queue:Task queue depth is 5
+WARNING:waitress.queue:Task queue depth is 4
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1

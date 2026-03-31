@@ -356,11 +356,23 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
       const payload = { ...formState.data };
       if (payload.admission_date) {
         const iso = dmyToISO(payload.admission_date);
-        if (iso) payload.admission_date = iso;
+        if (iso) {
+          payload.admission_date = iso;
+        } else {
+          delete payload.admission_date;
+        }
+      } else {
+        delete payload.admission_date;
       }
       if (payload.enrollment_date) {
         const iso2 = dmyToISO(payload.enrollment_date);
-        if (iso2) payload.enrollment_date = iso2;
+        if (iso2) {
+          payload.enrollment_date = iso2;
+        } else {
+          delete payload.enrollment_date;
+        }
+      } else {
+        delete payload.enrollment_date;
       }
       if (formState.isEditing) {
         await updateEnrollment(formState.data.id, payload);
@@ -389,7 +401,12 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
           }
         }
       }
-      console.error("Error saving enrollment:", error?.response || error);
+      console.error("Error saving enrollment:", {
+        message,
+        status: error?.response?.status,
+        responseData: apiData,
+        payload: { ...formState.data }
+      });
       toast.error(message);
     }
   };

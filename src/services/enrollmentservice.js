@@ -48,7 +48,7 @@ export const createEnrollment = async (enrollmentData) => {
 
 export const updateEnrollment = async (enrollmentId, updatedData) => {
     const payload = sanitizeEnrollmentPayload(updatedData);
-    const res = await API.put(`${ENROLLMENT_API}${enrollmentId}/`, payload);
+    const res = await API.patch(`${ENROLLMENT_API}${enrollmentId}/`, payload);
     return res.data;
 };
 
