@@ -23,13 +23,32 @@ export const getEnrollmentReportSummary = async (params = {}, requestConfig = {}
     return res.data;
 };
 
+const sanitizeEnrollmentPayload = (data = {}) => {
+    const {
+        id,
+        institute,
+        subcourse,
+        maincourse,
+        updated_by,
+        created_at,
+        updated_at,
+        cancel,
+        status,
+        enrollment_date,
+        ...payload
+    } = data;
+    return payload;
+};
+
 export const createEnrollment = async (enrollmentData) => {
-    const res = await API.post(ENROLLMENT_API, enrollmentData);
+    const payload = sanitizeEnrollmentPayload(enrollmentData);
+    const res = await API.post(ENROLLMENT_API, payload);
     return res.data;
 };
 
 export const updateEnrollment = async (enrollmentId, updatedData) => {
-    const res = await API.put(`${ENROLLMENT_API}${enrollmentId}/`, updatedData);
+    const payload = sanitizeEnrollmentPayload(updatedData);
+    const res = await API.put(`${ENROLLMENT_API}${enrollmentId}/`, payload);
     return res.data;
 };
 

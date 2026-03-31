@@ -18,9 +18,9 @@ __all__ = [
 class CCTVExam(models.Model):
     exam_date = models.CharField(max_length=50)
     exam_time = models.CharField(max_length=100)
-    course = models.CharField(max_length=50)
+    course = models.CharField(max_length=100)
     sem = models.CharField(max_length=10)
-    subject_code = models.CharField(max_length=50)
+    subject_code = models.CharField(max_length=100)
     subject_name = models.CharField(max_length=200)
     no_of_students = models.IntegerField(default=0)
     institute_remarks = models.CharField(max_length=200, blank=True, null=True)

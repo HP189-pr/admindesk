@@ -60,6 +60,18 @@ const pickReceiveDate = (row) =>
   row?.return_received_date ||
   "";
 
+const sortRowsByDateDesc = (rows = []) =>
+  rows
+    .slice()
+    .sort((a, b) => {
+      const aDate = toDateInput(a?.outward_date || "");
+      const bDate = toDateInput(b?.outward_date || "");
+      if (!aDate && !bDate) return 0;
+      if (!aDate) return 1;
+      if (!bDate) return -1;
+      return bDate.localeCompare(aDate);
+    });
+
 const findInstituteMatch = (value, institutes) => {
   const needle = String(value || "").trim().toLowerCase();
   if (!needle) return null;
@@ -124,10 +136,10 @@ const CCTVMonitoring = ({
 
   useEffect(() => {
     if (!rights.can_view) return;
-    fetchExams();
-    fetchCentres();
-    fetchDvds();
-  }, [rights.can_view]);
+    fetchExams(selectedSession);
+    fetchCentres(selectedSession);
+    fetchDvds(selectedSession);
+  }, [rights.can_view, selectedSession]);
 
   useEffect(() => {
     if (!rights.can_view || selectedAction !== ACTIONS[1]) return;
@@ -226,10 +238,12 @@ const CCTVMonitoring = ({
       const res = await getOutward();
       const data = toResultsArray(res?.data);
       setOutwards(
-        data.map((row) => ({
-          ...row,
-          receive_date: pickReceiveDate(row),
-        }))
+        sortRowsByDateDesc(
+          data.map((row) => ({
+            ...row,
+            receive_date: pickReceiveDate(row),
+          }))
+        )
       );
     } catch (err) {
       setOutwards([]);
@@ -317,20 +331,67 @@ const CCTVMonitoring = ({
       groups[key].rows.push(exam);
     });
 
+    const toSortableDate = (d) => {
+      if (!d) return "";
+      const s = String(d).trim();
+      const dmY = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+      if (dmY) {
+        return `${dmY[3]}-${dmY[2].padStart(2, "0")}-${dmY[1].padStart(2, "0")}`;
+      }
+      const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (iso) return s.slice(0, 10);
+      const parsed = Date.parse(s);
+      if (!Number.isNaN(parsed)) {
+        return new Date(parsed).toISOString().slice(0, 10);
+      }
+      return s;
+    };
+
+    const courseValue = (value) => {
+      const n = Number(value);
+      return Number.isNaN(n) ? String(value || "").toLowerCase() : n;
+    };
+
+    const sessionRank = (value) => {
+      const normalized = String(value || "").trim().toUpperCase();
+      const idx = SESSION_OPTIONS.indexOf(normalized);
+      if (idx >= 0) return idx;
+      const num = Number(normalized);
+      if (!Number.isNaN(num)) return SESSION_OPTIONS.length + num;
+      return SESSION_OPTIONS.length + 100;
+    };
+
+    const compareSessions = (x, y) => {
+      const a = sessionRank(x.session);
+      const b = sessionRank(y.session);
+      if (a !== b) return a - b;
+      return String(x.session || "").localeCompare(String(y.session || ""));
+    };
+
     return Object.values(groups)
       .map((group) => ({
         ...group,
         times: Array.from(group.times),
+        rows: group.rows.slice().sort(compareSessions),
       }))
       .sort((a, b) => {
-        // Parse dd-mm-yyyy or yyyy-mm-dd to comparable string
-        const toSortable = (d) => {
-          if (!d) return '';
-          const m = String(d).match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
-          if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
-          return d; // already ISO or unknown — compare as-is
-        };
-        return toSortable(b.exam_date).localeCompare(toSortable(a.exam_date));
+        const dateA = toSortableDate(a.exam_date);
+        const dateB = toSortableDate(b.exam_date);
+        const dateCompare = dateB.localeCompare(dateA);
+        if (dateCompare !== 0) return dateCompare;
+
+        const courseA = courseValue(a.course);
+        const courseB = courseValue(b.course);
+        if (typeof courseA === "number" && typeof courseB === "number") {
+          if (courseA !== courseB) return courseA - courseB;
+        } else {
+          const comp = String(a.course || "").localeCompare(String(b.course || ""));
+          if (comp !== 0) return comp;
+        }
+
+        const sessionA = a.rows[0]?.session || "";
+        const sessionB = b.rows[0]?.session || "";
+        return sessionRank(sessionA) - sessionRank(sessionB);
       });
   }, [exams]);
 
@@ -636,7 +697,7 @@ const CCTVMonitoring = ({
                       </tr>
 
                       {group.rows.map((exam) => (
-                        <tr key={exam.id} className="border-b">
+                        <tr key={exam.id} className={`border-b ${exam.no_of_students === 0 ? 'bg-orange-100' : ''}`}>
                           {(() => {
                             const session = sessionByExam[exam.id] || "A";
                             const key = `${exam.id}:${session}`;
