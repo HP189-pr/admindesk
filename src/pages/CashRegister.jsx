@@ -116,8 +116,22 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const formatReceiptDisplay = useCallback((full) => {
     if (!full) return '--';
-    // Remove the slash right before the 6-digit sequence (e.g. C01/25/R/000001 -> C01/25/R000001)
-    return String(full).replace(/\/(?=\d{6}$)/, '');
+    let value = String(full).trim();
+
+    // Convert 1471/2025000853 to canonical 1471/25/R000853
+    const yearSeqMatch = value.match(/^(.+?)\/(\d{4})(\d{6})$/);
+    if (yearSeqMatch) {
+      const prefix = yearSeqMatch[1];
+      const year = yearSeqMatch[2];
+      const seq = yearSeqMatch[3];
+      const fy = Number(year.slice(2));
+      value = `${prefix}/${fy.toString().padStart(2, '0')}/R${seq}`;
+    }
+
+    // Convert 1471/25/R/000001 -> 1471/25/R000001
+    value = value.replace(/\/(?=\d{6}$)/, '');
+
+    return value;
   }, []);
   const [filters, setFilters] = useState({ date: today, payment_mode: '' });
   const [selectedTopbarMenu, setSelectedTopbarMenu] = useState('➕ Add');
@@ -324,14 +338,14 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
 
 
   const computeFallbackReceipt = useCallback(
-    (mode, date, bankBase) => {
+    (mode, date, bankBase, sourceEntries = entries) => {
       if (!mode || !date) {
         return null;
       }
 
       const normalizedMode = mode.toUpperCase();
 
-      const sameDayEntries = entries.filter((entry) => {
+      const candidateEntries = (Array.isArray(sourceEntries) ? sourceEntries : []).filter((entry) => {
         if (entry.payment_mode?.toUpperCase() !== normalizedMode) return false;
         if (normalizedMode === 'BANK' && bankBase) {
           const prefix = extractReferencePrefix(entry);
@@ -340,7 +354,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
         return true;
       });
 
-      const candidates = sameDayEntries.filter((entry) => {
+      const candidates = candidateEntries.filter((entry) => {
         const prefix = extractReferencePrefix(entry);
         const sequence = extractSequenceNumber(entry);
         if (!(prefix && sequence !== null)) return false;
@@ -411,7 +425,31 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
           const serverSeq = extractSequenceFromFull(serverFull);
           const fallbackSeq = extractSequenceFromFull(fallbackFull);
           let resolvedFull = serverFull;
-          if (fallbackFull && fallbackSeq !== null && (serverSeq === null || fallbackSeq >= serverSeq)) {
+          const expectedBankPrefix = formState.payment_mode === 'BANK' && bankPrefix && bankPrefix !== 'OTHER'
+            ? `${String(bankPrefix).toUpperCase()}/`
+            : '';
+          const serverPrefixMismatch = expectedBankPrefix && !String(serverFull || '').toUpperCase().startsWith(expectedBankPrefix);
+
+          if (serverPrefixMismatch) {
+            if (fallbackFull) {
+              resolvedFull = fallbackFull;
+            } else {
+              const allBankData = await fetchCashEntries({ payment_mode: 'BANK' });
+              const allBankEntries = Array.isArray(allBankData) ? allBankData : allBankData?.results || [];
+              const historicalFallback = computeFallbackReceipt(
+                formState.payment_mode,
+                formState.date,
+                bankPrefix,
+                allBankEntries
+              );
+              if (historicalFallback) {
+                resolvedFull = historicalFallback;
+              } else {
+                resolvedFull = '';
+                setPreviewError(`Unable to resolve next number for ${String(bankPrefix).toUpperCase()} series.`);
+              }
+            }
+          } else if (fallbackFull && fallbackSeq !== null && (serverSeq === null || fallbackSeq >= serverSeq)) {
             resolvedFull = fallbackFull;
           }
           applyPreview(resolvedFull || '');
@@ -444,7 +482,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     if (!rights.can_create || editingEntry) {
       return;
     }
-    const fallbackFull = computeFallbackReceipt(formState.payment_mode, formState.date);
+    const fallbackFull = computeFallbackReceipt(formState.payment_mode, formState.date, bankPrefix);
     if (!fallbackFull) {
       return;
     }
@@ -571,12 +609,18 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
         await updateReceiptWithItems(editingEntry.id, payload);
         setFlash('success', 'Receipt updated successfully');
       } else {
+        if (formState.payment_mode === 'BANK' && bankPrefix === 'OTHER' && !String(receiptPreviewRaw || '').trim()) {
+          setFlash('error', 'Manual receipt number is required for Other bank account.');
+          return;
+        }
+
         // For new entries, use bulk-create endpoint to handle multiple items
         const payload = {
           receipts: [{
             date: formState.date,
             payment_mode: formState.payment_mode,
             bank_prefix: formState.payment_mode === 'BANK' && bankPrefix !== 'OTHER' ? bankPrefix : undefined,
+            receipt_no_full: formState.payment_mode === 'BANK' && bankPrefix === 'OTHER' ? String(receiptPreviewRaw).trim() : undefined,
             remark: receiptRemark,
             items: validItems.map(item => ({
               fee_type: Number(item.fee_type),
@@ -1081,6 +1125,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                       || !rights.can_create
                       || !formState.date
                       || !receiptPreviewRaw
+                      || (formState.payment_mode === 'BANK' && bankPrefix === 'OTHER')
                     }
                     className="rounded border border-amber-300 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
                   >

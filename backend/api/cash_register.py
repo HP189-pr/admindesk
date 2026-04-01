@@ -259,7 +259,7 @@ class ReceiptNumberService:
     def _prefix(payment_mode: str, entry_date: date, bank_base: Optional[str] = None) -> str:
         # Allow overriding bank prefix when multiple bank accounts are supported
         if payment_mode == "BANK" and bank_base:
-            base = bank_base
+            base = bank_base.strip().upper()
         else:
             base = _PAYMENT_PREFIX[payment_mode]
         year = _fiscal_year_suffix(entry_date)
@@ -272,7 +272,9 @@ class ReceiptNumberService:
         # - PREFIX/2025
         # - PREFIX/2025/R
         if payment_mode == "BANK" and bank_base:
-            base = bank_base
+            base = bank_base.strip().upper()
+            if base not in _BANK_PREFIX_CHOICES:
+                base = _PAYMENT_PREFIX[payment_mode]
         else:
             base = _PAYMENT_PREFIX[payment_mode]
 
@@ -309,7 +311,8 @@ class ReceiptNumberService:
                 elif rec.rec_ref:
                     best_prefix = cls._series_prefix(rec.rec_ref)
 
-        rec_ref = best_prefix or short_prefix
+        # Use the canonical series format for new numbers (account/yy/R).
+        rec_ref = short_prefix
         seq = max_seq + 1
         receipt_no_full = normalize_receipt_no(f"{rec_ref}{seq:06d}")
         return {
@@ -501,7 +504,7 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
         entry_date = serializer.validated_data.get("date") or timezone.now().date()
         bank_base = None
         if payment_mode == "BANK":
-            raw_base = (self.request.data.get("bank_prefix") or self.request.data.get("rec_ref_base") or "").strip()
+            raw_base = (self.request.data.get("bank_prefix") or self.request.data.get("rec_ref_base") or "").strip().upper()
             if raw_base in _BANK_PREFIX_CHOICES:
                 bank_base = raw_base
         next_numbers = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=True, bank_base=bank_base)
@@ -527,7 +530,7 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
             entry_date = timezone.now().date()
         bank_base = None
         if payment_mode == "BANK":
-            raw_base = (request.query_params.get("bank_prefix") or request.query_params.get("rec_ref_base") or "").strip()
+            raw_base = (request.query_params.get("bank_prefix") or request.query_params.get("rec_ref_base") or "").strip().upper()
             if raw_base in _BANK_PREFIX_CHOICES:
                 bank_base = raw_base
         next_numbers = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=False, bank_base=bank_base)
@@ -559,7 +562,7 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
 
         bank_base = None
         if payment_mode == "BANK":
-            raw_base = (request.data.get("bank_prefix") or request.data.get("rec_ref_base") or "").strip()
+            raw_base = (request.data.get("bank_prefix") or request.data.get("rec_ref_base") or "").strip().upper()
             if raw_base and raw_base not in _BANK_PREFIX_CHOICES:
                 return Response({"detail": "Invalid bank_prefix"}, status=400)
             if raw_base in _BANK_PREFIX_CHOICES:
@@ -1171,24 +1174,46 @@ class ReceiptViewSet(FinancePermissionMixin, mixins.ListModelMixin, mixins.Retri
                     if not items:
                         raise ValueError("No items for receipt")
 
-                    # Get next receipt number
+                    # Get next receipt number or accept manual receipt when using the OTHER bank option
                     entry_date = datetime.strptime(date_val, "%Y-%m-%d").date() if date_val else timezone.now().date()
                     bank_base = None
+                    receipt_full = normalize_receipt_no(rec.get("receipt_no_full") or "")
                     if payment_mode == "BANK":
-                        raw_base = (rec.get("bank_prefix") or rec.get("rec_ref_base") or "").strip()
+                        raw_base = (rec.get("bank_prefix") or rec.get("rec_ref_base") or "").strip().upper()
+                        if raw_base and raw_base not in _BANK_PREFIX_CHOICES and raw_base != "OTHER":
+                            raise ValueError("Invalid bank_prefix")
                         if raw_base in _BANK_PREFIX_CHOICES:
                             bank_base = raw_base
-                    next_numbers = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=True, bank_base=bank_base)
 
-                    # Create receipt header
-                    header = Receipt(
-                        date=entry_date,
-                        payment_mode=payment_mode,
-                        rec_ref=next_numbers["rec_ref"],
-                        rec_no=next_numbers["rec_no"],
-                        remark=rec.get("remark") or "",
-                        created_by=request.user,
-                    )
+                    if payment_mode == "BANK" and raw_base == "OTHER":
+                        if not receipt_full:
+                            raise ValueError("receipt_no_full is required for manual bank receipt entries")
+                        rec_ref, rec_no = split_receipt(receipt_full)
+                        if rec_no is None:
+                            raise ValueError("Invalid receipt_no_full")
+                        if Receipt.objects.filter(receipt_no_full=receipt_full).exists():
+                            raise ValueError("Duplicate receipt_no_full")
+                        header = Receipt(
+                            date=entry_date,
+                            payment_mode=payment_mode,
+                            rec_ref=rec_ref or "",
+                            rec_no=rec_no,
+                            receipt_no_full=receipt_full,
+                            remark=rec.get("remark") or "",
+                            created_by=request.user,
+                        )
+                    else:
+                        next_numbers = ReceiptNumberService.next_numbers(payment_mode, entry_date, lock=True, bank_base=bank_base)
+
+                        # Create receipt header
+                        header = Receipt(
+                            date=entry_date,
+                            payment_mode=payment_mode,
+                            rec_ref=next_numbers["rec_ref"],
+                            rec_no=next_numbers["rec_no"],
+                            remark=rec.get("remark") or "",
+                            created_by=request.user,
+                        )
                     header.save()
 
                     total = 0

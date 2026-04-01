@@ -194,7 +194,7 @@ class Receipt(models.Model):
         # Only update if rec_ref matches known patterns (C01/, 1471/, 8785/)
         if self.rec_ref:
             import re
-            m = re.match(r"^(C01/|1471/|8785/)(\d{2})/R$", self.rec_ref)
+            m = re.match(r"^(C01/|1471/|B16/|8785/)(\d{2})/R$", self.rec_ref)
             if m:
                 self.rec_ref = f"{m.group(1)}{yy:02d}/R"
         if not self.receipt_no_full:

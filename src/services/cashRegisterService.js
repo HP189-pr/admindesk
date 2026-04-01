@@ -35,7 +35,12 @@ export const fetchNextReceiptNumber = async ({
 } = {}) => {
   const params = { payment_mode };
   if (date) params.date = date;
-  if (bank_prefix) params.bank_prefix = bank_prefix;
+  if (bank_prefix) {
+    const normalizedBankPrefix = String(bank_prefix).trim().toUpperCase();
+    if (['1471', '138', 'B16'].includes(normalizedBankPrefix)) {
+      params.bank_prefix = normalizedBankPrefix;
+    }
+  }
 
   const response = await axiosInstance.get(
     `${CASH_REGISTER_BASE}next-receipt/`,
