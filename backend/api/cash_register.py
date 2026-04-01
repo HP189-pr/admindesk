@@ -66,7 +66,7 @@ _PAYMENT_PREFIX = {
 }
 
 # Allowed bank prefixes (multi-account support)
-_BANK_PREFIX_CHOICES = {"1471", "138"}
+_BANK_PREFIX_CHOICES = {"1471", "138", "B16"}
 _AUTO_CANCEL_REASON = "Cancelled from new entry panel"
 
 

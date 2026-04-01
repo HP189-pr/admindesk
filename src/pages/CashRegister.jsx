@@ -33,6 +33,8 @@ const RECEIPT_SUFFIX_REGEX = /(\d{6})$/;
 const BANK_PREFIX_OPTIONS = [
   { value: '1471', label: '1471 (Account 1)' },
   { value: '138', label: '138 (Account 2)' },
+  { value: 'B16', label: 'B16 (Account 3)' },
+  { value: 'OTHER', label: 'Other' },
 ];
 
 const fiscalYearCode = (dateStr) => {
@@ -380,6 +382,12 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
       return;
     }
     setPreviewError('');
+    if (formState.payment_mode === 'BANK' && bankPrefix === 'OTHER') {
+      applyPreview('');
+      setPreviewError('');
+      setPreviewLoading(false);
+      return;
+    }
     if (!rights.can_create) {
       const fallbackFull = computeFallbackReceipt(formState.payment_mode, formState.date, bankPrefix);
       if (fallbackFull) {
@@ -568,7 +576,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
           receipts: [{
             date: formState.date,
             payment_mode: formState.payment_mode,
-            bank_prefix: formState.payment_mode === 'BANK' ? bankPrefix : undefined,
+            bank_prefix: formState.payment_mode === 'BANK' && bankPrefix !== 'OTHER' ? bankPrefix : undefined,
             remark: receiptRemark,
             items: validItems.map(item => ({
               fee_type: Number(item.fee_type),
@@ -907,16 +915,25 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                     onChange={(e) => setBankPrefix(e.target.value)}
                     className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
                   >
-                    {BANK_PREFIX_OPTIONS.map((opt) => {
-                      const year = fiscalYearCode(formState.date || today);
-                      const label = `${opt.value}/${year}/R`;
-                      return (
+                    {BANK_PREFIX_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>
-                          {label}
+                          {opt.label}
                         </option>
-                      );
-                    })}
+                      ))}
                   </select>
+                </label>
+              )}
+              {formState.payment_mode === 'BANK' && bankPrefix === 'OTHER' && (
+                <label className="text-sm font-medium text-gray-700 flex-1 min-w-[200px] lg:flex-[1_1_220px]">
+                  Manual Receipt No
+                  <input
+                    type="text"
+                    placeholder="Enter Receipt Number"
+                    value={receiptPreviewRaw}
+                    onChange={(e) => applyPreview(e.target.value)}
+                    className="mt-1 w-full rounded border px-3 py-2"
+                    required
+                  />
                 </label>
               )}
               <label className="text-sm font-medium text-gray-700 w-full sm:w-[150px] lg:w-[130px]">
