@@ -279,18 +279,20 @@ class ReceiptNumberService:
             base = _PAYMENT_PREFIX[payment_mode]
 
         fiscal_start_year = entry_date.year if entry_date.month >= 4 else entry_date.year - 1
+        fiscal_start_date = date(fiscal_start_year, 4, 1)
+        fiscal_end_date = date(fiscal_start_year + 1, 3, 31)
         short_prefix = cls._series_prefix(f"{base}/{_fiscal_year_suffix(entry_date):02d}/R")
-        full_prefix = cls._series_prefix(f"{base}/{fiscal_start_year}/R")
-        full_legacy = f"{base}/{fiscal_start_year}"
 
-        qs = Receipt.objects.filter(payment_mode=payment_mode).filter(
-            Q(rec_ref__startswith=short_prefix)
-            | Q(rec_ref__startswith=full_prefix)
-            | Q(rec_ref__startswith=full_legacy)
-            | Q(receipt_no_full__startswith=short_prefix)
-            | Q(receipt_no_full__startswith=full_prefix)
-            | Q(receipt_no_full__startswith=full_legacy)
+        qs = Receipt.objects.filter(
+            payment_mode=payment_mode,
+            date__gte=fiscal_start_date,
+            date__lte=fiscal_end_date,
         )
+        if payment_mode == "BANK" and base in _BANK_PREFIX_CHOICES:
+            qs = qs.filter(
+                Q(rec_ref__startswith=f"{base}/")
+                | Q(receipt_no_full__startswith=f"{base}/")
+            )
 
         if lock:
             qs = qs.select_for_update()

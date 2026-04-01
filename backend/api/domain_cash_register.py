@@ -176,19 +176,22 @@ class Receipt(models.Model):
         ordering = ["-date", "-rec_ref", "-rec_no"]
 
     def save(self, *args, **kwargs):
-        from django.utils import timezone
         if self.rec_no is None:
             _, parsed_no = split_receipt(self.receipt_no_full)
             self.rec_no = parsed_no
         if self.rec_no is None:
             raise ValueError("rec_no is required")
         self.rec_no = int(float(self.rec_no))
-        # Financial year logic for rec_ref: if month >= 4, year is current year, else previous year
-        now = timezone.now()
-        if now.month >= 4:
-            fy_start = now.year
+        # Financial year logic for rec_ref: use receipt date (Apr-Mar), not current server date.
+        ref_date = self.date
+        if ref_date and ref_date.month >= 4:
+            fy_start = ref_date.year
         else:
-            fy_start = now.year - 1
+            fy_start = (ref_date.year - 1) if ref_date else None
+        if fy_start is None:
+            from django.utils import timezone
+            now = timezone.now()
+            fy_start = now.year if now.month >= 4 else now.year - 1
         yy = fy_start % 100
         # Update rec_ref to always use correct year portion if it matches standard patterns
         # Only update if rec_ref matches known patterns (C01/, 1471/, 8785/)

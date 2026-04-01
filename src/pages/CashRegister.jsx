@@ -37,6 +37,11 @@ const BANK_PREFIX_OPTIONS = [
   { value: 'OTHER', label: 'Other' },
 ];
 
+const RECEIPT_PREFIX_BY_MODE = {
+  CASH: 'C01',
+  UPI: '8785',
+};
+
 const fiscalYearCode = (dateStr) => {
   if (!dateStr) return '';
   const dt = new Date(dateStr);
@@ -344,6 +349,24 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
       }
 
       const normalizedMode = mode.toUpperCase();
+      const fyShort = fiscalYearCode(date);
+      const fyStartYear = (() => {
+        const dt = new Date(date);
+        if (Number.isNaN(dt.getTime())) return '';
+        return String(dt.getMonth() >= 3 ? dt.getFullYear() : dt.getFullYear() - 1);
+      })();
+
+      const isSameFiscalSeries = (prefix) => {
+        const p = String(prefix || '').toUpperCase();
+        if (!p) return false;
+        if (fyShort && (p.includes(`/${fyShort}/`) || p.endsWith(`/${fyShort}`) || p.includes(`/${fyShort}/R`) || p.endsWith(`/${fyShort}/R`))) {
+          return true;
+        }
+        if (fyStartYear && (p.includes(`/${fyStartYear}/`) || p.endsWith(`/${fyStartYear}`) || p.includes(`/${fyStartYear}/R`) || p.endsWith(`/${fyStartYear}/R`))) {
+          return true;
+        }
+        return false;
+      };
 
       const candidateEntries = (Array.isArray(sourceEntries) ? sourceEntries : []).filter((entry) => {
         if (entry.payment_mode?.toUpperCase() !== normalizedMode) return false;
@@ -358,6 +381,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
         const prefix = extractReferencePrefix(entry);
         const sequence = extractSequenceNumber(entry);
         if (!(prefix && sequence !== null)) return false;
+        if (!isSameFiscalSeries(prefix)) return false;
         if (normalizedMode === 'BANK' && bankBase) {
           return prefix.startsWith(`${bankBase}/`);
         }
@@ -365,6 +389,15 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
       });
 
       if (!candidates.length) {
+        if (normalizedMode === 'BANK' && bankBase && bankBase !== 'OTHER' && fyShort) {
+          return `${String(bankBase).toUpperCase()}/${fyShort}/R000001`;
+        }
+        if ((normalizedMode === 'CASH' || normalizedMode === 'UPI') && fyShort) {
+          const base = RECEIPT_PREFIX_BY_MODE[normalizedMode];
+          if (base) {
+            return `${base}/${fyShort}/R000001`;
+          }
+        }
         return null;
       }
 
@@ -425,28 +458,36 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
           const serverSeq = extractSequenceFromFull(serverFull);
           const fallbackSeq = extractSequenceFromFull(fallbackFull);
           let resolvedFull = serverFull;
+          const fyShort = fiscalYearCode(formState.date);
           const expectedBankPrefix = formState.payment_mode === 'BANK' && bankPrefix && bankPrefix !== 'OTHER'
             ? `${String(bankPrefix).toUpperCase()}/`
             : '';
           const serverPrefixMismatch = expectedBankPrefix && !String(serverFull || '').toUpperCase().startsWith(expectedBankPrefix);
+          const serverYearMismatch = fyShort
+            ? !String(serverFull || '').includes(`/${fyShort}/`)
+            : false;
 
-          if (serverPrefixMismatch) {
+          if (serverPrefixMismatch || serverYearMismatch) {
             if (fallbackFull) {
               resolvedFull = fallbackFull;
             } else {
-              const allBankData = await fetchCashEntries({ payment_mode: 'BANK' });
-              const allBankEntries = Array.isArray(allBankData) ? allBankData : allBankData?.results || [];
+              const allModeData = await fetchCashEntries({ payment_mode: formState.payment_mode });
+              const allModeEntries = Array.isArray(allModeData) ? allModeData : allModeData?.results || [];
               const historicalFallback = computeFallbackReceipt(
                 formState.payment_mode,
                 formState.date,
                 bankPrefix,
-                allBankEntries
+                allModeEntries
               );
               if (historicalFallback) {
                 resolvedFull = historicalFallback;
               } else {
                 resolvedFull = '';
-                setPreviewError(`Unable to resolve next number for ${String(bankPrefix).toUpperCase()} series.`);
+                if (formState.payment_mode === 'BANK') {
+                  setPreviewError(`Unable to resolve next number for ${String(bankPrefix).toUpperCase()} series.`);
+                } else {
+                  setPreviewError(`Unable to resolve next number for ${formState.payment_mode} series.`);
+                }
               }
             }
           } else if (fallbackFull && fallbackSeq !== null && (serverSeq === null || fallbackSeq >= serverSeq)) {
