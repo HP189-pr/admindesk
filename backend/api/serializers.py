@@ -115,10 +115,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
             if obj.profile_picture:
                 request = self.context.get('request')
                 if request:
-                    # Use settings.MEDIA_URL to stay flexible
+                    # Return a relative path so the URL stays valid regardless of server hostname.
                     media_url = settings.MEDIA_URL  # usually "/media/"
-                    full_url = request.build_absolute_uri(f"{media_url}{obj.profile_picture}")
-                    return full_url
+                    return f"{media_url}{obj.profile_picture}"
                 # Fallback if request is missing (rare)
                 return f"{settings.MEDIA_URL}{obj.profile_picture}"
 

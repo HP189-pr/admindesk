@@ -240,7 +240,15 @@ const ChatBox = ({ isOpen: controlledIsOpen, onToggle }) => {
     const value = String(raw).trim();
     if (!value) return null;
     if (/^data:image\//i.test(value)) return value;
-    if (/^https?:\/\//i.test(value)) return value;
+    if (/^https?:\/\//i.test(value)) {
+      try {
+        const url = new URL(value);
+        if (url.pathname.startsWith('/media/')) {
+          return `${API_BASE_URL}${url.pathname}${url.search}${url.hash}`;
+        }
+      } catch { /* fallthrough */ }
+      return value;
+    }
     if (value.startsWith('/media/')) return `${API_BASE_URL}${value}`;
     if (value.startsWith('media/')) return `${API_BASE_URL}/${value}`;
     if (value.startsWith('/')) return `${API_BASE_URL}${value}`;

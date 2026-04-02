@@ -8,7 +8,7 @@ const FRONTEND_PORTS = new Set(['3000', '5173', '5174', '8081']);
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost']);
 
 const resolveDefaultBackendOrigin = () => {
-  const localPort = import.meta.env.VITE_LOCAL_BACKEND_PORT?.trim() || '8001';
+  const localPort = import.meta.env.VITE_LOCAL_BACKEND_PORT?.trim() || '8002';
   const productionPort = import.meta.env.VITE_PROD_BACKEND_PORT?.trim() || '8000';
 
   if (typeof window === 'undefined') {

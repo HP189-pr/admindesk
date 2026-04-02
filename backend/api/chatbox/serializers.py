@@ -44,6 +44,5 @@ class ChatMessageSerializer(serializers.ModelSerializer):
             return None
         request = self.context.get("request") if hasattr(self, "context") else None
         rel_path = obj.file_path.lstrip("/")
-        if request:
-            return request.build_absolute_uri(f"{settings.MEDIA_URL}{rel_path}")
+        # Return a relative path so the URL stays valid regardless of server hostname.
         return f"{settings.MEDIA_URL}{rel_path}"

@@ -98,8 +98,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
         if obj.profile_picture:
             request = self.context.get('request')
             if request:
-                media_url = settings.MEDIA_URL
-                return request.build_absolute_uri(f"{media_url}{obj.profile_picture}")
+                # Return a relative path so the URL stays valid regardless of server hostname.
+                return f"{settings.MEDIA_URL}{obj.profile_picture}"
             return f"{settings.MEDIA_URL}{obj.profile_picture}"
         return None
     def get_is_admin(self, obj):

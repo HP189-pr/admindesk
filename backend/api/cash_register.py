@@ -364,6 +364,7 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
         "next_receipt": "can_create",
         "cancel_receipt": "can_edit",
         "cancel_current_number": "can_create",
+        "sync_to_sheet": "can_view",
     }
 
     @action(detail=True, methods=["put"], url_path="update-with-items")
@@ -381,11 +382,18 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
         if not items:
             return Response({"detail": "Items are required"}, status=400)
 
-        # Update header fields
-        receipt.date = request.data.get("date", receipt.date)
-        receipt.payment_mode = request.data.get("payment_mode", receipt.payment_mode)
-        receipt.remark = request.data.get("remark", receipt.remark)
-        receipt.save()
+        # Update header fields — use queryset update() to bypass Receipt.save() custom logic
+        update_kwargs = {
+            "payment_mode": request.data.get("payment_mode", receipt.payment_mode),
+            "remark": request.data.get("remark") or receipt.remark or "",
+        }
+        raw_date = request.data.get("date")
+        if raw_date:
+            parsed_dt = parse_date(str(raw_date))
+            if parsed_dt:
+                update_kwargs["date"] = parsed_dt
+        Receipt.objects.filter(pk=receipt.pk).update(**update_kwargs)
+        receipt.refresh_from_db()
 
         # DELETE old items
         receipt.items.all().delete()
@@ -414,20 +422,9 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
             receipt.cancelled_by = None
             receipt.save(update_fields=["total_amount", "is_cancelled", "cancel_reason", "cancelled_by", "updated_at"])
         else:
-            receipt.save()
+            receipt.save(update_fields=["total_amount", "updated_at"])
 
         return Response({"detail": "Receipt updated successfully"})
-    # Back the legacy `cash-register` endpoint with Receipt as the canonical source.
-    queryset = Receipt.objects.select_related("created_by").prefetch_related("items__fee_type").all()
-    serializer_class = None
-    permission_classes = [IsAuthenticated]
-    finance_menu_name = "Cash Register"
-    permission_action_map = {
-        **FinancePermissionMixin.permission_action_map,
-        "next_receipt": "can_create",
-        "cancel_receipt": "can_edit",
-        "cancel_current_number": "can_create",
-    }
 
     def get_queryset(self) -> QuerySet[Receipt]:  # type: ignore[override]
         # Align behaviour with `ReceiptViewSet` — filter receipts by date, payment_mode, receipt_no_full
@@ -613,6 +610,18 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
         receipt.cancelled_by = request.user
         receipt.save(update_fields=["is_cancelled", "cancel_reason", "cancelled_by", "updated_at"])
         return Response({"detail": "Receipt cancelled successfully"})
+
+    @action(detail=False, methods=["post"], url_path="sync-to-sheet")
+    def sync_to_sheet(self, request):
+        """Push receipts for a given date range to the Google Sheet."""
+        from .sheets_sync import sync_cash_register_to_sheet
+        date_from = (request.data.get("date_from") or "").strip() or None
+        date_to = (request.data.get("date_to") or "").strip() or None
+        try:
+            result = sync_cash_register_to_sheet(date_from=date_from, date_to=date_to)
+        except Exception as exc:
+            return Response({"detail": str(exc)}, status=500)
+        return Response(result)
 
 
 class UploadCashExcelView(APIView):
@@ -1281,6 +1290,8 @@ class CashOutwardViewSet(
     FinancePermissionMixin,
     mixins.ListModelMixin,
     mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
     viewsets.GenericViewSet
 ):
     queryset = CashOutward.objects.all()
@@ -1364,7 +1375,7 @@ class CashOnHandReportView(APIView):
         total_deposit = outward.filter(txn_type="DEPOSIT").aggregate(s=Sum("amount"))["s"] or Decimal("0")
         total_expense = outward.filter(txn_type="EXPENSE").aggregate(s=Sum("amount"))["s"] or Decimal("0")
 
-        expected_cash = system_cash + total_deposit - total_expense
+        expected_cash = system_cash - total_deposit - total_expense
 
         cash_close = CashOnHand.objects.filter(date=report_date).first()
 
@@ -1413,7 +1424,7 @@ class CloseCashDayView(APIView):
         total_deposit = outward.filter(txn_type="DEPOSIT").aggregate(s=Sum("amount"))["s"] or Decimal("0")
         total_expense = outward.filter(txn_type="EXPENSE").aggregate(s=Sum("amount"))["s"] or Decimal("0")
 
-        expected_cash = system_cash + total_deposit - total_expense
+        expected_cash = system_cash - total_deposit - total_expense
 
         # Physical cash
         physical_cash = Decimal("0")
@@ -1451,3 +1462,41 @@ class CloseCashDayView(APIView):
         cash_on_hand.save(update_fields=["physical_cash", "difference"])
 
         return Response({"detail": "Cash day closed successfully"})
+
+    @transaction.atomic
+    def put(self, request):
+        """Update denomination items for an already-closed cash day."""
+        data = request.data
+        report_date = parse_date(data.get("date"))
+        items = data.get("items", [])
+
+        if not report_date:
+            return Response({"detail": "date is required"}, status=400)
+
+        cash_on_hand = CashOnHand.objects.filter(date=report_date).first()
+        if not cash_on_hand:
+            return Response({"detail": "No closed record found for this date. Use POST to close first."}, status=404)
+
+        # Delete old items and recalculate
+        cash_on_hand.items.all().delete()
+
+        physical_cash = Decimal("0")
+        for row in items:
+            denom = int(row["denomination"])
+            qty = int(row["qty"])
+            is_coin = bool(row.get("is_coin", False))
+            amt = Decimal(denom) * qty
+            physical_cash += amt
+            CashOnHandItem.objects.create(
+                cash_on_hand=cash_on_hand,
+                denomination=denom,
+                qty=qty,
+                is_coin=is_coin,
+                amount=amt,
+            )
+
+        cash_on_hand.physical_cash = physical_cash
+        cash_on_hand.difference = physical_cash - cash_on_hand.expected_cash
+        cash_on_hand.save(update_fields=["physical_cash", "difference"])
+
+        return Response({"detail": "Cash day updated successfully"})

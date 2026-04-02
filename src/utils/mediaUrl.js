@@ -7,9 +7,13 @@ export const normalizeMediaUrl = (value) => {
   if (!value) return value;
 
   if (isAbsoluteUrl(value) || value.startsWith("data:")) {
+    if (value.startsWith("data:")) return value;
     try {
       const url = new URL(value);
-      if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+      // Rewrite any absolute media URL to go through the current backend origin.
+      // This handles URLs stored with a different server IP (e.g. 160.160.160.130)
+      // as well as localhost/127.0.0.1 dev URLs.
+      if (url.pathname.startsWith("/media/")) {
         return `${API_BASE_URL}${url.pathname}${url.search}${url.hash}`;
       }
     } catch {

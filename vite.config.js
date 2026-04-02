@@ -29,7 +29,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const isDevelopment = mode === 'development';
   const defaultHost = env.VITE_HOST || '127.0.0.1';
-  const localBackendPort = env.VITE_LOCAL_BACKEND_PORT || '8001';
+  const localBackendPort = env.VITE_LOCAL_BACKEND_PORT || '8002';
   const productionBackendPort = env.VITE_PROD_BACKEND_PORT || '8000';
   const isLocalHost = LOCAL_HOSTS.has(defaultHost);
   const defaultApiPort = isLocalHost ? localBackendPort : (isDevelopment ? localBackendPort : productionBackendPort);

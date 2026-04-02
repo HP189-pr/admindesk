@@ -98,7 +98,7 @@ def _enrich_user_with_extra_fields(request, user_payload):
         profile = UserProfile.objects.filter(user_id=user_id).only('profile_picture').first()
         if profile and profile.profile_picture:
             try:
-                picture = request.build_absolute_uri(profile.profile_picture.url)
+                picture = profile.profile_picture.url
             except Exception:
                 picture = f"{settings.MEDIA_URL}{profile.profile_picture}"
     except Exception:

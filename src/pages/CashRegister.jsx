@@ -10,6 +10,7 @@ import {
   updateReceiptWithItems,
   cancelCashEntry,
   cancelCurrentReceiptNumber,
+  syncCashRegisterToSheet,
 } from '../services/cashRegisterService';
 import { fetchFeeTypes } from '../services/feeTypeService';
 import PageTopbar from '../components/PageTopbar';
@@ -160,6 +161,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
   const [showCancelCurrentPopup, setShowCancelCurrentPopup] = useState(false);
   const [status, setStatus] = useState(null);
   const [pageError, setPageError] = useState('');
+  const [sheetSyncing, setSheetSyncing] = useState(false);
   const actionSummary = ACTION_DESCRIPTIONS[selectedTopbarMenu] || ACTION_DESCRIPTIONS['➕ Add'];
   const formatAmount = useCallback((value) => {
     const num = Number(value || 0);
@@ -637,6 +639,20 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     setSelectedTopbarMenu(action);
   };
 
+  const handleSyncToSheet = useCallback(async () => {
+    if (sheetSyncing) return;
+    setSheetSyncing(true);
+    setFlash('info', 'Syncing to Google Sheet...');
+    try {
+      const result = await syncCashRegisterToSheet({ date_from: filters.date, date_to: filters.date });
+      setFlash('success', `Sheet sync done — appended: ${result.appended}, skipped: ${result.skipped}`);
+    } catch (err) {
+      setFlash('error', err?.response?.data?.detail || err.message || 'Sheet sync failed');
+    } finally {
+      setSheetSyncing(false);
+    }
+  }, [sheetSyncing, filters.date, setFlash]);
+
   const handleModeCardClick = (modeValue) => {
     setFilters((prev) => ({
       ...prev,
@@ -938,6 +954,17 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
         onToggleSidebar={onToggleSidebar}
         onToggleChatbox={onToggleChatbox}
         actionsOnLeft
+        rightSlot={
+          <button
+            onClick={handleSyncToSheet}
+            className="refresh-icon-button"
+            disabled={loading || sheetSyncing}
+            title={sheetSyncing ? 'Syncing to Sheet…' : 'Sync to Google Sheet'}
+            aria-label={sheetSyncing ? 'Syncing' : 'Sync to Sheet'}
+          >
+            <span className={`refresh-symbol ${sheetSyncing ? 'animate-spin' : ''}`} aria-hidden="true">↻</span>
+          </button>
+        }
       />
       <div className="w-full space-y-5">
         {status && (

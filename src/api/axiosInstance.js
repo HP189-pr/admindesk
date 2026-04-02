@@ -28,7 +28,7 @@ const resolveApiBase = () => {
   if (envBase !== undefined) return envBase.replace(/\/$/, '');
 
   // Env var absent entirely → local dev fallback
-  const localPort = import.meta.env.VITE_LOCAL_BACKEND_PORT?.trim() || '8001';
+  const localPort = import.meta.env.VITE_LOCAL_BACKEND_PORT?.trim() || '8002';
   if (typeof window === 'undefined') {
     return `http://127.0.0.1:${localPort}`;
   }

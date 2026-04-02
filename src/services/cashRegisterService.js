@@ -3,7 +3,7 @@
  * Cash Register service helpers
  * FINAL – stable & future-safe
  */
-import axiosInstance from '../api/axiosInstance';
+import axiosInstance, { LONG_API } from '../api/axiosInstance';
 
 // axiosInstance baseURL is '/api', so use relative paths here
 // to avoid generating '/api/api/...'.
@@ -149,6 +149,21 @@ export const createCashOutward = async (payload) => {
   return response.data;
 };
 
+export const updateCashOutward = async (id, payload) => {
+  const response = await axiosInstance.put(
+    `${CASH_OUTWARD_BASE}${id}/`,
+    payload
+  );
+  return response.data;
+};
+
+export const deleteCashOutward = async (id) => {
+  const response = await axiosInstance.delete(
+    `${CASH_OUTWARD_BASE}${id}/`
+  );
+  return response.data;
+};
+
 /* ----------------------------------------------------
    🧮 CASH ON HAND (DAILY CLOSING REPORT)
 ---------------------------------------------------- */
@@ -173,6 +188,26 @@ export const closeCashDay = async (payload) => {
     `${CASH_ON_HAND_BASE}close/`,
     payload
   );
+  return response.data;
+};
+
+export const updateCashDay = async (payload) => {
+  const response = await axiosInstance.put(
+    `${CASH_ON_HAND_BASE}close/`,
+    payload
+  );
+  return response.data;
+};
+
+/* ----------------------------------------------------
+   📊 GOOGLE SHEET SYNC
+---------------------------------------------------- */
+
+export const syncCashRegisterToSheet = async ({ date_from, date_to } = {}) => {
+  const payload = {};
+  if (date_from) payload.date_from = date_from;
+  if (date_to) payload.date_to = date_to;
+  const response = await LONG_API.post(`${CASH_REGISTER_BASE}sync-to-sheet/`, payload);
   return response.data;
 };
 
@@ -202,4 +237,7 @@ export default {
   // Cash On Hand
   fetchCashOnHandReport,
   closeCashDay,
+
+  // Google Sheet
+  syncCashRegisterToSheet,
 };

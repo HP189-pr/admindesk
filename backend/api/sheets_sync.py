@@ -17,6 +17,7 @@ from datetime import datetime
 from .domain_transcript_generate import TranscriptRequest
 from .cctv.domain_cctv import CCTVExam, CCTVCentreEntry, CCTVDVD
 from django.db.models import Max
+from datetime import date as date_type
 
 logger = logging.getLogger(__name__)
 
@@ -1161,3 +1162,114 @@ def import_cctv_exams_from_sheet(
         "total": total,
         "skipped": skipped,
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CASH REGISTER – push receipts to Google Sheet
+# ─────────────────────────────────────────────────────────────────────────────
+
+def sync_cash_register_to_sheet(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    sheet_id: Optional[str] = None,
+) -> Dict[str, int]:
+    """Append cash register receipts to the Google Sheet.
+
+    Only appends rows whose receipt_no_full is not already present in the sheet,
+    so calling this function repeatedly on the same date is safe (idempotent).
+
+    Args:
+        date_from: ISO date string (YYYY-MM-DD) lower bound (inclusive). Defaults to today.
+        date_to:   ISO date string (YYYY-MM-DD) upper bound (inclusive). Defaults to date_from.
+        sheet_id:  Override the spreadsheet ID.  Falls back to GOOGLE_CASH_REGISTER_SPREADSHEET_ID.
+
+    Returns:
+        dict with keys: appended, skipped, total
+    """
+    from .domain_cash_register import Receipt  # local import to avoid circular deps
+
+    sheet_id = sheet_id or _get_setting("GOOGLE_CASH_REGISTER_SPREADSHEET_ID")
+    if not sheet_id:
+        logger.warning("sync_cash_register_to_sheet: GOOGLE_CASH_REGISTER_SPREADSHEET_ID not configured")
+        return {"appended": 0, "skipped": 0, "total": 0}
+
+    today_str = timezone.now().date().isoformat()
+    resolved_from = date_from or today_str
+    resolved_to = date_to or resolved_from
+
+    # Open worksheet (first tab = "Cash Register")
+    try:
+        sheet = _open_sheet(sheet_id)
+        worksheet = sheet.get_worksheet(0)
+        if worksheet is None:
+            raise RuntimeError("Sheet has no worksheets")
+    except Exception as exc:
+        logger.error("sync_cash_register_to_sheet: cannot open sheet %s: %s", sheet_id, exc)
+        return {"appended": 0, "skipped": 0, "total": 0}
+
+    # Fetch all existing receipt_no_full values already in the sheet (single API call)
+    try:
+        existing_values = worksheet.get_all_values()
+    except Exception as exc:
+        logger.error("sync_cash_register_to_sheet: cannot read sheet: %s", exc)
+        return {"appended": 0, "skipped": 0, "total": 0}
+
+    existing_receipts: set = set()
+    for row in existing_values[1:]:  # skip header row
+        if row and row[0]:
+            existing_receipts.add(str(row[0]).strip())
+
+    # Query receipts in the date range
+    qs = list(
+        Receipt.objects
+        .filter(date__gte=resolved_from, date__lte=resolved_to)
+        .select_related("created_by")
+        .prefetch_related("items__fee_type")
+        .order_by("date", "rec_ref", "rec_no")
+    )
+
+    rows_to_append = []
+    skipped = 0
+
+    for receipt in qs:
+        full_no = str(receipt.receipt_no_full or "").strip()
+        if full_no in existing_receipts:
+            skipped += 1
+            continue
+
+        fee_type_label = ", ".join(
+            str(item.fee_type.code) for item in receipt.items.all() if item.fee_type
+        ) or ""
+
+        created_by_name = ""
+        if receipt.created_by:
+            created_by_name = receipt.created_by.get_full_name().strip() or receipt.created_by.username
+
+        rows_to_append.append([
+            full_no,
+            str(receipt.rec_ref or ""),
+            str(receipt.rec_no or ""),
+            str(receipt.date.isoformat() if receipt.date else ""),
+            str(receipt.payment_mode or ""),
+            fee_type_label,
+            str(receipt.total_amount or "0"),
+            str(receipt.remark or ""),
+            created_by_name,
+            "Yes" if receipt.is_cancelled else ("No" if receipt.is_cancelled is False else ""),
+            str(receipt.cancel_reason or ""),
+        ])
+
+    total_db = len(qs)
+    if rows_to_append:
+        try:
+            worksheet.append_rows(rows_to_append, value_input_option="USER_ENTERED")
+        except Exception as exc:
+            logger.error("sync_cash_register_to_sheet: append_rows failed: %s", exc)
+            return {"appended": 0, "skipped": skipped, "total": total_db}
+
+    appended = len(rows_to_append)
+    logger.info(
+        "sync_cash_register_to_sheet: %s→%s appended=%d skipped=%d total=%d",
+        resolved_from, resolved_to, appended, skipped, total_db,
+    )
+    return {"appended": appended, "skipped": skipped, "total": total_db}
