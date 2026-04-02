@@ -300,6 +300,69 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     return base;
   }, [entries]);
 
+  // First/last receipt number per payment mode (non-cancelled, same date)
+  const recRangeByMode = useMemo(() => {
+    const ranges = {};
+    const seenKeys = {};
+    entries.forEach((entry) => {
+      const mode = entry.payment_mode?.toUpperCase();
+      if (!mode || entry.is_cancelled) return;
+      if (!entry.receipt_no_full) return;
+      const seq = extractSequenceFromFull(entry.receipt_no_full);
+      if (seq === null) return;
+      const rk = entry.receipt_no_full;
+      if (!seenKeys[mode]) seenKeys[mode] = new Set();
+      if (seenKeys[mode].has(rk)) return;
+      seenKeys[mode].add(rk);
+      if (!ranges[mode]) {
+        ranges[mode] = { start: rk, end: rk, startSeq: seq, endSeq: seq };
+      } else {
+        if (seq < ranges[mode].startSeq) { ranges[mode].start = rk; ranges[mode].startSeq = seq; }
+        if (seq > ranges[mode].endSeq) { ranges[mode].end = rk; ranges[mode].endSeq = seq; }
+      }
+    });
+    return ranges;
+  }, [entries]);
+
+  // Per-bank-account totals + receipt range (for BANK mode breakdown)
+  const bankWiseTotals = useMemo(() => {
+    const groups = {};
+    const seenReceipts = {};
+    entries.forEach((entry) => {
+      if (entry.payment_mode?.toUpperCase() !== 'BANK') return;
+      if (entry.is_cancelled) return;
+      const rawPrefix = entry.rec_ref
+        ? String(entry.rec_ref).split('/')[0].toUpperCase()
+        : entry.receipt_no_full
+          ? String(entry.receipt_no_full).split('/')[0].toUpperCase()
+          : 'OTHER';
+      if (!groups[rawPrefix]) {
+        groups[rawPrefix] = { amount: 0, count: 0, start: null, end: null, startSeq: null, endSeq: null };
+      }
+      groups[rawPrefix].amount += Number(entry.amount) || 0;
+      const rk = entry.receipt_no_full || `__${entry.id}`;
+      if (!seenReceipts[rawPrefix]) seenReceipts[rawPrefix] = new Set();
+      if (!seenReceipts[rawPrefix].has(rk)) {
+        seenReceipts[rawPrefix].add(rk);
+        groups[rawPrefix].count += 1;
+      }
+      if (entry.receipt_no_full) {
+        const seq = extractSequenceFromFull(entry.receipt_no_full);
+        if (seq !== null) {
+          if (groups[rawPrefix].startSeq === null || seq < groups[rawPrefix].startSeq) {
+            groups[rawPrefix].startSeq = seq;
+            groups[rawPrefix].start = entry.receipt_no_full;
+          }
+          if (groups[rawPrefix].endSeq === null || seq > groups[rawPrefix].endSeq) {
+            groups[rawPrefix].endSeq = seq;
+            groups[rawPrefix].end = entry.receipt_no_full;
+          }
+        }
+      }
+    });
+    return groups;
+  }, [entries]);
+
   const setFlash = useCallback((type, message) => {
     setStatus({ type, message });
     if (message) {
@@ -931,18 +994,58 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                 const summary = totalsByMode[mode.value] || { amount: 0, count: 0 };
                 const isActive = filters.payment_mode === mode.value;
                 const style = MODE_CARD_STYLES[mode.value] || 'border-slate-200 bg-slate-50 text-slate-800 hover:bg-slate-100';
+                const range = recRangeByMode[mode.value];
+                const BANK_SORT_ORDER = ['1471', '138', 'B16'];
+                const sortedBankEntries = mode.value === 'BANK'
+                  ? Object.entries(bankWiseTotals).sort(([a], [b]) => {
+                      const ai = BANK_SORT_ORDER.indexOf(a);
+                      const bi = BANK_SORT_ORDER.indexOf(b);
+                      if (ai === -1 && bi === -1) return a.localeCompare(b);
+                      if (ai === -1) return 1;
+                      if (bi === -1) return -1;
+                      return ai - bi;
+                    })
+                  : [];
                 return (
                   <button
                     type="button"
                     key={mode.value}
                     onClick={() => handleModeCardClick(mode.value)}
-                    className={`min-w-[150px] flex-1 rounded-lg border px-4 py-3 text-left text-sm font-semibold shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${style} ${isActive ? 'ring-2 ring-blue-500' : ''}`}
+                    className={`min-w-[160px] flex-1 rounded-lg border px-4 py-3 text-left text-sm font-semibold shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${style} ${isActive ? 'ring-2 ring-blue-500' : ''}`}
                   >
                     <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide">
                       <span>{mode.label}</span>
                       <span>{summary.count} receipt(s)</span>
                     </div>
                     <div className="mt-2 text-2xl font-semibold">₹ {formatAmount(summary.amount)}</div>
+                    {mode.value !== 'BANK' && range && (
+                      <div className="mt-1 font-mono text-[10px] opacity-70 leading-tight">
+                        <span>REC {formatReceiptDisplay(range.start)}</span>
+                        {range.startSeq !== range.endSeq && (
+                          <span> → {formatReceiptDisplay(range.end)}</span>
+                        )}
+                      </div>
+                    )}
+                    {mode.value === 'BANK' && sortedBankEntries.length > 0 && (
+                      <div className="mt-2 space-y-1 border-t border-current pt-1.5" style={{ borderOpacity: 0.2 }}>
+                        {sortedBankEntries.map(([prefix, data]) => (
+                          <div key={prefix} className="text-xs">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="font-bold w-10 shrink-0">{prefix}</span>
+                              <span className="shrink-0">₹{formatAmount(data.amount)}</span>
+                            </div>
+                            {data.start && (
+                              <div className="font-mono text-[9px] opacity-70 leading-tight mt-0.5">
+                                {formatReceiptDisplay(data.start)}
+                                {data.startSeq !== data.endSeq && (
+                                  <> → {formatReceiptDisplay(data.end)}</>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </button>
                 );
               })}

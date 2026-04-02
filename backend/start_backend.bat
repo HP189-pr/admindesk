@@ -20,7 +20,7 @@ if /I "%MODE%"=="dev" (
   set "BIND_HOST=%~2"
   if "%BIND_HOST%"=="" set "BIND_HOST=0.0.0.0"
   set "BIND_PORT=%~3"
-  if "%BIND_PORT%"=="" set "BIND_PORT=8000"
+  if "%BIND_PORT%"=="" set "BIND_PORT=8001"
 ) else (
   set "BIND_HOST=%~1"
   if "%BIND_HOST%"=="" set "BIND_HOST=127.0.0.1"

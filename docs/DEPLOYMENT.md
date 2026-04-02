@@ -49,7 +49,9 @@ npm run dev
 
 ### Convenience launcher
 
-You can also use `run_backend.ps1`, which now delegates to `backend/start_backend.bat dev 127.0.0.1 8001`.
+You can also use `run_backend.ps1`, which now defaults to `backend/start_backend.bat dev 0.0.0.0 8001` so LAN testing works without extra flags.
+
+If the Windows service `AdminDeskBackend` is already installed for prod-style runs, use `backend/restartserver.bat` from an elevated prompt. The helper now resets the NSSM service to `--host=0.0.0.0 --port=8000` before restarting it.
 
 For a script-level audit of the remaining backend startup helper, see [docs/OPERATIONS_SCRIPTS.md](./OPERATIONS_SCRIPTS.md).
 

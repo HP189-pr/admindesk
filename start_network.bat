@@ -1,6 +1,9 @@
 @echo off
 setlocal
 
+for /f "tokens=*" %%I in ('powershell -NoProfile -Command "Get-NetIPAddress -AddressFamily IPv4 ^| Where-Object { $_.IPAddress -notmatch '^(127\.|169\.254\.)' -and $_.PrefixOrigin -ne 'WellKnown' } ^| Sort-Object InterfaceMetric, SkipAsSource ^| Select-Object -ExpandProperty IPAddress -First 1"') do set "LAN_IP=%%I"
+if "%LAN_IP%"=="" set "LAN_IP=127.0.0.1"
+
 set "MODE=%~1"
 if "%MODE%"=="" set "MODE=dev"
 
@@ -22,11 +25,11 @@ goto START
 
 :MODE_PROD
 set "FRONTEND_PORT=8081"
-set "BACKEND_PORT=8000"
+set "BACKEND_PORT=8001"
 set "BACKEND_TITLE=Daphne Backend (Prod)"
-set "FRONTEND_TITLE=Vite Preview (Prod)"
-set "BACKEND_CMD=cd /d %~dp0backend && call start_backend.bat prod 0.0.0.0 8000"
-set "FRONTEND_CMD=cd /d %~dp0 && npm run build && npm run serve -- --host 0.0.0.0 --port 8081"
+set "FRONTEND_TITLE=Nginx Frontend (Prod)"
+set "BACKEND_CMD=cd /d %~dp0backend && call start_backend.bat prod 0.0.0.0 8001"
+set "FRONTEND_CMD=cd /d %~dp0 && npm run build && echo Build done. Open http://localhost:8081/ in a browser. Nginx must be running."
 goto START
 
 :START
@@ -34,15 +37,15 @@ echo ========================================
 echo Starting AdminDesk on Network (%MODE%)
 echo ========================================
 echo.
-echo Your PC IP: 160.160.109.147
+echo Your PC IP: %LAN_IP%
 echo.
 echo Local access:
 echo   Frontend: http://localhost:%FRONTEND_PORT%/dashboard
 echo   Backend:  http://127.0.0.1:%BACKEND_PORT%
 echo.
 echo Other PCs can access:
-echo   Frontend: http://160.160.109.147:%FRONTEND_PORT%/dashboard
-echo   Backend:  http://160.160.109.147:%BACKEND_PORT%
+echo   Frontend: http://%LAN_IP%:%FRONTEND_PORT%/dashboard
+echo   Backend:  http://%LAN_IP%:%BACKEND_PORT%
 echo.
 echo ========================================
 echo.

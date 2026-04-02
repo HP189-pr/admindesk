@@ -1,28 +1,38 @@
 ﻿// src/api/axiosInstance.js
 import axios from 'axios';
 
-// Resolve backend origin with sensible fallbacks for prod and dev
-const resolveApiBase = () => {
-  const envBase = import.meta.env.VITE_API_BASE_URL?.trim();
-  if (envBase) return envBase.replace(/\/$/, '');
+const FRONTEND_PORTS = new Set(['3000', '5173', '5174', '8081']);
+const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost']);
 
-  const defaultBackendPort = import.meta.env.PROD ? '8000' : '8001';
-
-  if (typeof window === 'undefined') return `http://127.0.0.1:${defaultBackendPort}`;
+const resolveBackendOriginFromWindow = (defaultBackendPort) => {
+  if (typeof window === 'undefined') {
+    return `http://127.0.0.1:${defaultBackendPort}`;
+  }
 
   const url = new URL(window.location.href);
-  const localHost = ['127.0.0.1', 'localhost'].includes(url.hostname);
-  const frontendPorts = new Set(['3000', '5173', '5174', '8081']);
-  // If frontend runs locally on known UI ports, map to configured backend port.
-  if (localHost && frontendPorts.has(url.port)) {
-    url.port = defaultBackendPort;
-    return url.origin;
+  const protocol = url.protocol || 'http:';
+  const hostname = url.hostname || '127.0.0.1';
+
+  if (!url.port || FRONTEND_PORTS.has(url.port)) {
+    return `${protocol}//${hostname}:${defaultBackendPort}`;
   }
-  if (localHost && !url.port) {
-    url.port = defaultBackendPort;
-    return url.origin;
+
+  return `${protocol}//${hostname}${url.port ? `:${url.port}` : ''}`;
+};
+
+// Resolve backend origin with sensible fallbacks for prod and dev.
+// When VITE_API_BASE_URL is explicitly set to '' (production behind nginx),
+// return '' so axios uses relative paths and nginx proxies /api/ → backend.
+const resolveApiBase = () => {
+  const envBase = import.meta.env.VITE_API_BASE_URL?.trim();
+  if (envBase !== undefined) return envBase.replace(/\/$/, '');
+
+  // Env var absent entirely → local dev fallback
+  const localPort = import.meta.env.VITE_LOCAL_BACKEND_PORT?.trim() || '8001';
+  if (typeof window === 'undefined') {
+    return `http://127.0.0.1:${localPort}`;
   }
-  return url.origin;
+  return resolveBackendOriginFromWindow(localPort);
 };
 
 const apiBaseUrl = resolveApiBase();

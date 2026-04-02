@@ -1,5 +1,11 @@
 # Run this from a PowerShell prompt (Admin privileges not required).
 # Usage: Open PowerShell, then: & "e:\admindesk\run_backend.ps1"
+# Optional: & "e:\admindesk\run_backend.ps1" -Host 0.0.0.0 -Port 8001
+
+param(
+    [string]$Host = "0.0.0.0",
+    [int]$Port = 8001
+)
 
 Try {
     $pythonExe = "e:\admindesk\.venv\Scripts\python.exe"
@@ -26,8 +32,8 @@ Try {
     & $pythonExe manage.py migrate
 
     # Start the ASGI server path used by the current app runtime.
-    Write-Host "Starting ASGI backend via start_backend.bat..."
-    & $backendLauncher dev 127.0.0.1 8001
+    Write-Host "Starting ASGI backend via start_backend.bat on $Host`:$Port ..."
+    & $backendLauncher dev $Host $Port
 
 } Catch {
     Write-Error "Script failed: $_"

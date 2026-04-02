@@ -20,6 +20,33 @@ const REPORT_META = {
   Yearly: { title: "Yearly Fees Summary Report", column: "YEAR", summaryWord: "years" },
 };
 
+const formatReceiptDisplay = (value) => {
+  if (!value) return "-";
+  const raw = String(value).trim();
+  if (!raw) return "-";
+
+  // 1471/2025000762 -> 1471/25/R000762
+  const yearSeqMatch = raw.match(/^(.+?)\/(\d{4})(\d{6})$/);
+  if (yearSeqMatch) {
+    const prefix = yearSeqMatch[1];
+    const fy = yearSeqMatch[2].slice(-2);
+    const seq = yearSeqMatch[3];
+    return `${prefix}/${fy}/R${seq}`;
+  }
+
+  // B16/25/000001 -> B16/25/R000001
+  const missingRMatch = raw.match(/^(.+?)\/(\d{2})\/(\d{6})$/);
+  if (missingRMatch) {
+    const prefix = missingRMatch[1];
+    const fy = missingRMatch[2];
+    const seq = missingRMatch[3];
+    return `${prefix}/${fy}/R${seq}`;
+  }
+
+  // 1471/25/R/000001 -> 1471/25/R000001
+  return raw.replace(/\/R\/(\d{6})$/i, "/R$1");
+};
+
 const PaymentReport = ({ onBack }) => {
   const navigate = useNavigate();
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
@@ -69,6 +96,7 @@ const PaymentReport = ({ onBack }) => {
         recMap[r.period] = {
           REC_START: r.rec_start,
           REC_END: r.rec_end,
+          ACCOUNT_RANGES: Array.isArray(r.account_ranges) ? r.account_ranges : [],
         };
       });
 
@@ -92,6 +120,7 @@ const PaymentReport = ({ onBack }) => {
             DAY_CLOSING: 0,
             REC_START: recMap[period]?.REC_START || "-",
             REC_END: recMap[period]?.REC_END || "-",
+            ACCOUNT_RANGES: recMap[period]?.ACCOUNT_RANGES || [],
           };
           codes.forEach(c => (map[period][c] = 0));
         }
@@ -136,8 +165,12 @@ const PaymentReport = ({ onBack }) => {
       r.DATE,
       ...feeCodes.map(c => r[c] || 0),
       r.TOTAL,
-      r.REC_START || "-",
-      r.REC_END || "-",
+      (r.ACCOUNT_RANGES?.length
+        ? r.ACCOUNT_RANGES.map(a => `${a.account}: ${formatReceiptDisplay(a.rec_start)}`).join("\n")
+        : formatReceiptDisplay(r.REC_START)),
+      (r.ACCOUNT_RANGES?.length
+        ? r.ACCOUNT_RANGES.map(a => `${a.account}: ${formatReceiptDisplay(a.rec_end)}`).join("\n")
+        : formatReceiptDisplay(r.REC_END)),
       r.DEPOSIT_BANK,
       r.DAY_CLOSING,
     ]);
@@ -186,13 +219,6 @@ const PaymentReport = ({ onBack }) => {
         title={REPORT_META[reportBy].title}
         rightSlot={
           <div className="flex gap-2">
-            <button
-              onClick={handlePdfExport}
-              disabled={loading || rows.length === 0}
-              className="rounded bg-indigo-600 px-4 py-2 text-white"
-            >
-              📄 Export PDF
-            </button>
             {onBack ? (
               <button
                 onClick={onBack}
@@ -289,7 +315,17 @@ const PaymentReport = ({ onBack }) => {
             </select>
           </div>
 
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-3">
+            <button
+              onClick={handlePdfExport}
+              disabled={loading || rows.length === 0}
+              title="Export PDF"
+              aria-label="Export PDF"
+              className="inline-flex h-12 w-12 flex-col items-center justify-center rounded-full border border-red-200 bg-red-50 text-[9px] font-bold leading-tight text-red-600 shadow-sm transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <span className="text-sm">📄</span>
+              <span>PDF</span>
+            </button>
             <button
               onClick={() => {
                 setDateFrom(thirtyDaysAgo);
@@ -361,10 +397,30 @@ const PaymentReport = ({ onBack }) => {
                     {Number(r.TOTAL || 0).toLocaleString("en-IN")}
                   </td>
                   <td className="border px-3 py-1 text-center">
-                    {r.REC_START || "-"}
+                    {r.ACCOUNT_RANGES?.length ? (
+                      <div className="space-y-1 text-left">
+                        {r.ACCOUNT_RANGES.map((a, idx) => (
+                          <div key={`${a.account}-${idx}`} className="font-mono text-[11px] leading-tight">
+                            <span className="font-semibold">{a.account}:</span> {formatReceiptDisplay(a.rec_start)}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      formatReceiptDisplay(r.REC_START)
+                    )}
                   </td>
                   <td className="border px-3 py-1 text-center">
-                    {r.REC_END || "-"}
+                    {r.ACCOUNT_RANGES?.length ? (
+                      <div className="space-y-1 text-left">
+                        {r.ACCOUNT_RANGES.map((a, idx) => (
+                          <div key={`${a.account}-${idx}`} className="font-mono text-[11px] leading-tight">
+                            <span className="font-semibold">{a.account}:</span> {formatReceiptDisplay(a.rec_end)}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      formatReceiptDisplay(r.REC_END)
+                    )}
                   </td>
                 </tr>
               ))}

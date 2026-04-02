@@ -4,16 +4,44 @@
  * Centralized configuration for API and media URLs
  */
 
-const defaultBackendOrigin = import.meta.env.PROD
-  ? 'http://localhost:8000'
-  : 'http://localhost:8001';
+const FRONTEND_PORTS = new Set(['3000', '5173', '5174', '8081']);
+const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost']);
+
+const resolveDefaultBackendOrigin = () => {
+  const localPort = import.meta.env.VITE_LOCAL_BACKEND_PORT?.trim() || '8001';
+  const productionPort = import.meta.env.VITE_PROD_BACKEND_PORT?.trim() || '8000';
+
+  if (typeof window === 'undefined') {
+    return `http://127.0.0.1:${import.meta.env.PROD ? productionPort : localPort}`;
+  }
+
+  const url = new URL(window.location.href);
+  const protocol = url.protocol || 'http:';
+  const hostname = url.hostname || '127.0.0.1';
+
+  const defaultBackendPort = LOCAL_HOSTS.has(hostname)
+    ? localPort
+    : (import.meta.env.PROD ? productionPort : localPort);
+
+  if (!url.port || FRONTEND_PORTS.has(url.port)) {
+    return `${protocol}//${hostname}:${defaultBackendPort}`;
+  }
+
+  return `${protocol}//${hostname}${url.port ? `:${url.port}` : ''}`;
+};
+
+const defaultBackendOrigin = resolveDefaultBackendOrigin();
+
+// When env var is explicitly '' (production/nginx), use '' for relative paths.
+const pickBase = (envVar, fallback) =>
+  (envVar !== undefined ? envVar.trim() : null) ?? fallback;
 
 const config = {
-  // API base URL - where Django backend runs
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || defaultBackendOrigin,
-  
-  // Media base URL - where Django serves media files
-  mediaBaseUrl: import.meta.env.VITE_MEDIA_BASE_URL || defaultBackendOrigin,
+  // API base URL — empty string in production = relative, nginx proxies /api/
+  apiBaseUrl: pickBase(import.meta.env.VITE_API_BASE_URL, defaultBackendOrigin),
+
+  // Media base URL
+  mediaBaseUrl: pickBase(import.meta.env.VITE_MEDIA_BASE_URL, defaultBackendOrigin),
   
   // Helper to build media URLs
   getMediaUrl: (path) => {

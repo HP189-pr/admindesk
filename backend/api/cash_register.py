@@ -1053,23 +1053,44 @@ class ReceiptViewSet(FinancePermissionMixin, mixins.ListModelMixin, mixins.Retri
 
         data = (
             qs.annotate(period=period)
-            .values("period")
+            .values("period", "rec_ref")
             .annotate(
                 min_rec_no=Min("rec_no"),
                 max_rec_no=Max("rec_no"),
-                rec_ref=Min("rec_ref"),
             )
-            .order_by("period")
+            .order_by("period", "rec_ref")
         )
 
-        out = []
+        period_map = {}
         for r in data:
-            if r["min_rec_no"] is None:
+            min_no = r.get("min_rec_no")
+            max_no = r.get("max_rec_no")
+            rec_ref = r.get("rec_ref")
+            if min_no is None or max_no is None or not rec_ref:
+                continue
+
+            period_value = r.get("period")
+            if period_value not in period_map:
+                period_map[period_value] = []
+
+            rec_start = f"{rec_ref}{int(min_no):06d}"
+            rec_end = f"{rec_ref}{int(max_no):06d}"
+            account = str(rec_ref).split("/")[0]
+            period_map[period_value].append({
+                "account": account,
+                "rec_start": rec_start,
+                "rec_end": rec_end,
+            })
+
+        out = []
+        for period_value, account_rows in period_map.items():
+            if not account_rows:
                 continue
             out.append({
-                "period": r["period"],
-                "rec_start": f"{r['rec_ref']}{int(r['min_rec_no']):06d}",
-                "rec_end": f"{r['rec_ref']}{int(r['max_rec_no']):06d}",
+                "period": period_value,
+                "rec_start": " | ".join(row["rec_start"] for row in account_rows),
+                "rec_end": " | ".join(row["rec_end"] for row in account_rows),
+                "account_ranges": account_rows,
             })
 
         return Response(out)

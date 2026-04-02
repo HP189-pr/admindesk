@@ -1,6 +1,9 @@
 ﻿// src/report/CCTVREPORT.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FaEdit, FaTrash } from "react-icons/fa";
+import { FaFilePdf } from "react-icons/fa6";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import {
   createCctvCopyCase,
   deleteCctvCopyCase,
@@ -22,6 +25,9 @@ const EMPTY_FORM = {
 
 const toResultsArray = (payload) =>
   Array.isArray(payload) ? payload : Array.isArray(payload?.results) ? payload.results : [];
+
+const EXPORT_PDF_BUTTON_CLASS =
+  "inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 shadow-sm shadow-rose-100 transition duration-200 hover:-translate-y-0.5 hover:bg-rose-100 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50";
 
 export default function CCTVREPORT({ rights = { can_view: true, can_create: true, can_edit: true, can_delete: true } }) {
   const [outwards, setOutwards] = useState([]);
@@ -208,7 +214,55 @@ export default function CCTVREPORT({ rights = { can_view: true, can_create: true
       setStatus("No copy-case rows found for selected outward.");
       return;
     }
-    printElement(printRef.current, { orientation: "portrait", pageSize: "A4", marginMm: 10 });
+    printElement(printRef.current, { orientation: "landscape", pageSize: "A4", marginMm: 10 });
+  };
+
+  const handleDownloadRowsPdf = () => {
+    if (!selectedOutward) {
+      setStatus("Select outward record first.");
+      return;
+    }
+    if (!copyCases.length) {
+      setStatus("No copy-case rows found for selected outward.");
+      return;
+    }
+
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const title = "CCTV Copy Case Rows";
+    const metaLine = `Record: ${selectedOutward?.cctv_record_no || "-"}   Outward: ${selectedOutward?.outward_no || "-"}   Date: ${selectedOutward?.outward_date || "-"}`;
+
+    doc.setFontSize(14);
+    doc.text(title, 14, 12);
+    doc.setFontSize(10);
+    doc.text(metaLine, 14, 18);
+
+    const body = copyCases.map((row, idx) => [
+      String(idx + 1),
+      row.college_name || "-",
+      row.course || "-",
+      row.semester || "-",
+      row.dvd_no || "-",
+      row.report_no || "-",
+      String(row.no_of_student ?? 0),
+      row.remark || "-",
+    ]);
+
+    autoTable(doc, {
+      startY: 22,
+      head: [["No.", "College Name", "Course", "Semester", "DVD No", "Report No", "No of Student", "Remark"]],
+      body,
+      styles: { fontSize: 9, cellPadding: 2 },
+      headStyles: { fillColor: [30, 64, 175] },
+      theme: "grid",
+      didDrawPage: (data) => {
+        const pageHeight = doc.internal.pageSize.getHeight();
+        doc.setFontSize(10);
+        doc.text(`Total Students: ${totalStudents}`, 14, pageHeight - 8);
+      },
+    });
+
+    const safeRecord = String(selectedOutward?.cctv_record_no || "copy-case-rows").replace(/[^a-zA-Z0-9-_]/g, "_");
+    doc.save(`${safeRecord}.pdf`);
   };
 
   return (
@@ -353,7 +407,19 @@ export default function CCTVREPORT({ rights = { can_view: true, can_create: true
       </div>
 
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-        <h3 className="font-semibold mb-3">Copy Case Rows</h3>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h3 className="font-semibold">Copy Case Rows</h3>
+          <button
+            type="button"
+            className={EXPORT_PDF_BUTTON_CLASS}
+            onClick={handleDownloadRowsPdf}
+            disabled={!copyCases.length}
+            title="Export PDF"
+            aria-label="Export PDF"
+          >
+            <FaFilePdf size={20} color="#D32F2F" />
+          </button>
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-gray-100 text-gray-700 uppercase text-xs">
