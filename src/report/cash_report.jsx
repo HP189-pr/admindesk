@@ -53,6 +53,29 @@ const normalizeDateValue = (dateStr) => {
   return raw;
 };
 
+const isSameDateValue = (left, right) => {
+  const normalizedLeft = normalizeDateValue(left);
+  const normalizedRight = normalizeDateValue(right);
+  return Boolean(normalizedLeft) && normalizedLeft === normalizedRight;
+};
+
+const buildDepositImpactLabel = (row) => {
+  const parts = [];
+  if (row?.ref_no) {
+    parts.push(row.ref_no);
+  }
+  if (row?.cash_date && !isSameDateValue(row.date, row.cash_date)) {
+    parts.push(`Cash ${formatDateDisplay(row.cash_date)}`);
+  }
+  if (parts.length) {
+    return parts.join(' | ');
+  }
+  if (row?.date) {
+    return `Deposited ${formatDateDisplay(row.date)}`;
+  }
+  return '--';
+};
+
 const extractReceiptShort = (receiptFull) => {
   if (!receiptFull) return '--';
   const match = String(receiptFull).match(/R\/?(\d{6})$/i);
@@ -81,13 +104,28 @@ const CashReport = ({ onBack }) => {
   const [msg, setMsg] = useState('');
   const [cashOnHandRows, setCashOnHandRows] = useState([]);
   // For deposit/expense entry forms
-  const [depositForm, setDepositForm] = useState({ amount: '', ref_no: '', note: '' });
+  const [depositForm, setDepositForm] = useState({ amount: '', ref_no: '', note: '', cash_date: today });
   const [expenseForm, setExpenseForm] = useState({ amount: '', ref_no: '', note: '' });
   const [formSaving, setFormSaving] = useState(false);
   // Edit state for outward records
   const [editingOutward, setEditingOutward] = useState(null);
-  const [editOutwardForm, setEditOutwardForm] = useState({ date: '', amount: '', ref_no: '', note: '' });
+  const [editOutwardForm, setEditOutwardForm] = useState({ date: '', cash_date: '', amount: '', ref_no: '', note: '' });
   const [editingCashDay, setEditingCashDay] = useState(false);
+  const [selectedTab, setSelectedTab] = useState('entry');
+
+  useEffect(() => {
+    if (selectedTab !== 'deposit' || editingOutward) return;
+    setDepositForm((current) => {
+      if (current.amount || current.ref_no || current.note) {
+        return current;
+      }
+      const nextCashDate = dateTo || today;
+      if (current.cash_date === nextCashDate) {
+        return current;
+      }
+      return { ...current, cash_date: nextCashDate };
+    });
+  }, [selectedTab, editingOutward, dateTo, today]);
 
   const loadSingleOutward = useCallback(async (date) => {
     if (!date) { setOutwardSingle([]); return; }
@@ -98,6 +136,7 @@ const CashReport = ({ onBack }) => {
       setOutwardSingle(rows.map((row) => ({
         ...row,
         date: normalizeDateValue(row?.date),
+        cash_date: normalizeDateValue(row?.cash_date) || normalizeDateValue(row?.date),
       })));
     } finally {
       setOutwardSingleLoading(false);
@@ -112,12 +151,13 @@ const CashReport = ({ onBack }) => {
     try {
       await createCashOutward({
         date: dateTo,
+        cash_date: depositForm.cash_date || dateTo,
         txn_type: 'DEPOSIT',
         amount: depositForm.amount,
         ref_no: depositForm.ref_no,
         remark: depositForm.note,
       });
-      setDepositForm({ amount: '', ref_no: '', note: '' });
+      setDepositForm({ amount: '', ref_no: '', note: '', cash_date: dateTo });
       loadSingleOutward(dateTo);
       load();
     } finally {
@@ -146,7 +186,13 @@ const CashReport = ({ onBack }) => {
 
   const handleEditOutward = (record) => {
     setEditingOutward(record);
-    setEditOutwardForm({ date: normalizeDateValue(record.date) || dateTo, amount: record.amount, ref_no: record.ref_no || '', note: record.note || record.remark || '' });
+    setEditOutwardForm({
+      date: normalizeDateValue(record.date) || dateTo,
+      cash_date: normalizeDateValue(record.cash_date) || normalizeDateValue(record.date) || dateTo,
+      amount: record.amount,
+      ref_no: record.ref_no || '',
+      note: record.note || record.remark || '',
+    });
   };
 
   const handleEditOutwardSubmit = async (e) => {
@@ -154,15 +200,24 @@ const CashReport = ({ onBack }) => {
     if (!editingOutward) return;
     setFormSaving(true);
     try {
+      const nextDepositDate = editOutwardForm.date || editingOutward.date || dateTo;
       await updateCashOutward(editingOutward.id, {
-        date: editOutwardForm.date || editingOutward.date,
+        date: nextDepositDate,
+        cash_date: editingOutward.txn_type === 'DEPOSIT'
+          ? (editOutwardForm.cash_date || nextDepositDate || editingOutward.cash_date || editingOutward.date)
+          : null,
         txn_type: editingOutward.txn_type,
         amount: editOutwardForm.amount,
         ref_no: editOutwardForm.ref_no,
         remark: editOutwardForm.note,
       });
       setEditingOutward(null);
-      loadSingleOutward(dateTo);
+      if (editingOutward.txn_type === 'DEPOSIT' || editingOutward.txn_type === 'EXPENSE') {
+        setDateTo(nextDepositDate);
+        loadSingleOutward(nextDepositDate);
+      } else {
+        loadSingleOutward(dateTo);
+      }
       load();
     } catch (err) {
       setMsg(err?.response?.data?.detail || 'Update failed');
@@ -183,8 +238,6 @@ const CashReport = ({ onBack }) => {
       setMsg(err?.response?.data?.detail || 'Delete failed');
     }
   };
-  const [selectedTab, setSelectedTab] = useState('entry');
-
   const exportColumns = [
     'Date',
     'Rec No From',
@@ -266,6 +319,18 @@ const CashReport = ({ onBack }) => {
     [cashOnHandRows, previousBalance]
   );
 
+  const linkedCashDateDeposits = useMemo(
+    () => (Array.isArray(report?.deposit_applied_rows) ? report.deposit_applied_rows : []),
+    [report]
+  );
+
+  const backdatedDepositsMadeRows = useMemo(
+    () => (Array.isArray(report?.deposit_made_rows) ? report.deposit_made_rows : []).filter(
+      (row) => !isSameDateValue(row?.date, row?.cash_date || row?.date)
+    ),
+    [report]
+  );
+
   const load = async () => {
     const safeFrom = dateFrom || today;
     const safeTo = dateTo || safeFrom;
@@ -273,7 +338,7 @@ const CashReport = ({ onBack }) => {
 
     const [r, outwardRows, feeAgg, recRange] = await Promise.all([
       fetchCashOnHandReport({ date: safeTo }),
-      fetchCashOutward({ date_from: safeFrom, date_to: safeTo }),
+      fetchCashOutward({ date_from: safeFrom, date_to: safeTo, include_cash_date: true }),
       fetchFeesAggregate({ date_from: safeFrom, date_to: safeTo, report_by: 'Daily', payment_mode: 'CASH' }),
       fetchRecRange({ date_from: safeFrom, date_to: safeTo, report_by: 'Daily', payment_mode: 'CASH' }),
     ]);
@@ -297,6 +362,7 @@ const CashReport = ({ onBack }) => {
     const normalizedOutward = outwardAll.map((row) => ({
       ...row,
       date: normalizeDateValue(row?.date),
+      cash_date: normalizeDateValue(row?.cash_date) || normalizeDateValue(row?.date),
     }));
     const rangeRows = (Array.isArray(recRange) ? recRange : []).filter(
       (row) => isCashReceiptRef(row?.rec_start) || isCashReceiptRef(row?.rec_end)
@@ -325,8 +391,11 @@ const CashReport = ({ onBack }) => {
     });
 
     normalizedOutward.forEach((row) => {
-      if (!row?.date) return;
-      const dt = row.date;
+      const effectiveDate = row.date;
+      const countsTowardClosingCash = row.txn_type !== 'DEPOSIT' || isSameDateValue(row.date, row.cash_date);
+
+      if (!effectiveDate) return;
+      const dt = effectiveDate;
       if (!dateMap[dt]) {
         dateMap[dt] = {
           date: dt,
@@ -342,8 +411,10 @@ const CashReport = ({ onBack }) => {
 
       if (dt >= safeCountFrom) {
         if (row.txn_type === 'DEPOSIT') {
-          dateMap[dt].deposit += Number(row.amount) || 0;
-          if (row.ref_no) dateMap[dt].depositRef.push(row.ref_no);
+          if (countsTowardClosingCash) {
+            dateMap[dt].deposit += Number(row.amount) || 0;
+          }
+          dateMap[dt].depositRef.push(buildDepositImpactLabel(row));
         }
         if (row.txn_type === 'EXPENSE') {
           dateMap[dt].expense += Number(row.amount) || 0;
@@ -549,15 +620,41 @@ const CashReport = ({ onBack }) => {
                     </div>
                   </div>
                   {report && (
-                    <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded shadow-sm">
-                      <div>System Cash</div>
-                      <div className="font-semibold">₹ {report.system_cash}</div>
-                      <div>Deposit</div>
-                      <div>₹ {report.total_deposit}</div>
-                      <div>Expense</div>
-                      <div>₹ {report.total_expense}</div>
-                      <div className="font-bold">Expected Cash</div>
-                      <div className="font-bold">₹ {report.expected_cash}</div>
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded shadow-sm">
+                        <div>System Cash</div>
+                        <div className="font-semibold">₹ {report.system_cash}</div>
+                        <div>Deposit</div>
+                        <div>₹ {report.total_deposit}</div>
+                        <div>Expense</div>
+                        <div>₹ {report.total_expense}</div>
+                        <div className="font-bold">Expected Cash</div>
+                        <div className="font-bold">₹ {report.expected_cash}</div>
+                      </div>
+                      {linkedCashDateDeposits.length > 0 && (
+                        <div className="rounded border border-emerald-200 bg-emerald-50 p-3 text-sm">
+                          <div className="font-semibold text-emerald-900">Deposited Later For This Cash Date</div>
+                          <div className="mt-2 space-y-1 text-emerald-900">
+                            {linkedCashDateDeposits.map((row) => (
+                              <div key={`applied-${row.id}`}>
+                                ₹ {row.amount} <span className="text-xs text-emerald-800">(Deposited on {formatDateDisplay(row.date)})</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {backdatedDepositsMadeRows.length > 0 && (
+                        <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm">
+                          <div className="font-semibold text-blue-900">Deposits Made Today For Other Cash Dates</div>
+                          <div className="mt-2 space-y-1 text-blue-900">
+                            {backdatedDepositsMadeRows.map((row) => (
+                              <div key={`made-${row.id}`}>
+                                ₹ {row.amount} <span className="text-xs text-blue-800">(Cash date: {formatDateDisplay(row.cash_date || row.date)})</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -678,13 +775,26 @@ const CashReport = ({ onBack }) => {
                 </h2>
                 {editingOutward && editingOutward.txn_type === 'DEPOSIT' ? (
                   <form className="flex flex-wrap gap-3 mb-4" onSubmit={handleEditOutwardSubmit}>
-                    <input
-                      type="date"
-                      className="border px-3 py-2 rounded"
-                      value={editOutwardForm.date}
-                      onChange={e => setEditOutwardForm(f => ({ ...f, date: e.target.value }))}
-                      required
-                    />
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-slate-600">Deposit Date</label>
+                      <input
+                        type="date"
+                        className="border px-3 py-2 rounded"
+                        value={editOutwardForm.date}
+                        onChange={e => setEditOutwardForm(f => ({ ...f, date: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-slate-600">Cash Date</label>
+                      <input
+                        type="date"
+                        className="border px-3 py-2 rounded"
+                        value={editOutwardForm.cash_date}
+                        onChange={e => setEditOutwardForm(f => ({ ...f, cash_date: e.target.value }))}
+                        required
+                      />
+                    </div>
                     <input
                       type="number"
                       min="0"
@@ -722,13 +832,26 @@ const CashReport = ({ onBack }) => {
                   </form>
                 ) : (
                   <form className="flex flex-wrap gap-3 mb-4" onSubmit={handleDepositSubmit}>
-                    <input
-                      type="date"
-                      className="border px-3 py-2 rounded"
-                      value={dateTo}
-                      onChange={e => setDateTo(e.target.value)}
-                      required
-                    />
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-slate-600">Deposit Date</label>
+                      <input
+                        type="date"
+                        className="border px-3 py-2 rounded"
+                        value={dateTo}
+                        onChange={e => setDateTo(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-slate-600">Cash Date</label>
+                      <input
+                        type="date"
+                        className="border px-3 py-2 rounded"
+                        value={depositForm.cash_date || dateTo}
+                        onChange={e => setDepositForm(f => ({ ...f, cash_date: e.target.value }))}
+                        required
+                      />
+                    </div>
                     <input
                       type="number"
                       min="0"
@@ -765,7 +888,8 @@ const CashReport = ({ onBack }) => {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left px-2 py-1">Date</th>
+                        <th className="text-left px-2 py-1">Deposit Date</th>
+                        <th className="text-left px-2 py-1">Cash Date</th>
                         <th className="text-left px-2 py-1">Ref</th>
                         <th className="text-left px-2 py-1">Note</th>
                         <th className="text-right px-2 py-1">Amount</th>
@@ -775,13 +899,14 @@ const CashReport = ({ onBack }) => {
                     <tbody>
                       {outwardSingle.filter(o => o.txn_type === 'DEPOSIT').length === 0 ? (
                         <tr>
-                          <td colSpan="5" className="text-center text-gray-400 py-3">No records found</td>
+                          <td colSpan="6" className="text-center text-gray-400 py-3">No records found</td>
                         </tr>
                       ) : outwardSingle.filter(o => o.txn_type === 'DEPOSIT').map(o => (
                         <tr key={o.id} className={`border-b ${editingOutward?.id === o.id ? 'bg-yellow-50' : 'hover:bg-gray-50'}`}>
                           <td className="px-2 py-2">{formatDateDisplay(o.date)}</td>
+                          <td className="px-2 py-2">{formatDateDisplay(o.cash_date || o.date)}</td>
                           <td className="px-2 py-2">{o.ref_no || '--'}</td>
-                          <td className="px-2 py-2">{o.note || '--'}</td>
+                          <td className="px-2 py-2">{o.note || o.remark || '--'}</td>
                           <td className="px-2 py-2 text-right font-semibold">₹ {o.amount}</td>
                           <td className="px-2 py-2 text-center">
                             <div className="flex justify-center gap-2">
@@ -918,7 +1043,7 @@ const CashReport = ({ onBack }) => {
                         <tr key={o.id} className={`border-b ${editingOutward?.id === o.id ? 'bg-yellow-50' : 'hover:bg-gray-50'}`}>
                           <td className="px-2 py-2">{formatDateDisplay(o.date)}</td>
                           <td className="px-2 py-2">{o.ref_no || '--'}</td>
-                          <td className="px-2 py-2">{o.note || '--'}</td>
+                          <td className="px-2 py-2">{o.note || o.remark || '--'}</td>
                           <td className="px-2 py-2 text-right font-semibold">₹ {o.amount}</td>
                           <td className="px-2 py-2 text-center">
                             <div className="flex justify-center gap-2">

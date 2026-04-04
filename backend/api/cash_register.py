@@ -1280,6 +1280,18 @@ class ReceiptViewSet(FinancePermissionMixin, mixins.ListModelMixin, mixins.Retri
 # ============================================================
 
 class CashOutwardSerializer(serializers.ModelSerializer):
+    def validate(self, attrs):
+        txn_type = attrs.get("txn_type") or getattr(self.instance, "txn_type", None)
+        outward_date = attrs.get("date") or getattr(self.instance, "date", None)
+        cash_date = attrs.get("cash_date")
+
+        if txn_type == "DEPOSIT":
+            attrs["cash_date"] = cash_date or getattr(self.instance, "cash_date", None) or outward_date
+        else:
+            attrs["cash_date"] = None
+
+        return attrs
+
     class Meta:
         model = CashOutward
         fields = "__all__"
@@ -1307,21 +1319,72 @@ class CashOutwardViewSet(
         date_str = self.request.query_params.get("date")
         date_from_str = self.request.query_params.get("date_from")
         date_to_str = self.request.query_params.get("date_to")
+        cash_date_str = self.request.query_params.get("cash_date")
+        cash_date_from_str = self.request.query_params.get("cash_date_from")
+        cash_date_to_str = self.request.query_params.get("cash_date_to")
+        txn_type = (self.request.query_params.get("txn_type") or "").strip().upper()
+        include_cash_date = str(self.request.query_params.get("include_cash_date") or "").strip().lower() in {"1", "true", "yes"}
+
+        if txn_type in {"DEPOSIT", "EXPENSE"}:
+            qs = qs.filter(txn_type=txn_type)
 
         # Exact date filter takes precedence for single-day views.
         if date_str:
             date_exact = parse_date(date_str)
             if date_exact:
-                qs = qs.filter(date=date_exact)
+                if include_cash_date:
+                    qs = qs.filter(
+                        Q(date=date_exact)
+                        | Q(txn_type="DEPOSIT", cash_date=date_exact)
+                    ).distinct()
+                else:
+                    qs = qs.filter(date=date_exact)
             return qs.order_by("-date", "-id")
 
         date_from = parse_date(date_from_str) if date_from_str else None
         date_to = parse_date(date_to_str) if date_to_str else None
+        cash_date_exact = parse_date(cash_date_str) if cash_date_str else None
+        cash_date_from = parse_date(cash_date_from_str) if cash_date_from_str else None
+        cash_date_to = parse_date(cash_date_to_str) if cash_date_to_str else None
 
-        if date_from:
-            qs = qs.filter(date__gte=date_from)
-        if date_to:
-            qs = qs.filter(date__lte=date_to)
+        if cash_date_exact:
+            qs = qs.filter(cash_date=cash_date_exact)
+        else:
+            if cash_date_from:
+                qs = qs.filter(cash_date__gte=cash_date_from)
+            if cash_date_to:
+                qs = qs.filter(cash_date__lte=cash_date_to)
+
+        if include_cash_date and (date_from or date_to):
+            window_q = Q()
+            primary_q = Q()
+            cash_q = Q(txn_type="DEPOSIT")
+
+            if date_from:
+                primary_q &= Q(date__gte=date_from)
+                cash_q &= Q(cash_date__gte=date_from)
+            if date_to:
+                primary_q &= Q(date__lte=date_to)
+                cash_q &= Q(cash_date__lte=date_to)
+
+            window_q |= primary_q
+            window_q |= cash_q
+            qs = super().get_queryset().filter(window_q)
+            if txn_type in {"DEPOSIT", "EXPENSE"}:
+                qs = qs.filter(txn_type=txn_type)
+            if cash_date_exact:
+                qs = qs.filter(cash_date=cash_date_exact)
+            else:
+                if cash_date_from:
+                    qs = qs.filter(cash_date__gte=cash_date_from)
+                if cash_date_to:
+                    qs = qs.filter(cash_date__lte=cash_date_to)
+            qs = qs.distinct()
+        else:
+            if date_from:
+                qs = qs.filter(date__gte=date_from)
+            if date_to:
+                qs = qs.filter(date__lte=date_to)
         return qs.order_by("-date", "-id")
 
 
@@ -1371,9 +1434,15 @@ class CashOnHandReportView(APIView):
         )
 
         # 2️⃣ Deposit / Expense
-        outward = CashOutward.objects.filter(date=report_date)
-        total_deposit = outward.filter(txn_type="DEPOSIT").aggregate(s=Sum("amount"))["s"] or Decimal("0")
-        total_expense = outward.filter(txn_type="EXPENSE").aggregate(s=Sum("amount"))["s"] or Decimal("0")
+        outward_on_date = CashOutward.objects.filter(date=report_date)
+        deposit_for_cash_date = CashOutward.objects.filter(txn_type="DEPOSIT", cash_date=report_date)
+        total_deposit = (
+            outward_on_date
+            .filter(txn_type="DEPOSIT", cash_date=report_date)
+            .aggregate(s=Sum("amount"))["s"]
+            or Decimal("0")
+        )
+        total_expense = outward_on_date.filter(txn_type="EXPENSE").aggregate(s=Sum("amount"))["s"] or Decimal("0")
 
         expected_cash = system_cash - total_deposit - total_expense
 
@@ -1385,6 +1454,18 @@ class CashOnHandReportView(APIView):
             "total_deposit": total_deposit,
             "total_expense": total_expense,
             "expected_cash": expected_cash,
+            "deposit_applied_rows": CashOutwardSerializer(
+                deposit_for_cash_date.exclude(date=report_date).order_by("date", "id"),
+                many=True,
+            ).data,
+            "deposit_made_rows": CashOutwardSerializer(
+                outward_on_date.filter(txn_type="DEPOSIT").order_by("id"),
+                many=True,
+            ).data,
+            "expense_rows": CashOutwardSerializer(
+                outward_on_date.filter(txn_type="EXPENSE").order_by("id"),
+                many=True,
+            ).data,
             "closed": bool(cash_close),
             "physical_cash": cash_close.physical_cash if cash_close else None,
             "difference": cash_close.difference if cash_close else None,
@@ -1420,9 +1501,18 @@ class CloseCashDayView(APIView):
             or Decimal("0")
         )
 
-        outward = CashOutward.objects.filter(date=report_date)
-        total_deposit = outward.filter(txn_type="DEPOSIT").aggregate(s=Sum("amount"))["s"] or Decimal("0")
-        total_expense = outward.filter(txn_type="EXPENSE").aggregate(s=Sum("amount"))["s"] or Decimal("0")
+        total_deposit = (
+            CashOutward.objects
+            .filter(txn_type="DEPOSIT", date=report_date, cash_date=report_date)
+            .aggregate(s=Sum("amount"))["s"]
+            or Decimal("0")
+        )
+        total_expense = (
+            CashOutward.objects
+            .filter(txn_type="EXPENSE", date=report_date)
+            .aggregate(s=Sum("amount"))["s"]
+            or Decimal("0")
+        )
 
         expected_cash = system_cash - total_deposit - total_expense
 

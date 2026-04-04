@@ -234,6 +234,7 @@ class CashOutward(models.Model):
     )
 
     date = models.DateField(db_index=True)
+    cash_date = models.DateField(null=True, blank=True, db_index=True)
     txn_type = models.CharField(max_length=10, choices=TXN_TYPE_CHOICES)
     ref_no = models.CharField(max_length=50, blank=True)
     amount = models.DecimalField(max_digits=14, decimal_places=2)

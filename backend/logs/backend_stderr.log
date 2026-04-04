@@ -42816,3 +42816,20 @@ Unauthorized: /api/cash-on-hand/close/
 2026-04-02 15:31:47,834 WARNING  Unauthorized: /api/cash-on-hand/close/
 2026-04-02 15:44:47,415 INFO     sync_cash_register_to_sheet: 2026-04-02\u21922026-04-02 appended=8 skipped=1 total=9
 2026-04-02 15:47:04,096 INFO     sync_cash_register_to_sheet: 2026-04-01\u21922026-04-01 appended=0 skipped=11 total=11
+2026-04-02 15:58:49,898 INFO     Killed 0 pending application instances
+2026-04-04 08:08:41,550 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-04-04 08:08:41,550 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-04-04 08:08:41,550 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-04-04 08:08:41,550 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/token/verify/
+2026-04-04 08:34:16,008 WARNING  Unauthorized: /api/token/verify/
+Unauthorized: /api/token/verify/
+2026-04-04 08:34:16,009 WARNING  Unauthorized: /api/token/verify/
+2026-04-04 08:39:02,170 INFO     Killed 1 pending application instances
+2026-04-04 08:39:03,895 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-04-04 08:39:03,895 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-04-04 08:39:03,895 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-04-04 08:39:03,895 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/cash-on-hand/report/
+2026-04-04 08:57:57,941 WARNING  Unauthorized: /api/cash-on-hand/report/
+2026-04-04 09:06:05,130 INFO     sync_cash_register_to_sheet: 2026-04-04\u21922026-04-04 appended=0 skipped=0 total=0
