@@ -642,16 +642,28 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
   const handleSyncToSheet = useCallback(async () => {
     if (sheetSyncing) return;
     setSheetSyncing(true);
-    setFlash('info', 'Syncing to Google Sheet...');
+    setFlash('info', 'Syncing selected date to Google Sheets...');
     try {
-      const result = await syncCashRegisterToSheet({ date_from: filters.date, date_to: filters.date });
-      setFlash('success', `Sheet sync done — appended: ${result.appended}, skipped: ${result.skipped}`);
+      const result = await syncCashRegisterToSheet({
+        date_from: filters.date,
+        date_to: filters.date,
+      });
+      const cashDeposite = result.cash_deposite || {};
+      const cashSheet = result.cash_sheet || {};
+      if (!result.total && !cashDeposite.total && !cashSheet.total) {
+        setFlash('error', 'No Cash Register, Cash-Deposite, or CashSheet data found for the selected date.');
+        return;
+      }
+      setFlash(
+        'success',
+        `Sheet sync done for ${filters.date}. Receipts appended: ${result.appended}, updated: ${result.updated || 0}, skipped: ${result.skipped}. Cash-Deposite appended: ${cashDeposite.appended || 0}, updated: ${cashDeposite.updated || 0}. CashSheet appended: ${cashSheet.appended || 0}, updated: ${cashSheet.updated || 0}`
+      );
     } catch (err) {
       setFlash('error', err?.response?.data?.detail || err.message || 'Sheet sync failed');
     } finally {
       setSheetSyncing(false);
     }
-  }, [sheetSyncing, filters.date, setFlash]);
+  }, [filters.date, sheetSyncing, setFlash]);
 
   const handleModeCardClick = (modeValue) => {
     setFilters((prev) => ({

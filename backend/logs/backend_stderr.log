@@ -42833,3 +42833,70 @@ Unauthorized: /api/token/verify/
 Unauthorized: /api/cash-on-hand/report/
 2026-04-04 08:57:57,941 WARNING  Unauthorized: /api/cash-on-hand/report/
 2026-04-04 09:06:05,130 INFO     sync_cash_register_to_sheet: 2026-04-04\u21922026-04-04 appended=0 skipped=0 total=0
+Bad Request: /api/verify-admin-panel-password/
+2026-04-04 09:26:51,241 WARNING  Bad Request: /api/verify-admin-panel-password/
+2026-04-04 09:47:15,376 INFO     Killed 0 pending application instances
+2026-04-04 09:47:39,490 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-04-04 09:47:39,492 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-04-04 09:47:39,492 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-04-04 09:47:39,492 INFO     Listening on TCP address 0.0.0.0:8001
+2026-04-04 09:49:59,766 INFO     Killed 0 pending application instances
+2026-04-04 09:50:22,006 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-04-04 09:50:22,006 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-04-04 09:50:22,006 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-04-04 09:50:22,006 INFO     Listening on TCP address 0.0.0.0:8001
+2026-04-04 10:01:08,276 INFO     Killed 0 pending application instances
+2026-04-04 10:01:10,185 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-04-04 10:01:10,185 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-04-04 10:01:10,185 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-04-04 10:01:10,185 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/backlogin/
+2026-04-04 10:28:51,153 WARNING  Unauthorized: /api/backlogin/
+2026-04-04 10:33:52,702 INFO     sync_cash_register_to_sheet: 2026-04-04\u21922026-04-04 appended=0 skipped=0 total=0
+2026-04-04 10:51:16,202 INFO     sync_cash_register_to_sheet: 2026-04-04\u21922026-04-04 appended=0 skipped=0 total=0
+Unauthorized: /api/token/verify/
+2026-04-04 10:52:12,035 WARNING  Unauthorized: /api/token/verify/
+Unauthorized: /api/token/verify/
+2026-04-04 10:52:12,035 WARNING  Unauthorized: /api/token/verify/
+2026-04-04 10:52:24,168 INFO     sync_cash_register_to_sheet: 2026-04-04\u21922026-04-04 appended=0 skipped=0 total=0
+2026-04-04 10:54:01,903 INFO     Killed 1 pending application instances
+2026-04-04 10:54:03,944 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-04-04 10:54:03,944 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-04-04 10:54:03,944 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-04-04 10:54:03,945 INFO     Listening on TCP address 0.0.0.0:8001
+2026-04-04 10:54:14,051 INFO     sync_cash_deposite_to_sheet: 2026-04-04\u21922026-04-04 appended=0 updated=0 total=0
+2026-04-04 10:54:14,051 INFO     sync_cash_register_to_sheet: 2026-04-04\u21922026-04-04 appended=0 skipped=0 total=0
+2026-04-04 10:56:44,268 INFO     sync_cash_deposite_to_sheet: 2026-04-04\u21922026-04-04 appended=0 updated=0 total=0
+2026-04-04 10:56:44,268 INFO     sync_cash_register_to_sheet: 2026-04-04\u21922026-04-04 appended=0 skipped=0 total=0
+2026-04-04 10:56:59,178 INFO     sync_cash_deposite_to_sheet: 2026-04-04\u21922026-04-04 appended=0 updated=0 total=0
+2026-04-04 10:56:59,179 INFO     sync_cash_register_to_sheet: 2026-04-04\u21922026-04-04 appended=0 skipped=0 total=0
+2026-04-04 10:59:37,273 INFO     sync_cash_deposite_to_sheet: 2026-04-04\u21922026-04-04 appended=0 updated=0 total=0
+2026-04-04 10:59:37,273 INFO     sync_cash_register_to_sheet: 2026-04-04\u21922026-04-04 appended=0 skipped=0 total=0
+2026-04-04 11:01:20,535 INFO     sync_cash_deposite_to_sheet: 2026-04-04\u21922026-04-04 appended=0 updated=0 total=0
+2026-04-04 11:01:20,535 INFO     sync_cash_register_to_sheet: 2026-04-04\u21922026-04-04 appended=0 skipped=0 total=0
+2026-04-04 11:01:31,134 INFO     sync_cash_deposite_to_sheet: 2026-04-01\u21922026-04-01 appended=1 updated=0 total=1
+2026-04-04 11:01:31,134 INFO     sync_cash_register_to_sheet: 2026-04-01\u21922026-04-01 appended=20 skipped=0 total=11
+2026-04-04 11:23:14,736 INFO     sync_cash_deposite_to_sheet: 2026-04-01\u21922026-04-01 appended=0 updated=1 total=1
+2026-04-04 11:23:14,736 INFO     sync_cash_register_to_sheet: 2026-04-01\u21922026-04-01 appended=20 skipped=0 total=11
+2026-04-04 11:40:49,625 INFO     sync_cash_deposite_to_sheet: 2026-04-01\u21922026-04-01 appended=0 updated=1 total=1
+2026-04-04 11:40:49,626 INFO     sync_cash_register_to_sheet: 2026-04-01\u21922026-04-01 appended=20 skipped=0 total=11
+2026-04-04 11:40:58,608 INFO     sync_cash_deposite_to_sheet: 2026-04-02\u21922026-04-02 appended=0 updated=1 total=1
+2026-04-04 11:40:58,608 INFO     sync_cash_register_to_sheet: 2026-04-02\u21922026-04-02 appended=16 skipped=0 total=11
+2026-04-04 11:42:53,654 INFO     sync_cash_deposite_to_sheet: 2026-04-02\u21922026-04-02 appended=0 updated=1 total=1
+2026-04-04 11:42:53,654 INFO     sync_cash_register_to_sheet: 2026-04-02\u21922026-04-02 appended=16 skipped=0 total=11
+2026-04-04 11:55:35,667 INFO     sync_cash_deposite_to_sheet: 2026-04-01\u21922026-04-01 appended=0 updated=1 total=1
+2026-04-04 11:55:35,672 INFO     sync_cash_register_to_sheet: 2026-04-01\u21922026-04-01 appended=20 skipped=0 total=11
+2026-04-04 11:56:24,870 INFO     sync_cash_deposite_to_sheet: 2026-04-01\u21922026-04-01 appended=0 updated=1 total=1
+2026-04-04 11:56:24,870 INFO     sync_cash_register_to_sheet: 2026-04-01\u21922026-04-01 appended=20 skipped=0 total=11
+2026-04-04 11:56:43,574 INFO     sync_cash_deposite_to_sheet: 2026-04-02\u21922026-04-02 appended=0 updated=1 total=1
+2026-04-04 11:56:43,574 INFO     sync_cash_register_to_sheet: 2026-04-02\u21922026-04-02 appended=16 skipped=0 total=11
+2026-04-04 11:58:42,101 INFO     sync_cash_deposite_to_sheet: 2026-04-01\u21922026-04-01 appended=0 updated=1 total=1
+2026-04-04 11:58:42,101 INFO     sync_cash_register_to_sheet: 2026-04-01\u21922026-04-01 appended=20 skipped=0 total=11
+2026-04-04 12:01:06,247 INFO     sync_cash_deposite_to_sheet: 2026-04-01\u21922026-04-01 appended=0 updated=1 total=1
+2026-04-04 12:01:06,247 INFO     sync_cash_register_to_sheet: 2026-04-01\u21922026-04-01 appended=20 skipped=0 total=11
+Unauthorized: /api/users/
+2026-04-04 12:03:30,390 WARNING  Unauthorized: /api/users/
+2026-04-04 12:03:46,983 INFO     sync_cash_deposite_to_sheet: 2026-04-01\u21922026-04-01 appended=0 updated=1 total=1
+2026-04-04 12:03:46,983 INFO     sync_cash_register_to_sheet: 2026-04-01\u21922026-04-01 appended=20 skipped=0 total=11
+2026-04-04 12:04:03,801 INFO     sync_cash_deposite_to_sheet: 2026-04-02\u21922026-04-02 appended=0 updated=1 total=1
+2026-04-04 12:04:03,801 INFO     sync_cash_register_to_sheet: 2026-04-02\u21922026-04-02 appended=16 skipped=0 total=11

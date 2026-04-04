@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import logging
 import os
+from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 from typing import Dict, Iterable, Mapping, Optional
 
@@ -20,6 +21,65 @@ from django.db.models import Max
 from datetime import date as date_type
 
 logger = logging.getLogger(__name__)
+
+CASH_REGISTER_SHEET_HEADERS = [
+    "payment_mode",
+    "receipt_no_full",
+    "rec_ref",
+    "rec_no",
+    "date",
+    "fee_type",
+    "total_amount",
+    "remark",
+    "created_by",
+    "is_cancelled",
+    "cancel_reason",
+    "receipt_id",
+    "receipt_item_id",
+]
+
+CASH_REGISTER_WORKSHEET_CANDIDATES = (
+    "Cash Register",
+    "CashRegister",
+)
+
+CASH_DEPOSITE_WORKSHEET_CANDIDATES = (
+    "Cash-Deposite",
+    "Cash-Deposit",
+)
+
+CASH_SHEET_WORKSHEET_CANDIDATES = (
+    "CashSheet",
+)
+
+CASH_SHEET_BASE_HEADERS = ["date"]
+
+CASH_SHEET_TRAILING_HEADERS = [
+    "Grand Total",
+    "start rec",
+    "end rec",
+]
+
+CASH_SHEET_LEGACY_IGNORED_HEADERS = {
+    "sum of total_amount",
+    "fee_type",
+}
+
+CASH_DEPOSITE_SHEET_HEADERS = [
+    "Date",
+    "Denomination Cash Total",
+    "500",
+    "200",
+    "100",
+    "50",
+    "20",
+    "10",
+    "5",
+    "2",
+    "1",
+]
+
+CASH_DEPOSITE_DENOMS = [500, 200, 100, 50, 20, 10, 5, 2, 1]
 
 MAIL_FIELD_ALIASES: Dict[str, tuple[str, ...]] = {
     "mail_status": (
@@ -131,6 +191,15 @@ def _service_account_path() -> str:
     return sa_file
 
 
+def _sheet_number_text(value: object) -> str:
+    if value is None or value == "":
+        return "0"
+    try:
+        return format(Decimal(str(value)), "f").rstrip("0").rstrip(".") or "0"
+    except (InvalidOperation, ValueError):
+        return str(value).strip()
+
+
 @lru_cache(maxsize=None)
 def _get_client(sa_path: str) -> gspread.Client:
     return gspread.service_account(filename=sa_path)
@@ -175,6 +244,18 @@ def _get_worksheet_by_name(sheet_id: str, sheet_name: str) -> gspread.Worksheet:
         return sheet.worksheet(sheet_name)
     except Exception:
         raise RuntimeError(f"Worksheet {sheet_name!r} not found in sheet {sheet_id}")
+
+
+def _get_first_named_worksheet(sheet_id: str, sheet_names: Iterable[str]) -> gspread.Worksheet:
+    sheet = _open_sheet(sheet_id)
+    last_error = None
+    for sheet_name in sheet_names:
+        try:
+            return sheet.worksheet(sheet_name)
+        except Exception as exc:
+            last_error = exc
+            continue
+    raise RuntimeError(f"Worksheet not found in sheet {sheet_id}: {', '.join(sheet_names)}") from last_error
 
 
 @lru_cache(maxsize=None)
@@ -1173,10 +1254,11 @@ def sync_cash_register_to_sheet(
     date_to: Optional[str] = None,
     sheet_id: Optional[str] = None,
 ) -> Dict[str, int]:
-    """Append cash register receipts to the Google Sheet.
+    """Append cash register receipt items to the Google Sheet.
 
-    Only appends rows whose receipt_no_full is not already present in the sheet,
-    so calling this function repeatedly on the same date is safe (idempotent).
+    Exports one row per receipt item, so a single receipt can appear multiple times
+    when it contains multiple fee types. Repeated sync calls remain idempotent by
+    matching the exported row signature already present in the sheet.
 
     Args:
         date_from: ISO date string (YYYY-MM-DD) lower bound (inclusive). Defaults to today.
@@ -1184,7 +1266,7 @@ def sync_cash_register_to_sheet(
         sheet_id:  Override the spreadsheet ID.  Falls back to GOOGLE_CASH_REGISTER_SPREADSHEET_ID.
 
     Returns:
-        dict with keys: appended, skipped, total
+        dict with keys: appended, updated, skipped, total
     """
     from .domain_cash_register import Receipt  # local import to avoid circular deps
 
@@ -1197,79 +1279,559 @@ def sync_cash_register_to_sheet(
     resolved_from = date_from or today_str
     resolved_to = date_to or resolved_from
 
-    # Open worksheet (first tab = "Cash Register")
+    # Query receipts in the date range first so we can clean legacy combined rows.
+    receipt_query = Receipt.objects.select_related("created_by").prefetch_related("items__fee_type")
+    receipt_query = receipt_query.filter(date__gte=resolved_from, date__lte=resolved_to)
+    qs = list(receipt_query.order_by("date", "rec_ref", "rec_no"))
+    target_receipt_numbers = {
+        str(receipt.receipt_no_full or "").strip()
+        for receipt in qs
+        if str(receipt.receipt_no_full or "").strip()
+    }
+
+    # Open the Cash Register worksheet by name; fall back to the first tab for old sheets.
     try:
-        sheet = _open_sheet(sheet_id)
-        worksheet = sheet.get_worksheet(0)
-        if worksheet is None:
-            raise RuntimeError("Sheet has no worksheets")
+        try:
+            worksheet = _get_first_named_worksheet(sheet_id, CASH_REGISTER_WORKSHEET_CANDIDATES)
+        except Exception:
+            sheet = _open_sheet(sheet_id)
+            worksheet = sheet.get_worksheet(0)
+            if worksheet is None:
+                raise RuntimeError("Sheet has no worksheets")
     except Exception as exc:
         logger.error("sync_cash_register_to_sheet: cannot open sheet %s: %s", sheet_id, exc)
         return {"appended": 0, "skipped": 0, "total": 0}
 
-    # Fetch all existing receipt_no_full values already in the sheet (single API call)
+    # Fetch all existing row values already in the sheet (single API call)
     try:
         existing_values = worksheet.get_all_values()
     except Exception as exc:
         logger.error("sync_cash_register_to_sheet: cannot read sheet: %s", exc)
         return {"appended": 0, "skipped": 0, "total": 0}
 
-    existing_receipts: set = set()
-    for row in existing_values[1:]:  # skip header row
-        if row and row[0]:
-            existing_receipts.add(str(row[0]).strip())
+    header_row = existing_values[0] if existing_values else []
+    if not header_row:
+        try:
+            worksheet.append_row(CASH_REGISTER_SHEET_HEADERS, value_input_option="USER_ENTERED")
+            existing_values = [CASH_REGISTER_SHEET_HEADERS]
+            header_row = CASH_REGISTER_SHEET_HEADERS
+        except Exception as exc:
+            logger.error("sync_cash_register_to_sheet: cannot write header row: %s", exc)
+            return {"appended": 0, "skipped": 0, "total": 0}
 
-    # Query receipts in the date range
-    qs = list(
-        Receipt.objects
-        .filter(date__gte=resolved_from, date__lte=resolved_to)
-        .select_related("created_by")
-        .prefetch_related("items__fee_type")
-        .order_by("date", "rec_ref", "rec_no")
-    )
+    normalized_headers = [str(value).strip().lower() for value in header_row]
+    expected_headers = [str(value).strip() for value in CASH_REGISTER_SHEET_HEADERS]
+    if normalized_headers != [header.lower() for header in expected_headers]:
+        sheet_width = max(len(header_row), len(expected_headers))
+        end_col = "".join(ch for ch in rowcol_to_a1(1, sheet_width) if ch.isalpha())
+        header_payload = expected_headers + ([""] * (sheet_width - len(expected_headers)))
+        try:
+            worksheet.update(f"A1:{end_col}1", [header_payload], value_input_option="USER_ENTERED")
+            existing_values = [expected_headers, *existing_values[1:]] if existing_values else [expected_headers]
+            header_row = expected_headers
+            normalized_headers = [header.lower() for header in expected_headers]
+        except Exception as exc:
+            logger.error("sync_cash_register_to_sheet: cannot update header row: %s", exc)
+            return {"appended": 0, "skipped": 0, "total": 0}
+
+    column_indexes = {
+        field_name: normalized_headers.index(field_name)
+        for field_name in [
+            "payment_mode",
+            "receipt_no_full",
+            "rec_ref",
+            "rec_no",
+            "date",
+            "fee_type",
+            "total_amount",
+            "remark",
+            "created_by",
+            "is_cancelled",
+            "cancel_reason",
+            "receipt_id",
+            "receipt_item_id",
+        ]
+    }
+    sheet_width = max(len(header_row), len(expected_headers))
+    end_col = "".join(ch for ch in rowcol_to_a1(1, sheet_width) if ch.isalpha())
+
+    def _sheet_row_key(row: list) -> str:
+        def cell(field_name: str) -> str:
+            index = column_indexes[field_name]
+            return str(row[index]).strip() if len(row) > index and row[index] is not None else ""
+
+        def normalized_amount(field_name: str) -> str:
+            raw_value = cell(field_name)
+            return _sheet_number_text(raw_value)
+
+        return "||".join([
+            cell("receipt_no_full"),
+            cell("fee_type"),
+            normalized_amount("total_amount"),
+            cell("remark"),
+            cell("is_cancelled"),
+        ])
+
+    def _sheet_item_key(row: list) -> str:
+        def cell(field_name: str) -> str:
+            index = column_indexes[field_name]
+            return str(row[index]).strip() if len(row) > index and row[index] is not None else ""
+
+        receipt_id = cell("receipt_id")
+        receipt_item_id = cell("receipt_item_id")
+        if not receipt_id or not receipt_item_id:
+            return ""
+        return f"{receipt_id}:{receipt_item_id}"
+
+    def _pad_row(row_values: list[str]) -> list[str]:
+        return row_values + ([""] * (sheet_width - len(row_values)))
+
+    legacy_row_numbers = []
+    duplicate_row_numbers = []
+    stale_legacy_row_numbers = []
+    existing_row_numbers_by_item_key: Dict[str, int] = {}
+    existing_row_values_by_item_key: Dict[str, list[str]] = {}
+    legacy_row_numbers_by_signature: Dict[str, list[int]] = {}
+    legacy_row_values_by_signature: Dict[str, list[str]] = {}
+    id_backed_signatures: set[str] = set()
+    for row_number, row in enumerate(existing_values[1:], start=2):  # skip header row
+        if row:
+            receipt_no = str(row[column_indexes["receipt_no_full"]]).strip() if len(row) > column_indexes["receipt_no_full"] else ""
+            fee_type_value = str(row[column_indexes["fee_type"]]).strip() if len(row) > column_indexes["fee_type"] else ""
+            if receipt_no in target_receipt_numbers and "," in fee_type_value:
+                legacy_row_numbers.append(row_number)
+                continue
+            item_key = _sheet_item_key(row)
+            if item_key:
+                if item_key in existing_row_numbers_by_item_key:
+                    duplicate_row_numbers.append(row_number)
+                    continue
+                existing_row_numbers_by_item_key[item_key] = row_number
+                existing_row_values_by_item_key[item_key] = _pad_row(list(row))
+                id_backed_signatures.add(_sheet_row_key(row))
+                continue
+
+            signature = _sheet_row_key(row)
+            if signature not in legacy_row_numbers_by_signature:
+                legacy_row_numbers_by_signature[signature] = []
+                legacy_row_values_by_signature[signature] = _pad_row(list(row))
+            legacy_row_numbers_by_signature[signature].append(row_number)
+
+    for signature in id_backed_signatures:
+        stale_legacy_row_numbers.extend(legacy_row_numbers_by_signature.pop(signature, []))
+        legacy_row_values_by_signature.pop(signature, None)
+
+    for row_number in reversed(sorted(set(legacy_row_numbers + duplicate_row_numbers))):
+        try:
+            worksheet.delete_rows(row_number)
+        except Exception as exc:
+            logger.error("sync_cash_register_to_sheet: failed to delete legacy row %s: %s", row_number, exc)
 
     rows_to_append = []
+    row_updates = []
+    updated = 0
     skipped = 0
 
     for receipt in qs:
         full_no = str(receipt.receipt_no_full or "").strip()
-        if full_no in existing_receipts:
-            skipped += 1
-            continue
-
-        fee_type_label = ", ".join(
-            str(item.fee_type.code) for item in receipt.items.all() if item.fee_type
-        ) or ""
+        receipt_items = list(receipt.items.all())
 
         created_by_name = ""
         if receipt.created_by:
             created_by_name = receipt.created_by.get_full_name().strip() or receipt.created_by.username
 
-        rows_to_append.append([
-            full_no,
-            str(receipt.rec_ref or ""),
-            str(receipt.rec_no or ""),
-            str(receipt.date.isoformat() if receipt.date else ""),
-            str(receipt.payment_mode or ""),
-            fee_type_label,
-            str(receipt.total_amount or "0"),
-            str(receipt.remark or ""),
-            created_by_name,
-            "Yes" if receipt.is_cancelled else ("No" if receipt.is_cancelled is False else ""),
-            str(receipt.cancel_reason or ""),
-        ])
+        exported_any_item = False
+        for item in receipt_items:
+            fee_type_label = str(item.fee_type.code) if item.fee_type else ""
+            row_values = [
+                str(receipt.payment_mode or ""),
+                full_no,
+                str(receipt.rec_ref or ""),
+                str(receipt.rec_no or ""),
+                str(receipt.date.isoformat() if receipt.date else ""),
+                fee_type_label,
+                _sheet_number_text(item.amount),
+                str(item.remark or receipt.remark or ""),
+                created_by_name,
+                "Yes" if receipt.is_cancelled else ("No" if receipt.is_cancelled is False else ""),
+                str(receipt.cancel_reason or ""),
+                str(receipt.id or ""),
+                str(item.id or ""),
+            ]
+            item_key = f"{receipt.id}:{item.id}"
+            row_key = "||".join([
+                full_no,
+                fee_type_label.strip(),
+                _sheet_number_text(item.amount),
+                str(item.remark or receipt.remark or "").strip(),
+                "Yes" if receipt.is_cancelled else ("No" if receipt.is_cancelled is False else ""),
+            ])
+            row_payload = _pad_row(row_values)
+            existing_row_number = existing_row_numbers_by_item_key.get(item_key)
+            existing_row_values = existing_row_values_by_item_key.get(item_key)
+            if existing_row_number:
+                stale_legacy_row_numbers.extend(legacy_row_numbers_by_signature.pop(row_key, []))
+                legacy_row_values_by_signature.pop(row_key, None)
+                if existing_row_values == row_payload:
+                    skipped += 1
+                else:
+                    row_updates.append((existing_row_number, row_payload))
+                    existing_row_values_by_item_key[item_key] = row_payload
+                    updated += 1
+                exported_any_item = True
+                continue
+
+            legacy_row_candidates = legacy_row_numbers_by_signature.get(row_key) or []
+            legacy_row_values = legacy_row_values_by_signature.get(row_key)
+            if legacy_row_candidates:
+                legacy_row_number = legacy_row_candidates.pop(0)
+                if not legacy_row_candidates:
+                    legacy_row_numbers_by_signature.pop(row_key, None)
+                if legacy_row_values == row_payload:
+                    skipped += 1
+                else:
+                    row_updates.append((legacy_row_number, row_payload))
+                    updated += 1
+                existing_row_numbers_by_item_key[item_key] = legacy_row_number
+                existing_row_values_by_item_key[item_key] = row_payload
+                legacy_row_values_by_signature.pop(row_key, None)
+                exported_any_item = True
+                continue
+
+            if item_key in existing_row_numbers_by_item_key:
+                skipped += 1
+                continue
+
+            stale_legacy_row_numbers.extend(legacy_row_numbers_by_signature.pop(row_key, []))
+            legacy_row_values_by_signature.pop(row_key, None)
+            rows_to_append.append(row_values)
+            existing_row_numbers_by_item_key[item_key] = -1
+            existing_row_values_by_item_key[item_key] = row_payload
+            exported_any_item = True
+
+        if not exported_any_item and not receipt_items:
+            skipped += 1
 
     total_db = len(qs)
+    for row_number, row_payload in row_updates:
+        try:
+            worksheet.update(f"A{row_number}:{end_col}{row_number}", [row_payload], value_input_option="USER_ENTERED")
+        except Exception as exc:
+            logger.error("sync_cash_register_to_sheet: failed to update row %s: %s", row_number, exc)
+
+    for row_number in reversed(sorted(set(stale_legacy_row_numbers))):
+        try:
+            worksheet.delete_rows(row_number)
+        except Exception as exc:
+            logger.error("sync_cash_register_to_sheet: failed to delete stale legacy row %s: %s", row_number, exc)
+
     if rows_to_append:
         try:
             worksheet.append_rows(rows_to_append, value_input_option="USER_ENTERED")
         except Exception as exc:
             logger.error("sync_cash_register_to_sheet: append_rows failed: %s", exc)
-            return {"appended": 0, "skipped": skipped, "total": total_db}
+            return {"appended": 0, "updated": updated, "skipped": skipped, "total": total_db}
 
     appended = len(rows_to_append)
+    cash_deposite_result = sync_cash_deposite_to_sheet(
+        date_from=resolved_from,
+        date_to=resolved_to,
+        sheet_id=sheet_id,
+    )
+    cash_sheet_result = sync_cash_sheet_to_sheet(
+        date_from=resolved_from,
+        date_to=resolved_to,
+        sheet_id=sheet_id,
+    )
     logger.info(
         "sync_cash_register_to_sheet: %s→%s appended=%d skipped=%d total=%d",
         resolved_from, resolved_to, appended, skipped, total_db,
     )
-    return {"appended": appended, "skipped": skipped, "total": total_db}
+    return {
+        "appended": appended,
+        "updated": updated,
+        "skipped": skipped,
+        "total": total_db,
+        "cash_deposite": cash_deposite_result,
+        "cash_sheet": cash_sheet_result,
+    }
+
+
+def sync_cash_deposite_to_sheet(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    sheet_id: Optional[str] = None,
+) -> Dict[str, int]:
+    """Upsert cash-on-hand denomination rows into the Cash-Deposite worksheet."""
+    from .domain_cash_register import CashOnHand
+
+    sheet_id = sheet_id or _get_setting("GOOGLE_CASH_REGISTER_SPREADSHEET_ID")
+    if not sheet_id:
+        logger.warning("sync_cash_deposite_to_sheet: GOOGLE_CASH_REGISTER_SPREADSHEET_ID not configured")
+        return {"appended": 0, "updated": 0, "skipped": 0, "total": 0}
+
+    today_str = timezone.now().date().isoformat()
+    resolved_from = date_from or today_str
+    resolved_to = date_to or resolved_from
+
+    try:
+        worksheet = _get_first_named_worksheet(sheet_id, CASH_DEPOSITE_WORKSHEET_CANDIDATES)
+    except Exception as exc:
+        logger.error("sync_cash_deposite_to_sheet: cannot open worksheet in sheet %s: %s", sheet_id, exc)
+        return {"appended": 0, "updated": 0, "skipped": 0, "total": 0}
+
+    try:
+        existing_values = worksheet.get_all_values()
+    except Exception as exc:
+        logger.error("sync_cash_deposite_to_sheet: cannot read worksheet: %s", exc)
+        return {"appended": 0, "updated": 0, "skipped": 0, "total": 0}
+
+    if not existing_values:
+        try:
+            worksheet.append_row(CASH_DEPOSITE_SHEET_HEADERS, value_input_option="USER_ENTERED")
+            existing_values = [CASH_DEPOSITE_SHEET_HEADERS]
+        except Exception as exc:
+            logger.error("sync_cash_deposite_to_sheet: cannot write header row: %s", exc)
+            return {"appended": 0, "updated": 0, "skipped": 0, "total": 0}
+    else:
+        header_row = [str(value).strip() for value in (existing_values[0] or [])]
+        if header_row != CASH_DEPOSITE_SHEET_HEADERS:
+            try:
+                worksheet.update("A1:K1", [CASH_DEPOSITE_SHEET_HEADERS], value_input_option="USER_ENTERED")
+                existing_values = [CASH_DEPOSITE_SHEET_HEADERS, *existing_values[1:]]
+            except Exception as exc:
+                logger.error("sync_cash_deposite_to_sheet: cannot update header row: %s", exc)
+                return {"appended": 0, "updated": 0, "skipped": 0, "total": 0}
+
+    existing_dates: Dict[str, int] = {}
+    existing_rows_by_date: Dict[str, list[str]] = {}
+    for row_index, row in enumerate(existing_values[1:], start=2):
+        if row and row[0]:
+            date_key = str(row[0]).strip()
+            existing_dates[date_key] = row_index
+            existing_rows_by_date[date_key] = [str(value).strip() for value in row[:len(CASH_DEPOSITE_SHEET_HEADERS)]]
+
+    cash_query = CashOnHand.objects.prefetch_related("items")
+    cash_query = cash_query.filter(date__gte=resolved_from, date__lte=resolved_to)
+    qs = list(cash_query.order_by("date"))
+
+    appended = 0
+    updated = 0
+
+    for cash_day in qs:
+        qty_by_denom = {denom: 0 for denom in CASH_DEPOSITE_DENOMS}
+        denomination_total = Decimal("0")
+        for item in cash_day.items.all():
+            if item.denomination in qty_by_denom:
+                qty_by_denom[item.denomination] += int(item.qty or 0)
+                denomination_total += item.amount or Decimal("0")
+
+        row_values = [
+            str(cash_day.date.isoformat()),
+            _sheet_number_text(denomination_total),
+            *[str(qty_by_denom[denom]) for denom in CASH_DEPOSITE_DENOMS],
+        ]
+
+        row_number = existing_dates.get(str(cash_day.date.isoformat()))
+        row_key = str(cash_day.date.isoformat())
+        normalized_row_values = [str(value).strip() for value in row_values]
+        try:
+            if row_number:
+                if existing_rows_by_date.get(row_key) == normalized_row_values:
+                    continue
+                worksheet.update(f"A{row_number}:K{row_number}", [row_values], value_input_option="USER_ENTERED")
+                existing_rows_by_date[row_key] = normalized_row_values
+                updated += 1
+            else:
+                worksheet.append_row(row_values, value_input_option="USER_ENTERED")
+                existing_rows_by_date[row_key] = normalized_row_values
+                appended += 1
+        except Exception as exc:
+            logger.error(
+                "sync_cash_deposite_to_sheet: failed to upsert row for %s: %s",
+                cash_day.date,
+                exc,
+            )
+
+    total_db = len(qs)
+    skipped = max(total_db - appended - updated, 0)
+    logger.info(
+        "sync_cash_deposite_to_sheet: %s→%s appended=%d updated=%d total=%d",
+        resolved_from,
+        resolved_to,
+        appended,
+        updated,
+        total_db,
+    )
+    return {"appended": appended, "updated": updated, "skipped": skipped, "total": total_db}
+
+
+def sync_cash_sheet_to_sheet(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    sheet_id: Optional[str] = None,
+) -> Dict[str, int]:
+    """Upsert one CashSheet row per date for CASH receipts only."""
+    from .domain_cash_register import Receipt
+
+    sheet_id = sheet_id or _get_setting("GOOGLE_CASH_REGISTER_SPREADSHEET_ID")
+    if not sheet_id:
+        logger.warning("sync_cash_sheet_to_sheet: GOOGLE_CASH_REGISTER_SPREADSHEET_ID not configured")
+        return {"appended": 0, "updated": 0, "skipped": 0, "total": 0}
+
+    today_str = timezone.now().date().isoformat()
+    resolved_from = date_from or today_str
+    resolved_to = date_to or resolved_from
+
+    try:
+        worksheet = _get_first_named_worksheet(sheet_id, CASH_SHEET_WORKSHEET_CANDIDATES)
+    except Exception as exc:
+        logger.error("sync_cash_sheet_to_sheet: cannot open worksheet in sheet %s: %s", sheet_id, exc)
+        return {"appended": 0, "updated": 0, "skipped": 0, "total": 0}
+
+    try:
+        existing_values = worksheet.get_all_values()
+    except Exception as exc:
+        logger.error("sync_cash_sheet_to_sheet: cannot read worksheet: %s", exc)
+        return {"appended": 0, "updated": 0, "skipped": 0, "total": 0}
+
+    header_row = existing_values[0] if existing_values else []
+    existing_headers = [str(value).strip() for value in header_row if str(value).strip()]
+
+    cash_receipt_query = Receipt.objects.filter(payment_mode="CASH").exclude(is_cancelled=True).prefetch_related("items__fee_type")
+    cash_receipt_query = cash_receipt_query.filter(date__gte=resolved_from, date__lte=resolved_to)
+    qs = list(cash_receipt_query.order_by("date", "rec_no", "receipt_no_full"))
+
+    fee_type_codes = sorted({
+        str(item.fee_type.code).strip()
+        for receipt in qs
+        for item in receipt.items.all()
+        if item.fee_type and str(item.fee_type.code).strip()
+    })
+
+    existing_fee_headers = [
+        header for header in existing_headers
+        if header not in CASH_SHEET_BASE_HEADERS
+        and header not in CASH_SHEET_TRAILING_HEADERS
+        and header.strip().lower() not in CASH_SHEET_LEGACY_IGNORED_HEADERS
+    ]
+    merged_fee_headers = list(existing_fee_headers)
+    for fee_code in fee_type_codes:
+        if fee_code not in merged_fee_headers:
+            merged_fee_headers.append(fee_code)
+
+    final_headers = [
+        *CASH_SHEET_BASE_HEADERS,
+        *merged_fee_headers,
+        *CASH_SHEET_TRAILING_HEADERS,
+    ]
+    sheet_width = max(len(header_row), len(final_headers))
+
+    def _column_label(column_number: int) -> str:
+        return "".join(ch for ch in rowcol_to_a1(1, column_number) if ch.isalpha())
+
+    if final_headers != existing_headers:
+        try:
+            end_col = _column_label(sheet_width)
+            header_payload = final_headers + ([""] * (sheet_width - len(final_headers)))
+            worksheet.update(f"A1:{end_col}1", [header_payload], value_input_option="USER_ENTERED")
+            existing_values = [final_headers, *existing_values[1:]] if existing_values else [final_headers]
+        except Exception as exc:
+            logger.error("sync_cash_sheet_to_sheet: cannot update header row: %s", exc)
+            return {"appended": 0, "updated": 0, "skipped": 0, "total": 0}
+
+    def _pad_existing_cash_sheet_row(row: list[str], width: int) -> list[str]:
+        trimmed = [str(value).strip() for value in row]
+        return trimmed + ([""] * (width - len(trimmed)))
+
+    existing_dates: Dict[str, int] = {}
+    existing_rows_by_date: Dict[str, list[str]] = {}
+    for row_index, row in enumerate(existing_values[1:], start=2):
+        if row and row[0]:
+            date_key = str(row[0]).strip()
+            existing_dates[date_key] = row_index
+            existing_rows_by_date[date_key] = [str(value).strip() for value in _pad_existing_cash_sheet_row(row, sheet_width)]
+
+    summary_by_date: Dict[str, Dict[str, object]] = {}
+    for receipt in qs:
+        date_key = str(receipt.date.isoformat()) if receipt.date else ""
+        if not date_key:
+            continue
+        summary = summary_by_date.setdefault(
+            date_key,
+            {
+                "totals": {fee_code: 0 for fee_code in merged_fee_headers},
+                "grand_total": 0,
+                "start_rec": "",
+                "end_rec": "",
+                "start_seq": None,
+                "end_seq": None,
+            },
+        )
+        for fee_code in merged_fee_headers:
+            summary["totals"].setdefault(fee_code, 0)
+
+        for item in receipt.items.all():
+            if not item.fee_type or not str(item.fee_type.code).strip():
+                continue
+            fee_code = str(item.fee_type.code).strip()
+            if fee_code not in summary["totals"]:
+                summary["totals"][fee_code] = 0
+            amount_value = item.amount or 0
+            summary["totals"][fee_code] += amount_value
+            summary["grand_total"] += amount_value
+
+        rec_no = getattr(receipt, "rec_no", None)
+        receipt_full = str(receipt.receipt_no_full or "").strip()
+        if rec_no is not None and receipt_full:
+            if summary["start_seq"] is None or rec_no < summary["start_seq"]:
+                summary["start_seq"] = rec_no
+                summary["start_rec"] = receipt_full
+            if summary["end_seq"] is None or rec_no > summary["end_seq"]:
+                summary["end_seq"] = rec_no
+                summary["end_rec"] = receipt_full
+
+    appended = 0
+    updated = 0
+
+    for date_key in sorted(summary_by_date.keys()):
+        summary = summary_by_date[date_key]
+        row_values = [date_key]
+        row_values.extend(
+            _sheet_number_text(summary["totals"].get(fee_code, 0) or 0)
+            for fee_code in merged_fee_headers
+        )
+        row_values.extend([
+            _sheet_number_text(summary["grand_total"] or 0),
+            str(summary["start_rec"] or ""),
+            str(summary["end_rec"] or ""),
+        ])
+
+        row_number = existing_dates.get(date_key)
+        row_payload = row_values + ([""] * (sheet_width - len(row_values)))
+        end_col = _column_label(sheet_width)
+        try:
+            if row_number:
+                if existing_rows_by_date.get(date_key) == [str(value).strip() for value in row_payload]:
+                    continue
+                worksheet.update(f"A{row_number}:{end_col}{row_number}", [row_payload], value_input_option="USER_ENTERED")
+                existing_rows_by_date[date_key] = [str(value).strip() for value in row_payload]
+                updated += 1
+            else:
+                worksheet.append_row(row_values, value_input_option="USER_ENTERED")
+                existing_rows_by_date[date_key] = [str(value).strip() for value in row_payload]
+                appended += 1
+        except Exception as exc:
+            logger.error("sync_cash_sheet_to_sheet: failed to upsert row for %s: %s", date_key, exc)
+
+    total_dates = len(summary_by_date)
+    skipped = max(total_dates - appended - updated, 0)
+    logger.info(
+        "sync_cash_sheet_to_sheet: %s→%s appended=%d updated=%d total=%d",
+        resolved_from,
+        resolved_to,
+        appended,
+        updated,
+        total_dates,
+    )
+    return {"appended": appended, "updated": updated, "skipped": skipped, "total": total_dates}

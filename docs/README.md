@@ -24,9 +24,9 @@ This folder is the current entry point for system documentation. It groups the l
 | Mode | Frontend | Backend | Notes |
 | --- | --- | --- | --- |
 | Development | `http://127.0.0.1:3000/dashboard` | `http://127.0.0.1:8001` | Vite proxies `/api`, `/media`, and `/ws` to Daphne |
-| Preview / prod-style local run | `http://127.0.0.1:8081/dashboard` | `http://127.0.0.1:8000` | Matches `start_network.bat prod` and `start_backend.bat prod` |
+| Preview / prod-style local run | `http://127.0.0.1:8081/dashboard` | `http://127.0.0.1:8001` | Matches `start_network.bat prod` and the always-on backend service |
 | Network dev | `http://<host-ip>:3000/dashboard` | `http://<host-ip>:8001` | Use `start_network.bat dev` |
-| Network prod-style | `http://<host-ip>:8081/dashboard` | `http://<host-ip>:8000` | Use `start_network.bat prod` |
+| Network prod-style | `http://<host-ip>:8081/dashboard` | `http://<host-ip>:8001` | Use `start_network.bat prod` |
 
 ## Canonical Docs In This Folder
 

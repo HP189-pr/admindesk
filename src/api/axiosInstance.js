@@ -28,11 +28,13 @@ const resolveApiBase = () => {
   if (envBase !== undefined) return envBase.replace(/\/$/, '');
 
   // Env var absent entirely → local dev fallback
-  const localPort = import.meta.env.VITE_LOCAL_BACKEND_PORT?.trim() || '8002';
+  const localPort = import.meta.env.VITE_LOCAL_BACKEND_PORT?.trim() || '8001';
+  const productionPort = import.meta.env.VITE_PROD_BACKEND_PORT?.trim() || '8001';
+  const fallbackPort = import.meta.env.PROD ? productionPort : localPort;
   if (typeof window === 'undefined') {
-    return `http://127.0.0.1:${localPort}`;
+    return `http://127.0.0.1:${fallbackPort}`;
   }
-  return resolveBackendOriginFromWindow(localPort);
+  return resolveBackendOriginFromWindow(fallbackPort);
 };
 
 const apiBaseUrl = resolveApiBase();

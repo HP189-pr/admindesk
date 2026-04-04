@@ -8,8 +8,8 @@ const FRONTEND_PORTS = new Set(['3000', '5173', '5174', '8081']);
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost']);
 
 const resolveDefaultBackendOrigin = () => {
-  const localPort = import.meta.env.VITE_LOCAL_BACKEND_PORT?.trim() || '8002';
-  const productionPort = import.meta.env.VITE_PROD_BACKEND_PORT?.trim() || '8000';
+  const localPort = import.meta.env.VITE_LOCAL_BACKEND_PORT?.trim() || '8001';
+  const productionPort = import.meta.env.VITE_PROD_BACKEND_PORT?.trim() || '8001';
 
   if (typeof window === 'undefined') {
     return `http://127.0.0.1:${import.meta.env.PROD ? productionPort : localPort}`;
@@ -19,9 +19,7 @@ const resolveDefaultBackendOrigin = () => {
   const protocol = url.protocol || 'http:';
   const hostname = url.hostname || '127.0.0.1';
 
-  const defaultBackendPort = LOCAL_HOSTS.has(hostname)
-    ? localPort
-    : (import.meta.env.PROD ? productionPort : localPort);
+  const defaultBackendPort = import.meta.env.PROD ? productionPort : localPort;
 
   if (!url.port || FRONTEND_PORTS.has(url.port)) {
     return `${protocol}//${hostname}:${defaultBackendPort}`;
