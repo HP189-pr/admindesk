@@ -2,6 +2,7 @@
 import React, { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./hooks/AuthContext.jsx";
+import API from "./api/axiosInstance";
 
 const Login = lazy(() => import("./pages/Login"));
 const Sidebar = lazy(() => import("./Menu/Sidebar"));
@@ -28,11 +29,47 @@ const ProtectedRoute = ({ children }) => {
 
 // ✅ Layout component with Sidebar & WorkArea
 const Layout = () => {
-    const { isAdmin } = useAuth();
+    const { isAdmin, user } = useAuth();
     // Admin opens on Dashboard; others open on first permitted module/menu.
     const [selectedMenuItem, setSelectedMenuItem] = useState(isAdmin ? 'Dashboard' : '');
     const [isSidebarOpen, setSidebarOpen] = useState(true);
     const [isChatboxOpen, setChatboxOpen] = useState(false);
+    const [canUsePopupSearch, setCanUsePopupSearch] = useState(isAdmin);
+
+    useEffect(() => {
+        let active = true;
+
+        const loadPopupAccess = async () => {
+            if (isAdmin) {
+                if (active) setCanUsePopupSearch(true);
+                return;
+            }
+
+            if (!user) {
+                if (active) setCanUsePopupSearch(false);
+                return;
+            }
+
+            try {
+                const response = await API.get("/api/my-navigation/");
+                const modules = Array.isArray(response.data?.modules) ? response.data.modules : [];
+                const studentModule = modules.find(
+                    (module) => String(module?.name || "").toLowerCase() === "student module"
+                );
+                const hasStudentAccess = (studentModule?.menus || []).some(
+                    (menu) => !!menu?.rights?.can_view
+                );
+                if (active) setCanUsePopupSearch(hasStudentAccess);
+            } catch {
+                if (active) setCanUsePopupSearch(false);
+            }
+        };
+
+        loadPopupAccess();
+        return () => {
+            active = false;
+        };
+    }, [isAdmin, user]);
 
     useEffect(() => {
         if (isAdmin && !selectedMenuItem) {
@@ -69,8 +106,7 @@ const Layout = () => {
                         setSidebarOpen={setSidebarOpen}
                         DashboardComponent={CustomDashboard}
                     />
-                    {/* Global popup search is admin/controller only */}
-                    {isAdmin && <PopupSearch />}
+                    {canUsePopupSearch && <PopupSearch />}
                 </div>
 
                 {/* Right spacer to maintain a constant gap to the chat (collapsed/expanded) */}

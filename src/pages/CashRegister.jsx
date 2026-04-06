@@ -51,13 +51,13 @@ const fiscalYearCode = (dateStr) => {
   return String(year).slice(-2);
 };
 
-const TOPBAR_ACTIONS = ['➕ Add', '🔍 Search', '📄 Report', 'Cash on Hand'];
+const TOPBAR_ACTIONS = ['➕ Add', '🔍 Search', 'Statement', 'Cash Activities'];
 const AUTO_CANCEL_REASON = 'cancelled from new entry panel';
 const ACTION_DESCRIPTIONS = {
   '➕ Add': 'Capture new cash receipts for the selected day while seeing the live next number preview.',
   '🔍 Search': 'Filter totals by date and payment mode, then review every receipt in the ledger below.',
-  '📄 Report': 'Use the day ledger to export or print official cash register summaries.',
-  'Cash on Hand': 'Review daily cash-on-hand count with receipt range, totals, deposit, expense, and balance.',
+  Statement: 'Use the day ledger to export or print official cash register summaries.',
+  'Cash Activities': 'Review daily cash activity with entry, deposit, expense, and statement views.',
 };
 
 const extractSequenceFromFull = (full) => {
@@ -71,6 +71,18 @@ const extractSequenceFromFull = (full) => {
   const parsed = Number(match[1]);
   return Number.isNaN(parsed) ? null : parsed;
 };
+
+const extractReceiptPrefixFromFull = (full) => {
+  if (!full) {
+    return '';
+  }
+  const normalized = String(full).trim();
+  return RECEIPT_SUFFIX_REGEX.test(normalized)
+    ? normalized.replace(RECEIPT_SUFFIX_REGEX, '')
+    : '';
+};
+
+const formatSequenceInput = (value) => String(value || '').replace(/\D/g, '').slice(-6);
 
 const extractSequenceNumber = (entry) => {
   if (!entry) {
@@ -151,6 +163,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
   const [bankPrefix, setBankPrefix] = useState('1471');
   const [receiptPreview, setReceiptPreview] = useState('--');
   const [receiptPreviewRaw, setReceiptPreviewRaw] = useState('');
+  const [manualBankRecNo, setManualBankRecNo] = useState('');
   const [previewNonce, setPreviewNonce] = useState(0);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState('');
@@ -190,12 +203,15 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
       const seq = extractSequenceNumber(editingEntry);
       return seq != null ? String(seq).padStart(6, '0') : '';
     }
+    if (formState.payment_mode === 'BANK' && bankPrefix !== 'OTHER' && manualBankRecNo) {
+      return manualBankRecNo.padStart(6, '0');
+    }
     if (!receiptPreviewRaw) {
       return '';
     }
     const match = String(receiptPreviewRaw).match(RECEIPT_SUFFIX_REGEX);
     return match ? match[1] : '';
-  }, [editingEntry, receiptPreviewRaw]);
+  }, [editingEntry, receiptPreviewRaw, formState.payment_mode, bankPrefix, manualBankRecNo]);
 
   const cancelPreviewDisplay = useMemo(() => {
     if (receiptPreviewRaw) {
@@ -406,6 +422,34 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     }
   }, [rights.can_view, filters.date]);
 
+  const isManualBankRecMode = useMemo(
+    () => !editingEntry && formState.payment_mode === 'BANK' && bankPrefix !== 'OTHER',
+    [editingEntry, formState.payment_mode, bankPrefix]
+  );
+
+  const handleRecNoManualChange = useCallback(
+    (value) => {
+      const digits = formatSequenceInput(value);
+      setManualBankRecNo(digits);
+
+      if (!isManualBankRecMode) {
+        return;
+      }
+
+      if (!digits) {
+        applyPreview('');
+        setPreviewNonce((prev) => prev + 1);
+        return;
+      }
+
+      const fallbackPrefix = `${String(bankPrefix || '').toUpperCase()}/${fiscalYearCode(formState.date)}/R`;
+      const currentPrefix = extractReceiptPrefixFromFull(receiptPreviewRaw) || fallbackPrefix;
+      applyPreview(`${currentPrefix}${digits.padStart(6, '0')}`);
+      setPreviewError('');
+    },
+    [applyPreview, bankPrefix, formState.date, isManualBankRecMode, receiptPreviewRaw]
+  );
+
 
   const computeFallbackReceipt = useCallback(
     (mode, date, bankBase, sourceEntries = entries) => {
@@ -485,6 +529,19 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     },
     [entries]
   );
+
+  useEffect(() => {
+    if (!isManualBankRecMode) {
+      setManualBankRecNo('');
+    }
+  }, [isManualBankRecMode]);
+
+  useEffect(() => {
+    if (editingEntry) {
+      return;
+    }
+    setManualBankRecNo('');
+  }, [formState.date, formState.payment_mode, bankPrefix, editingEntry]);
 
   useEffect(() => {
     if (!formState.date) {
@@ -588,6 +645,9 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     if (!rights.can_create || editingEntry) {
       return;
     }
+    if (isManualBankRecMode && manualBankRecNo) {
+      return;
+    }
     const fallbackFull = computeFallbackReceipt(formState.payment_mode, formState.date, bankPrefix);
     if (!fallbackFull) {
       return;
@@ -606,6 +666,8 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     receiptPreviewRaw,
     applyPreview,
     bankPrefix,
+    isManualBankRecMode,
+    manualBankRecNo,
   ]);
 
 
@@ -675,6 +737,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
   const handleFormChange = (field, value) => {
     setFormState((prev) => ({ ...prev, [field]: value }));
     if (field === 'payment_mode') {
+      setManualBankRecNo('');
       if (value === 'BANK') {
         setBankPrefix((prev) => prev || '1471');
       } else {
@@ -685,6 +748,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
 
   const resetForm = () => {
     setEditingEntry(null);
+    setManualBankRecNo('');
     setFormState({
       date: filters.date || today,
       payment_mode: filters.payment_mode || 'CASH',
@@ -741,8 +805,18 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
         await updateReceiptWithItems(editingEntry.id, payload);
         setFlash('success', 'Receipt updated successfully');
       } else {
+        const manualBankReceiptFull =
+          formState.payment_mode === 'BANK' && bankPrefix !== 'OTHER' && manualBankRecNo
+            ? String(receiptPreviewRaw || '').trim()
+            : '';
+
         if (formState.payment_mode === 'BANK' && bankPrefix === 'OTHER' && !String(receiptPreviewRaw || '').trim()) {
           setFlash('error', 'Manual receipt number is required for Other bank account.');
+          return;
+        }
+
+        if (formState.payment_mode === 'BANK' && bankPrefix !== 'OTHER' && manualBankRecNo && !manualBankReceiptFull) {
+          setFlash('error', 'Manual receipt number is required for bank receipt override.');
           return;
         }
 
@@ -751,8 +825,12 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
           receipts: [{
             date: formState.date,
             payment_mode: formState.payment_mode,
-            bank_prefix: formState.payment_mode === 'BANK' && bankPrefix !== 'OTHER' ? bankPrefix : undefined,
-            receipt_no_full: formState.payment_mode === 'BANK' && bankPrefix === 'OTHER' ? String(receiptPreviewRaw).trim() : undefined,
+            bank_prefix: formState.payment_mode === 'BANK'
+              ? ((bankPrefix === 'OTHER' || manualBankRecNo) ? 'OTHER' : bankPrefix)
+              : undefined,
+            receipt_no_full: formState.payment_mode === 'BANK' && (bankPrefix === 'OTHER' || manualBankRecNo)
+              ? String(receiptPreviewRaw).trim()
+              : undefined,
             remark: receiptRemark,
             items: validItems.map(item => ({
               fee_type: Number(item.fee_type),
@@ -940,15 +1018,15 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     );
   }
 
-  // Show Payment Report when Report button is clicked
-  if (selectedTopbarMenu === '📄 Report') {
+  // Show Payment Report when Statement button is clicked
+  if (selectedTopbarMenu === 'Statement') {
     return (
       <PaymentReport 
         onBack={() => setSelectedTopbarMenu('➕ Add')}
       />
     );
   }
-  if (selectedTopbarMenu === 'Cash on Hand') {
+  if (selectedTopbarMenu === 'Cash Activities') {
     return (
       <CashReport
         onBack={() => setSelectedTopbarMenu('➕ Add')}
@@ -1050,7 +1128,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                     type="button"
                     key={mode.value}
                     onClick={() => handleModeCardClick(mode.value)}
-                    className={`min-w-[160px] flex-1 rounded-lg border px-4 py-3 text-left text-sm font-semibold shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${style} ${isActive ? 'ring-2 ring-blue-500' : ''}`}
+                    className={`min-w-[160px] flex-1 overflow-hidden rounded-lg border px-4 py-3 text-left text-sm font-semibold shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${style} ${isActive ? 'ring-2 ring-blue-500' : ''}`}
                   >
                     <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide">
                       <span>{mode.label}</span>
@@ -1066,15 +1144,15 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                       </div>
                     )}
                     {mode.value === 'BANK' && sortedBankEntries.length > 0 && (
-                      <div className="mt-2 space-y-1 border-t border-current pt-1.5" style={{ borderOpacity: 0.2 }}>
+                      <div className="mt-2 min-w-0 space-y-1 border-t border-current pt-1.5" style={{ borderOpacity: 0.2 }}>
                         {sortedBankEntries.map(([prefix, data]) => (
-                          <div key={prefix} className="text-xs">
-                            <div className="flex items-center justify-between gap-1">
-                              <span className="font-bold w-10 shrink-0">{prefix}</span>
-                              <span className="shrink-0">₹{formatAmount(data.amount)}</span>
+                          <div key={prefix} className="min-w-0 text-xs">
+                            <div className="flex min-w-0 items-center justify-between gap-2">
+                              <span className="w-10 shrink-0 font-bold">{prefix}</span>
+                              <span className="shrink-0 text-right">₹{formatAmount(data.amount)}</span>
                             </div>
                             {data.start && (
-                              <div className="font-mono text-[9px] opacity-70 leading-tight mt-0.5">
+                              <div className="mt-0.5 min-w-0 break-all font-mono text-[9px] leading-tight opacity-70">
                                 {formatReceiptDisplay(data.start)}
                                 {data.startSeq !== data.endSeq && (
                                   <> → {formatReceiptDisplay(data.end)}</>
@@ -1168,9 +1246,10 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
               <input
                 type="text"
                 value={recNumberDisplay || ''}
-                readOnly
+                readOnly={!isManualBankRecMode}
                 placeholder="Auto"
-                className="mt-1 w-full rounded border border-gray-300 bg-gray-100 px-3 py-2 font-mono"
+                onChange={(e) => handleRecNoManualChange(e.target.value)}
+                className={`mt-1 w-full rounded border border-gray-300 px-3 py-2 font-mono ${isManualBankRecMode ? 'bg-white' : 'bg-gray-100'}`}
               />
             </label>
               <label className="text-sm font-medium text-gray-700 flex-1 min-w-[200px] lg:flex-[1_1_220px]">

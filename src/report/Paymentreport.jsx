@@ -20,6 +20,12 @@ const REPORT_META = {
   Yearly: { title: "Yearly Fees Summary Report", column: "YEAR", summaryWord: "years" },
 };
 
+const getFiscalYearStart = (baseDate = new Date()) => {
+  const current = new Date(baseDate);
+  const startYear = current.getMonth() >= 3 ? current.getFullYear() : current.getFullYear() - 1;
+  return `${startYear}-04-01`;
+};
+
 const formatReceiptDisplay = (value) => {
   if (!value) return "-";
   const raw = String(value).trim();
@@ -50,13 +56,9 @@ const formatReceiptDisplay = (value) => {
 const PaymentReport = ({ onBack }) => {
   const navigate = useNavigate();
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const thirtyDaysAgo = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    return d.toISOString().slice(0, 10);
-  }, []);
+  const fiscalYearStart = useMemo(() => getFiscalYearStart(), []);
 
-  const [dateFrom, setDateFrom] = useState(thirtyDaysAgo);
+  const [dateFrom, setDateFrom] = useState(fiscalYearStart);
   const [dateTo, setDateTo] = useState(today);
   const [paymentMode, setPaymentMode] = useState("");
   const [reportBy, setReportBy] = useState("Daily");
@@ -328,7 +330,7 @@ const PaymentReport = ({ onBack }) => {
             </button>
             <button
               onClick={() => {
-                setDateFrom(thirtyDaysAgo);
+                setDateFrom(fiscalYearStart);
                 setDateTo(today);
                 setPaymentMode("");
                 setReportBy("Daily");

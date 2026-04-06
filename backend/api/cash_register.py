@@ -1435,23 +1435,34 @@ class CashOnHandReportView(APIView):
 
         # 2️⃣ Deposit / Expense
         outward_on_date = CashOutward.objects.filter(date=report_date)
+        deposits_made_today = outward_on_date.filter(txn_type="DEPOSIT")
         deposit_for_cash_date = CashOutward.objects.filter(txn_type="DEPOSIT", cash_date=report_date)
+        deposit_subtracted = (
+            deposits_made_today
+            .filter(cash_date=report_date)
+            .aggregate(s=Sum("amount"))["s"]
+            or Decimal("0")
+        )
         total_deposit = (
-            outward_on_date
-            .filter(txn_type="DEPOSIT", cash_date=report_date)
+            deposits_made_today
             .aggregate(s=Sum("amount"))["s"]
             or Decimal("0")
         )
         total_expense = outward_on_date.filter(txn_type="EXPENSE").aggregate(s=Sum("amount"))["s"] or Decimal("0")
 
-        expected_cash = system_cash - total_deposit - total_expense
+        expected_cash = system_cash - deposit_subtracted - total_expense
 
         cash_close = CashOnHand.objects.filter(date=report_date).first()
+        live_difference = None
+        if cash_close:
+            live_difference = (cash_close.physical_cash or Decimal("0")) - expected_cash
 
         return Response({
             "date": report_date,
             "system_cash": system_cash,
             "total_deposit": total_deposit,
+            "deposit_subtracted": deposit_subtracted,
+            "deposit_not_subtracted": total_deposit - deposit_subtracted,
             "total_expense": total_expense,
             "expected_cash": expected_cash,
             "deposit_applied_rows": CashOutwardSerializer(
@@ -1459,7 +1470,7 @@ class CashOnHandReportView(APIView):
                 many=True,
             ).data,
             "deposit_made_rows": CashOutwardSerializer(
-                outward_on_date.filter(txn_type="DEPOSIT").order_by("id"),
+                deposits_made_today.order_by("id"),
                 many=True,
             ).data,
             "expense_rows": CashOutwardSerializer(
@@ -1468,7 +1479,7 @@ class CashOnHandReportView(APIView):
             ).data,
             "closed": bool(cash_close),
             "physical_cash": cash_close.physical_cash if cash_close else None,
-            "difference": cash_close.difference if cash_close else None,
+            "difference": live_difference,
             "items": CashOnHandItemSerializer(
                 cash_close.items.all(), many=True
             ).data if cash_close else [],
@@ -1570,6 +1581,26 @@ class CloseCashDayView(APIView):
         # Delete old items and recalculate
         cash_on_hand.items.all().delete()
 
+        system_cash = (
+            Receipt.objects
+            .filter(date=report_date, payment_mode="CASH", is_cancelled__isnull=True)
+            .aggregate(total=Sum("total_amount"))["total"]
+            or Decimal("0")
+        )
+        total_deposit = (
+            CashOutward.objects
+            .filter(txn_type="DEPOSIT", date=report_date, cash_date=report_date)
+            .aggregate(s=Sum("amount"))["s"]
+            or Decimal("0")
+        )
+        total_expense = (
+            CashOutward.objects
+            .filter(txn_type="EXPENSE", date=report_date)
+            .aggregate(s=Sum("amount"))["s"]
+            or Decimal("0")
+        )
+        expected_cash = system_cash - total_deposit - total_expense
+
         physical_cash = Decimal("0")
         for row in items:
             denom = int(row["denomination"])
@@ -1585,8 +1616,12 @@ class CloseCashDayView(APIView):
                 amount=amt,
             )
 
+        cash_on_hand.system_cash = system_cash
+        cash_on_hand.total_deposit = total_deposit
+        cash_on_hand.total_expense = total_expense
+        cash_on_hand.expected_cash = expected_cash
         cash_on_hand.physical_cash = physical_cash
-        cash_on_hand.difference = physical_cash - cash_on_hand.expected_cash
-        cash_on_hand.save(update_fields=["physical_cash", "difference"])
+        cash_on_hand.difference = physical_cash - expected_cash
+        cash_on_hand.save(update_fields=["system_cash", "total_deposit", "total_expense", "expected_cash", "physical_cash", "difference"])
 
         return Response({"detail": "Cash day updated successfully"})

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { FaFileExcel, FaFilePdf } from 'react-icons/fa6';
 import PageTopbar from '../components/PageTopbar';
 import {
   fetchCashOnHandReport,
@@ -23,8 +24,11 @@ const TABS = [
   { key: 'entry', label: 'Cash Entry' },
   { key: 'deposit', label: 'Deposit' },
   { key: 'expense', label: 'Expense' },
-  { key: 'cash_on_hand', label: 'Cash on Hand' },
+  { key: 'cash_on_hand', label: 'Cash Statement' },
 ];
+
+const EXPORT_EXCEL_BUTTON_CLASS = 'inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm shadow-emerald-100 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-100 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50';
+const EXPORT_PDF_BUTTON_CLASS = 'inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 shadow-sm shadow-rose-100 transition duration-200 hover:-translate-y-0.5 hover:bg-rose-100 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50';
 
 const formatDateDisplay = (dateStr) => {
   if (!dateStr) return '--';
@@ -59,16 +63,28 @@ const isSameDateValue = (left, right) => {
   return Boolean(normalizedLeft) && normalizedLeft === normalizedRight;
 };
 
+const orderDateRange = (firstDate, secondDate) => {
+  const left = normalizeDateValue(firstDate);
+  const right = normalizeDateValue(secondDate);
+
+  if (!left && !right) {
+    return { start: '', end: '' };
+  }
+  if (!left) {
+    return { start: right, end: right };
+  }
+  if (!right) {
+    return { start: left, end: left };
+  }
+
+  return left <= right
+    ? { start: left, end: right }
+    : { start: right, end: left };
+};
+
 const buildDepositImpactLabel = (row) => {
-  const parts = [];
   if (row?.ref_no) {
-    parts.push(row.ref_no);
-  }
-  if (row?.cash_date && !isSameDateValue(row.date, row.cash_date)) {
-    parts.push(`Cash ${formatDateDisplay(row.cash_date)}`);
-  }
-  if (parts.length) {
-    return parts.join(' | ');
+    return row.ref_no;
   }
   if (row?.date) {
     return `Deposited ${formatDateDisplay(row.date)}`;
@@ -126,6 +142,17 @@ const CashReport = ({ onBack }) => {
       return { ...current, cash_date: nextCashDate };
     });
   }, [selectedTab, editingOutward, dateTo, today]);
+
+  useEffect(() => {
+    const orderedRange = orderDateRange(dateFrom || today, dateTo || dateFrom || today);
+    const safeFrom = orderedRange.start || today;
+    const safeTo = orderedRange.end || safeFrom;
+    const normalizedCountFrom = normalizeDateValue(countFrom);
+
+    if (!normalizedCountFrom || normalizedCountFrom < safeFrom || normalizedCountFrom > safeTo) {
+      setCountFrom(safeFrom);
+    }
+  }, [countFrom, dateFrom, dateTo, today]);
 
   const loadSingleOutward = useCallback(async (date) => {
     if (!date) { setOutwardSingle([]); return; }
@@ -332,13 +359,15 @@ const CashReport = ({ onBack }) => {
   );
 
   const load = async () => {
-    const safeFrom = dateFrom || today;
-    const safeTo = dateTo || safeFrom;
-    const safeCountFrom = countFrom || safeFrom;
+    const orderedRange = orderDateRange(dateFrom || today, dateTo || dateFrom || today);
+    const safeFrom = orderedRange.start || today;
+    const safeTo = orderedRange.end || safeFrom;
+    const selectedDay = normalizeDateValue(dateTo || today) || today;
+    const reportDate = selectedTab === 'cash_on_hand' ? safeTo : selectedDay;
 
     const [r, outwardRows, feeAgg, recRange] = await Promise.all([
-      fetchCashOnHandReport({ date: safeTo }),
-      fetchCashOutward({ date_from: safeFrom, date_to: safeTo, include_cash_date: true }),
+      fetchCashOnHandReport({ date: reportDate }),
+      fetchCashOutward({ date_from: safeFrom, date_to: safeTo }),
       fetchFeesAggregate({ date_from: safeFrom, date_to: safeTo, report_by: 'Daily', payment_mode: 'CASH' }),
       fetchRecRange({ date_from: safeFrom, date_to: safeTo, report_by: 'Daily', payment_mode: 'CASH' }),
     ]);
@@ -370,6 +399,32 @@ const CashReport = ({ onBack }) => {
 
     setOutward(normalizedOutward);
 
+    const depositMap = {};
+    const expenseMap = {};
+    const depositRefMap = {};
+    const expenseRefMap = {};
+
+    normalizedOutward.forEach((row) => {
+      const dt = normalizeDateValue(row?.date);
+      if (!dt || dt < safeFrom || dt > safeTo) {
+        return;
+      }
+
+      if (row.txn_type === 'DEPOSIT') {
+        depositMap[dt] = (depositMap[dt] || 0) + (Number(row.amount) || 0);
+        if (!depositRefMap[dt]) depositRefMap[dt] = [];
+        depositRefMap[dt].push(buildDepositImpactLabel(row));
+      }
+
+      if (row.txn_type === 'EXPENSE') {
+        expenseMap[dt] = (expenseMap[dt] || 0) + (Number(row.amount) || 0);
+        if (!expenseRefMap[dt]) expenseRefMap[dt] = [];
+        if (row.ref_no) {
+          expenseRefMap[dt].push(row.ref_no);
+        }
+      }
+    });
+
     const dateMap = {};
 
     feeRows.forEach((row) => {
@@ -392,7 +447,6 @@ const CashReport = ({ onBack }) => {
 
     normalizedOutward.forEach((row) => {
       const effectiveDate = row.date;
-      const countsTowardClosingCash = row.txn_type !== 'DEPOSIT' || isSameDateValue(row.date, row.cash_date);
 
       if (!effectiveDate) return;
       const dt = effectiveDate;
@@ -407,19 +461,6 @@ const CashReport = ({ onBack }) => {
           recFrom: '--',
           recTo: '--',
         };
-      }
-
-      if (dt >= safeCountFrom) {
-        if (row.txn_type === 'DEPOSIT') {
-          if (countsTowardClosingCash) {
-            dateMap[dt].deposit += Number(row.amount) || 0;
-          }
-          dateMap[dt].depositRef.push(buildDepositImpactLabel(row));
-        }
-        if (row.txn_type === 'EXPENSE') {
-          dateMap[dt].expense += Number(row.amount) || 0;
-          if (row.ref_no) dateMap[dt].expenseRef.push(row.ref_no);
-        }
       }
     });
 
@@ -440,6 +481,13 @@ const CashReport = ({ onBack }) => {
       }
       dateMap[dt].recFrom = extractReceiptShort(row.rec_start);
       dateMap[dt].recTo = extractReceiptShort(row.rec_end);
+    });
+
+    Object.keys(dateMap).forEach((dt) => {
+      dateMap[dt].deposit = depositMap[dt] || 0;
+      dateMap[dt].expense = expenseMap[dt] || 0;
+      dateMap[dt].depositRef = depositRefMap[dt] || [];
+      dateMap[dt].expenseRef = expenseRefMap[dt] || [];
     });
 
     const sortedDates = Object.keys(dateMap)
@@ -474,7 +522,7 @@ const CashReport = ({ onBack }) => {
 
   useEffect(() => {
     load();
-  }, [dateFrom, dateTo, countFrom, previousBalance]);
+  }, [dateFrom, dateTo, countFrom, previousBalance, selectedTab]);
 
   // Fetch exact-date outward records when on Deposit or Expense tab, or when dateTo changes
   useEffect(() => {
@@ -511,10 +559,48 @@ const CashReport = ({ onBack }) => {
     }
   };
 
+  const cashStatementSummaryCards = [
+    {
+      label: 'Opening Balance',
+      value: `₹ ${Number(previousBalance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      valueClassName: 'text-slate-900',
+      accentClassName: 'from-slate-500 to-slate-700',
+      surfaceClassName: 'from-slate-50 via-white to-slate-100',
+    },
+    {
+      label: 'Total Cash Received',
+      value: `₹ ${Number(rangeTotalFees || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      valueClassName: 'text-slate-900',
+      accentClassName: 'from-sky-500 to-blue-700',
+      surfaceClassName: 'from-sky-50 via-white to-blue-50',
+    },
+    {
+      label: 'Total Deposit',
+      value: `- ₹ ${Number(rangeTotalDeposit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      valueClassName: 'text-rose-600',
+      accentClassName: 'from-rose-400 to-rose-600',
+      surfaceClassName: 'from-rose-50 via-white to-rose-100',
+    },
+    {
+      label: 'Total Expense',
+      value: `- ₹ ${Number(rangeTotalExpense || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      valueClassName: 'text-amber-600',
+      accentClassName: 'from-amber-400 to-orange-500',
+      surfaceClassName: 'from-amber-50 via-white to-orange-50',
+    },
+    {
+      label: 'Cash on Hand',
+      value: `₹ ${Number(rangeFinalCashOnHand || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      valueClassName: rangeFinalCashOnHand < 0 ? 'text-red-700' : 'text-emerald-700',
+      accentClassName: rangeFinalCashOnHand < 0 ? 'from-red-500 to-red-700' : 'from-emerald-500 to-teal-600',
+      surfaceClassName: rangeFinalCashOnHand < 0 ? 'from-red-50 via-white to-red-100' : 'from-emerald-50 via-white to-teal-50',
+    },
+  ];
+
   return (
-    <div className="p-4 md:p-6 space-y-4 h-full bg-slate-100 min-h-screen">
+    <div className="p-2 md:p-3 space-y-4 h-full bg-slate-100 min-h-screen">
       <PageTopbar
-        title="Cash Report"
+        title="Cash Activities"
         actions={TABS.map(t => t.label)}
         selected={TABS.find(t => t.key === selectedTab)?.label}
         onSelect={label => {
@@ -539,76 +625,106 @@ const CashReport = ({ onBack }) => {
           </div>
         }
       />
-      <div className="w-full max-w-6xl mx-auto space-y-5">
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="w-full space-y-5">
+        <section className={`rounded-2xl border border-slate-200 bg-white shadow-sm ${selectedTab === 'entry' ? 'px-4 pb-4 pt-2' : 'p-4'}`}>
           {selectedTab === 'cash_on_hand' && (
             <>
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <h2 className="text-lg font-semibold text-gray-800">Select Date</h2>
-                <div className="flex gap-3 items-center flex-wrap">
-                  <div>
-                    <label className="text-sm">From</label>
-                    <input
-                      type="date"
-                      value={dateFrom}
-                      onChange={e => setDateFrom(e.target.value)}
-                      className="border px-3 py-2 rounded"
-                    />
+              <div className="mb-4 overflow-hidden rounded-[1.75rem] border border-slate-200 bg-gradient-to-br from-slate-50 via-white to-slate-100 shadow-sm">
+                <div className="flex flex-col gap-4 px-5 py-4 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="flex-1">
+                    <div className="text-lg font-semibold text-slate-900">Cash Statement Summary</div>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Review cash movement across the selected range and export the running statement.
+                    </p>
                   </div>
+                  <div className="flex flex-wrap items-end gap-3 xl:flex-nowrap">
+                    <div className="min-w-[150px]">
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">From</label>
+                      <input
+                        type="date"
+                        value={dateFrom}
+                        onChange={e => setDateFrom(e.target.value)}
+                        className="w-full border px-3 py-2 rounded"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="text-sm">To</label>
-                    <input
-                      type="date"
-                      value={dateTo}
-                      onChange={e => setDateTo(e.target.value)}
-                      className="border px-3 py-2 rounded"
-                    />
-                  </div>
+                    <div className="min-w-[150px]">
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">To</label>
+                      <input
+                        type="date"
+                        value={dateTo}
+                        onChange={e => setDateTo(e.target.value)}
+                        className="w-full border px-3 py-2 rounded"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="text-sm">Count From</label>
-                    <input
-                      type="date"
-                      value={countFrom}
-                      onChange={e => setCountFrom(e.target.value)}
-                      className="border px-3 py-2 rounded"
-                    />
-                  </div>
+                    <div className="min-w-[150px]">
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Count From</label>
+                      <input
+                        type="date"
+                        value={countFrom}
+                        onChange={e => setCountFrom(e.target.value)}
+                        className="w-full border px-3 py-2 rounded"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="text-sm">Previous Cash</label>
-                    <input
-                      type="number"
-                      value={previousBalance}
-                      onChange={e => setPreviousBalance(Number(e.target.value) || 0)}
-                      className="border px-3 py-2 rounded w-32"
-                    />
+                    <div className="min-w-[140px]">
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Previous Cash</label>
+                      <input
+                        type="number"
+                        value={previousBalance}
+                        onChange={e => setPreviousBalance(Number(e.target.value) || 0)}
+                        className="w-full border px-3 py-2 rounded"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1 xl:pt-0">
+                      <button
+                        type="button"
+                        onClick={handleExportExcel}
+                        className={EXPORT_EXCEL_BUTTON_CLASS}
+                        aria-label="Export Excel"
+                        title="Export Excel"
+                      >
+                        <FaFileExcel size={20} color="#1D6F42" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleExportPdf}
+                        className={EXPORT_PDF_BUTTON_CLASS}
+                        aria-label="Export PDF"
+                        title="Export PDF"
+                      >
+                        <FaFilePdf size={20} color="#D32F2F" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded shadow-sm mb-4">
-                <div className="text-gray-600">Opening Balance</div>
-                <div className="font-semibold">₹ {Number(previousBalance || 0).toFixed(2)}</div>
-                <div className="text-gray-600">Total Cash Received</div>
-                <div className="font-semibold">₹ {rangeTotalFees.toFixed(2)}</div>
-                <div className="text-gray-600">Total Deposit</div>
-                <div className="text-red-600 font-semibold">- ₹ {rangeTotalDeposit.toFixed(2)}</div>
-                <div className="text-gray-600">Total Expense</div>
-                <div className="text-red-600 font-semibold">- ₹ {rangeTotalExpense.toFixed(2)}</div>
-                <div className="font-bold border-t pt-2">Cash on Hand</div>
-                <div className={`font-bold border-t pt-2 ${rangeFinalCashOnHand < 0 ? 'text-red-700' : 'text-emerald-700'}`}>
-                  ₹ {rangeFinalCashOnHand.toFixed(2)}
+                <div className="grid grid-cols-1 gap-3 border-t border-slate-200 bg-white/75 px-5 py-4 md:grid-cols-2 xl:grid-cols-5">
+                  {cashStatementSummaryCards.map((card) => (
+                    <div
+                      key={card.label}
+                      className={`relative overflow-hidden rounded-[1.35rem] border border-white/80 bg-gradient-to-br ${card.surfaceClassName} px-4 py-3 shadow-sm`}
+                    >
+                      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${card.accentClassName}`} />
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        {card.label}
+                      </div>
+                      <div className={`mt-2 text-xl font-bold ${card.valueClassName}`}>
+                        {card.value}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </>
           )}
           {/* Tabs content */}
-          <div className="mt-4">
+          <div className={selectedTab === 'entry' ? 'mt-2' : 'mt-4'}>
             {selectedTab === 'entry' && (
               <>
-                <div className="bg-white p-4 rounded shadow mb-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div className="rounded-xl border border-slate-100 bg-white px-4 py-2.5 shadow-sm mb-2.5">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
                     <h2 className="text-lg font-semibold text-gray-800">Select Date</h2>
                     <div>
                       <input
@@ -620,36 +736,70 @@ const CashReport = ({ onBack }) => {
                     </div>
                   </div>
                   {report && (
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded shadow-sm">
-                        <div>System Cash</div>
-                        <div className="font-semibold">₹ {report.system_cash}</div>
-                        <div>Deposit</div>
-                        <div>₹ {report.total_deposit}</div>
-                        <div>Expense</div>
-                        <div>₹ {report.total_expense}</div>
-                        <div className="font-bold">Expected Cash</div>
-                        <div className="font-bold">₹ {report.expected_cash}</div>
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-stretch gap-2.5 rounded-xl bg-slate-50 p-3 shadow-inner">
+                        <div className="flex min-w-[180px] flex-1 items-center justify-between rounded-lg border border-slate-100 bg-white px-4 py-3 shadow-sm">
+                          <span className="text-gray-600">System Cash</span>
+                          <span className="font-semibold text-gray-900">₹ {report.system_cash}</span>
+                        </div>
+                        <div className="flex min-w-[180px] flex-1 items-center justify-between rounded-lg border border-slate-100 bg-white px-4 py-3 shadow-sm">
+                          <span className="text-gray-600">Deposit</span>
+                          <span className="font-semibold text-gray-900">₹ {report.total_deposit}</span>
+                        </div>
+                        <div className="flex min-w-[180px] flex-1 items-center justify-between rounded-lg border border-slate-100 bg-white px-4 py-3 shadow-sm">
+                          <span className="text-gray-600">Expense</span>
+                          <span className="font-semibold text-gray-900">₹ {report.total_expense}</span>
+                        </div>
+                        <div className="flex min-w-[180px] flex-1 items-center justify-between rounded-lg border border-slate-100 bg-white px-4 py-3 shadow-sm">
+                          <span className="font-bold text-gray-900">Expected Cash</span>
+                          <span className="font-bold text-gray-900">₹ {report.expected_cash}</span>
+                        </div>
                       </div>
                       {linkedCashDateDeposits.length > 0 && (
-                        <div className="rounded border border-emerald-200 bg-emerald-50 p-3 text-sm">
-                          <div className="font-semibold text-emerald-900">Deposited Later For This Cash Date</div>
-                          <div className="mt-2 space-y-1 text-emerald-900">
+                        <div className="rounded border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-900">
+                          <div className="space-y-2">
                             {linkedCashDateDeposits.map((row) => (
-                              <div key={`applied-${row.id}`}>
-                                ₹ {row.amount} <span className="text-xs text-emerald-800">(Deposited on {formatDateDisplay(row.date)})</span>
+                              <div
+                                key={`applied-${row.id}`}
+                                className="flex flex-wrap items-center justify-between gap-3 rounded border border-emerald-200 bg-white/70 px-3 py-1.5"
+                              >
+                                <span className="font-semibold text-emerald-900">
+                                  Deposited Later For This Cash Date
+                                </span>
+                                <span className="font-medium text-emerald-900">
+                                  ₹ {Number(row.amount || 0).toLocaleString('en-IN', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  })}{' '}
+                                  <span className="text-xs text-emerald-800">
+                                    (Deposited On: {formatDateDisplay(row.date)})
+                                  </span>
+                                </span>
                               </div>
                             ))}
                           </div>
                         </div>
                       )}
                       {backdatedDepositsMadeRows.length > 0 && (
-                        <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm">
-                          <div className="font-semibold text-blue-900">Deposits Made Today For Other Cash Dates</div>
-                          <div className="mt-2 space-y-1 text-blue-900">
+                        <div className="rounded border border-blue-200 bg-blue-50 p-2 text-sm text-blue-900">
+                          <div className="space-y-2">
                             {backdatedDepositsMadeRows.map((row) => (
-                              <div key={`made-${row.id}`}>
-                                ₹ {row.amount} <span className="text-xs text-blue-800">(Cash date: {formatDateDisplay(row.cash_date || row.date)})</span>
+                              <div
+                                key={`made-${row.id}`}
+                                className="flex flex-wrap items-center justify-between gap-3 rounded border border-blue-200 bg-white/70 px-3 py-1.5"
+                              >
+                                <span className="font-semibold text-blue-900">
+                                  Deposit Recorded Today Against Earlier Cash Date
+                                </span>
+                                <span className="font-medium text-blue-900">
+                                  ₹ {Number(row.amount || 0).toLocaleString('en-IN', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  })}{' '}
+                                  <span className="text-xs text-blue-800">
+                                    (Cash Date: {formatDateDisplay(row.cash_date || row.date)})
+                                  </span>
+                                </span>
                               </div>
                             ))}
                           </div>
@@ -659,8 +809,8 @@ const CashReport = ({ onBack }) => {
                   )}
                 </div>
                 {/* Denomination */}
-                <div className="bg-white p-4 rounded shadow mb-4">
-                  <h2 className="font-semibold mb-3">Denomination</h2>
+                <div className="bg-white p-4 rounded shadow mb-2.5">
+                  <h2 className="font-semibold mb-2">Denomination</h2>
                   <div className="grid grid-cols-2 gap-x-6 gap-y-0">
                     {/* Left column: 500, 200, 100, 50 */}
                     <div>
@@ -727,44 +877,50 @@ const CashReport = ({ onBack }) => {
                   </div>
                 </div>
                 {/* Summary */}
-                <div className="bg-white p-4 rounded shadow space-y-2 mb-4">
-                  <div>Physical Cash: ₹ {physicalCash}</div>
-                  <div className="font-bold">Difference: ₹ {difference}</div>
-                </div>
-                {!report?.closed ? (
-                  <button
-                    onClick={handleClose}
-                    disabled={saving}
-                    className="bg-blue-600 text-white px-4 py-2 rounded"
-                  >
-                    {saving ? 'Closing...' : 'Close Cash Day'}
-                  </button>
-                ) : !editingCashDay ? (
-                  <button
-                    type="button"
-                    onClick={() => setEditingCashDay(true)}
-                    className="inline-flex items-center gap-1 rounded border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
-                  >
-                    ✏️ Edit Cash Day
-                  </button>
-                ) : (
-                  <div className="flex gap-2">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-3 rounded bg-white px-4 py-3 shadow">
+                  <div className="flex flex-wrap items-center gap-8 text-base text-gray-900">
+                    <div>
+                      Physical Cash: <span className="font-semibold">₹ {physicalCash}</span>
+                    </div>
+                    <div className="font-bold">
+                      Difference: ₹ {difference}
+                    </div>
+                  </div>
+                  {!report?.closed ? (
                     <button
                       onClick={handleClose}
                       disabled={saving}
-                      className="bg-blue-600 text-white px-4 py-2 rounded"
+                      className="rounded bg-blue-600 px-4 py-2 text-white"
                     >
-                      {saving ? 'Saving...' : 'Save Changes'}
+                      {saving ? 'Closing...' : 'Closing Cash Position'}
                     </button>
+                  ) : !editingCashDay ? (
                     <button
                       type="button"
-                      onClick={() => setEditingCashDay(false)}
-                      className="reset-button"
+                      onClick={() => setEditingCashDay(true)}
+                      className="inline-flex items-center gap-1 rounded border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
                     >
-                      Cancel
+                      ✏️ Edit
                     </button>
-                  </div>
-                )}
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={handleClose}
+                        disabled={saving}
+                        className="rounded bg-blue-600 px-4 py-2 text-white"
+                      >
+                        {saving ? 'Saving...' : 'Save Changes'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingCashDay(false)}
+                        className="reset-button"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
                 {msg && <p className="text-green-600">{msg}</p>}
               </>
             )}
@@ -774,22 +930,22 @@ const CashReport = ({ onBack }) => {
                   {editingOutward && editingOutward.txn_type === 'DEPOSIT' ? 'Edit Deposit' : 'Add Deposit'}
                 </h2>
                 {editingOutward && editingOutward.txn_type === 'DEPOSIT' ? (
-                  <form className="flex flex-wrap gap-3 mb-4" onSubmit={handleEditOutwardSubmit}>
-                    <div className="flex flex-col gap-1">
+                  <form className="mb-4 flex flex-nowrap items-end gap-3 overflow-x-auto pb-1" onSubmit={handleEditOutwardSubmit}>
+                    <div className="flex min-w-[180px] flex-col gap-1 shrink-0">
                       <label className="text-xs font-medium text-slate-600">Deposit Date</label>
                       <input
                         type="date"
-                        className="border px-3 py-2 rounded"
+                        className="h-12 w-full rounded border px-3 py-2"
                         value={editOutwardForm.date}
                         onChange={e => setEditOutwardForm(f => ({ ...f, date: e.target.value }))}
                         required
                       />
                     </div>
-                    <div className="flex flex-col gap-1">
+                    <div className="flex min-w-[180px] flex-col gap-1 shrink-0">
                       <label className="text-xs font-medium text-slate-600">Cash Date</label>
                       <input
                         type="date"
-                        className="border px-3 py-2 rounded"
+                        className="h-12 w-full rounded border px-3 py-2"
                         value={editOutwardForm.cash_date}
                         onChange={e => setEditOutwardForm(f => ({ ...f, cash_date: e.target.value }))}
                         required
@@ -800,7 +956,7 @@ const CashReport = ({ onBack }) => {
                       min="0"
                       step="0.01"
                       placeholder="Amount"
-                      className="border px-3 py-2 rounded w-32"
+                      className="h-12 w-36 shrink-0 rounded border px-3 py-2"
                       value={editOutwardForm.amount}
                       onChange={e => setEditOutwardForm(f => ({ ...f, amount: e.target.value }))}
                       required
@@ -808,45 +964,45 @@ const CashReport = ({ onBack }) => {
                     <input
                       type="text"
                       placeholder="Reference"
-                      className="border px-3 py-2 rounded w-40"
+                      className="h-12 w-44 shrink-0 rounded border px-3 py-2"
                       value={editOutwardForm.ref_no}
                       onChange={e => setEditOutwardForm(f => ({ ...f, ref_no: e.target.value }))}
                     />
                     <input
                       type="text"
                       placeholder="Note (optional)"
-                      className="border px-3 py-2 rounded flex-1"
+                      className="h-12 min-w-[240px] flex-1 rounded border px-3 py-2"
                       value={editOutwardForm.note}
                       onChange={e => setEditOutwardForm(f => ({ ...f, note: e.target.value }))}
                     />
-                    <button type="submit" className="save-button" disabled={formSaving}>
+                    <button type="submit" className="save-button h-12 w-[180px] shrink-0 !rounded-xl" disabled={formSaving}>
                       {formSaving ? 'Saving...' : 'Update'}
                     </button>
                     <button
                       type="button"
-                      className="reset-button"
+                      className="reset-button h-12 shrink-0"
                       onClick={() => setEditingOutward(null)}
                     >
                       Cancel
                     </button>
                   </form>
                 ) : (
-                  <form className="flex flex-wrap gap-3 mb-4" onSubmit={handleDepositSubmit}>
-                    <div className="flex flex-col gap-1">
+                  <form className="mb-4 flex flex-nowrap items-end gap-3 overflow-x-auto pb-1" onSubmit={handleDepositSubmit}>
+                    <div className="flex min-w-[180px] flex-col gap-1 shrink-0">
                       <label className="text-xs font-medium text-slate-600">Deposit Date</label>
                       <input
                         type="date"
-                        className="border px-3 py-2 rounded"
+                        className="h-12 w-full rounded border px-3 py-2"
                         value={dateTo}
                         onChange={e => setDateTo(e.target.value)}
                         required
                       />
                     </div>
-                    <div className="flex flex-col gap-1">
+                    <div className="flex min-w-[180px] flex-col gap-1 shrink-0">
                       <label className="text-xs font-medium text-slate-600">Cash Date</label>
                       <input
                         type="date"
-                        className="border px-3 py-2 rounded"
+                        className="h-12 w-full rounded border px-3 py-2"
                         value={depositForm.cash_date || dateTo}
                         onChange={e => setDepositForm(f => ({ ...f, cash_date: e.target.value }))}
                         required
@@ -857,7 +1013,7 @@ const CashReport = ({ onBack }) => {
                       min="0"
                       step="0.01"
                       placeholder="Amount"
-                      className="border px-3 py-2 rounded w-32"
+                      className="h-12 w-36 shrink-0 rounded border px-3 py-2"
                       value={depositForm.amount}
                       onChange={e => setDepositForm(f => ({ ...f, amount: e.target.value }))}
                       required
@@ -865,18 +1021,18 @@ const CashReport = ({ onBack }) => {
                     <input
                       type="text"
                       placeholder="Reference"
-                      className="border px-3 py-2 rounded w-40"
+                      className="h-12 w-44 shrink-0 rounded border px-3 py-2"
                       value={depositForm.ref_no}
                       onChange={e => setDepositForm(f => ({ ...f, ref_no: e.target.value }))}
                     />
                     <input
                       type="text"
                       placeholder="Note (optional)"
-                      className="border px-3 py-2 rounded flex-1"
+                      className="h-12 min-w-[240px] flex-1 rounded border px-3 py-2"
                       value={depositForm.note}
                       onChange={e => setDepositForm(f => ({ ...f, note: e.target.value }))}
                     />
-                    <button type="submit" className="save-button" disabled={formSaving}>
+                    <button type="submit" className="save-button h-12 w-[180px] shrink-0 !rounded-xl" disabled={formSaving}>
                       {formSaving ? 'Saving...' : 'Add'}
                     </button>
                   </form>
@@ -1071,25 +1227,12 @@ const CashReport = ({ onBack }) => {
               </div>
             )}
             {selectedTab === 'cash_on_hand' && (
-              <div className="bg-white p-4 rounded shadow">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <h2 className="font-semibold">Cash On Hand Count</h2>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleExportExcel}
-                      className="rounded border border-green-300 px-3 py-1 text-xs font-semibold text-green-700 hover:bg-green-50"
-                    >
-                      Export Excel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleExportPdf}
-                      className="rounded border border-blue-300 px-3 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-50"
-                    >
-                      Export PDF
-                    </button>
-                  </div>
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                    {cashOnHandRows.length} row{cashOnHandRows.length === 1 ? '' : 's'}
+                  </span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm border-collapse">
