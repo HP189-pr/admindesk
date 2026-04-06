@@ -43050,3 +43050,9 @@ Unauthorized: /api/token/verify/
 2026-04-06 08:44:33,944 WARNING  Unauthorized: /api/token/verify/
 Unauthorized: /api/token/verify/
 2026-04-06 08:44:33,938 WARNING  Unauthorized: /api/token/verify/
+Unauthorized: /api/users/
+2026-04-06 10:46:23,353 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-04-06 12:47:39,917 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-04-06 12:47:40,196 WARNING  Unauthorized: /api/users/
