@@ -47,9 +47,19 @@ export default function CCTVREPORT({ rights = { can_view: true, can_create: true
     [outwards, selectedOutwardId]
   );
 
+  const selectedOutwardCopyCases = useMemo(
+    () => copyCases.filter((row) => String(row.outward) === String(selectedOutwardId)),
+    [copyCases, selectedOutwardId]
+  );
+
   const totalStudents = useMemo(
     () => copyCases.reduce((sum, row) => sum + Number(row.no_of_student || 0), 0),
     [copyCases]
+  );
+
+  const selectedOutwardStudents = useMemo(
+    () => selectedOutwardCopyCases.reduce((sum, row) => sum + Number(row.no_of_student || 0), 0),
+    [selectedOutwardCopyCases]
   );
 
   const hydrateFormFromOutward = (row) => {
@@ -92,14 +102,10 @@ export default function CCTVREPORT({ rights = { can_view: true, can_create: true
     }
   };
 
-  const loadCopyCases = async (outwardId) => {
-    if (!outwardId) {
-      setCopyCases([]);
-      return;
-    }
+  const loadCopyCases = async () => {
     setLoadingCases(true);
     try {
-      const res = await getCctvCopyCases({ outward: outwardId });
+      const res = await getCctvCopyCases();
       setCopyCases(toResultsArray(res?.data));
     } catch (err) {
       setCopyCases([]);
@@ -112,15 +118,8 @@ export default function CCTVREPORT({ rights = { can_view: true, can_create: true
   useEffect(() => {
     if (!rights.can_view) return;
     loadOutwards();
+    loadCopyCases();
   }, [rights.can_view]);
-
-  useEffect(() => {
-    if (!selectedOutwardId) {
-      setCopyCases([]);
-      return;
-    }
-    loadCopyCases(selectedOutwardId);
-  }, [selectedOutwardId]);
 
   useEffect(() => {
     if (!editingId) {
@@ -164,7 +163,7 @@ export default function CCTVREPORT({ rights = { can_view: true, can_create: true
       } else {
         await createCctvCopyCase(payload);
       }
-      await loadCopyCases(selectedOutwardId);
+      await loadCopyCases();
       resetForm();
     } catch (err) {
       setStatus(err?.response?.data?.detail || err.message || "Failed to save copy case row.");
@@ -174,6 +173,9 @@ export default function CCTVREPORT({ rights = { can_view: true, can_create: true
   };
 
   const handleEdit = (row) => {
+    if (row?.outward) {
+      setSelectedOutwardId(String(row.outward));
+    }
     setEditingId(row.id);
     setForm({
       college_name: row.college_name || "",
@@ -195,7 +197,7 @@ export default function CCTVREPORT({ rights = { can_view: true, can_create: true
 
     try {
       await deleteCctvCopyCase(rowId);
-      await loadCopyCases(selectedOutwardId);
+      await loadCopyCases();
     } catch (err) {
       setStatus(err?.response?.data?.detail || err.message || "Failed to delete row.");
     }
@@ -210,7 +212,7 @@ export default function CCTVREPORT({ rights = { can_view: true, can_create: true
       setStatus("Copy case report is required only when Case Found is Yes.");
       return;
     }
-    if (!copyCases.length) {
+    if (!selectedOutwardCopyCases.length) {
       setStatus("No copy-case rows found for selected outward.");
       return;
     }
@@ -223,13 +225,13 @@ export default function CCTVREPORT({ rights = { can_view: true, can_create: true
       return;
     }
     if (!copyCases.length) {
-      setStatus("No copy-case rows found for selected outward.");
+      setStatus("No copy-case rows available.");
       return;
     }
 
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const title = "CCTV Copy Case Rows";
-    const metaLine = `Record: ${selectedOutward?.cctv_record_no || "-"}   Outward: ${selectedOutward?.outward_no || "-"}   Date: ${selectedOutward?.outward_date || "-"}`;
+    const metaLine = `Total Rows: ${copyCases.length}   Total Students: ${totalStudents}`;
 
     doc.setFontSize(14);
     doc.text(title, 14, 12);
@@ -238,6 +240,7 @@ export default function CCTVREPORT({ rights = { can_view: true, can_create: true
 
     const body = copyCases.map((row, idx) => [
       String(idx + 1),
+      row.outward_record_no || "-",
       row.college_name || "-",
       row.course || "-",
       row.semester || "-",
@@ -249,19 +252,19 @@ export default function CCTVREPORT({ rights = { can_view: true, can_create: true
 
     autoTable(doc, {
       startY: 22,
-      head: [["No.", "College Name", "Course", "Semester", "DVD No", "Report No", "No of Student", "Remark"]],
+      head: [["No.", "Record No", "College Name", "Course", "Semester", "DVD No", "Report No", "No of Student", "Remark"]],
       body,
       styles: { fontSize: 9, cellPadding: 2 },
       headStyles: { fillColor: [30, 64, 175] },
       theme: "grid",
-      didDrawPage: (data) => {
+      didDrawPage: () => {
         const pageHeight = doc.internal.pageSize.getHeight();
         doc.setFontSize(10);
         doc.text(`Total Students: ${totalStudents}`, 14, pageHeight - 8);
       },
     });
 
-    const safeRecord = String(selectedOutward?.cctv_record_no || "copy-case-rows").replace(/[^a-zA-Z0-9-_]/g, "_");
+    const safeRecord = "all_copy_case_rows";
     doc.save(`${safeRecord}.pdf`);
   };
 
@@ -306,7 +309,7 @@ export default function CCTVREPORT({ rights = { can_view: true, can_create: true
             type="button"
             className="save-button"
             onClick={handleGenerateReport}
-            disabled={!selectedOutward || !selectedOutward.case_found || !copyCases.length}
+            disabled={!selectedOutward || !selectedOutward.case_found || !selectedOutwardCopyCases.length}
           >
             Generate Report
           </button>
@@ -424,6 +427,7 @@ export default function CCTVREPORT({ rights = { can_view: true, can_create: true
           <table className="min-w-full text-sm">
             <thead className="bg-gray-100 text-gray-700 uppercase text-xs">
               <tr>
+                <th className="px-3 py-2 text-left">Record No</th>
                 <th className="px-3 py-2 text-left">College Name</th>
                 <th className="px-3 py-2 text-left">Course</th>
                 <th className="px-3 py-2 text-left">Semester</th>
@@ -437,17 +441,18 @@ export default function CCTVREPORT({ rights = { can_view: true, can_create: true
             <tbody>
               {loadingCases && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-4 text-center text-slate-500">Loading...</td>
+                  <td colSpan={9} className="px-4 py-4 text-center text-slate-500">Loading...</td>
                 </tr>
               )}
               {!loadingCases && copyCases.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-slate-500">No copy-case rows for selected outward.</td>
+                  <td colSpan={9} className="px-4 py-6 text-center text-slate-500">No copy-case rows available.</td>
                 </tr>
               )}
               {!loadingCases &&
                 copyCases.map((row) => (
                   <tr key={row.id} className="border-b last:border-b-0">
+                    <td className="px-3 py-2">{row.outward_record_no || "-"}</td>
                     <td className="px-3 py-2">{row.college_name || "-"}</td>
                     <td className="px-3 py-2">{row.course || "-"}</td>
                     <td className="px-3 py-2">{row.semester || "-"}</td>
@@ -484,7 +489,7 @@ export default function CCTVREPORT({ rights = { can_view: true, can_create: true
             </tbody>
             <tfoot>
               <tr className="bg-slate-50 font-semibold">
-                <td className="px-3 py-2" colSpan={5}>Total Students</td>
+                <td className="px-3 py-2" colSpan={6}>Total Students</td>
                 <td className="px-3 py-2">{totalStudents}</td>
                 <td className="px-3 py-2" colSpan={2}></td>
               </tr>
@@ -518,7 +523,7 @@ export default function CCTVREPORT({ rights = { can_view: true, can_create: true
               </tr>
             </thead>
             <tbody>
-              {copyCases.map((row, idx) => (
+              {selectedOutwardCopyCases.map((row, idx) => (
                 <tr key={row.id || idx}>
                   <td style={{ border: "1px solid #777", padding: "5px" }}>{idx + 1}</td>
                   <td style={{ border: "1px solid #777", padding: "5px" }}>{row.college_name || "-"}</td>
@@ -534,7 +539,7 @@ export default function CCTVREPORT({ rights = { can_view: true, can_create: true
             <tfoot>
               <tr>
                 <td style={{ border: "1px solid #555", padding: "6px", fontWeight: 700 }} colSpan={6}>Total Students</td>
-                <td style={{ border: "1px solid #555", padding: "6px", fontWeight: 700 }}>{totalStudents}</td>
+                <td style={{ border: "1px solid #555", padding: "6px", fontWeight: 700 }}>{selectedOutwardStudents}</td>
                 <td style={{ border: "1px solid #555", padding: "6px" }}></td>
               </tr>
             </tfoot>
