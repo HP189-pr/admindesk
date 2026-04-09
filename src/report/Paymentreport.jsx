@@ -6,7 +6,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { FaFileExcel, FaFilePdf } from 'react-icons/fa6';
 import PageTopbar from "../components/PageTopbar";
-import { fetchCashOutward, fetchFeesAggregate, fetchRecRange } from "../services/cashRegisterService";
+import { fetchCashEntries, fetchCashOutward, fetchFeesAggregate, fetchRecRange } from "../services/cashRegisterService";
 
 /**
  * PAYMENT REPORT (AUDIT SAFE)
@@ -30,6 +30,7 @@ const PAYMENT_MODE_TITLES = {
 
 const EXPORT_EXCEL_BUTTON_CLASS = 'inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm shadow-emerald-100 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-100 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50';
 const EXPORT_PDF_BUTTON_CLASS = 'inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 shadow-sm shadow-rose-100 transition duration-200 hover:-translate-y-0.5 hover:bg-rose-100 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50';
+const RECEIPT_SUFFIX_REGEX = /(\d{6})$/;
 
 const getFiscalYearStart = (baseDate = new Date()) => {
   const current = new Date(baseDate);
@@ -62,6 +63,130 @@ const formatReceiptDisplay = (value) => {
 
   // 1471/25/R/000001 -> 1471/25/R000001
   return raw.replace(/\/R\/(\d{6})$/i, "/R$1");
+};
+
+const parseReceiptSortParts = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) {
+    return { prefix: '', fiscalYear: -1, sequence: -1, raw: '' };
+  }
+
+  let match = raw.match(/^(.+?)\/(\d{4})(\d{6})$/);
+  if (match) {
+    return {
+      prefix: match[1].toUpperCase(),
+      fiscalYear: Number(match[2].slice(-2)),
+      sequence: Number(match[3]),
+      raw,
+    };
+  }
+
+  match = raw.match(/^(.+?)\/(\d{2})\/R\/?(\d{6})$/i);
+  if (match) {
+    return {
+      prefix: match[1].toUpperCase(),
+      fiscalYear: Number(match[2]),
+      sequence: Number(match[3]),
+      raw,
+    };
+  }
+
+  match = raw.match(/^(.+?)\/(\d{2})\/(\d{6})$/);
+  if (match) {
+    return {
+      prefix: match[1].toUpperCase(),
+      fiscalYear: Number(match[2]),
+      sequence: Number(match[3]),
+      raw,
+    };
+  }
+
+  const suffixMatch = raw.match(RECEIPT_SUFFIX_REGEX);
+  return {
+    prefix: raw.replace(RECEIPT_SUFFIX_REGEX, '').toUpperCase(),
+    fiscalYear: -1,
+    sequence: suffixMatch ? Number(suffixMatch[1]) : -1,
+    raw,
+  };
+};
+
+const compareReceiptSequence = (leftValue, rightValue) => {
+  const left = parseReceiptSortParts(leftValue);
+  const right = parseReceiptSortParts(rightValue);
+
+  if (left.prefix !== right.prefix) {
+    return left.prefix.localeCompare(right.prefix);
+  }
+  if (left.fiscalYear !== right.fiscalYear) {
+    return left.fiscalYear - right.fiscalYear;
+  }
+  if (left.sequence !== right.sequence) {
+    return left.sequence - right.sequence;
+  }
+  return left.raw.localeCompare(right.raw);
+};
+
+const buildReceiptWiseRows = (flatRows) => {
+  const grouped = {};
+
+  (Array.isArray(flatRows) ? flatRows : []).forEach((row) => {
+    if (!row || row.is_cancelled) return;
+
+    const receiptNo = String(row.receipt_no_full || '').trim();
+    const groupKey = receiptNo || `__${row.receipt_id || row.id}`;
+    if (!grouped[groupKey]) {
+      grouped[groupKey] = {
+        PERIOD: row.date,
+        RECEIPT_NO: receiptNo,
+        PAYMENT_MODE: String(row.payment_mode || '').toUpperCase(),
+        TOTAL: 0,
+        feeMap: {},
+      };
+    }
+
+    const amount = Number(row.amount || 0);
+    grouped[groupKey].TOTAL += amount;
+
+    const feeCode = String(row.fee_type_code || '').trim();
+    if (!feeCode) return;
+
+    if (!grouped[groupKey].feeMap[feeCode]) {
+      grouped[groupKey].feeMap[feeCode] = {
+        code: feeCode,
+        name: String(row.fee_type_name || '').trim(),
+        amount: 0,
+      };
+    }
+    grouped[groupKey].feeMap[feeCode].amount += amount;
+  });
+
+  return Object.values(grouped)
+    .map((row) => {
+      const feeEntries = Object.values(row.feeMap).sort((left, right) => left.code.localeCompare(right.code));
+      let feeDetails = '--';
+
+      if (feeEntries.length === 1) {
+        const fee = feeEntries[0];
+        feeDetails = fee.name ? `${fee.code} - ${fee.name}` : fee.code;
+      } else if (feeEntries.length > 1) {
+        feeDetails = feeEntries
+          .map((fee) => `${fee.code}=${Number(fee.amount || 0).toFixed(2)}`)
+          .join(', ');
+      }
+
+      return {
+        PERIOD: row.PERIOD,
+        RECEIPT_NO: row.RECEIPT_NO,
+        PAYMENT_MODE: row.PAYMENT_MODE,
+        FEE_DETAILS: feeDetails,
+        TOTAL: row.TOTAL,
+      };
+    })
+    .sort((left, right) => {
+      const receiptCompare = compareReceiptSequence(left.RECEIPT_NO, right.RECEIPT_NO);
+      if (receiptCompare !== 0) return receiptCompare;
+      return String(left.PERIOD || '').localeCompare(String(right.PERIOD || ''));
+    });
 };
 
 const parseDateParts = (value) => {
@@ -101,6 +226,31 @@ const formatDateSlash = (value) => {
   const parts = parseDateParts(value);
   if (!parts) return String(value);
   return `${String(parts.day).padStart(2, '0')}/${String(parts.month).padStart(2, '0')}/${parts.year}`;
+};
+
+const normalizeDateValue = (value) => {
+  const parts = parseDateParts(value);
+  if (!parts) return '';
+  return `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`;
+};
+
+const orderDateRange = (firstDate, secondDate) => {
+  const left = normalizeDateValue(firstDate);
+  const right = normalizeDateValue(secondDate);
+
+  if (!left && !right) {
+    return { start: '', end: '' };
+  }
+  if (!left) {
+    return { start: right, end: right };
+  }
+  if (!right) {
+    return { start: left, end: left };
+  }
+
+  return left <= right
+    ? { start: left, end: right }
+    : { start: right, end: left };
 };
 
 const getReportPeriodKey = (value, reportBy) => {
@@ -196,10 +346,18 @@ const PaymentReport = ({ onBack }) => {
   const [paymentMode, setPaymentMode] = useState("");
   const [reportBy, setReportBy] = useState("Daily");
   const [rows, setRows] = useState([]);
+  const [receiptRows, setReceiptRows] = useState([]);
   const [feeCodes, setFeeCodes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [pageError, setPageError] = useState("");
   const tableRef = useRef(null);
+  const [receiptWise, setReceiptWise] = useState(false);
+  const orderedRange = useMemo(
+    () => orderDateRange(dateFrom || today, dateTo || dateFrom || today),
+    [dateFrom, dateTo, today]
+  );
+  const safeDateFrom = orderedRange.start || today;
+  const safeDateTo = orderedRange.end || safeDateFrom;
 
   // Receipt number filters
   const [recNoStart, setRecNoStart] = useState("");
@@ -208,6 +366,17 @@ const PaymentReport = ({ onBack }) => {
   const reportRows = useMemo(
     () => rows.filter((row) => hasPeriodActivity(row)),
     [rows]
+  );
+
+  const visibleReceiptRows = useMemo(
+    () => receiptRows.filter((row) => {
+      const rowDate = normalizeDateValue(row?.PERIOD);
+      if (!rowDate || rowDate < safeDateFrom || rowDate > safeDateTo) {
+        return false;
+      }
+      return Number(row?.TOTAL || 0) !== 0 || String(row?.FEE_DETAILS || '').trim() !== '--';
+    }),
+    [receiptRows, safeDateFrom, safeDateTo]
   );
 
   const visibleScreenRows = useMemo(
@@ -227,20 +396,36 @@ const PaymentReport = ({ onBack }) => {
   useEffect(() => {
     loadReport();
     // eslint-disable-next-line
-  }, [dateFrom, dateTo, paymentMode, reportBy]);
+  }, [dateFrom, dateTo, paymentMode, reportBy, receiptWise, safeDateFrom, safeDateTo]);
 
   const loadReport = async () => {
     setLoading(true);
     setPageError("");
     try {
-      const params = { date_from: dateFrom, date_to: dateTo, report_by: reportBy };
+      if (receiptWise) {
+        const receiptData = await fetchCashEntries({
+          date_from: safeDateFrom,
+          date_to: safeDateTo,
+          ...(paymentMode ? { payment_mode: paymentMode } : {}),
+        });
+        const flatRows = Array.isArray(receiptData)
+          ? receiptData
+          : (Array.isArray(receiptData?.results) ? receiptData.results : []);
+
+        setReceiptRows(buildReceiptWiseRows(flatRows));
+        setRows([]);
+        setFeeCodes([]);
+        return;
+      }
+
+      const params = { date_from: safeDateFrom, date_to: safeDateTo, report_by: reportBy };
       if (paymentMode) params.payment_mode = paymentMode;
 
       const shouldIncludeCashDeposit = !paymentMode || paymentMode === 'CASH';
       const [feeData, recRanges, outwardData] = await Promise.all([
         fetchFeesAggregate(params),
         fetchRecRange(params),
-        shouldIncludeCashDeposit ? fetchCashOutward({ date_from: dateFrom, date_to: dateTo }) : Promise.resolve([]),
+        shouldIncludeCashDeposit ? fetchCashOutward({ date_from: safeDateFrom, date_to: safeDateTo }) : Promise.resolve([]),
       ]);
 
       // Build map: period → {start, end}
@@ -314,7 +499,7 @@ const PaymentReport = ({ onBack }) => {
       });
 
       const sortedRows = Object.values(map)
-          .filter((row) => isPeriodWithinSelectedRange(row.PERIOD, dateFrom, dateTo, reportBy))
+          .filter((row) => isPeriodWithinSelectedRange(row.PERIOD, safeDateFrom, safeDateTo, reportBy))
           .filter((row) => hasPeriodActivity(row))
           .sort((left, right) => String(left.PERIOD || '').localeCompare(String(right.PERIOD || '')));
 
@@ -327,10 +512,12 @@ const PaymentReport = ({ onBack }) => {
       }
 
       setRows(sortedRows);
+      setReceiptRows([]);
     } catch (err) {
       console.error(err);
       setPageError("Failed to load report data.");
       setRows([]);
+      setReceiptRows([]);
       setFeeCodes([]);
     } finally {
       setLoading(false);
@@ -339,6 +526,33 @@ const PaymentReport = ({ onBack }) => {
 
   /* ---------------- PRINT & PDF ---------------- */
   const handleExcelExport = () => {
+    if (receiptWise) {
+      if (!visibleReceiptRows.length) return;
+
+      const headers = ['DATE', 'RECEIPT NO', 'PAYMENT MODE', 'FEE DETAILS', 'TOTAL'];
+      const dataRows = visibleReceiptRows.map((row) => ([
+        formatPeriodLabel(row.PERIOD),
+        formatReceiptDisplay(row.RECEIPT_NO),
+        row.PAYMENT_MODE,
+        row.FEE_DETAILS,
+        Number(row.TOTAL || 0),
+      ]));
+
+      const totalsRow = [
+        'TOTAL',
+        `${visibleReceiptRows.length} receipt(s)`,
+        '-',
+        '-',
+        visibleReceiptRows.reduce((sum, row) => sum + (Number(row.TOTAL) || 0), 0),
+      ];
+
+      const worksheet = XLSX.utils.aoa_to_sheet([headers, ...dataRows, totalsRow]);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'ReceiptStatement');
+      XLSX.writeFile(workbook, `payment_statement_receipt_wise_${dateFrom}_to_${dateTo}.xlsx`);
+      return;
+    }
+
     if (!reportRows.length) return;
 
     const showCashDayClosing = paymentMode === 'CASH';
@@ -383,6 +597,53 @@ const PaymentReport = ({ onBack }) => {
   };
 
   const handlePdfExport = () => {
+    if (receiptWise) {
+      if (!visibleReceiptRows.length) return;
+
+      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      const statementTitle = PAYMENT_MODE_TITLES[paymentMode] || 'All Payment Mode Statement';
+      const periodLabel = `${formatDateSlash(dateFrom)} to ${formatDateSlash(dateTo)}`;
+      const body = visibleReceiptRows.map((row) => ([
+        formatPeriodLabel(row.PERIOD),
+        formatReceiptDisplay(row.RECEIPT_NO),
+        row.PAYMENT_MODE,
+        row.FEE_DETAILS,
+        formatReportAmount(row.TOTAL),
+      ]));
+
+      doc.setFontSize(12);
+      doc.text(`${statementTitle} - Receipt Wise`, 14, 10);
+      doc.setFontSize(9);
+      doc.text(`Period: ${periodLabel}`, 14, 16);
+
+      autoTable(doc, {
+        head: [['DATE', 'RECEIPT NO', 'PAYMENT MODE', 'FEE DETAILS', 'TOTAL']],
+        body,
+        startY: 22,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 1.8, overflow: 'linebreak', valign: 'middle' },
+        headStyles: { fillColor: [100, 116, 139], textColor: [255, 255, 255], halign: 'center' },
+        columnStyles: {
+          0: { cellWidth: 24, halign: 'left' },
+          1: { cellWidth: 34, halign: 'left' },
+          2: { cellWidth: 22, halign: 'center' },
+          3: { cellWidth: 160, halign: 'left' },
+          4: { cellWidth: 22, halign: 'right' },
+        },
+        foot: [[
+          'TOTAL',
+          `${visibleReceiptRows.length} receipt(s)`,
+          '',
+          '',
+          formatReportAmount(visibleReceiptRows.reduce((sum, row) => sum + (Number(row.TOTAL) || 0), 0)),
+        ]],
+        footStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' },
+      });
+
+      doc.save(`Payment_Report_Receipt_Wise_${dateFrom}_to_${dateTo}.pdf`);
+      return;
+    }
+
     if (!reportRows.length) return;
 
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
@@ -538,13 +799,13 @@ const PaymentReport = ({ onBack }) => {
       <div className="px-1 text-sm text-gray-600 font-medium">
         Report Type:
         <span className="ml-1 font-semibold text-gray-900">
-          {reportBy}
+          {receiptWise ? 'Daily (Receipt Wise)' : reportBy}
         </span>
       </div>
 
       {/* Filter Card - Exact Match UI */}
       <section className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-        <div className="flex flex-wrap items-end gap-6">
+        <div className="flex flex-wrap items-end gap-4 xl:flex-nowrap">
 
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">
@@ -593,7 +854,8 @@ const PaymentReport = ({ onBack }) => {
             <select
               value={reportBy}
               onChange={(e) => setReportBy(e.target.value)}
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm min-w-[160px]"
+              disabled={receiptWise}
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm min-w-[160px] disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
             >
               <option value="Daily">Daily</option>
               <option value="Monthly">Monthly</option>
@@ -603,10 +865,36 @@ const PaymentReport = ({ onBack }) => {
             </select>
           </div>
 
-          <div className="ml-auto flex items-center gap-3">
+          <div className="min-w-[170px] shrink-0">
+            <label className="mb-1 block text-xs font-semibold text-gray-600">
+              View Mode
+            </label>
+            <label className={`flex h-[42px] cursor-pointer items-center justify-between rounded-md border px-3 py-2 text-sm shadow-sm transition ${receiptWise ? 'border-slate-900 bg-slate-900 text-white' : 'border-gray-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'}`}>
+              <span className="font-semibold">Receipt Wise</span>
+              <span className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${receiptWise ? 'bg-white/20' : 'bg-slate-200'}`}>
+                <input
+                  type="checkbox"
+                  checked={receiptWise}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setReceiptWise(checked);
+                    if (checked) {
+                      setReportBy('Daily');
+                    }
+                  }}
+                  className="sr-only"
+                />
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition ${receiptWise ? 'translate-x-5' : 'translate-x-0.5'}`}
+                />
+              </span>
+            </label>
+          </div>
+
+          <div className="flex items-center gap-3 xl:ml-auto">
             <button
               onClick={handleExcelExport}
-              disabled={loading || reportRows.length === 0}
+              disabled={loading || (receiptWise ? visibleReceiptRows.length === 0 : reportRows.length === 0)}
               title="Export Excel"
               aria-label="Export Excel"
               className={EXPORT_EXCEL_BUTTON_CLASS}
@@ -615,7 +903,7 @@ const PaymentReport = ({ onBack }) => {
             </button>
             <button
               onClick={handlePdfExport}
-              disabled={loading || reportRows.length === 0}
+              disabled={loading || (receiptWise ? visibleReceiptRows.length === 0 : reportRows.length === 0)}
               title="Export PDF"
               aria-label="Export PDF"
               className={EXPORT_PDF_BUTTON_CLASS}
@@ -628,6 +916,7 @@ const PaymentReport = ({ onBack }) => {
                 setDateTo(today);
                 setPaymentMode("");
                 setReportBy("Daily");
+                setReceiptWise(false);
               }}
               className="reset-button"
             >
@@ -644,6 +933,56 @@ const PaymentReport = ({ onBack }) => {
       <div className="overflow-x-auto">
         {loading ? (
           <p className="text-center">Loading…</p>
+        ) : receiptWise ? (
+          visibleReceiptRows.length === 0 ? (
+            <p className="text-center">No data found</p>
+          ) : (
+            <table
+              ref={tableRef}
+              className="min-w-full border-collapse border border-gray-200 text-xs"
+            >
+              <thead className="bg-slate-800 text-white">
+                <tr>
+                  <th className="border px-3 py-2 text-center">DATE</th>
+                  <th className="border px-3 py-2 text-center">RECEIPT NO</th>
+                  <th className="border px-3 py-2 text-center">PAYMENT MODE</th>
+                  <th className="border px-3 py-2 text-center">FEE DETAILS</th>
+                  <th className="border px-3 py-2 text-center">TOTAL</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleReceiptRows.map((row, index) => (
+                  <tr key={`${row.RECEIPT_NO || row.PERIOD}-${index}`} className="even:bg-slate-50 hover:bg-slate-100">
+                    <td className="border px-3 py-2 text-center font-semibold">
+                      {formatPeriodLabel(row.PERIOD)}
+                    </td>
+                    <td className="border px-3 py-2 font-mono text-center text-[12px] font-semibold text-slate-900">
+                      {formatReceiptDisplay(row.RECEIPT_NO)}
+                    </td>
+                    <td className="border px-3 py-2 text-center font-semibold">
+                      {row.PAYMENT_MODE}
+                    </td>
+                    <td className="border px-3 py-2 text-left text-[12px] leading-relaxed text-slate-700">
+                      {row.FEE_DETAILS}
+                    </td>
+                    <td className="border bg-blue-50 px-3 py-2 text-right font-semibold text-slate-900">
+                      Rs. {Number(row.TOTAL || 0).toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+
+                <tr className="bg-slate-800 text-white font-bold">
+                  <td className="border px-3 py-2">TOTAL</td>
+                  <td className="border px-3 py-2 text-center">{visibleReceiptRows.length} receipt(s)</td>
+                  <td className="border px-3 py-2 text-center">-</td>
+                  <td className="border px-3 py-2 text-center">-</td>
+                  <td className="border px-3 py-2 text-right">
+                    {formatReportAmount(visibleReceiptRows.reduce((sum, row) => sum + (Number(row.TOTAL) || 0), 0))}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          )
         ) : visibleScreenRows.length === 0 ? (
           <p className="text-center">No data found</p>
         ) : (

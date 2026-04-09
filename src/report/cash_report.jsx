@@ -109,6 +109,8 @@ const CashReport = ({ onBack }) => {
   const today = new Date().toISOString().slice(0, 10);
   const [dateFrom, setDateFrom] = useState(today);
   const [dateTo, setDateTo] = useState(today);
+  const [outwardDateFrom, setOutwardDateFrom] = useState(today);
+  const [outwardDateTo, setOutwardDateTo] = useState(today);
   const [countFrom, setCountFrom] = useState(today);
   const [previousBalance, setPreviousBalance] = useState(0);
   const [report, setReport] = useState(null);
@@ -154,11 +156,19 @@ const CashReport = ({ onBack }) => {
     }
   }, [countFrom, dateFrom, dateTo, today]);
 
-  const loadSingleOutward = useCallback(async (date) => {
-    if (!date) { setOutwardSingle([]); return; }
+  const loadSingleOutward = useCallback(async (fromDate, toDate, txnType) => {
+    const orderedRange = orderDateRange(fromDate || today, toDate || fromDate || today);
+    const safeFrom = orderedRange.start || today;
+    const safeTo = orderedRange.end || safeFrom;
+
+    if (!safeFrom || !safeTo || !txnType) {
+      setOutwardSingle([]);
+      return;
+    }
+
     setOutwardSingleLoading(true);
     try {
-      const data = await fetchCashOutward({ date });
+      const data = await fetchCashOutward({ date_from: safeFrom, date_to: safeTo, txn_type: txnType });
       const rows = Array.isArray(data) ? data : (data?.results || []);
       setOutwardSingle(rows.map((row) => ({
         ...row,
@@ -168,7 +178,7 @@ const CashReport = ({ onBack }) => {
     } finally {
       setOutwardSingleLoading(false);
     }
-  }, []);
+  }, [today]);
 
   // Handlers for deposit/expense entry
   const handleDepositSubmit = async (e) => {
@@ -185,7 +195,7 @@ const CashReport = ({ onBack }) => {
         remark: depositForm.note,
       });
       setDepositForm({ amount: '', ref_no: '', note: '', cash_date: dateTo });
-      loadSingleOutward(dateTo);
+      loadSingleOutward(outwardDateFrom, outwardDateTo, 'DEPOSIT');
       load();
     } finally {
       setFormSaving(false);
@@ -204,7 +214,7 @@ const CashReport = ({ onBack }) => {
         remark: expenseForm.note,
       });
       setExpenseForm({ amount: '', ref_no: '', note: '' });
-      loadSingleOutward(dateTo);
+      loadSingleOutward(outwardDateFrom, outwardDateTo, 'EXPENSE');
       load();
     } finally {
       setFormSaving(false);
@@ -241,9 +251,13 @@ const CashReport = ({ onBack }) => {
       setEditingOutward(null);
       if (editingOutward.txn_type === 'DEPOSIT' || editingOutward.txn_type === 'EXPENSE') {
         setDateTo(nextDepositDate);
-        loadSingleOutward(nextDepositDate);
+        loadSingleOutward(
+          outwardDateFrom,
+          outwardDateTo,
+          editingOutward.txn_type
+        );
       } else {
-        loadSingleOutward(dateTo);
+        loadSingleOutward(outwardDateFrom, outwardDateTo, editingOutward.txn_type);
       }
       load();
     } catch (err) {
@@ -259,7 +273,7 @@ const CashReport = ({ onBack }) => {
     try {
       await deleteCashOutward(record.id);
       if (editingOutward?.id === record.id) setEditingOutward(null);
-      loadSingleOutward(dateTo);
+      loadSingleOutward(outwardDateFrom, outwardDateTo, record.txn_type);
       load();
     } catch (err) {
       setMsg(err?.response?.data?.detail || 'Delete failed');
@@ -527,9 +541,13 @@ const CashReport = ({ onBack }) => {
   // Fetch exact-date outward records when on Deposit or Expense tab, or when dateTo changes
   useEffect(() => {
     if (selectedTab === 'deposit' || selectedTab === 'expense') {
-      loadSingleOutward(dateTo);
+      loadSingleOutward(
+        outwardDateFrom,
+        outwardDateTo,
+        selectedTab === 'deposit' ? 'DEPOSIT' : 'EXPENSE'
+      );
     }
-  }, [selectedTab, dateTo, loadSingleOutward]);
+  }, [selectedTab, outwardDateFrom, outwardDateTo, loadSingleOutward]);
 
   const handleClose = async () => {
     setSaving(true);
@@ -1037,7 +1055,31 @@ const CashReport = ({ onBack }) => {
                     </button>
                   </form>
                 )}
-                <h2 className="font-semibold mb-2">Deposit Records ({formatDateDisplay(dateTo)})</h2>
+                <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+                  <h2 className="font-semibold">
+                    Deposit Records ({formatDateDisplay(outwardDateFrom)} to {formatDateDisplay(outwardDateTo)})
+                  </h2>
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div className="flex min-w-[160px] flex-col gap-1">
+                      <label className="text-xs font-medium text-slate-600">From Date</label>
+                      <input
+                        type="date"
+                        className="h-10 rounded border px-3 py-2"
+                        value={outwardDateFrom}
+                        onChange={e => setOutwardDateFrom(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex min-w-[160px] flex-col gap-1">
+                      <label className="text-xs font-medium text-slate-600">To Date</label>
+                      <input
+                        type="date"
+                        className="h-10 rounded border px-3 py-2"
+                        value={outwardDateTo}
+                        onChange={e => setOutwardDateTo(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
                 {outwardSingleLoading ? (
                   <p className="text-gray-400 py-3 text-sm">Loading...</p>
                 ) : (
@@ -1176,7 +1218,31 @@ const CashReport = ({ onBack }) => {
                     </button>
                   </form>
                 )}
-                <h2 className="font-semibold mb-2">Expense Records ({formatDateDisplay(dateTo)})</h2>
+                <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+                  <h2 className="font-semibold">
+                    Expense Records ({formatDateDisplay(outwardDateFrom)} to {formatDateDisplay(outwardDateTo)})
+                  </h2>
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div className="flex min-w-[160px] flex-col gap-1">
+                      <label className="text-xs font-medium text-slate-600">From Date</label>
+                      <input
+                        type="date"
+                        className="h-10 rounded border px-3 py-2"
+                        value={outwardDateFrom}
+                        onChange={e => setOutwardDateFrom(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex min-w-[160px] flex-col gap-1">
+                      <label className="text-xs font-medium text-slate-600">To Date</label>
+                      <input
+                        type="date"
+                        className="h-10 rounded border px-3 py-2"
+                        value={outwardDateTo}
+                        onChange={e => setOutwardDateTo(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
                 {outwardSingleLoading ? (
                   <p className="text-gray-400 py-3 text-sm">Loading...</p>
                 ) : (
