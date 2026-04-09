@@ -1326,7 +1326,10 @@ const CCTVMonitoring = ({
                       .filter(Boolean)
                       .join(" - ");
                     return (
-                      <tr key={row.id} className="border-b last:border-b-0">
+                      <tr
+                        key={row.id}
+                        className={`border-b last:border-b-0 ${row.return_received ? "bg-green-50" : ""}`}
+                      >
                         <td className="px-3 py-2 align-top">{row.outward_date || "—"}</td>
                         <td className="px-3 py-2 align-top">{row.cctv_record_no || "—"}</td>
                         <td className="px-3 py-2 align-top">{row.outward_no || "—"}</td>
