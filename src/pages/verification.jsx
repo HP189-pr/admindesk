@@ -44,6 +44,16 @@ const MailBadge = ({ text }) => (
 
 import useEnrollmentLookup from '../hooks/useEnrollmentLookup';
 
+const getTodayIso = () => new Date().toISOString().slice(0, 10);
+const HIDE_DONE_DATE_STATUSES = new Set(["IN_PROGRESS", "PENDING", "CORRECTION", "CANCEL"]);
+
+const getFormDoneDate = (value) => {
+  const iso = dmyToISO(value) || value || "";
+  return iso || getTodayIso();
+};
+
+const shouldHideDoneDate = (status) => HIDE_DONE_DATE_STATUSES.has((status || "").toString().trim().toUpperCase());
+
 export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar, onToggleChatbox }) {
   // Search/filter state variables
   const [q, setQ] = useState("");
@@ -56,7 +66,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
   const [errorMsg, setErrorMsg] = useState("");
   const [form, setForm] = useState({
     date: "",
-    vr_done_date: "",
+    vr_done_date: getTodayIso(),
     enrollment_no: "",
     enrollment_id: null,
     second_enrollment_id: "",
@@ -160,10 +170,10 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
     }
     // If new record, reset form
     if (action === "➕") {
-      const todayIso = new Date().toISOString().slice(0, 10);
+      const todayIso = getTodayIso();
       setForm({
         date: todayIso,
-        vr_done_date: "",
+        vr_done_date: todayIso,
         enrollment_no: "",
         enrollment_id: "",
         second_enrollment_id: "",
@@ -857,7 +867,7 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                       const studentName = r.student_name || (r.enrollment && (r.enrollment.student_name || r.enrollment.name)) || "";
                       setForm({
                         date: (dmyToISO(r.date) || r.date) || "",
-                        vr_done_date: (dmyToISO(r.vr_done_date) || r.vr_done_date) || "",
+                        vr_done_date: getFormDoneDate(r.vr_done_date),
                         enrollment_no: enrollmentNo,
                         enrollment_id: r.enrollment?.id || r.enrollment_id || enrollmentNo || "",
                         second_enrollment_id: r.second_enrollment?.id || r.second_enrollment_id || r.second_enrollment_no || "",
@@ -901,7 +911,9 @@ export default function Verification({ selectedTopbarMenu, setSelectedTopbarMenu
                       <td className="px-3">
                         <Badge text={r.status} />
                       </td>
-                      <td className="px-1.5 text-center whitespace-nowrap text-xs" style={getColumnStyle("vr_done_date")}>{r.vr_done_date || "-"}</td>
+                      <td className="px-1.5 text-center whitespace-nowrap text-xs" style={getColumnStyle("vr_done_date")}>
+                        {shouldHideDoneDate(r.status) ? "-" : (r.vr_done_date || "-")}
+                      </td>
                       <td className="px-3 text-center">
                         <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-orange-50 text-orange-800 font-bold text-xs hover:bg-orange-100 transition">
                           {r.final_no || "-"}

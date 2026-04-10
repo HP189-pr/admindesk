@@ -5,6 +5,14 @@
 import { isoToDMY, dmyToISO } from "../utils/date";
 import { API_BASE_URL } from "../api/axiosInstance";
 
+const HIDE_DONE_DATE_STATUSES = new Set(["IN_PROGRESS", "PENDING", "CORRECTION", "CANCEL"]);
+
+const formatDoneDateForList = (record) => {
+  const normalizedStatus = (record?.status || "").toString().trim().toUpperCase();
+  if (HIDE_DONE_DATE_STATUSES.has(normalizedStatus)) return "";
+  return isoToDMY(record?.vr_done_date || "");
+};
+
 const apiUrl = (path) => {
   const base = (API_BASE_URL || '').replace(/\/$/, '');
   return `${base}${path}`;
@@ -117,9 +125,7 @@ export const loadRecords = async (q, setLoading, setErrorMsg, setRecords) => {
       moi_count: r.moi_count ?? 0,
       backlog_count: r.backlog_count ?? 0,
       status: r.status || '',
-      vr_done_date: isoToDMY(
-        r.vr_done_date || r.last_resubmit_date || r.doc_rec_date || r.date || (r.doc_rec && r.doc_rec.doc_rec_date) || r.createdat || ''
-      ),
+      vr_done_date: formatDoneDateForList(r),
       final_no: r.final_no || '',
       mail_status: r.mail_send_status || r.mail_status || '',
       pay_rec_no: r.pay_rec_no || '',
@@ -245,6 +251,7 @@ export const createRecord = async (form, syncDocRecRemark, loadRecords) => {
   const todayIso = new Date().toISOString().slice(0, 10);
   const body = {
     doc_rec_date: (function(s){ if(!s) return todayIso; if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return s; const x = dmyToISO(s); return x || todayIso; })(form.date),
+    vr_done_date: (function(s){ if(!s) return null; if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return s; const x = dmyToISO(s); return x || null; })(form.vr_done_date),
     // Send the numeric DocRec PK where the API expects a PK value. If unresolved, send null
     doc_rec_id: docRecPk || null,
     enrollment_no: (form.enrollment_no || '').toString().trim() || null,
