@@ -64,7 +64,7 @@ export const createCashEntry = async (payload) => {
 // ✅ Update receipt with items (multi-fee edit, audit-safe)
 export const updateReceiptWithItems = async (id, payload) => {
   const response = await axiosInstance.put(
-    `${CASH_REGISTER_BASE}${id}/update-with-items/`,
+    `${RECEIPTS_BASE}${id}/update-with-items/`,
     payload
   );
   return response.data;

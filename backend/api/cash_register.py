@@ -430,8 +430,10 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
         # Align behaviour with `ReceiptViewSet` — filter receipts by date, payment_mode, receipt_no_full
         qs = super().get_queryset()
         date_str = self.request.query_params.get("date")
-        date_from = parse_date(self.request.query_params.get("date_from"))
-        date_to = parse_date(self.request.query_params.get("date_to"))
+        raw_date_from = self.request.query_params.get("date_from")
+        raw_date_to = self.request.query_params.get("date_to")
+        date_from = parse_date(raw_date_from) if raw_date_from else None
+        date_to = parse_date(raw_date_to) if raw_date_to else None
         if date_str:
             qs = qs.filter(date=date_str)
         else:
@@ -454,8 +456,10 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         # Always return receipt-backed rows for the legacy endpoint.
         date_str = request.query_params.get("date")
-        date_from = parse_date(request.query_params.get("date_from"))
-        date_to = parse_date(request.query_params.get("date_to"))
+        raw_date_from = request.query_params.get("date_from")
+        raw_date_to = request.query_params.get("date_to")
+        date_from = parse_date(raw_date_from) if raw_date_from else None
+        date_to = parse_date(raw_date_to) if raw_date_to else None
         payment_mode = request.query_params.get("payment_mode")
         receipt_full = request.query_params.get("receipt_no_full")
 
