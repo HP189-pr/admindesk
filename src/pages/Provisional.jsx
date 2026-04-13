@@ -15,6 +15,7 @@ import PanelToggleButton from '../components/PanelToggleButton';
 import useEnrollmentLookup from '../hooks/useEnrollmentLookup';
 import PageTopbar from "../components/PageTopbar";
 import SearchField from '../components/SearchField';
+import ProvisionalReport from '../report/provisional_report';
 
 const ACTIONS = ["➕", "✏️ Edit", "🔍", "📄 Report"];
 
@@ -272,9 +273,16 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
             <p className="text-xs text-slate-500">Results update automatically while you type.</p>
           </div>
         )}
+
+        {panelOpen && selectedTopbarMenu === '📄 Report' && (
+          <div className="action-panel-body">
+            <ProvisionalReport />
+          </div>
+        )}
       </div>
 
       {/* Records Section */}
+      {selectedTopbarMenu !== '📄 Report' && (
       <div className="bg-white shadow rounded-2xl p-4 h-[calc(100vh-260px)] overflow-auto">
         {error && (
           <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 border border-red-200 rounded-lg">{error}</div>
@@ -342,6 +350,7 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 };

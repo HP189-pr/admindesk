@@ -1148,6 +1148,174 @@ class MigrationRecordViewSet(viewsets.ModelViewSet):
             qs = qs.filter(filters)
         return qs
 
+    def _report_queryset(self, request):
+        queryset = MigrationRecord.objects.select_related('institute', 'subcourse', 'maincourse', 'enrollment')
+
+        year = (request.query_params.get('year') or '').strip()
+        if year.isdigit():
+            queryset = queryset.filter(mg_date__year=int(year))
+
+        exam_year = (request.query_params.get('exam_year') or '').strip()
+        if exam_year:
+            queryset = queryset.filter(exam_year__iexact=exam_year)
+
+        institute_code = (request.query_params.get('institute_code') or '').strip()
+        if institute_code:
+            queryset = queryset.filter(institute__institute_code__iexact=institute_code)
+
+        mg_status = (request.query_params.get('mg_status') or '').strip()
+        if mg_status:
+            queryset = queryset.filter(mg_status__iexact=mg_status)
+
+        subcourse_name = (request.query_params.get('subcourse_name') or '').strip()
+        if subcourse_name:
+            queryset = queryset.filter(subcourse__subcourse_name__iexact=subcourse_name)
+
+        return queryset
+
+    @action(detail=False, methods=["get"], url_path="report")
+    def report(self, request):
+        queryset = self._report_queryset(request)
+
+        years = [
+            {
+                'year': row['mg_date__year'],
+                'total': row['total'],
+            }
+            for row in queryset.exclude(mg_date__isnull=True)
+            .values('mg_date__year')
+            .annotate(total=models.Count('id'))
+            .order_by('-mg_date__year')
+        ]
+
+        institutions = list(
+            queryset.exclude(institute__institute_code__isnull=True)
+            .exclude(institute__institute_code='')
+            .values('institute__institute_code', 'institute__institute_name')
+            .annotate(total=models.Count('id'))
+            .order_by('-total', 'institute__institute_code')[:100]
+        )
+
+        statuses = list(
+            queryset.exclude(mg_status__isnull=True)
+            .exclude(mg_status='')
+            .values('mg_status')
+            .annotate(total=models.Count('id'))
+            .order_by('-total', 'mg_status')
+        )
+
+        subcourses = list(
+            queryset.exclude(subcourse__subcourse_name__isnull=True)
+            .exclude(subcourse__subcourse_name='')
+            .values('subcourse__subcourse_name')
+            .annotate(total=models.Count('id'))
+            .order_by('-total', 'subcourse__subcourse_name')[:100]
+        )
+
+        institute_year = [
+            {
+                'institute_code': row['institute__institute_code'],
+                'institute_name': row['institute__institute_name'],
+                'year': row['mg_date__year'],
+                'total': row['total'],
+            }
+            for row in queryset.exclude(institute__institute_code__isnull=True)
+            .exclude(institute__institute_code='')
+            .exclude(mg_date__isnull=True)
+            .values('institute__institute_code', 'institute__institute_name', 'mg_date__year')
+            .annotate(total=models.Count('id'))
+            .order_by('-total', '-mg_date__year', 'institute__institute_code')[:150]
+        ]
+
+        return Response({
+            'filters': {
+                'year': (request.query_params.get('year') or '').strip(),
+                'exam_year': (request.query_params.get('exam_year') or '').strip(),
+                'institute_code': (request.query_params.get('institute_code') or '').strip(),
+                'mg_status': (request.query_params.get('mg_status') or '').strip(),
+                'subcourse_name': (request.query_params.get('subcourse_name') or '').strip(),
+            },
+            'overall_total': queryset.count(),
+            'years': years,
+            'institutions': [
+                {
+                    'institute_code': row['institute__institute_code'],
+                    'institute_name': row['institute__institute_name'],
+                    'total': row['total'],
+                }
+                for row in institutions
+            ],
+            'statuses': statuses,
+            'subcourses': [
+                {
+                    'subcourse_name': row['subcourse__subcourse_name'],
+                    'total': row['total'],
+                }
+                for row in subcourses
+            ],
+            'institute_year': institute_year,
+        })
+
+    @action(detail=False, methods=["get"], url_path="filter-options")
+    def filter_options(self, request):
+        queryset = MigrationRecord.objects.select_related('institute', 'subcourse')
+
+        def _clean_list(values):
+            cleaned = []
+            seen = set()
+            for value in values:
+                if value is None:
+                    continue
+                text = str(value).strip()
+                if not text or text in seen:
+                    continue
+                seen.add(text)
+                cleaned.append(text)
+            return cleaned
+
+        years = _clean_list(
+            queryset.exclude(mg_date__isnull=True)
+            .values_list('mg_date__year', flat=True)
+            .order_by('-mg_date__year')
+            .distinct()
+        )
+        exam_years = _clean_list(
+            queryset.exclude(exam_year__isnull=True)
+            .exclude(exam_year='')
+            .values_list('exam_year', flat=True)
+            .order_by('-exam_year')
+            .distinct()
+        )
+        institute_codes = _clean_list(
+            queryset.exclude(institute__institute_code__isnull=True)
+            .exclude(institute__institute_code='')
+            .values_list('institute__institute_code', flat=True)
+            .order_by('institute__institute_code')
+            .distinct()
+        )
+        statuses = _clean_list(
+            queryset.exclude(mg_status__isnull=True)
+            .exclude(mg_status='')
+            .values_list('mg_status', flat=True)
+            .order_by('mg_status')
+            .distinct()
+        )
+        subcourse_names = _clean_list(
+            queryset.exclude(subcourse__subcourse_name__isnull=True)
+            .exclude(subcourse__subcourse_name='')
+            .values_list('subcourse__subcourse_name', flat=True)
+            .order_by('subcourse__subcourse_name')
+            .distinct()
+        )
+
+        return Response({
+            'years': years,
+            'exam_years': exam_years,
+            'institute_codes': institute_codes,
+            'statuses': statuses,
+            'subcourses': subcourse_names,
+        })
+
     @action(detail=False, methods=["get"], url_path="next-number")
     def next_number(self, request):
         base_date = timezone.localdate()
@@ -1306,6 +1474,187 @@ class ProvisionalRecordViewSet(viewsets.ModelViewSet):
         if action in (None, 'list'):
             return qs[:500]
         return qs
+
+    def _report_queryset(self, request):
+        queryset = ProvisionalRecord.objects.select_related('institute', 'subcourse', 'maincourse', 'enrollment')
+
+        year = (request.query_params.get('year') or '').strip()
+        if year.isdigit():
+            queryset = queryset.filter(prv_date__year=int(year))
+
+        passing_year = (request.query_params.get('passing_year') or '').strip()
+        if passing_year:
+            queryset = queryset.filter(passing_year__iexact=passing_year)
+
+        institute_code = (request.query_params.get('institute_code') or '').strip()
+        if institute_code:
+            queryset = queryset.filter(institute__institute_code__iexact=institute_code)
+
+        prv_status = (request.query_params.get('prv_status') or '').strip()
+        if prv_status:
+            queryset = queryset.filter(prv_status__iexact=prv_status)
+
+        degree_name = (request.query_params.get('degree_name') or '').strip()
+        if degree_name:
+            queryset = queryset.filter(prv_degree_name__icontains=degree_name)
+
+        subcourse_name = (request.query_params.get('subcourse_name') or '').strip()
+        if subcourse_name:
+            queryset = queryset.filter(subcourse__subcourse_name__iexact=subcourse_name)
+
+        return queryset
+
+    @action(detail=False, methods=["get"], url_path="report")
+    def report(self, request):
+        queryset = self._report_queryset(request)
+
+        years = [
+            {
+                'year': row['prv_date__year'],
+                'total': row['total'],
+            }
+            for row in queryset.exclude(prv_date__isnull=True)
+            .values('prv_date__year')
+            .annotate(total=models.Count('id'))
+            .order_by('-prv_date__year')
+        ]
+
+        institutions = list(
+            queryset.exclude(institute__institute_code__isnull=True)
+            .exclude(institute__institute_code='')
+            .values('institute__institute_code', 'institute__institute_name')
+            .annotate(total=models.Count('id'))
+            .order_by('-total', 'institute__institute_code')[:100]
+        )
+
+        statuses = list(
+            queryset.exclude(prv_status__isnull=True)
+            .exclude(prv_status='')
+            .values('prv_status')
+            .annotate(total=models.Count('id'))
+            .order_by('-total', 'prv_status')
+        )
+
+        degrees = list(
+            queryset.exclude(prv_degree_name__isnull=True)
+            .exclude(prv_degree_name='')
+            .values('prv_degree_name')
+            .annotate(total=models.Count('id'))
+            .order_by('-total', 'prv_degree_name')[:100]
+        )
+
+        institute_year = [
+            {
+                'institute_code': row['institute__institute_code'],
+                'institute_name': row['institute__institute_name'],
+                'year': row['prv_date__year'],
+                'total': row['total'],
+            }
+            for row in queryset.exclude(institute__institute_code__isnull=True)
+            .exclude(institute__institute_code='')
+            .exclude(prv_date__isnull=True)
+            .values('institute__institute_code', 'institute__institute_name', 'prv_date__year')
+            .annotate(total=models.Count('id'))
+            .order_by('-total', '-prv_date__year', 'institute__institute_code')[:150]
+        ]
+
+        return Response({
+            'filters': {
+                'year': (request.query_params.get('year') or '').strip(),
+                'passing_year': (request.query_params.get('passing_year') or '').strip(),
+                'institute_code': (request.query_params.get('institute_code') or '').strip(),
+                'prv_status': (request.query_params.get('prv_status') or '').strip(),
+                'degree_name': (request.query_params.get('degree_name') or '').strip(),
+                'subcourse_name': (request.query_params.get('subcourse_name') or '').strip(),
+            },
+            'overall_total': queryset.count(),
+            'years': years,
+            'institutions': [
+                {
+                    'institute_code': row['institute__institute_code'],
+                    'institute_name': row['institute__institute_name'],
+                    'total': row['total'],
+                }
+                for row in institutions
+            ],
+            'statuses': statuses,
+            'degrees': [
+                {
+                    'degree_name': row['prv_degree_name'],
+                    'total': row['total'],
+                }
+                for row in degrees
+            ],
+            'institute_year': institute_year,
+        })
+
+    @action(detail=False, methods=["get"], url_path="filter-options")
+    def filter_options(self, request):
+        queryset = ProvisionalRecord.objects.select_related('institute', 'subcourse')
+
+        def _clean_list(values):
+            cleaned = []
+            seen = set()
+            for value in values:
+                if value is None:
+                    continue
+                text = str(value).strip()
+                if not text or text in seen:
+                    continue
+                seen.add(text)
+                cleaned.append(text)
+            return cleaned
+
+        years = _clean_list(
+            queryset.exclude(prv_date__isnull=True)
+            .values_list('prv_date__year', flat=True)
+            .order_by('-prv_date__year')
+            .distinct()
+        )
+        passing_years = _clean_list(
+            queryset.exclude(passing_year__isnull=True)
+            .exclude(passing_year='')
+            .values_list('passing_year', flat=True)
+            .order_by('-passing_year')
+            .distinct()
+        )
+        institute_codes = _clean_list(
+            queryset.exclude(institute__institute_code__isnull=True)
+            .exclude(institute__institute_code='')
+            .values_list('institute__institute_code', flat=True)
+            .order_by('institute__institute_code')
+            .distinct()
+        )
+        statuses = _clean_list(
+            queryset.exclude(prv_status__isnull=True)
+            .exclude(prv_status='')
+            .values_list('prv_status', flat=True)
+            .order_by('prv_status')
+            .distinct()
+        )
+        degree_names = _clean_list(
+            queryset.exclude(prv_degree_name__isnull=True)
+            .exclude(prv_degree_name='')
+            .values_list('prv_degree_name', flat=True)
+            .order_by('prv_degree_name')
+            .distinct()
+        )
+        subcourse_names = _clean_list(
+            queryset.exclude(subcourse__subcourse_name__isnull=True)
+            .exclude(subcourse__subcourse_name='')
+            .values_list('subcourse__subcourse_name', flat=True)
+            .order_by('subcourse__subcourse_name')
+            .distinct()
+        )
+
+        return Response({
+            'years': years,
+            'passing_years': passing_years,
+            'institute_codes': institute_codes,
+            'statuses': statuses,
+            'degree_names': degree_names,
+            'subcourses': subcourse_names,
+        })
 
     @action(detail=False, methods=["post"], url_path="update-service-only")
     def update_service_only(self, request):

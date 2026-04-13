@@ -5,6 +5,7 @@ import PanelToggleButton from '../components/PanelToggleButton';
 import PageTopbar from "../components/PageTopbar";
 import SearchField from '../components/SearchField';
 import useEnrollmentLookup from '../hooks/useEnrollmentLookup';
+import MigrationReport from '../report/migration_report';
 
 const ACTIONS = ["➕", "✏️ Edit", "🔍", "📄 Report"];
 const LEGACY_MIGRATION_STATUSES = new Set(['RECEIVED']);
@@ -60,7 +61,13 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
 
   const isMigrationCancelled = isCancelledMigrationRecord(form);
   const isEditMode = selectedTopbarMenu === '✏️ Edit' && Boolean(form.id);
-  const panelTitle = selectedTopbarMenu === '🔍' ? 'Search Panel' : isEditMode ? 'Edit Panel' : 'Add Panel';
+  const panelTitle = selectedTopbarMenu === '🔍'
+    ? 'Search Panel'
+    : selectedTopbarMenu === '📄 Report'
+      ? 'Report Panel'
+      : isEditMode
+        ? 'Edit Panel'
+        : 'Add Panel';
 
   const instituteCodeValue = useMemo(() => {
     const key = String(form.institute || '').trim();
@@ -548,8 +555,15 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
             <p className="text-xs text-slate-500">Results update automatically while you type.</p>
           </div>
         )}
+
+        {panelOpen && selectedTopbarMenu === '📄 Report' && (
+          <div className="action-panel-body">
+            <MigrationReport />
+          </div>
+        )}
       </div>
 
+      {selectedTopbarMenu !== '📄 Report' && (
       <div className="bg-white shadow rounded-2xl p-4 h-[calc(100vh-260px)] overflow-auto">
         {error && (
           <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 border border-red-200 rounded-lg">{error}</div>
@@ -599,6 +613,7 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 };

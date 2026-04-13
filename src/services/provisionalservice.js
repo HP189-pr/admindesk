@@ -2,6 +2,7 @@
 // Provisional Service for API calls related to ProvisionalRecord
 // Works in DEV (3000) + PROD (8081)
 
+import API from '../api/axiosInstance';
 import { dmyToISO } from '../utils/date';
 
 /* ==================== API PATHS ==================== */
@@ -146,4 +147,16 @@ function mapFormToPayload(form) {
     pay_rec_no: form.pay_rec_no || null,
     doc_remark: form.doc_remark || null,
   };
+}
+
+/* ==================== REPORTS ==================== */
+
+export async function getProvisionalReport(params = {}, config = {}) {
+  const res = await API.get(`${API_BASE}report/`, { params, ...config });
+  return res.data;
+}
+
+export async function getProvisionalFilterOptions() {
+  const res = await API.get(`${API_BASE}filter-options/`);
+  return res.data;
 }
