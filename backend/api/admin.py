@@ -246,10 +246,10 @@ class InstLetterMainAdmin(admin.ModelAdmin):
 
 @admin.register(MigrationRecord)
 class MigrationRecordAdmin(CommonAdminMixin):
-    list_display = ("id", "mg_number", "mg_date", "student_name", "enrollment", "institute", "maincourse", "subcourse", "mg_status", "doc_rec", "pay_rec_no", "created_by", "created_at")
-    list_filter = ("mg_status", "mg_date", "institute")
+    list_display = ("id", "mg_number", "mg_date", "student_name", "enrollment", "book_no", "mg_cancelled", "mg_status", "doc_rec", "pay_rec_no", "created_by", "created_at")
+    list_filter = ("mg_status", "mg_cancelled", "mg_date", "institute")
     # doc_rec is stored as a varchar (doc_rec_id string) so search on the field directly
-    search_fields = ("mg_number", "student_name", "enrollment__enrollment_no", "doc_rec")
+    search_fields = ("mg_number", "student_name", "book_no", "mg_remark", "enrollment__enrollment_no", "doc_rec")
     # remove doc_rec from autocomplete_fields because it's not a FK anymore
     autocomplete_fields = ("enrollment", "institute", "maincourse", "subcourse", "created_by")
     readonly_fields = ("created_at", "updated_at")

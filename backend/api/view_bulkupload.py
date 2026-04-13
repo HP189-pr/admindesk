@@ -50,6 +50,20 @@ class _CsrfExemptSessionAuthentication(SessionAuthentication):
 class BulkUploadView(APIView):
     logger = logging.getLogger("bulk_upload")
 
+    BULK_TEMPLATE_OVERRIDES = {
+        BulkService.MIGRATION: [
+            "enrollment",
+            "student_name",
+            "mg_remark",
+            "mg_date",
+            "book_no",
+            "mg_status",
+            "mg_cancelled",
+            "doc_rec",
+            "mg_number",
+        ],
+    }
+
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication, _CsrfExemptSessionAuthentication, BasicAuthentication]
     parser_classes = [MultiPartParser, FormParser]
@@ -76,7 +90,7 @@ class BulkUploadView(APIView):
         except Exception:
             return Response({"detail": "pandas is required on server for Excel operations."}, status=500)
 
-        columns = get_bulk_service_template_columns(service)
+        columns = self.BULK_TEMPLATE_OVERRIDES.get(service) or get_bulk_service_template_columns(service)
         if not columns:
             return Response({"detail": f"Template not available for {service or 'service'}"}, status=501)
 

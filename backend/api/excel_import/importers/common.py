@@ -13,7 +13,7 @@ from ...domain_courses import Institute, MainBranch, SubBranch
 from ...domain_documents import ApplyFor, DocRec, PayBy
 from ...domain_emp import EmpProfile, LeaveType
 from ...domain_enrollment import Enrollment
-from ...domain_verification import MailStatus, MigrationStatus, ProvisionalStatus, VerificationStatus
+from ...domain_verification import MailStatus, MigrationStatus, ProvisionalStatus, VerificationStatus, generate_migration_doc_rec_id
 from ..helpers import clean_cell, coerce_decimal_or_none, parse_boolean_cell, parse_excel_date, row_value
 from ..validators import field_scope
 
@@ -82,10 +82,14 @@ def normalize_choice(raw: Any, choices_cls):
 def normalize_migration_status(raw: Any):
     cleaned = clean_cell(raw)
     if cleaned is None:
-        return MigrationStatus.ISSUED
+        return MigrationStatus.RECEIVED
     text = str(cleaned).strip().upper()
     if not text:
-        return MigrationStatus.ISSUED
+        return MigrationStatus.RECEIVED
+    if text in {"R", "RECEIVED", "RECEIVE"}:
+        return MigrationStatus.RECEIVED
+    if text in {"NC", "NOTCOLLECTED", "NOT COLLECTED"}:
+        return MigrationStatus.NOT_COLLECTED
     if text.startswith("CANCEL"):
         return MigrationStatus.CANCELLED
     if text in {"ISSUED", "DONE", "D", "I"}:
@@ -94,6 +98,18 @@ def normalize_migration_status(raw: Any):
         return MigrationStatus.PENDING
     mapped = normalize_choice(cleaned, MigrationStatus)
     return mapped
+
+
+def normalize_yes_no(raw: Any, *, default='No'):
+    cleaned = clean_cell(raw)
+    if cleaned is None:
+        return default
+    text = str(cleaned).strip().lower()
+    if text in {'y', 'yes', '1', 'true'}:
+        return 'Yes'
+    if text in {'n', 'no', '0', 'false'}:
+        return 'No'
+    return default
 
 
 def normalize_provisional_status(raw: Any):

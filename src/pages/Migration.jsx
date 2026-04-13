@@ -8,6 +8,13 @@ import SearchField from '../components/SearchField';
 import useEnrollmentLookup from '../hooks/useEnrollmentLookup';
 
 const ACTIONS = ["➕", "✏️ Edit", "🔍", "📄 Report"];
+const LEGACY_MIGRATION_STATUSES = new Set(['Issued', 'Cancelled']);
+
+const isCancelledMigrationRecord = (record = {}) => {
+  const cancelled = String(record.mg_cancelled || '').trim().toLowerCase();
+  const status = String(record.mg_status || '').trim().toLowerCase();
+  return cancelled === 'yes' || status === 'cancelled';
+};
 
 const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
   const navigate = useNavigate();
@@ -34,10 +41,15 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
     exam_year: "",
     admission_year: "",
     exam_details: "",
-    mg_status: "Pending",
+    mg_status: "RECEIVED",
+    mg_cancelled: "No",
+    mg_remark: "",
+    book_no: "",
     doc_remark: "",
     pay_rec_no: "",
   });
+
+  const isMigrationCancelled = isCancelledMigrationRecord(form);
 
   useEffect(() => {
     try {
@@ -132,6 +144,9 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
 
   // Centralized enrollment lookup using useEnrollmentLookup
   useEnrollmentLookup(form.enrollment, (item) => {
+    if (isMigrationCancelled) {
+      return;
+    }
     if (item) {
       setForm((f) => ({
         ...f,
@@ -152,11 +167,27 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
     }
   });
 
+  useEffect(() => {
+    if (!isMigrationCancelled) {
+      return;
+    }
+    setForm((current) => {
+      if (!current.enrollment && !current.student_name) {
+        return current;
+      }
+      return {
+        ...current,
+        enrollment: '',
+        student_name: '',
+      };
+    });
+  }, [isMigrationCancelled]);
+
   const save = async () => {
     const payload = {
       doc_rec_key: form.doc_rec || form.doc_rec_key || undefined,
-      enrollment: form.enrollment || null,
-      student_name: form.student_name || null,
+      enrollment: isMigrationCancelled ? null : (form.enrollment || null),
+      student_name: isMigrationCancelled ? '' : (form.student_name || null),
       institute: form.institute || null,
       subcourse: form.subcourse || null,
       maincourse: form.maincourse || null,
@@ -165,7 +196,10 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
       exam_year: form.exam_year || null,
       admission_year: form.admission_year || null,
       exam_details: form.exam_details || null,
-      mg_status: (String(form.mg_status || 'Pending')).toUpperCase().includes('CANCEL') ? 'CANCEL' : (form.mg_status || 'Pending'),
+      mg_status: form.mg_status || 'RECEIVED',
+      mg_cancelled: form.mg_cancelled || 'No',
+      mg_remark: form.mg_remark || null,
+      book_no: form.book_no || null,
       pay_rec_no: form.pay_rec_no || null,
       doc_remark: form.doc_remark || null,
     };
@@ -192,15 +226,15 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
     // duplicate mg_number check
     const sibling = list.find((r) => (r.mg_number || '').trim() === (entry.mg_number || '').trim());
     if (sibling) {
-      if ((entry.mg_status || '').toLowerCase() !== 'cancelled') {
+      if (!isCancelledMigrationRecord(entry)) {
         alert('Duplicate MG number for this document is not allowed unless status is Cancelled.');
         return;
       }
     }
     // only one non-cancelled per doc_rec
-    const statusNonCancel = list.filter(r => (r.mg_status||'').toLowerCase() !== 'cancelled');
-    if ((entry.mg_status||'').toLowerCase() !== 'cancelled') {
-      const hasDoneOrNull = statusNonCancel.find(r => !r.mg_status || ['issued','pending','done'].includes((r.mg_status||'').toLowerCase()));
+    const statusNonCancel = list.filter((r) => !isCancelledMigrationRecord(r));
+    if (!isCancelledMigrationRecord(entry)) {
+      const hasDoneOrNull = statusNonCancel.find((r) => !r.mg_status || ['issued', 'pending', 'done', 'received', 'not collected'].includes((r.mg_status || '').toLowerCase()));
       if (hasDoneOrNull) {
         alert('Only one non-cancelled migration entry allowed per document.');
         return;
@@ -208,8 +242,8 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
     }
     const payload = {
       doc_rec_key: form.doc_rec || form.doc_rec_key || undefined,
-      enrollment: entry.enrollment || null,
-      student_name: entry.student_name || null,
+      enrollment: isCancelledMigrationRecord(entry) ? null : (entry.enrollment || null),
+      student_name: isCancelledMigrationRecord(entry) ? '' : (entry.student_name || null),
       institute: entry.institute || null,
       subcourse: entry.subcourse || null,
       maincourse: entry.maincourse || null,
@@ -218,7 +252,10 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
       exam_year: entry.exam_year || null,
       admission_year: entry.admission_year || null,
       exam_details: entry.exam_details || null,
-      mg_status: (String(entry.mg_status || 'Pending')).toUpperCase().includes('CANCEL') ? 'CANCEL' : (entry.mg_status || 'Pending'),
+      mg_status: entry.mg_status || 'RECEIVED',
+      mg_cancelled: entry.mg_cancelled || 'No',
+      mg_remark: entry.mg_remark || null,
+      book_no: entry.book_no || null,
       pay_rec_no: entry.pay_rec_no || null,
       doc_remark: entry.doc_remark || form.doc_remark || null,
     };
@@ -252,11 +289,11 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
             </div>
             <div>
               <label className="text-sm">Enrollment</label>
-                <input className="w-full border rounded-lg p-2" value={form.enrollment} onChange={(e)=>{ setF('enrollment', e.target.value); }} />
+                <input className="w-full border rounded-lg p-2 disabled:bg-gray-100" disabled={isMigrationCancelled} value={form.enrollment} onChange={(e)=>{ setF('enrollment', e.target.value); }} />
             </div>
             <div>
               <label className="text-sm">Student Name</label>
-              <input className="w-full border rounded-lg p-2" value={form.student_name} onChange={(e)=>setF('student_name', e.target.value)} />
+              <input className="w-full border rounded-lg p-2 disabled:bg-gray-100" disabled={isMigrationCancelled} value={form.student_name} onChange={(e)=>setF('student_name', e.target.value)} />
             </div>
             <div>
               <label className="text-sm">Institute Id</label>
@@ -294,10 +331,27 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
             <div>
               <label className="text-sm">Status</label>
               <select className="w-full border rounded-lg p-2" value={form.mg_status} onChange={(e)=>setF('mg_status', e.target.value)}>
+                <option value="RECEIVED">Received</option>
                 <option>Pending</option>
-                <option>Issued</option>
-                <option>Cancelled</option>
+                <option value="NOT COLLECTED">Not Collected</option>
+                <option value="Issued">Issued</option>
+                <option value="Cancelled">Cancelled</option>
               </select>
+            </div>
+            <div>
+              <label className="text-sm">Cancelled</label>
+              <select className="w-full border rounded-lg p-2" value={form.mg_cancelled} onChange={(e)=>setF('mg_cancelled', e.target.value)}>
+                <option value="No">No</option>
+                <option value="Yes">Yes</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm">Book No</label>
+              <input className="w-full border rounded-lg p-2" value={form.book_no} onChange={(e)=>setF('book_no', e.target.value)} />
+            </div>
+            <div className="md:col-span-2">
+              <label className="text-sm">MG Remark</label>
+              <input className="w-full border rounded-lg p-2" value={form.mg_remark} onChange={(e)=>setF('mg_remark', e.target.value)} />
             </div>
             <div>
               <label className="text-sm">Pay Rec No</label>
@@ -307,6 +361,12 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
               <label className="text-sm">Doc Rec Remark</label>
               <input className="w-full border rounded-lg p-2" value={form.doc_remark} onChange={(e)=>setF('doc_remark', e.target.value)} />
             </div>
+            {isMigrationCancelled && (
+              <div className="md:col-span-4 text-sm text-amber-700">Cancelled migration skips enrollment and student name.</div>
+            )}
+            {LEGACY_MIGRATION_STATUSES.has(form.mg_status) && (
+              <div className="md:col-span-4 text-xs text-slate-500">Legacy status retained for compatibility with existing records.</div>
+            )}
 
             <div className="md:col-span-4 flex justify-end">
               <button className="save-button" onClick={async()=>{ try{ await save(); alert('Saved'); setSelectedTopbarMenu('🔍'); setPanelOpen(false); }catch(e){ alert(e.message||'Failed'); } }}>Save</button>
@@ -368,9 +428,12 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
                     exam_year: r.exam_year || '',
                     admission_year: r.admission_year || '',
                     exam_details: r.exam_details || '',
-                    mg_status: r.mg_status || 'Pending',
+                    mg_status: r.mg_status || 'RECEIVED',
+                    mg_cancelled: r.mg_cancelled || 'No',
+                    mg_remark: r.mg_remark || '',
+                    book_no: r.book_no || '',
                     pay_rec_no: r.pay_rec_no || '',
-                    doc_rec_remark: r.doc_rec_remark || '',
+                    doc_remark: r.doc_remark || r.doc_rec_remark || '',
                   });
                 }}>
                   <td className="py-2 px-3 whitespace-nowrap">{r.mg_number || '-'}</td>

@@ -26,6 +26,7 @@ from django.utils import timezone
 from django.db import transaction
 from .models import Holiday, UserProfile, User, Module, Menu, UserPermission, DashboardPreference, Enrollment, Institute, MainBranch, SubBranch, InstituteCourseOffering, Verification, VerificationStatus, DocRec, MigrationRecord, ProvisionalRecord, Eca, StudentProfile, ProvisionalStatus
 from .domain_letter import InstLetterMain, InstLetterStudent
+from .domain_verification import MigrationStatus, generate_migration_doc_rec_id
 from django.conf import settings
 
 # --- Holiday Serializer ---
@@ -445,16 +446,26 @@ class MigrationRecordSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['id', 'created_at', 'updated_at', 'created_by']
 
-    def create(self, validated):
-        request = self.context.get('request')
-        if request and request.user and request.user.is_authenticated:
-            validated['created_by'] = request.user
-        # Copy raw doc_rec_key into stored doc_rec string if provided
+    def _normalize_doc_rec(self, validated, instance=None):
         if 'doc_rec_key' in validated:
             val = validated.pop('doc_rec_key')
             validated['doc_rec'] = val if val not in (None, '') else None
-        # Auto-populate from enrollment when provided
-        enr = validated.get('enrollment')
+        if not validated.get('doc_rec'):
+            existing_doc_rec = getattr(instance, 'doc_rec', None) if instance is not None else None
+            validated['doc_rec'] = existing_doc_rec or generate_migration_doc_rec_id(validated.get('mg_number') or getattr(instance, 'mg_number', None))
+
+    def _apply_business_rules(self, validated, instance=None):
+        if not validated.get('mg_status'):
+            validated['mg_status'] = MigrationStatus.RECEIVED
+        if not validated.get('mg_cancelled'):
+            validated['mg_cancelled'] = getattr(instance, 'mg_cancelled', None) or 'No'
+
+        if validated.get('mg_cancelled') == 'Yes':
+            validated['enrollment'] = None
+            validated['student_name'] = ''
+            return
+
+        enr = validated.get('enrollment') or getattr(instance, 'enrollment', None)
         if enr:
             if not validated.get('student_name'):
                 validated['student_name'] = enr.student_name or ''
@@ -464,21 +475,29 @@ class MigrationRecordSerializer(serializers.ModelSerializer):
                 validated['subcourse'] = enr.subcourse
             if not validated.get('maincourse'):
                 validated['maincourse'] = enr.maincourse
+
+    def validate(self, attrs):
+        mg_number = attrs.get('mg_number', getattr(self.instance, 'mg_number', None))
+        mg_date = attrs.get('mg_date', getattr(self.instance, 'mg_date', None))
+        if self.instance is None:
+            if not mg_number:
+                raise serializers.ValidationError({'mg_number': 'This field is required.'})
+            if not mg_date:
+                raise serializers.ValidationError({'mg_date': 'This field is required.'})
+        return super().validate(attrs)
+
+    def create(self, validated):
+        request = self.context.get('request')
+        if request and request.user and request.user.is_authenticated:
+            validated['created_by'] = request.user
+        self._normalize_doc_rec(validated)
+        self._apply_business_rules(validated)
         return super().create(validated)
 
-
-class ProvisionalRecordSerializer(serializers.ModelSerializer):
-    # Accept a raw doc_rec_id string on write (uploads or API clients may send the public key)
-    doc_rec_key = serializers.CharField(write_only=True, required=False, allow_null=True, allow_blank=True)
-    doc_rec_id = serializers.CharField(write_only=True, required=False, allow_null=True, allow_blank=True)
-    # Expose the stored doc_rec_id (string) on read
-    doc_rec = serializers.CharField(read_only=True)
-    # Expose related codes/names for UI consumption
-    institute_code = serializers.CharField(source='institute.institute_code', read_only=True, allow_null=True)
-    maincourse_code = serializers.CharField(source='maincourse.course_code', read_only=True, allow_null=True)
-    maincourse_name = serializers.CharField(source='maincourse.course_name', read_only=True, allow_null=True)
-    subcourse_name = serializers.CharField(source='subcourse.subcourse_name', read_only=True, allow_null=True)
-    # Allow blank/nullable student_name from uploads
+    def update(self, instance, validated):
+        self._normalize_doc_rec(validated, instance=instance)
+        self._apply_business_rules(validated, instance=instance)
+        return super().update(instance, validated)
     student_name = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     # Allow binding enrollment using its enrollment_no (slug) when creating via API
     enrollment_no = serializers.SlugRelatedField(

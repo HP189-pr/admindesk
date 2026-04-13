@@ -123,10 +123,14 @@ IMPORT_SPECS: Dict[type, Dict[str, Any]] = {
         "allowed_columns": [
             "doc_rec_id", "enrollment_no", "student_name", "institute_id",
             "maincourse_id", "subcourse_id", "mg_number", "mg_date",
-            "exam_year", "admission_year", "exam_details", "mg_status", "pay_rec_no",
+            "exam_year", "admission_year", "exam_details", "mg_status", "mg_cancelled", "mg_remark", "book_no", "pay_rec_no",
         ],
-        "required_keys": ["doc_rec_id"],
-        "create_requires": ["doc_rec_id"],
+        "template_columns": [
+            "enrollment", "student_name", "mg_remark", "mg_date",
+            "book_no", "mg_status", "mg_cancelled", "doc_rec", "mg_number",
+        ],
+        "required_keys": ["mg_number", "mg_date"],
+        "create_requires": ["mg_number", "mg_date"],
     },
     ProvisionalRecord: {
         "allowed_columns": [
@@ -175,4 +179,4 @@ def get_import_spec(model) -> Dict[str, Any]:
     for klass, spec in IMPORT_SPECS.items():
         if issubclass(model, klass):
             return spec
-    return {"allowed_columns": [], "required_keys": [], "create_requires": []}
+    return {"allowed_columns": [], "template_columns": [], "required_keys": [], "create_requires": []}

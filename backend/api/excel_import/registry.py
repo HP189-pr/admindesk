@@ -61,7 +61,7 @@ BULK_SERVICE_TEMPLATE_COLUMNS = {
         "student_name", "institute_id", "batch", "enrollment_date", "subcourse_id", "maincourse_id", "enrollment_no", "temp_enroll_no", "admission_date",
     ],
     "MIGRATION": [
-        "doc_rec_id", "enrollment_no", "student_name", "institute_id", "maincourse_id", "subcourse_id", "mg_number", "mg_date", "exam_year", "admission_year", "exam_details", "mg_status", "pay_rec_no",
+        "doc_rec_id", "enrollment_no", "student_name", "institute_id", "maincourse_id", "subcourse_id", "mg_number", "mg_date", "exam_year", "admission_year", "exam_details", "mg_status", "mg_cancelled", "mg_remark", "book_no", "pay_rec_no",
     ],
     "PROVISIONAL": [
         "doc_rec_id", "enrollment_no", "student_name", "institute_id", "maincourse_id", "subcourse_id", "prv_number", "prv_date", "class_obtain", "prv_degree_name", "passing_year", "prv_status", "pay_rec_no",

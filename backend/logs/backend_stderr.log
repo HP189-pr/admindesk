@@ -45785,3 +45785,18 @@ Traceback (most recent call last):
     return datetime.date.fromisoformat(value)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 TypeError: fromisoformat: argument must be str
+Unauthorized: /api/token/verify/
+2026-04-11 15:41:25,603 WARNING  Unauthorized: /api/token/verify/
+Unauthorized: /api/token/verify/
+2026-04-11 15:41:25,604 WARNING  Unauthorized: /api/token/verify/
+2026-04-11 15:46:10,709 INFO     Killed 0 pending application instances
+2026-04-13 08:26:55,903 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-04-13 08:26:55,904 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-04-13 08:26:55,904 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-04-13 08:26:55,904 INFO     Listening on TCP address 0.0.0.0:8001
+Not Found: /favicon.ico
+2026-04-13 10:41:44,416 WARNING  Not Found: /favicon.ico
+Unauthorized: /api/users/
+2026-04-13 10:42:36,335 WARNING  Unauthorized: /api/users/
+Bad Request: /api/verify-admin-panel-password/
+2026-04-13 11:40:28,659 WARNING  Bad Request: /api/verify-admin-panel-password/

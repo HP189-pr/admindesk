@@ -6,7 +6,7 @@ from typing import Any, Dict
 
 from ..domain_cash_register import Receipt
 from ..domain_fees_ledger import StudentFeesLedger
-from ..models import Enrollment, StudentProfile
+from ..models import Enrollment, MigrationRecord, StudentProfile
 from .import_specs import get_import_spec
 from .registry import get_bulk_service_model, get_bulk_service_template_columns
 
@@ -106,6 +106,24 @@ COLUMN_ALIAS_MAP: Dict[type, Dict[str, str]] = {
         "photo uploaded": "photo_uploaded",
         "use hostel": "hostel_required",
     },
+    MigrationRecord: {
+        "enrollment": "enrollment_no",
+        "enrollment no": "enrollment_no",
+        "enrollment_no": "enrollment_no",
+        "docrec": "doc_rec_id",
+        "doc rec": "doc_rec_id",
+        "doc_rec": "doc_rec_id",
+        "doc rec id": "doc_rec_id",
+        "doc_rec_id": "doc_rec_id",
+        "migration remark": "mg_remark",
+        "mg remark": "mg_remark",
+        "remark": "mg_remark",
+        "book no": "book_no",
+        "book number": "book_no",
+        "cancelled": "mg_cancelled",
+        "is cancelled": "mg_cancelled",
+        "migration status": "mg_status",
+    },
     StudentFeesLedger: {
         "enrollment": "enrollment_no",
         "enrollment no": "enrollment_no",
@@ -203,9 +221,21 @@ GENERIC_BULK_COLUMN_ALIAS_MAP = {
     "mg_number": "mg_number",
     "mg date": "mg_date",
     "mg_date": "mg_date",
+    "mg status": "mg_status",
+    "migration status": "mg_status",
+    "mg cancelled": "mg_cancelled",
+    "migration cancelled": "mg_cancelled",
+    "is cancelled": "mg_cancelled",
+    "book no": "book_no",
+    "book number": "book_no",
+    "book_no": "book_no",
+    "mg remark": "mg_remark",
+    "migration remark": "mg_remark",
+    "mg_remark": "mg_remark",
     "student name": "student_name",
     "studentname": "student_name",
     "student_name": "student_name",
+    "remark": "mg_remark",
     "batch": "batch",
     "registration date": "enrollment_date",
     "enrollment date": "enrollment_date",

@@ -105,6 +105,10 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     mg_date: "",
     exam_year: "",
     admission_year: "",
+    mg_status: "RECEIVED",
+    mg_cancelled: "No",
+    mg_remark: "",
+    book_no: "",
   };
   const [form, setForm] = useState(initialForm);
   const [related, setRelated] = useState({ migration: [], provisional: [], verification: [], inst_verification_main: [], inst_verification_students: [] });
@@ -565,6 +569,10 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
       passing_year: r.passing_year || '',
       exam_year: r.exam_year || '',
       admission_year: r.admission_year || '',
+      mg_status: r.mg_status || 'RECEIVED',
+      mg_cancelled: r.mg_cancelled || 'No',
+      mg_remark: r.mg_remark || '',
+      book_no: r.book_no || '',
     });
     if (docRecId) fetchRelatedForDocRec(docRecId);
     // remember selected record so UI can show Update/Delete actions
@@ -743,9 +751,9 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
       });
     } else if (form.apply_for === "MG") {
       const payload = {
-        doc_rec: rec.id,
-        enrollment: form.enrollment || null,
-        student_name: form.student_name || "",
+        doc_rec_key: rec.doc_rec_id || rec.doc_rec || null,
+        enrollment: form.mg_cancelled === 'Yes' ? null : (form.enrollment || null),
+        student_name: form.mg_cancelled === 'Yes' ? '' : (form.student_name || ""),
         institute: form.institute_id || null,
         subcourse: form.sub_course || null,
         maincourse: form.main_course || null,
@@ -753,7 +761,10 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
         mg_date: dmyToISO(form.mg_date) || null,
         exam_year: form.exam_year,
         admission_year: form.admission_year,
-        mg_status: "Pending",
+        mg_status: form.mg_status || "RECEIVED",
+        mg_cancelled: form.mg_cancelled || 'No',
+        mg_remark: form.mg_remark || null,
+        book_no: form.book_no || null,
         pay_rec_no: rec.pay_rec_no || "",
         doc_rec_remark: form.doc_remark || null,
       };
@@ -881,6 +892,10 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
         mg_date: "",
         exam_year: "",
         admission_year: "",
+        mg_status: "RECEIVED",
+        mg_cancelled: "No",
+        mg_remark: "",
+        book_no: "",
       });
       fetchRecentRecords('', 'all');
     } catch (e) {

@@ -14,8 +14,24 @@ from .domain_documents import DocRec
 
 __all__ = [
     'MailStatus','VerificationStatus','Verification',
-    'MigrationStatus','MigrationRecord','ProvisionalStatus','ProvisionalRecord'
+    'MigrationStatus','MigrationRecord','ProvisionalStatus','ProvisionalRecord',
+    'generate_migration_doc_rec_id'
 ]
+
+
+def generate_migration_doc_rec_id(mg_number):
+    try:
+        raw = str(mg_number or '').strip()
+        if not raw:
+            return None
+        parts = [part.strip() for part in raw.split('/', 1)]
+        if len(parts) != 2 or not parts[0] or not parts[1]:
+            return None
+        short_year = parts[0][-2:]
+        number = int(parts[1])
+        return f"mg{short_year}{number:05d}"
+    except Exception:
+        return None
 
 class MailStatus(models.TextChoices):
     NOT_SENT = 'NOT_SENT', 'Not Sent'
@@ -156,7 +172,9 @@ class Verification(models.Model):
 
 
 class MigrationStatus(models.TextChoices):
+    RECEIVED = 'RECEIVED', 'Received'
     PENDING = 'Pending', 'Pending'
+    NOT_COLLECTED = 'NOT COLLECTED', 'Not Collected'
     ISSUED = 'Issued', 'Issued'
     CANCELLED = 'Cancelled', 'Cancelled'
 
@@ -179,7 +197,15 @@ class MigrationRecord(models.Model):
     exam_year = models.CharField(max_length=20, db_column='exam_year', null=True, blank=True)
     admission_year = models.CharField(max_length=20, db_column='admission_year', null=True, blank=True)
     exam_details = models.TextField(null=True, blank=True, db_column='exam_details')
-    mg_status = models.CharField(max_length=20, choices=MigrationStatus.choices, default=MigrationStatus.PENDING, db_column='mg_status')
+    mg_status = models.CharField(max_length=20, choices=MigrationStatus.choices, default=MigrationStatus.RECEIVED, db_column='mg_status')
+    mg_remark = models.CharField(max_length=255, null=True, blank=True, db_column='mg_remark')
+    mg_cancelled = models.CharField(
+        max_length=3,
+        choices=[('Yes', 'Yes'), ('No', 'No')],
+        default='No',
+        db_column='mg_cancelled',
+    )
+    book_no = models.CharField(max_length=50, null=True, blank=True, db_column='book_no')
     # pay_rec_no is nullable in the DB schema; keep nullable here and avoid
     # enforcing presence at model-clean time (caller may choose to copy from DocRec).
     pay_rec_no = models.CharField(max_length=50, db_column='pay_rec_no', null=True, blank=True)
@@ -197,6 +223,31 @@ class MigrationRecord(models.Model):
             models.Index(fields=['mg_number'], name='idx_mg_number'),
         ]
     def clean(self):
+        if not self.mg_status:
+            self.mg_status = MigrationStatus.RECEIVED
+        if not self.mg_cancelled:
+            self.mg_cancelled = 'No'
+        if not self.doc_rec and self.mg_number:
+            self.doc_rec = generate_migration_doc_rec_id(self.mg_number)
+
+        is_cancelled = str(self.mg_cancelled or '').strip().lower() == 'yes'
+        if is_cancelled:
+            self.enrollment = None
+            self.student_name = ''
+        elif getattr(self, 'enrollment', None):
+            try:
+                enr = self.enrollment
+                if not self.student_name:
+                    self.student_name = getattr(enr, 'student_name', '') or ''
+                if not self.institute and getattr(enr, 'institute', None):
+                    self.institute = enr.institute
+                if not self.maincourse and getattr(enr, 'maincourse', None):
+                    self.maincourse = enr.maincourse
+                if not self.subcourse and getattr(enr, 'subcourse', None):
+                    self.subcourse = enr.subcourse
+            except Exception:
+                pass
+
         # default pay_rec_no from related DocRec if available; do not fail validation
         # if it's still missing since DB schema allows NULL for this column.
         try:
@@ -208,6 +259,10 @@ class MigrationRecord(models.Model):
             pass
     def save(self,*a,**kw):
         try:
+            is_cancelled = str(getattr(self, 'mg_cancelled', '') or '').strip().lower() == 'yes'
+            if is_cancelled:
+                self.enrollment = None
+                self.student_name = ''
             if getattr(self, 'enrollment', None) and not getattr(self, 'institute', None):
                 try:
                     enr = self.enrollment

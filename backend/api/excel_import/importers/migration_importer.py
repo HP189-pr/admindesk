@@ -11,9 +11,11 @@ from .common import (
     docrec_date_from_row,
     docrec_remark_from_row,
     ensure_docrec,
+    generate_migration_doc_rec_id,
     lookup_docrec,
     lookup_enrollment,
     normalize_migration_status,
+    normalize_yes_no,
     resolve_related_course_objects,
     scalar,
     sync_docrec,
@@ -27,6 +29,8 @@ def process_row(row, context: ImportContext) -> RowImportResult:
         return RowImportResult(status="skipped", message="Missing mg_number", ref=mg_number)
 
     doc_rec_key = clean_cell(scalar(row, "doc_rec_id")) or clean_cell(scalar(row, "doc_rec")) or clean_cell(scalar(row, "doc_rec_key"))
+    if not doc_rec_key:
+        doc_rec_key = generate_migration_doc_rec_id(mg_number)
     doc_rec = lookup_docrec(doc_rec_key)
     doc_rec_date = docrec_date_from_row(row, scope, "doc_rec_date")
     doc_remark = docrec_remark_from_row(row, scope)
@@ -47,7 +51,8 @@ def process_row(row, context: ImportContext) -> RowImportResult:
     mg_status = normalize_migration_status(scalar(row, "mg_status"))
     if mg_status is None:
         return RowImportResult(status="skipped", message=f"Invalid mg_status: {scalar(row, 'mg_status')}", ref=mg_number)
-    is_cancel = mg_status == MigrationStatus.CANCELLED
+    mg_cancelled = normalize_yes_no(scalar(row, "mg_cancelled"), default='No')
+    is_cancel = mg_cancelled == 'Yes' or mg_status == MigrationStatus.CANCELLED
 
     if not is_cancel and "enrollment_no" in scope and not enrollment_key:
         return RowImportResult(status="skipped", message="Missing enrollment_no for non-cancel record", ref=mg_number)
@@ -75,6 +80,9 @@ def process_row(row, context: ImportContext) -> RowImportResult:
     elif enrollment is not None:
         student_name = getattr(enrollment, "student_name", None)
 
+    book_no = clean_cell(scalar(row, "book_no")) if "book_no" in scope else None
+    mg_remark = clean_cell(scalar(row, "mg_remark")) if "mg_remark" in scope else None
+
     pay_rec_no = clean_cell(scalar(row, "pay_rec_no")) if "pay_rec_no" in scope else None
     if not pay_rec_no and doc_rec is not None:
         pay_rec_no = getattr(doc_rec, "pay_rec_no", None)
@@ -82,6 +90,9 @@ def process_row(row, context: ImportContext) -> RowImportResult:
     defaults = {
         "doc_rec": getattr(doc_rec, "doc_rec_id", None),
         "mg_status": mg_status,
+        "mg_cancelled": mg_cancelled,
+        "mg_remark": mg_remark,
+        "book_no": book_no,
         "doc_remark": doc_remark,
     }
     if enrollment is not None:

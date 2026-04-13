@@ -54,7 +54,8 @@ class ExcelUploadMixin:
 
     def download_template(self, request):  # type: ignore
         spec = get_import_spec(self.model)
-        header = ",".join(spec["allowed_columns"]) + "\n"
+        header_columns = spec.get("template_columns") or spec["allowed_columns"]
+        header = ",".join(header_columns) + "\n"
         response = HttpResponse(header, content_type="text/csv")
         response["Content-Disposition"] = f"attachment; filename={self.model._meta.model_name}_template.csv"
         return response

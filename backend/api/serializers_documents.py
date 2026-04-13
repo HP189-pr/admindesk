@@ -9,6 +9,7 @@ from django.db import models
 from django.db.models import Value
 from django.db.models.functions import Lower, Replace
 from django.db.models import Q
+from .domain_verification import MigrationStatus, generate_migration_doc_rec_id
 from .models import (
     DocRec, Verification, VerificationStatus, MigrationRecord, ProvisionalRecord,
     InstLetterMain, InstLetterStudent, Eca, Enrollment
@@ -124,24 +125,62 @@ class DocRecSerializer(serializers.ModelSerializer):
         return super().create(validated)
 
 class MigrationRecordSerializer(serializers.ModelSerializer):
-    doc_rec_key = serializers.SlugRelatedField(slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False)
-    doc_rec = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
+    doc_rec_key = serializers.CharField(write_only=True, required=False, allow_null=True, allow_blank=True)
+    doc_rec = serializers.CharField(read_only=True)
     doc_remark = serializers.CharField(source='doc_remark', required=False, allow_blank=True)
     class Meta:
         model = MigrationRecord
         fields = '__all__'
         read_only_fields = ['id','created_at','updated_at','created_by']
-    def create(self, validated):
-        req = self.context.get('request')
-        if req and req.user and req.user.is_authenticated:
-            validated['created_by'] = req.user
-        enr = validated.get('enrollment')
+
+    def _normalize_doc_rec(self, validated, instance=None):
+        if 'doc_rec_key' in validated:
+            val = validated.pop('doc_rec_key')
+            validated['doc_rec'] = val if val not in (None, '') else None
+        if not validated.get('doc_rec'):
+            existing_doc_rec = getattr(instance, 'doc_rec', None) if instance is not None else None
+            validated['doc_rec'] = existing_doc_rec or generate_migration_doc_rec_id(validated.get('mg_number') or getattr(instance, 'mg_number', None))
+
+    def _apply_business_rules(self, validated, instance=None):
+        if not validated.get('mg_status'):
+            validated['mg_status'] = MigrationStatus.RECEIVED
+        if not validated.get('mg_cancelled'):
+            validated['mg_cancelled'] = getattr(instance, 'mg_cancelled', None) or 'No'
+
+        if validated.get('mg_cancelled') == 'Yes':
+            validated['enrollment'] = None
+            validated['student_name'] = ''
+            return
+
+        enr = validated.get('enrollment') or getattr(instance, 'enrollment', None)
         if enr:
             validated.setdefault('student_name', enr.student_name or '')
             validated.setdefault('institute', enr.institute)
             validated.setdefault('subcourse', enr.subcourse)
             validated.setdefault('maincourse', enr.maincourse)
+
+    def validate(self, attrs):
+        mg_number = attrs.get('mg_number', getattr(self.instance, 'mg_number', None))
+        mg_date = attrs.get('mg_date', getattr(self.instance, 'mg_date', None))
+        if self.instance is None:
+            if not mg_number:
+                raise serializers.ValidationError({'mg_number': 'This field is required.'})
+            if not mg_date:
+                raise serializers.ValidationError({'mg_date': 'This field is required.'})
+        return super().validate(attrs)
+
+    def create(self, validated):
+        req = self.context.get('request')
+        if req and req.user and req.user.is_authenticated:
+            validated['created_by'] = req.user
+        self._normalize_doc_rec(validated)
+        self._apply_business_rules(validated)
         return super().create(validated)
+
+    def update(self, instance, validated):
+        self._normalize_doc_rec(validated, instance=instance)
+        self._apply_business_rules(validated, instance=instance)
+        return super().update(instance, validated)
 
     def get_doc_rec_remark(self, obj):
         try:
