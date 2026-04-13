@@ -1,14 +1,13 @@
-﻿// src/pages/Migration.jsx
+// src/pages/Migration.jsx
 import React, { useMemo, useState, useEffect } from "react";
-import { dmyToISO, isoToDMY } from "../utils/date";
-import { useNavigate } from 'react-router-dom';
+import { dmyToISO, toDateInput } from "../utils/date";
 import PanelToggleButton from '../components/PanelToggleButton';
 import PageTopbar from "../components/PageTopbar";
 import SearchField from '../components/SearchField';
 import useEnrollmentLookup from '../hooks/useEnrollmentLookup';
 
 const ACTIONS = ["➕", "✏️ Edit", "🔍", "📄 Report"];
-const LEGACY_MIGRATION_STATUSES = new Set(['Issued', 'Cancelled']);
+const LEGACY_MIGRATION_STATUSES = new Set(['RECEIVED']);
 
 const isCancelledMigrationRecord = (record = {}) => {
   const cancelled = String(record.mg_cancelled || '').trim().toLowerCase();
@@ -16,8 +15,39 @@ const isCancelledMigrationRecord = (record = {}) => {
   return cancelled === 'yes' || status === 'cancelled';
 };
 
+const pickMappedId = (value, primaryKey, fallbackKey = 'id') => {
+  if (value && typeof value === 'object') {
+    return value[primaryKey] ?? value[fallbackKey] ?? '';
+  }
+  return value ?? '';
+};
+
+const getTodayIso = () => new Date().toISOString().slice(0, 10);
+
+const createEmptyMigrationForm = (overrides = {}) => ({
+  id: null,
+  doc_rec: "",
+  doc_rec_key: "",
+  enrollment: "",
+  student_name: "",
+  institute: "",
+  subcourse: "",
+  maincourse: "",
+  mg_number: "",
+  mg_date: getTodayIso(),
+  exam_year: "",
+  admission_year: "",
+  exam_details: "",
+  mg_status: "Issued",
+  mg_cancelled: "No",
+  mg_remark: "",
+  book_no: "",
+  doc_remark: "",
+  pay_rec_no: "",
+  ...overrides,
+});
+
 const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
-  const navigate = useNavigate();
   const [selectedTopbarMenu, setSelectedTopbarMenu] = useState("🔍");
   const [panelOpen, setPanelOpen] = useState(true);
   const [list, setList] = useState([]);
@@ -26,44 +56,114 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
   const [error, setError] = useState(null);
   const [currentRow, setCurrentRow] = useState(null);
   const [instCodeById, setInstCodeById] = useState({});
-
-  const [form, setForm] = useState({
-    id: null,
-    doc_rec: "", // public id string of doc_rec
-    doc_rec_key: "", // write key for payload
-    enrollment: "", // enrollment_no
-    student_name: "",
-    institute: "",
-    subcourse: "",
-    maincourse: "",
-    mg_number: "",
-  mg_date: "",
-    exam_year: "",
-    admission_year: "",
-    exam_details: "",
-    mg_status: "RECEIVED",
-    mg_cancelled: "No",
-    mg_remark: "",
-    book_no: "",
-    doc_remark: "",
-    pay_rec_no: "",
-  });
+  const [form, setForm] = useState(() => createEmptyMigrationForm());
 
   const isMigrationCancelled = isCancelledMigrationRecord(form);
+  const isEditMode = selectedTopbarMenu === '✏️ Edit' && Boolean(form.id);
+  const panelTitle = selectedTopbarMenu === '🔍' ? 'Search Panel' : isEditMode ? 'Edit Panel' : 'Add Panel';
 
-  useEffect(() => {
-    try {
-      const nav = window.__admindesk_initial_nav;
-      if (nav && nav.nav === 'migration' && nav.docrec) {
-        setForm((f)=>({ ...f, doc_rec: nav.docrec }));
-        delete window.__admindesk_initial_nav;
-      }
-    } catch (e) {}
-  }, []);
+  const instituteCodeValue = useMemo(() => {
+    const key = String(form.institute || '').trim();
+    return (key && instCodeById[key]) || key;
+  }, [form.institute, instCodeById]);
 
   const authHeaders = () => {
     const token = localStorage.getItem("access_token");
     return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
+  const loadNextMigrationPreview = async () => {
+    const res = await fetch('/api/migration/next-number/', { headers: { ...authHeaders() } });
+    if (!res.ok) {
+      throw new Error(`Failed to load next migration number: ${res.status}`);
+    }
+    return res.json();
+  };
+
+  const populateFormFromRecord = (record) => {
+    if (!record) return;
+
+    setForm(createEmptyMigrationForm({
+      id: record.id,
+      doc_rec: record.doc_rec || record.doc_rec_id || '',
+      doc_rec_key: record.doc_rec || record.doc_rec_id || '',
+      enrollment: record.enrollment || record.enrollment_no || '',
+      student_name: record.student_name || '',
+      institute: pickMappedId(record.institute, 'institute_id') || record.institute_id || '',
+      subcourse: pickMappedId(record.subcourse, 'subcourse_id') || record.subcourse_id || '',
+      maincourse: pickMappedId(record.maincourse, 'maincourse_id') || record.maincourse_id || '',
+      mg_number: record.mg_number || '',
+      mg_date: toDateInput(record.mg_date) || record.mg_date || getTodayIso(),
+      exam_year: record.exam_year || '',
+      admission_year: record.admission_year || '',
+      exam_details: record.exam_details || '',
+      mg_status: record.mg_status || 'Issued',
+      mg_cancelled: record.mg_cancelled || 'No',
+      mg_remark: record.mg_remark || '',
+      book_no: record.book_no || '',
+      pay_rec_no: record.pay_rec_no || '',
+      doc_remark: record.doc_remark || record.doc_rec_remark || '',
+    }));
+  };
+
+  const resetForm = async (mode = selectedTopbarMenu) => {
+    if (mode === '✏️ Edit' && currentRow) {
+      populateFormFromRecord(currentRow);
+      return;
+    }
+
+    try {
+      const preview = await loadNextMigrationPreview();
+      setForm(createEmptyMigrationForm({
+        doc_rec: preview?.doc_rec || '',
+        doc_rec_key: preview?.doc_rec || '',
+        mg_number: preview?.mg_number || '',
+        mg_date: preview?.mg_date || getTodayIso(),
+      }));
+    } catch (e) {
+      console.error(e);
+      setForm(createEmptyMigrationForm());
+    }
+  };
+
+  const handleFormKeyDown = (e) => {
+    if (e.key !== 'Enter' || e.shiftKey || e.target.tagName === 'BUTTON') {
+      return;
+    }
+
+    const container = e.currentTarget;
+    const fields = Array.from(
+      container.querySelectorAll('input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])')
+    ).filter((node) => node.offsetParent !== null);
+
+    const index = fields.indexOf(e.target);
+    if (index === -1) {
+      return;
+    }
+
+    e.preventDefault();
+    const next = fields[index + 1];
+    if (next) {
+      next.focus();
+      if (typeof next.select === 'function') {
+        next.select();
+      }
+    }
+  };
+
+  const handleTopbarSelect = (action) => {
+    setSelectedTopbarMenu(action);
+    setPanelOpen(true);
+
+    if (action === '➕') {
+      setCurrentRow(null);
+      resetForm('➕');
+      return;
+    }
+
+    if (action === '✏️ Edit' && currentRow) {
+      populateFormFromRecord(currentRow);
+    }
   };
 
   const loadList = async (queryValue = q) => {
@@ -77,10 +177,14 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
         throw new Error(`Server error: ${res.status} ${res.statusText}`);
       }
       const data = await res.json();
-      setList(Array.isArray(data) ? data : data.results || []);
+      const rows = Array.isArray(data) ? data : data.results || [];
+      setList(rows);
+      return rows;
     } catch (e) {
       console.error(e);
       setError("Failed to load records. Please check the server logs.");
+      setList([]);
+      return [];
     } finally {
       setLoading(false);
     }
@@ -140,25 +244,34 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
     loadInstituteCodes();
   }, []);
 
-  const setF = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  useEffect(() => {
+    try {
+      const nav = window.__admindesk_initial_nav;
+      if (nav && nav.nav === 'migration' && nav.docrec) {
+        setForm((current) => ({ ...current, doc_rec: nav.docrec, doc_rec_key: nav.docrec }));
+        delete window.__admindesk_initial_nav;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
 
-  // Centralized enrollment lookup using useEnrollmentLookup
   useEnrollmentLookup(form.enrollment, (item) => {
     if (isMigrationCancelled) {
       return;
     }
     if (item) {
-      setForm((f) => ({
-        ...f,
+      setForm((current) => ({
+        ...current,
         enrollment: item.enrollment_no,
         student_name: item.student_name || '',
-        institute: item.institute?.id || item.institute || '',
-        subcourse: item.subcourse?.id || item.subcourse || '',
-        maincourse: item.maincourse?.id || item.maincourse || '',
+        institute: pickMappedId(item.institute, 'institute_id'),
+        subcourse: pickMappedId(item.subcourse, 'subcourse_id'),
+        maincourse: pickMappedId(item.maincourse, 'maincourse_id'),
       }));
     } else {
-      setForm((f) => ({
-        ...f,
+      setForm((current) => ({
+        ...current,
         student_name: '',
         institute: '',
         subcourse: '',
@@ -172,16 +285,34 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
       return;
     }
     setForm((current) => {
-      if (!current.enrollment && !current.student_name) {
+      if (!current.enrollment && !current.student_name && current.mg_status === 'Cancelled') {
         return current;
       }
       return {
         ...current,
+        mg_status: 'Cancelled',
         enrollment: '',
         student_name: '',
       };
     });
   }, [isMigrationCancelled]);
+
+  useEffect(() => {
+    if (isMigrationCancelled) {
+      return;
+    }
+    setForm((current) => {
+      if (current.mg_status && current.mg_status !== 'Cancelled') {
+        return current;
+      }
+      return {
+        ...current,
+        mg_status: 'Issued',
+      };
+    });
+  }, [isMigrationCancelled]);
+
+  const setF = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
   const save = async () => {
     const payload = {
@@ -192,185 +323,217 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
       subcourse: form.subcourse || null,
       maincourse: form.maincourse || null,
       mg_number: form.mg_number || null,
-  mg_date: dmyToISO(form.mg_date) || null,
+      mg_date: toDateInput(form.mg_date) || dmyToISO(form.mg_date) || null,
       exam_year: form.exam_year || null,
       admission_year: form.admission_year || null,
       exam_details: form.exam_details || null,
-      mg_status: form.mg_status || 'RECEIVED',
+      mg_status: isMigrationCancelled ? 'Cancelled' : (form.mg_status || 'Issued'),
       mg_cancelled: form.mg_cancelled || 'No',
       mg_remark: form.mg_remark || null,
       book_no: form.book_no || null,
       pay_rec_no: form.pay_rec_no || null,
       doc_remark: form.doc_remark || null,
     };
+
     if (form.id) {
-      const res = await fetch(`/api/migration/${form.id}/`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(payload) });
+      const res = await fetch(`/api/migration/${form.id}/`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify(payload),
+      });
       if (!res.ok) throw new Error(await res.text());
     } else {
-      const res = await fetch(`/api/migration/`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(payload) });
+      const res = await fetch(`/api/migration/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify(payload),
+      });
       if (!res.ok) throw new Error(await res.text());
     }
-    await loadList();
-  };
-
-  const loadByDocRec = async (docRecKey) => {
-    if (!docRecKey) return;
-    try {
-      const res = await fetch(`/api/migration/?doc_rec=${encodeURIComponent(docRecKey)}`, { headers: { ...authHeaders() } });
-      const data = await res.json();
-      setList(Array.isArray(data) ? data : data.results || []);
-    } catch (e) { console.error(e); }
-  };
-
-  const addEntry = async (entry) => {
-    // duplicate mg_number check
-    const sibling = list.find((r) => (r.mg_number || '').trim() === (entry.mg_number || '').trim());
-    if (sibling) {
-      if (!isCancelledMigrationRecord(entry)) {
-        alert('Duplicate MG number for this document is not allowed unless status is Cancelled.');
-        return;
-      }
-    }
-    // only one non-cancelled per doc_rec
-    const statusNonCancel = list.filter((r) => !isCancelledMigrationRecord(r));
-    if (!isCancelledMigrationRecord(entry)) {
-      const hasDoneOrNull = statusNonCancel.find((r) => !r.mg_status || ['issued', 'pending', 'done', 'received', 'not collected'].includes((r.mg_status || '').toLowerCase()));
-      if (hasDoneOrNull) {
-        alert('Only one non-cancelled migration entry allowed per document.');
-        return;
-      }
-    }
-    const payload = {
-      doc_rec_key: form.doc_rec || form.doc_rec_key || undefined,
-      enrollment: isCancelledMigrationRecord(entry) ? null : (entry.enrollment || null),
-      student_name: isCancelledMigrationRecord(entry) ? '' : (entry.student_name || null),
-      institute: entry.institute || null,
-      subcourse: entry.subcourse || null,
-      maincourse: entry.maincourse || null,
-      mg_number: entry.mg_number || null,
-      mg_date: entry.mg_date || null,
-      exam_year: entry.exam_year || null,
-      admission_year: entry.admission_year || null,
-      exam_details: entry.exam_details || null,
-      mg_status: entry.mg_status || 'RECEIVED',
-      mg_cancelled: entry.mg_cancelled || 'No',
-      mg_remark: entry.mg_remark || null,
-      book_no: entry.book_no || null,
-      pay_rec_no: entry.pay_rec_no || null,
-      doc_remark: entry.doc_remark || form.doc_remark || null,
-    };
-    const res = await fetch(`/api/migration/`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(payload) });
-    if (!res.ok) throw new Error(await res.text());
-    await loadByDocRec(form.doc_rec || form.doc_rec_key);
   };
 
   return (
-  <div className="p-2 md:p-3 space-y-4 h-full bg-slate-100">
+    <div className="p-2 md:p-3 space-y-4 h-full bg-slate-100">
       <PageTopbar
         title="Migration"
         actions={ACTIONS}
         selected={selectedTopbarMenu}
-        onSelect={(action)=>{ setSelectedTopbarMenu(action); setPanelOpen(true);} }
+        onSelect={handleTopbarSelect}
+        onToggleSidebar={onToggleSidebar}
+        onToggleChatbox={onToggleChatbox}
         actionsOnLeft
       />
 
-      {/* Collapsible Action Box */}
       <div className="action-panel-shell">
         <div className="action-panel-header">
-          <div className="action-panel-title">{selectedTopbarMenu || 'Panel'}</div>
-          <PanelToggleButton open={panelOpen} onClick={() => setPanelOpen((o) => !o)} />
+          <div className="action-panel-title">{panelTitle}</div>
+          <PanelToggleButton open={panelOpen} onClick={() => setPanelOpen((open) => !open)} />
         </div>
 
         {panelOpen && (selectedTopbarMenu === '➕' || selectedTopbarMenu === '✏️ Edit') && (
-          <div className="action-panel-body grid grid-cols-1 md:grid-cols-4 gap-3">
-            <div>
-              <label className="text-sm">Doc Rec</label>
-              <input className="w-full border rounded-lg p-2" placeholder="mg25000001" value={form.doc_rec} onChange={(e)=>setF('doc_rec', e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm">Enrollment</label>
-                <input className="w-full border rounded-lg p-2 disabled:bg-gray-100" disabled={isMigrationCancelled} value={form.enrollment} onChange={(e)=>{ setF('enrollment', e.target.value); }} />
-            </div>
-            <div>
-              <label className="text-sm">Student Name</label>
-              <input className="w-full border rounded-lg p-2 disabled:bg-gray-100" disabled={isMigrationCancelled} value={form.student_name} onChange={(e)=>setF('student_name', e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm">Institute Id</label>
-              <input className="w-full border rounded-lg p-2" value={form.institute} onChange={(e)=>setF('institute', e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm">Main Course</label>
-              <input className="w-full border rounded-lg p-2" value={form.maincourse} onChange={(e)=>setF('maincourse', e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm">Sub Course</label>
-              <input className="w-full border rounded-lg p-2" value={form.subcourse} onChange={(e)=>setF('subcourse', e.target.value)} />
+          <div className="action-panel-body space-y-2" data-migration-form="true" onKeyDownCapture={handleFormKeyDown}>
+            <div
+              className="grid gap-2 items-end text-sm"
+              style={{ gridTemplateColumns: '14ch 14ch 17ch 31ch minmax(8ch,1fr)' }}
+            >
+              <div>
+                <label className="text-xs">Doc Rec</label>
+                <input
+                  className="w-full border rounded-lg p-2"
+                  placeholder="mg26000001"
+                  value={form.doc_rec}
+                  onChange={(e) => setF('doc_rec', e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-xs">MG No</label>
+                <input
+                  className="w-full border rounded-lg p-2"
+                  placeholder="2026/000001"
+                  value={form.mg_number}
+                  onChange={(e) => setF('mg_number', e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-xs">Date</label>
+                <input
+                  type="date"
+                  className="w-full border rounded-lg p-2"
+                  value={toDateInput(form.mg_date)}
+                  onChange={(e) => setF('mg_date', e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-xs">Enrollment</label>
+                <input
+                  className="w-full border rounded-lg p-2 disabled:bg-gray-100"
+                  disabled={isMigrationCancelled}
+                  value={form.enrollment}
+                  onChange={(e) => setF('enrollment', e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-xs">Student Name</label>
+                <input
+                  className="w-full border rounded-lg p-2 disabled:bg-gray-100"
+                  disabled={isMigrationCancelled}
+                  value={form.student_name}
+                  onChange={(e) => setF('student_name', e.target.value)}
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="text-sm">MG Number</label>
-              <input className="w-full border rounded-lg p-2" value={form.mg_number} onChange={(e)=>setF('mg_number', e.target.value)} />
+            <div
+              className="grid gap-2 items-end text-sm"
+              style={{ gridTemplateColumns: '12ch 12ch minmax(20ch,1fr) 12ch 12ch 14ch' }}
+            >
+              <div>
+                <label className="text-xs">Admission Year</label>
+                <input className="w-full border rounded-lg p-2" value={form.admission_year} onChange={(e) => setF('admission_year', e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs">Exam Year</label>
+                <input className="w-full border rounded-lg p-2" value={form.exam_year} onChange={(e) => setF('exam_year', e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs">Exam Details</label>
+                <input className="w-full border rounded-lg p-2" value={form.exam_details} onChange={(e) => setF('exam_details', e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs">Book No</label>
+                <input className="w-full border rounded-lg p-2" value={form.book_no} onChange={(e) => setF('book_no', e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs">Pay Rec</label>
+                <input className="w-full border rounded-lg p-2" value={form.pay_rec_no} onChange={(e) => setF('pay_rec_no', e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs">Status</label>
+                <select className="w-full border rounded-lg p-2" value={form.mg_status} onChange={(e) => setF('mg_status', e.target.value)}>
+                  <option value="Issued">Issued</option>
+                  <option value="Pending">Pending</option>
+                  <option value="NOT COLLECTED">Not Collected</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="text-sm">MG Date</label>
-              <input className="w-full border rounded-lg p-2" placeholder="dd-mm-yyyy" value={form.mg_date} onChange={(e)=>setF('mg_date', e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm">Exam Year</label>
-              <input className="w-full border rounded-lg p-2" value={form.exam_year} onChange={(e)=>setF('exam_year', e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm">Admission Year</label>
-              <input className="w-full border rounded-lg p-2" value={form.admission_year} onChange={(e)=>setF('admission_year', e.target.value)} />
-            </div>
-            <div className="md:col-span-2">
-              <label className="text-sm">Exam Details</label>
-              <input className="w-full border rounded-lg p-2" value={form.exam_details} onChange={(e)=>setF('exam_details', e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm">Status</label>
-              <select className="w-full border rounded-lg p-2" value={form.mg_status} onChange={(e)=>setF('mg_status', e.target.value)}>
-                <option value="RECEIVED">Received</option>
-                <option>Pending</option>
-                <option value="NOT COLLECTED">Not Collected</option>
-                <option value="Issued">Issued</option>
-                <option value="Cancelled">Cancelled</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm">Cancelled</label>
-              <select className="w-full border rounded-lg p-2" value={form.mg_cancelled} onChange={(e)=>setF('mg_cancelled', e.target.value)}>
-                <option value="No">No</option>
-                <option value="Yes">Yes</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm">Book No</label>
-              <input className="w-full border rounded-lg p-2" value={form.book_no} onChange={(e)=>setF('book_no', e.target.value)} />
-            </div>
-            <div className="md:col-span-2">
-              <label className="text-sm">MG Remark</label>
-              <input className="w-full border rounded-lg p-2" value={form.mg_remark} onChange={(e)=>setF('mg_remark', e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm">Pay Rec No</label>
-              <input className="w-full border rounded-lg p-2" value={form.pay_rec_no} onChange={(e)=>setF('pay_rec_no', e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm">Doc Rec Remark</label>
-              <input className="w-full border rounded-lg p-2" value={form.doc_remark} onChange={(e)=>setF('doc_remark', e.target.value)} />
-            </div>
-            {isMigrationCancelled && (
-              <div className="md:col-span-4 text-sm text-amber-700">Cancelled migration skips enrollment and student name.</div>
-            )}
-            {LEGACY_MIGRATION_STATUSES.has(form.mg_status) && (
-              <div className="md:col-span-4 text-xs text-slate-500">Legacy status retained for compatibility with existing records.</div>
-            )}
 
-            <div className="md:col-span-4 flex justify-end">
-              <button className="save-button" onClick={async()=>{ try{ await save(); alert('Saved'); setSelectedTopbarMenu('🔍'); setPanelOpen(false); }catch(e){ alert(e.message||'Failed'); } }}>Save</button>
+            <div
+              className="grid gap-2 items-end text-sm"
+              style={{ gridTemplateColumns: '12ch 10ch 10ch 10ch minmax(16ch,1fr) minmax(18ch,1fr) auto auto' }}
+            >
+              <div>
+                <label className="text-xs">Cancelled</label>
+                <select className="w-full border rounded-lg p-2" value={form.mg_cancelled} onChange={(e) => setF('mg_cancelled', e.target.value)}>
+                  <option value="No">No</option>
+                  <option value="Yes">Yes</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs">Main</label>
+                <input className="w-full border rounded-lg p-2" value={form.maincourse} onChange={(e) => setF('maincourse', e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs">Sub</label>
+                <input className="w-full border rounded-lg p-2" value={form.subcourse} onChange={(e) => setF('subcourse', e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs">Inst</label>
+                <input className="w-full border rounded-lg p-2 bg-slate-50" value={instituteCodeValue} readOnly />
+              </div>
+              <div>
+                <label className="text-xs">MG Remark</label>
+                <input className="w-full border rounded-lg p-2" value={form.mg_remark} onChange={(e) => setF('mg_remark', e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs">Doc Remark</label>
+                <input className="w-full border rounded-lg p-2" value={form.doc_remark} onChange={(e) => setF('doc_remark', e.target.value)} />
+              </div>
+              <div className="self-end pb-[1px]">
+                <button type="button" className="reset-button" onClick={() => resetForm()}>
+                  {isEditMode ? 'Refresh' : 'Clear'}
+                </button>
+              </div>
+              <div className="self-end pb-[1px]">
+                <button
+                  type="button"
+                  className={isEditMode ? 'edit-button' : 'save-button'}
+                  onClick={async () => {
+                    try {
+                      await save();
+                      const refreshedRows = await loadList(q);
+                      alert(isEditMode ? 'Updated' : 'Added');
+
+                      if (isEditMode) {
+                        const refreshedCurrent = refreshedRows.find((row) => row.id === currentRow?.id);
+                        if (refreshedCurrent) {
+                          setCurrentRow(refreshedCurrent);
+                          populateFormFromRecord(refreshedCurrent);
+                        }
+                      } else {
+                        setCurrentRow(null);
+                        await resetForm('➕');
+                      }
+                    } catch (e) {
+                      alert(e.message || 'Failed');
+                    }
+                  }}
+                >
+                  {isEditMode ? 'Update' : 'Add'}
+                </button>
+              </div>
             </div>
+
+            {(isMigrationCancelled || LEGACY_MIGRATION_STATUSES.has(form.mg_status)) && (
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                {isMigrationCancelled && (
+                  <div className="text-sm text-amber-700">Cancelled migration skips enrollment and student name.</div>
+                )}
+                {LEGACY_MIGRATION_STATUSES.has(form.mg_status) && (
+                  <div className="text-xs text-slate-500">Legacy status retained for compatibility with existing records.</div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -387,7 +550,6 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
         )}
       </div>
 
-      {/* Records Section */}
       <div className="bg-white shadow rounded-2xl p-4 h-[calc(100vh-260px)] overflow-auto">
         {error && (
           <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 border border-red-200 rounded-lg">{error}</div>
@@ -401,49 +563,36 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
                 <th className="text-left py-2 px-3">Name</th>
                 <th className="text-left py-2 px-3 whitespace-nowrap">Inst Code</th>
                 <th className="text-left py-2 px-3">MG Date</th>
+                <th className="text-left py-2 px-3">Book No</th>
                 <th className="text-left py-2 px-3">Status</th>
                 <th className="text-left py-2 px-3">Pay Rec</th>
-                <th className="text-left py-2 px-3 whitespace-nowrap">Doc Rec</th>
+                <th className="text-left py-2 px-3">MG Remark</th>
               </tr>
             </thead>
             <tbody>
               {list.length === 0 && !loading && (
-                <tr><td colSpan={8} className="py-6 text-center text-gray-500">No records</td></tr>
+                <tr><td colSpan={9} className="py-6 text-center text-gray-500">No records</td></tr>
               )}
-              {list.map((r)=> (
-                <tr key={r.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={()=>{
-                  setCurrentRow(r);
-                  setSelectedTopbarMenu('✏️ Edit');
-                  setPanelOpen(true);
-                  setForm({
-                    id: r.id,
-                    doc_rec: r.doc_rec || r.doc_rec_id || '',
-                    enrollment: r.enrollment || r.enrollment_no || '',
-                    student_name: r.student_name || '',
-                    institute: r.institute || r.institute_id || '',
-                    subcourse: r.subcourse || r.subcourse_id || '',
-                    maincourse: r.maincourse || r.maincourse_id || '',
-                    mg_number: r.mg_number || '',
-                    mg_date: r.mg_date || '',
-                    exam_year: r.exam_year || '',
-                    admission_year: r.admission_year || '',
-                    exam_details: r.exam_details || '',
-                    mg_status: r.mg_status || 'RECEIVED',
-                    mg_cancelled: r.mg_cancelled || 'No',
-                    mg_remark: r.mg_remark || '',
-                    book_no: r.book_no || '',
-                    pay_rec_no: r.pay_rec_no || '',
-                    doc_remark: r.doc_remark || r.doc_rec_remark || '',
-                  });
-                }}>
-                  <td className="py-2 px-3 whitespace-nowrap">{r.mg_number || '-'}</td>
-                  <td className="py-2 px-3">{r.enrollment || r.enrollment_no || '-'}</td>
-                  <td className="py-2 px-3">{r.student_name || '-'}</td>
-                  <td className="py-2 px-3 whitespace-nowrap">{r.institute_code || instCodeById[String(r.institute_id || r.institute || '')] || '-'}</td>
-                  <td className="py-2 px-3">{r.mg_date || '-'}</td>
-                  <td className="py-2 px-3">{r.mg_status || '-'}</td>
-                  <td className="py-2 px-3">{r.pay_rec_no || '-'}</td>
-                  <td className="py-2 px-3 whitespace-nowrap">{r.doc_rec || r.doc_rec_id || '-'}</td>
+              {list.map((row) => (
+                <tr
+                  key={row.id}
+                  className="border-b hover:bg-gray-50 cursor-pointer"
+                  onClick={() => {
+                    setCurrentRow(row);
+                    setSelectedTopbarMenu('✏️ Edit');
+                    setPanelOpen(true);
+                    populateFormFromRecord(row);
+                  }}
+                >
+                  <td className="py-2 px-3 whitespace-nowrap">{row.mg_number || '-'}</td>
+                  <td className="py-2 px-3">{row.enrollment || row.enrollment_no || '-'}</td>
+                  <td className="py-2 px-3">{row.student_name || '-'}</td>
+                  <td className="py-2 px-3 whitespace-nowrap">{row.institute_code || instCodeById[String(row.institute_id || row.institute || '')] || '-'}</td>
+                  <td className="py-2 px-3">{row.mg_date || '-'}</td>
+                  <td className="py-2 px-3">{row.book_no || '-'}</td>
+                  <td className="py-2 px-3">{row.mg_status || '-'}</td>
+                  <td className="py-2 px-3">{row.pay_rec_no || '-'}</td>
+                  <td className="py-2 px-3">{row.mg_remark || '-'}</td>
                 </tr>
               ))}
             </tbody>

@@ -15,7 +15,7 @@ from .domain_documents import DocRec
 __all__ = [
     'MailStatus','VerificationStatus','Verification',
     'MigrationStatus','MigrationRecord','ProvisionalStatus','ProvisionalRecord',
-    'generate_migration_doc_rec_id'
+    'generate_migration_doc_rec_id','generate_next_migration_identifiers'
 ]
 
 
@@ -29,9 +29,35 @@ def generate_migration_doc_rec_id(mg_number):
             return None
         short_year = parts[0][-2:]
         number = int(parts[1])
-        return f"mg{short_year}{number:05d}"
+        return f"mg{short_year}{number:06d}"
     except Exception:
         return None
+
+
+def generate_next_migration_identifiers(target_date=None, *, lock=False):
+    try:
+        active_date = target_date or timezone.localdate()
+        year = int(getattr(active_date, 'year', timezone.localdate().year))
+        year_prefix = f"{year}/"
+
+        qs = MigrationRecord.objects.filter(mg_number__startswith=year_prefix)
+        if lock:
+            qs = qs.select_for_update()
+
+        last_value = qs.order_by('-mg_number').values_list('mg_number', flat=True).first()
+        last_no = 0
+        if last_value:
+            match = re.search(r'/(\d+)$', str(last_value).strip())
+            if match:
+                last_no = int(match.group(1))
+
+        next_no = last_no + 1
+        mg_number = f"{year}/{next_no:06d}"
+        doc_rec = f"mg{str(year)[-2:]}{next_no:06d}"
+        return mg_number, doc_rec
+    except Exception:
+        year = timezone.localdate().year
+        return f"{year}/000001", f"mg{str(year)[-2:]}000001"
 
 class MailStatus(models.TextChoices):
     NOT_SENT = 'NOT_SENT', 'Not Sent'
@@ -197,7 +223,7 @@ class MigrationRecord(models.Model):
     exam_year = models.CharField(max_length=20, db_column='exam_year', null=True, blank=True)
     admission_year = models.CharField(max_length=20, db_column='admission_year', null=True, blank=True)
     exam_details = models.TextField(null=True, blank=True, db_column='exam_details')
-    mg_status = models.CharField(max_length=20, choices=MigrationStatus.choices, default=MigrationStatus.RECEIVED, db_column='mg_status')
+    mg_status = models.CharField(max_length=20, choices=MigrationStatus.choices, default=MigrationStatus.ISSUED, db_column='mg_status')
     mg_remark = models.CharField(max_length=255, null=True, blank=True, db_column='mg_remark')
     mg_cancelled = models.CharField(
         max_length=3,
@@ -223,8 +249,6 @@ class MigrationRecord(models.Model):
             models.Index(fields=['mg_number'], name='idx_mg_number'),
         ]
     def clean(self):
-        if not self.mg_status:
-            self.mg_status = MigrationStatus.RECEIVED
         if not self.mg_cancelled:
             self.mg_cancelled = 'No'
         if not self.doc_rec and self.mg_number:
@@ -232,8 +256,11 @@ class MigrationRecord(models.Model):
 
         is_cancelled = str(self.mg_cancelled or '').strip().lower() == 'yes'
         if is_cancelled:
+            self.mg_status = MigrationStatus.CANCELLED
             self.enrollment = None
             self.student_name = ''
+        elif not self.mg_status:
+            self.mg_status = MigrationStatus.ISSUED
         elif getattr(self, 'enrollment', None):
             try:
                 enr = self.enrollment
@@ -261,8 +288,11 @@ class MigrationRecord(models.Model):
         try:
             is_cancelled = str(getattr(self, 'mg_cancelled', '') or '').strip().lower() == 'yes'
             if is_cancelled:
+                self.mg_status = MigrationStatus.CANCELLED
                 self.enrollment = None
                 self.student_name = ''
+            elif not getattr(self, 'mg_status', None):
+                self.mg_status = MigrationStatus.ISSUED
             if getattr(self, 'enrollment', None) and not getattr(self, 'institute', None):
                 try:
                     enr = self.enrollment

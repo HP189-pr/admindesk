@@ -28,7 +28,7 @@ from django.db.models.functions import Replace, Lower
 # Domain models used by several analysis views
 from .domain_enrollment import Enrollment, StudentProfile
 from .domain_degree import StudentDegree
-from .domain_verification import MigrationRecord, ProvisionalRecord, Verification, VerificationStatus, ProvisionalStatus
+from .domain_verification import MigrationRecord, ProvisionalRecord, Verification, VerificationStatus, ProvisionalStatus, generate_next_migration_identifiers
 from .serializers import StudentProfileSerializer
 from .models import (
     DocRec, Eca, PayBy, InstLetterMain, InstLetterStudent,
@@ -1147,6 +1147,16 @@ class MigrationRecordViewSet(viewsets.ModelViewSet):
                 filters |= Q(n_name__contains=norm_search) | Q(n_mg__contains=norm_search)
             qs = qs.filter(filters)
         return qs
+
+    @action(detail=False, methods=["get"], url_path="next-number")
+    def next_number(self, request):
+        base_date = timezone.localdate()
+        mg_number, doc_rec = generate_next_migration_identifiers(base_date)
+        return Response({
+            "mg_number": mg_number,
+            "doc_rec": doc_rec,
+            "mg_date": base_date.isoformat(),
+        }, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["post"], url_path="update-service-only")
     def update_service_only(self, request):

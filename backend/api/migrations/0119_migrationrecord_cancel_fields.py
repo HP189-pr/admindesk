@@ -35,7 +35,7 @@ class Migration(migrations.Migration):
                     ('Cancelled', 'Cancelled'),
                 ],
                 db_column='mg_status',
-                default='RECEIVED',
+                default='Issued',
                 max_length=20,
             ),
         ),

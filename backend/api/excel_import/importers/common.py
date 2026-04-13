@@ -82,10 +82,10 @@ def normalize_choice(raw: Any, choices_cls):
 def normalize_migration_status(raw: Any):
     cleaned = clean_cell(raw)
     if cleaned is None:
-        return MigrationStatus.RECEIVED
+        return MigrationStatus.ISSUED
     text = str(cleaned).strip().upper()
     if not text:
-        return MigrationStatus.RECEIVED
+        return MigrationStatus.ISSUED
     if text in {"R", "RECEIVED", "RECEIVE"}:
         return MigrationStatus.RECEIVED
     if text in {"NC", "NOTCOLLECTED", "NOT COLLECTED"}:

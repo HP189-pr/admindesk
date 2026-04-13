@@ -26,7 +26,7 @@ from django.utils import timezone
 from django.db import transaction
 from .models import Holiday, UserProfile, User, Module, Menu, UserPermission, DashboardPreference, Enrollment, Institute, MainBranch, SubBranch, InstituteCourseOffering, Verification, VerificationStatus, DocRec, MigrationRecord, ProvisionalRecord, Eca, StudentProfile, ProvisionalStatus
 from .domain_letter import InstLetterMain, InstLetterStudent
-from .domain_verification import MigrationStatus, generate_migration_doc_rec_id
+from .domain_verification import MigrationStatus, generate_migration_doc_rec_id, generate_next_migration_identifiers
 from django.conf import settings
 
 # --- Holiday Serializer ---
@@ -454,13 +454,22 @@ class MigrationRecordSerializer(serializers.ModelSerializer):
             existing_doc_rec = getattr(instance, 'doc_rec', None) if instance is not None else None
             validated['doc_rec'] = existing_doc_rec or generate_migration_doc_rec_id(validated.get('mg_number') or getattr(instance, 'mg_number', None))
 
+    def _ensure_default_identifiers(self, validated):
+        if not validated.get('mg_date'):
+            validated['mg_date'] = timezone.localdate()
+        if not validated.get('mg_number'):
+            mg_number, doc_rec = generate_next_migration_identifiers(validated.get('mg_date'), lock=True)
+            validated['mg_number'] = mg_number
+            validated.setdefault('doc_rec', doc_rec)
+
     def _apply_business_rules(self, validated, instance=None):
         if not validated.get('mg_status'):
-            validated['mg_status'] = MigrationStatus.RECEIVED
+            validated['mg_status'] = MigrationStatus.ISSUED
         if not validated.get('mg_cancelled'):
             validated['mg_cancelled'] = getattr(instance, 'mg_cancelled', None) or 'No'
 
         if validated.get('mg_cancelled') == 'Yes':
+            validated['mg_status'] = MigrationStatus.CANCELLED
             validated['enrollment'] = None
             validated['student_name'] = ''
             return
@@ -477,22 +486,17 @@ class MigrationRecordSerializer(serializers.ModelSerializer):
                 validated['maincourse'] = enr.maincourse
 
     def validate(self, attrs):
-        mg_number = attrs.get('mg_number', getattr(self.instance, 'mg_number', None))
-        mg_date = attrs.get('mg_date', getattr(self.instance, 'mg_date', None))
-        if self.instance is None:
-            if not mg_number:
-                raise serializers.ValidationError({'mg_number': 'This field is required.'})
-            if not mg_date:
-                raise serializers.ValidationError({'mg_date': 'This field is required.'})
         return super().validate(attrs)
 
     def create(self, validated):
         request = self.context.get('request')
         if request and request.user and request.user.is_authenticated:
             validated['created_by'] = request.user
-        self._normalize_doc_rec(validated)
-        self._apply_business_rules(validated)
-        return super().create(validated)
+        with transaction.atomic():
+            self._ensure_default_identifiers(validated)
+            self._normalize_doc_rec(validated)
+            self._apply_business_rules(validated)
+            return super().create(validated)
 
     def update(self, instance, validated):
         self._normalize_doc_rec(validated, instance=instance)

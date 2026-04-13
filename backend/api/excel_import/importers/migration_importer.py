@@ -52,6 +52,8 @@ def process_row(row, context: ImportContext) -> RowImportResult:
     if mg_status is None:
         return RowImportResult(status="skipped", message=f"Invalid mg_status: {scalar(row, 'mg_status')}", ref=mg_number)
     mg_cancelled = normalize_yes_no(scalar(row, "mg_cancelled"), default='No')
+    if mg_cancelled == 'Yes':
+        mg_status = MigrationStatus.CANCELLED
     is_cancel = mg_cancelled == 'Yes' or mg_status == MigrationStatus.CANCELLED
 
     if not is_cancel and "enrollment_no" in scope and not enrollment_key:
