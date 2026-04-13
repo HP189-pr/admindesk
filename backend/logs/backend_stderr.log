@@ -45808,3 +45808,9 @@ Not Found: /api/migration/next-number/
 2026-04-13 13:15:33,993 WARNING  Not Found: /api/migration/next-number/
 Not Found: /api/migration/next-number/
 2026-04-13 13:26:21,863 WARNING  Not Found: /api/migration/next-number/
+Not Found: /api/migration/next-number/
+2026-04-13 13:37:59,053 WARNING  Not Found: /api/migration/next-number/
+Unauthorized: /api/users/
+2026-04-13 14:04:36,346 WARNING  Unauthorized: /api/users/
+Not Found: /api/migration/next-number/
+2026-04-13 14:14:03,835 WARNING  Not Found: /api/migration/next-number/
