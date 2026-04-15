@@ -30,7 +30,7 @@ class VerificationSerializer(serializers.ModelSerializer):
     # so the UI shows the `doc_rec_id` in place of the old sequence value.
     sequence = serializers.SerializerMethodField()
     eca = serializers.SerializerMethodField()
-    doc_remark = serializers.CharField(source='doc_remark', required=False, allow_blank=True)
+    doc_remark = serializers.CharField(required=False, allow_blank=True)
     class Meta:
         model = Verification
         fields = [
@@ -128,7 +128,7 @@ class DocRecSerializer(serializers.ModelSerializer):
 class MigrationRecordSerializer(serializers.ModelSerializer):
     doc_rec_key = serializers.CharField(write_only=True, required=False, allow_null=True, allow_blank=True)
     doc_rec = serializers.CharField(read_only=True)
-    doc_remark = serializers.CharField(source='doc_remark', required=False, allow_blank=True)
+    doc_remark = serializers.CharField(required=False, allow_blank=True)
     class Meta:
         model = MigrationRecord
         fields = '__all__'
@@ -196,7 +196,7 @@ class MigrationRecordSerializer(serializers.ModelSerializer):
 class ProvisionalRecordSerializer(serializers.ModelSerializer):
     doc_rec_key = serializers.SlugRelatedField(slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False)
     doc_rec = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
-    doc_remark = serializers.CharField(source='doc_remark', required=False, allow_blank=True)
+    doc_remark = serializers.CharField(required=False, allow_blank=True)
     class Meta:
         model = ProvisionalRecord
         fields = '__all__'
@@ -223,7 +223,7 @@ class InstLetterMainSerializer(serializers.ModelSerializer):
     doc_rec_id = serializers.PrimaryKeyRelatedField(queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False)
     doc_rec_key = serializers.SlugRelatedField(slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False)
     doc_rec = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
-    doc_remark = serializers.CharField(source='doc_remark', required=False, allow_blank=True)
+    doc_remark = serializers.CharField(required=False, allow_blank=True)
     class Meta:
         model = InstLetterMain
         fields = '__all__'
