@@ -209,6 +209,7 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem, selectedMenuItem
     if (!displayModules.length) return;
 
     const normalizedSelected = String(selectedMenuItem || '').toLowerCase();
+    if (normalizedSelected.includes('dash')) return;
     const hasSelectedVisible = displayModules.some((mod) =>
       (mod.menu || []).some((menuName) => String(menuName || '').toLowerCase() === normalizedSelected)
     );
@@ -322,19 +323,16 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem, selectedMenuItem
 
       <hr className="border-gray-600 my-2" />
 
-      {/* Dashboard Button (controller/admin only) */}
-      {(isAdmin || (user && user.is_admin)) && (
-        <>
-          <button
-            onClick={() => handleMenuClick('Dashboard')}
-            className="w-full text-left px-4 py-2 rounded hover:bg-gray-700"
-          >
-            {isOpen ? '🏠 Dashboard' : '🏠'}
-          </button>
+      <>
+        <button
+          onClick={() => handleMenuClick('Dashboard')}
+          className="w-full text-left px-4 py-2 rounded hover:bg-gray-700"
+        >
+          {isOpen ? '🏠 Dashboard' : '🏠'}
+        </button>
 
-          <hr className="border-gray-600 my-2" />
-        </>
-      )}
+        <hr className="border-gray-600 my-2" />
+      </>
 
       {/* Module Selection */}
       <div className="relative">

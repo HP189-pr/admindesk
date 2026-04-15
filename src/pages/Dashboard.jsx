@@ -192,6 +192,51 @@ const MODULES = [
     },
 ];
 
+const normalizeNavText = (value) => String(value || "").trim().toLowerCase();
+
+const hasVisibleNavigationMenu = (modules, predicate) =>
+    modules.some((module) =>
+        (module?.menus || []).some(
+            (menu) => Boolean(menu?.rights?.can_view) && predicate(normalizeNavText(menu?.name), normalizeNavText(module?.name))
+        )
+    );
+
+const canAccessDashboardModule = (moduleKey, navigationModules) => {
+    switch (moduleKey) {
+        case "verification":
+            return hasVisibleNavigationMenu(
+                navigationModules,
+                (menuName) => menuName.includes("verification") && !menuName.includes("inst") && !menuName.includes("institution")
+            );
+        case "migration":
+            return hasVisibleNavigationMenu(navigationModules, (menuName) => menuName.includes("migration"));
+        case "provisional":
+            return hasVisibleNavigationMenu(navigationModules, (menuName) => menuName.includes("provisional"));
+        case "institutional":
+            return hasVisibleNavigationMenu(
+                navigationModules,
+                (menuName) => menuName.includes("inst") || menuName.includes("institution")
+            );
+        case "mailrequests":
+            return hasVisibleNavigationMenu(
+                navigationModules,
+                (menuName) => menuName.includes("mail") && (menuName.includes("status") || menuName.includes("request"))
+            );
+        case "transcript_pdf":
+            return hasVisibleNavigationMenu(navigationModules, (menuName) => menuName.includes("transcript"));
+        case "student_search":
+            return hasVisibleNavigationMenu(
+                navigationModules,
+                (_menuName, moduleName) => moduleName === "student module"
+            );
+        case "birthdays":
+        case "holidays":
+            return true;
+        default:
+            return true;
+    }
+};
+
 const ModuleCard = ({ mod, authFetch, onOpen }) => {
     const initialFilter = mod.defaultStatus || mod.statuses?.[0] || "";
     const [statusFilter, setStatusFilter] = useState(initialFilter);
@@ -382,10 +427,11 @@ export const CustomDashboard = ({ selectedMenuItem, setSelectedMenuItem, isSideb
 
     const STORAGE_KEY = "selected_dashboard_modules";
     const DEFAULT_SELECTED = ["verification", "migration", "provisional", "student_search"];
+    const [navigationModules, setNavigationModules] = useState([]);
 
     const availableModules = useMemo(
-        () => MODULES.filter((m) => !m.requiresAdmin || isAdmin),
-        [isAdmin]
+        () => MODULES.filter((m) => !m.requiresAdmin || isAdmin).filter((m) => isAdmin || canAccessDashboardModule(m.key, navigationModules)),
+        [isAdmin, navigationModules]
     );
 
     const authFetch = async (url, opts = {}) => {
@@ -418,6 +464,33 @@ export const CustomDashboard = ({ selectedMenuItem, setSelectedMenuItem, isSideb
 
     useEffect(() => {
         let cancelled = false;
+        const loadNavigation = async () => {
+            if (isAdmin) {
+                setNavigationModules([]);
+                return;
+            }
+
+            try {
+                const res = await authFetch("/api/my-navigation/");
+                if (!res || !res.ok) return;
+                const data = await res.json().catch(() => null);
+                if (cancelled) return;
+                setNavigationModules(Array.isArray(data?.modules) ? data.modules : []);
+            } catch (e) {
+                if (!cancelled) {
+                    setNavigationModules([]);
+                }
+            }
+        };
+
+        loadNavigation();
+        return () => {
+            cancelled = true;
+        };
+    }, [isAdmin]);
+
+    useEffect(() => {
+        let cancelled = false;
         const loadPrefs = async () => {
             try {
                 const res = await authFetch("/api/dashboard-preferences/");
@@ -440,7 +513,8 @@ export const CustomDashboard = ({ selectedMenuItem, setSelectedMenuItem, isSideb
         setSelectedModuleKeys((prev) => {
             const filtered = prev.filter((k) => allowed.has(k));
             const fallback = DEFAULT_SELECTED.filter((k) => allowed.has(k));
-            const next = (filtered.length ? filtered : fallback).slice(0, 4);
+            const firstAvailable = availableModules.map((m) => m.key).slice(0, 4);
+            const next = (filtered.length ? filtered : fallback.length ? fallback : firstAvailable).slice(0, 4);
             return next;
         });
     }, [availableModules]);

@@ -30,8 +30,7 @@ const ProtectedRoute = ({ children }) => {
 // ✅ Layout component with Sidebar & WorkArea
 const Layout = () => {
     const { isAdmin, user } = useAuth();
-    // Admin opens on Dashboard; others open on first permitted module/menu.
-    const [selectedMenuItem, setSelectedMenuItem] = useState(isAdmin ? 'Dashboard' : '');
+    const [selectedMenuItem, setSelectedMenuItem] = useState('Dashboard');
     const [isSidebarOpen, setSidebarOpen] = useState(true);
     const [isChatboxOpen, setChatboxOpen] = useState(false);
     const [canUsePopupSearch, setCanUsePopupSearch] = useState(isAdmin);
@@ -72,13 +71,10 @@ const Layout = () => {
     }, [isAdmin, user]);
 
     useEffect(() => {
-        if (isAdmin && !selectedMenuItem) {
+        if (!selectedMenuItem) {
             setSelectedMenuItem('Dashboard');
         }
-        if (!isAdmin && String(selectedMenuItem || '').toLowerCase().includes('dash')) {
-            setSelectedMenuItem('');
-        }
-    }, [isAdmin, selectedMenuItem]);
+    }, [selectedMenuItem]);
 
     return (
         <div className="h-screen overflow-hidden flex items-stretch gap-1">

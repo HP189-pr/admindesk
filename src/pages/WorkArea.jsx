@@ -47,7 +47,7 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
   useEffect(() => {
     const handleGoHome = () => {
       if (typeof setSelectedMenuItem === 'function') {
-        if (isAdmin) setSelectedMenuItem('Dashboard');
+        setSelectedMenuItem('Dashboard');
       }
     };
 
@@ -156,13 +156,6 @@ const WorkArea = ({ selectedSubmenu, onToggleSidebar, onToggleChatbox, isSidebar
           />
         );
       case "dashboard":
-        if (!isAdmin) {
-          return (
-            <h1 style={{ padding: "20px", fontSize: "20px", fontWeight: "bold" }}>
-              Dashboard access is restricted for this role.
-            </h1>
-          );
-        }
         if (DashboardComponent) {
           return (
             <DashboardComponent
