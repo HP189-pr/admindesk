@@ -1301,6 +1301,7 @@ const CCTVMonitoring = ({
                     <th className="px-3 py-2 text-left">Date</th>
                     <th className="px-3 py-2 text-left">Record No.</th>
                     <th className="px-3 py-2 text-left">Outward No.</th>
+                    <th className="px-3 py-2 text-left">Last Date</th>
                     <th className="px-3 py-2 text-left">College</th>
                     <th className="px-3 py-2 text-left">DVD No</th>
                     <th className="px-3 py-2 text-left">Rep No</th>
@@ -1316,7 +1317,7 @@ const CCTVMonitoring = ({
                 <tbody>
                   {outwards.length === 0 && (
                     <tr>
-                      <td colSpan={13} className="px-4 py-6 text-center text-gray-500">
+                      <td colSpan={14} className="px-4 py-6 text-center text-gray-500">
                         No outward entries found.
                       </td>
                     </tr>
@@ -1334,6 +1335,7 @@ const CCTVMonitoring = ({
                         <td className="px-3 py-2 align-top">{row.outward_date || "—"}</td>
                         <td className="px-3 py-2 align-top">{row.cctv_record_no || "—"}</td>
                         <td className="px-3 py-2 align-top">{row.outward_no || "—"}</td>
+                        <td className="px-3 py-2 align-top">{row.last_date || "—"}</td>
                         <td className="px-3 py-2 align-top">
                           <div className="font-medium text-slate-800">
                             {institute?.institute_code || row.college_name || "—"}
