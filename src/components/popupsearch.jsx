@@ -175,7 +175,7 @@ const PopupSearch = () => {
   /* ================= UI ================= */
 
   return (
-    <div className={`fixed right-[30px] bottom-4 z-[60] ${open ? 'w-[380px] max-w-full' : 'w-14 h-14'}`}>
+    <div className={`fixed right-[05px] bottom-16 z-[60] ${open ? 'w-[380px] max-w-full' : 'w-14 h-14'}`}>
       <div className={open ? 'bg-white border shadow-xl rounded-2xl overflow-hidden' : 'w-fit ml-auto'}>
         {/* Header */}
         <div
