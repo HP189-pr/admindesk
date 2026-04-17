@@ -175,18 +175,18 @@ const PopupSearch = () => {
   /* ================= UI ================= */
 
   return (
-    <div className={`fixed left-[30px] bottom-20 z-30 ${open ? 'w-[380px] max-w-full' : 'w-auto'}`}>
+    <div className={`fixed right-[30px] bottom-4 z-[60] ${open ? 'w-[380px] max-w-full' : 'w-14 h-14'}`}>
       <div className={open ? 'bg-white border shadow-xl rounded-2xl overflow-hidden' : 'w-fit ml-auto'}>
         {/* Header */}
         <div
           className={
             open
               ? 'flex items-center justify-between px-4 py-2 bg-indigo-600 text-white cursor-pointer'
-              : 'flex items-center justify-between gap-3 min-w-[120px] px-4 py-3 bg-indigo-600 text-white cursor-pointer rounded-2xl shadow-xl'
+              : 'flex items-center justify-center h-14 w-14 bg-indigo-600 text-white cursor-pointer rounded-full shadow-xl'
           }
           onClick={() => setOpen(!open)}
         >
-          <div className="flex items-center gap-3">
+          <div className={`flex items-center ${open ? 'gap-3' : 'justify-center w-full'}`}>
             <div className="h-9 w-9 rounded-full bg-white/20 flex items-center justify-center">
               <FaUserGraduate />
             </div>
@@ -199,7 +199,9 @@ const PopupSearch = () => {
               </div>
             )}
           </div>
-          <span aria-hidden="true" className="text-xl leading-none">{open ? '«' : '»'}</span>
+          {open && (
+              <span aria-hidden="true" className="text-xl leading-none">«</span>
+            )}
         </div>
 
         {open && (
