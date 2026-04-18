@@ -51834,3 +51834,39 @@ Processed 363/363 rows
 Import complete. Created: 0, Updated: 363
 Prune skipped (--no-prune). DB rows will not be deleted.
 
+Bad Request: /api/verify-password/
+2026-04-17 15:13:32,617 WARNING  Bad Request: /api/verify-password/
+Unauthorized: /api/token/verify/
+2026-04-17 15:24:49,296 WARNING  Unauthorized: /api/token/verify/
+2026-04-17 15:49:42,707 INFO     sync_cash_deposite_to_sheet: 2026-04-17\u21922026-04-17 appended=0 updated=0 total=0
+2026-04-17 15:49:44,818 INFO     sync_cash_sheet_to_sheet: 2026-04-17\u21922026-04-17 appended=1 updated=0 total=1
+2026-04-17 15:49:44,818 INFO     sync_cash_register_to_sheet: 2026-04-17\u21922026-04-17 appended=12 skipped=0 total=6
+2026-04-17 15:55:35,575 INFO     Killed 0 pending application instances
+2026-04-18 08:32:51,520 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-04-18 08:32:51,520 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-04-18 08:32:51,520 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-04-18 08:32:51,522 INFO     Listening on TCP address 0.0.0.0:8001
+Not Found: /api/student-search/search/
+2026-04-18 10:09:46,889 WARNING  Not Found: /api/student-search/search/
+Unauthorized: /api/users/
+2026-04-18 10:37:02,826 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-04-18 10:37:02,867 WARNING  Unauthorized: /api/users/
+Not Found: /api/student-search/search/
+2026-04-18 10:38:15,676 WARNING  Not Found: /api/student-search/search/
+Not Found: /api/student-search/search/
+2026-04-18 10:38:16,074 WARNING  Not Found: /api/student-search/search/
+Unauthorized: /api/token/verify/
+2026-04-18 10:42:07,877 WARNING  Unauthorized: /api/token/verify/
+2026-04-18 10:46:37,498 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26131'}
+2026-04-18 10:46:37,506 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-18 10:46:37,509 INFO     InstLetterPDF grouped records: keys=['2026/131']
+2026-04-18 10:46:37,509 INFO     DEBUG rec_inst_pin value: '110018'
+2026-04-18 10:46:43,410 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26131'}
+2026-04-18 10:46:43,410 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-18 10:46:43,419 INFO     InstLetterPDF grouped records: keys=['2026/131']
+2026-04-18 10:46:43,419 INFO     DEBUG rec_inst_pin value: '110018'
+Unauthorized: /api/token/verify/
+2026-04-18 11:09:59,638 WARNING  Unauthorized: /api/token/verify/
+Unauthorized: /api/token/verify/
+2026-04-18 11:09:59,636 WARNING  Unauthorized: /api/token/verify/

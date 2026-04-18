@@ -23,7 +23,7 @@ const REC_BY_OPTIONS = ["", "Mail", "Post"];
 const STUDY_MODE_OPTIONS = ["Regular", "Part Time"];
 const DOCREC_APPLY_FOR = "IV";
 const DOCREC_PAY_BY = "NA";
-const DEFAULT_CREDENTIAL_OPTIONS = ["Passing On"];
+const DEFAULT_CREDENTIAL_OPTIONS = ["Passing On", "Awarded On"];
 const DEFAULT_DEGREE_AWARDED_OPTIONS = [];
 const DEFAULT_STATUS_OPTIONS = ["Verified and found correct"];
 const STORAGE_KEYS = {
@@ -268,10 +268,12 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 	const [recInstSuggestions, setRecInstSuggestions] = useState([]);
 	const [docRecCandidates, setDocRecCandidates] = useState([]);
 	const [docTypeOpen, setDocTypeOpen] = useState(false);
+	const [credOpen, setCredOpen] = useState(false);
 	const suggestionHideTimer = useRef(null);
 	const recInstDebounce = useRef(null);
 	const docRecDebounce = useRef(null);
 	const docTypeDropdownRef = useRef(null);
+	const credentialDropdownRef = useRef(null);
 	const recInstPrefetchAbort = useRef(null);
 	const autoDocRecRef = useRef({ created: false, creating: false });
 	const autoInstVerSourceRef = useRef("");
@@ -636,6 +638,9 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 			if (docTypeDropdownRef.current && !docTypeDropdownRef.current.contains(event.target)) {
 				setDocTypeOpen(false);
 			}
+			if (credentialDropdownRef.current && !credentialDropdownRef.current.contains(event.target)) {
+				setCredOpen(false);
+			}
 		};
 		document.addEventListener("mousedown", handleClickOutside);
 		return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -893,6 +898,11 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 		setSavingStudent(true);
 		try {
 			await saveInstLetterStudent(payload, { id: editingStudentId, apiBase });
+			
+			if (sform.type_of_credential && !credentialOptions.includes(sform.type_of_credential)) {
+				setCredentialOptions((prev) => [...prev, sform.type_of_credential]);
+			}
+
 			setStatus(editingStudentId ? "Student updated successfully." : "Student added successfully.");
 			resetStudentForm();
 			loadStudents(mform.doc_rec);
@@ -1369,9 +1379,51 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 							<label className="label">Degree Name</label>
 							<input className="input" value={sform.iv_degree_name} onChange={(e) => setSForm((prev) => ({ ...prev, iv_degree_name: e.target.value }))} />
 						</div>
-						<div className="md:col-span-1">
+						<div className="md:col-span-1 relative" ref={credentialDropdownRef}>
 							<label className="label">Credential</label>
-							<input className="input" value={sform.type_of_credential} onChange={(e) => setSForm((prev) => ({ ...prev, type_of_credential: e.target.value }))} />
+							<div className="relative">
+								<input
+									className="input pr-8"
+									value={sform.type_of_credential}
+									onChange={(e) => setSForm((prev) => ({ ...prev, type_of_credential: e.target.value }))}
+									onFocus={() => setCredOpen(true)}
+									placeholder="Select or type"
+								/>
+								<button
+									type="button"
+									onClick={() => setCredOpen((prev) => !prev)}
+									className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-slate-500 hover:text-slate-700"
+								>
+									▼
+								</button>
+								{credOpen && (
+									<div className="absolute z-10 mt-1 w-full rounded border bg-white shadow max-h-40 overflow-auto">
+										{credentialOptions.map((opt) => (
+											<div
+												key={opt}
+												className="px-3 py-2 hover:bg-slate-100 cursor-pointer"
+												onClick={() => {
+													setSForm((prev) => ({ ...prev, type_of_credential: opt }));
+													setCredOpen(false);
+												}}
+											>
+												{opt}
+											</div>
+										))}
+										{sform.type_of_credential && !credentialOptions.includes(sform.type_of_credential) && (
+											<div
+												className="px-3 py-2 text-blue-600 hover:bg-blue-50 cursor-pointer border-t"
+												onClick={() => {
+													setCredentialOptions((prev) => [...prev, sform.type_of_credential]);
+													setCredOpen(false);
+												}}
+											>
+												➕ Add "{sform.type_of_credential}"
+											</div>
+										)}
+									</div>
+								)}
+							</div>
 						</div>
 						<div className="md:col-span-1">
 							<label className="label">Month / Year</label>
