@@ -51898,3 +51898,11 @@ Unauthorized: /api/token/verify/
 2026-04-18 12:40:43,153 INFO     DEBUG rec_inst_pin value: '110018'
 Unauthorized: /api/users/
 2026-04-18 12:42:45,301 WARNING  Unauthorized: /api/users/
+2026-04-18 12:43:37,337 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26131'}
+2026-04-18 12:43:37,339 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-18 12:43:37,344 INFO     InstLetterPDF grouped records: keys=['2026/131']
+2026-04-18 12:43:37,346 INFO     DEBUG rec_inst_pin value: '110018'
+2026-04-18 12:47:47,673 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26131'}
+2026-04-18 12:47:47,675 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-18 12:47:47,680 INFO     InstLetterPDF grouped records: keys=['2026/131']
+2026-04-18 12:47:47,680 INFO     DEBUG rec_inst_pin value: '110018'

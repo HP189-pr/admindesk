@@ -21088,3 +21088,341 @@ DEBUG: UserPermissionViewSet.update called. request.data= {'user': 12, 'module':
 127.0.0.1:56552 - - [18/Apr/2026:12:39:45] "GET /api/users/" 200 4768
 127.0.0.1:50241 - - [18/Apr/2026:12:40:41] "GET /api/users/" 200 4768
 127.0.0.1:51971 - - [18/Apr/2026:12:40:43] "POST /api/inst-letter/generate-pdf/" 200 5273
+127.0.0.1:50241 - - [18/Apr/2026:12:40:44] "GET /api/users/" 200 4768
+127.0.0.1:50241 - - [18/Apr/2026:12:40:48] "GET /api/users/" 200 4768
+127.0.0.1:50241 - - [18/Apr/2026:12:41:27] "GET /api/users/" 200 4768
+127.0.0.1:61790 - - [18/Apr/2026:12:42:45] "GET /api/users/" 401 183
+127.0.0.1:60835 - - [18/Apr/2026:12:43:33] "GET /api/users/" 200 4768
+127.0.0.1:51256 - - [18/Apr/2026:12:43:37] "POST /api/inst-letter/generate-pdf/" 200 5273
+127.0.0.1:60835 - - [18/Apr/2026:12:43:37] "GET /api/users/" 200 4768
+127.0.0.1:60835 - - [18/Apr/2026:12:43:46] "GET /api/users/" 200 4768
+127.0.0.1:60835 - - [18/Apr/2026:12:44:06] "OPTIONS /api/verify-admin-panel-password/" 200 -
+127.0.0.1:60835 - - [18/Apr/2026:12:44:06] "GET /api/verify-admin-panel-password/" 200 18
+127.0.0.1:60835 - - [18/Apr/2026:12:44:28] "POST /api/verify-admin-panel-password/" 200 41
+127.0.0.1:60835 - - [18/Apr/2026:12:44:29] "GET /api/users/" 200 4768
+127.0.0.1:53872 - - [18/Apr/2026:12:44:29] "GET /api/users/" 200 4768
+127.0.0.1:60835 - - [18/Apr/2026:12:44:30] "GET /api/modules/" 200 556
+127.0.0.1:65228 - - [18/Apr/2026:12:44:30] "GET /api/menus/" 200 3674
+127.0.0.1:53872 - - [18/Apr/2026:12:44:30] "GET /api/users/" 200 4768
+127.0.0.1:57380 - - [18/Apr/2026:12:44:30] "GET /api/modules/" 200 556
+127.0.0.1:60835 - - [18/Apr/2026:12:44:31] "GET /api/menus/" 200 3674
+127.0.0.1:65228 - - [18/Apr/2026:12:44:31] "GET /api/users/" 200 4768
+127.0.0.1:65228 - - [18/Apr/2026:12:44:33] "OPTIONS /api/userpermissions/?user=2&limit=1000&offset=0" 200 -
+127.0.0.1:65228 - - [18/Apr/2026:12:44:33] "GET /api/userpermissions/?user=2&limit=1000&offset=0" 200 4798
+127.0.0.1:65228 - - [18/Apr/2026:12:44:46] "GET /api/users/" 200 4768
+127.0.0.1:65228 - - [18/Apr/2026:12:44:59] "GET /api/menus/" 200 3674
+127.0.0.1:65228 - - [18/Apr/2026:12:44:59] "GET /api/userpermissions/?user=2&limit=1000&offset=0" 200 4798
+127.0.0.1:65228 - - [18/Apr/2026:12:44:59] "OPTIONS /api/userpermissions/13/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 2, 'module': 4, 'menu': 12, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:44:59] "PUT /api/userpermissions/13/" 200 261
+127.0.0.1:65228 - - [18/Apr/2026:12:44:59] "OPTIONS /api/userpermissions/14/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 2, 'module': 4, 'menu': 13, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "PUT /api/userpermissions/14/" 200 263
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "OPTIONS /api/userpermissions/15/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 2, 'module': 4, 'menu': 14, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "PUT /api/userpermissions/15/" 200 260
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "OPTIONS /api/userpermissions/16/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 2, 'module': 4, 'menu': 15, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "PUT /api/userpermissions/16/" 200 262
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "OPTIONS /api/userpermissions/17/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 2, 'module': 4, 'menu': 16, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "PUT /api/userpermissions/17/" 200 257
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "OPTIONS /api/userpermissions/18/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 2, 'module': 4, 'menu': 17, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "PUT /api/userpermissions/18/" 200 265
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "OPTIONS /api/userpermissions/19/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 2, 'module': 5, 'menu': 18, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "PUT /api/userpermissions/19/" 200 270
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "OPTIONS /api/userpermissions/20/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 2, 'module': 5, 'menu': 19, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "PUT /api/userpermissions/20/" 200 274
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "OPTIONS /api/userpermissions/21/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 2, 'module': 5, 'menu': 20, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "PUT /api/userpermissions/21/" 200 273
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "OPTIONS /api/userpermissions/22/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 2, 'module': 5, 'menu': 21, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "PUT /api/userpermissions/22/" 200 266
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "OPTIONS /api/userpermissions/23/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 2, 'module': 5, 'menu': 22, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "PUT /api/userpermissions/23/" 200 273
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "OPTIONS /api/userpermissions/24/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 2, 'module': 5, 'menu': 23, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "PUT /api/userpermissions/24/" 200 263
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "OPTIONS /api/userpermissions/26/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 2, 'module': 5, 'menu': 25, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "PUT /api/userpermissions/26/" 200 260
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "OPTIONS /api/userpermissions/27/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 2, 'module': 6, 'menu': 26, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': True}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "PUT /api/userpermissions/27/" 200 267
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "OPTIONS /api/userpermissions/28/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 2, 'module': 6, 'menu': 27, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "PUT /api/userpermissions/28/" 200 270
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "OPTIONS /api/userpermissions/29/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 2, 'module': 6, 'menu': 28, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "PUT /api/userpermissions/29/" 200 267
+127.0.0.1:65228 - - [18/Apr/2026:12:45:00] "OPTIONS /api/userpermissions/30/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 2, 'module': 6, 'menu': 29, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:01] "PUT /api/userpermissions/30/" 200 268
+127.0.0.1:65228 - - [18/Apr/2026:12:45:01] "OPTIONS /api/userpermissions/25/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 2, 'module': 7, 'menu': 37, 'can_view': False, 'can_create': False, 'can_edit': False, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:01] "PUT /api/userpermissions/25/" 200 259
+127.0.0.1:65228 - - [18/Apr/2026:12:45:06] "OPTIONS /api/userpermissions/?user=12&limit=1000&offset=0" 200 -
+127.0.0.1:65228 - - [18/Apr/2026:12:45:06] "GET /api/userpermissions/?user=12&limit=1000&offset=0" 200 1078
+127.0.0.1:65228 - - [18/Apr/2026:12:45:15] "OPTIONS /api/userpermissions/?user=9&limit=1000&offset=0" 200 -
+127.0.0.1:65228 - - [18/Apr/2026:12:45:15] "GET /api/userpermissions/?user=9&limit=1000&offset=0" 200 5302
+127.0.0.1:65228 - - [18/Apr/2026:12:45:27] "GET /api/menus/" 200 3674
+127.0.0.1:65228 - - [18/Apr/2026:12:45:27] "GET /api/userpermissions/?user=9&limit=1000&offset=0" 200 5302
+127.0.0.1:65228 - - [18/Apr/2026:12:45:27] "OPTIONS /api/userpermissions/63/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 9, 'module': 4, 'menu': 12, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:27] "PUT /api/userpermissions/63/" 200 260
+127.0.0.1:65228 - - [18/Apr/2026:12:45:27] "OPTIONS /api/userpermissions/64/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 9, 'module': 4, 'menu': 13, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:27] "PUT /api/userpermissions/64/" 200 262
+127.0.0.1:65228 - - [18/Apr/2026:12:45:27] "OPTIONS /api/userpermissions/65/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 9, 'module': 4, 'menu': 14, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:27] "PUT /api/userpermissions/65/" 200 259
+127.0.0.1:65228 - - [18/Apr/2026:12:45:27] "OPTIONS /api/userpermissions/66/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 9, 'module': 4, 'menu': 15, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:27] "PUT /api/userpermissions/66/" 200 261
+127.0.0.1:65228 - - [18/Apr/2026:12:45:27] "OPTIONS /api/userpermissions/67/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 9, 'module': 4, 'menu': 16, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:27] "PUT /api/userpermissions/67/" 200 256
+127.0.0.1:65228 - - [18/Apr/2026:12:45:27] "OPTIONS /api/userpermissions/68/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 9, 'module': 4, 'menu': 17, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:27] "PUT /api/userpermissions/68/" 200 264
+127.0.0.1:65228 - - [18/Apr/2026:12:45:27] "OPTIONS /api/userpermissions/69/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 9, 'module': 5, 'menu': 18, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:27] "PUT /api/userpermissions/69/" 200 269
+127.0.0.1:65228 - - [18/Apr/2026:12:45:27] "OPTIONS /api/userpermissions/70/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 9, 'module': 5, 'menu': 19, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "PUT /api/userpermissions/70/" 200 273
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "OPTIONS /api/userpermissions/71/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 9, 'module': 5, 'menu': 20, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "PUT /api/userpermissions/71/" 200 272
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "OPTIONS /api/userpermissions/72/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 9, 'module': 5, 'menu': 21, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "PUT /api/userpermissions/72/" 200 265
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "OPTIONS /api/userpermissions/73/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 9, 'module': 5, 'menu': 22, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "PUT /api/userpermissions/73/" 200 272
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "OPTIONS /api/userpermissions/74/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 9, 'module': 5, 'menu': 23, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "PUT /api/userpermissions/74/" 200 262
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "OPTIONS /api/userpermissions/76/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 9, 'module': 5, 'menu': 25, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "PUT /api/userpermissions/76/" 200 259
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "OPTIONS /api/userpermissions/77/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 9, 'module': 6, 'menu': 26, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': True}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "PUT /api/userpermissions/77/" 200 266
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "OPTIONS /api/userpermissions/78/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 9, 'module': 6, 'menu': 27, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': True}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "PUT /api/userpermissions/78/" 200 268
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "OPTIONS /api/userpermissions/79/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 9, 'module': 6, 'menu': 28, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "PUT /api/userpermissions/79/" 200 266
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "OPTIONS /api/userpermissions/80/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 9, 'module': 6, 'menu': 29, 'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "PUT /api/userpermissions/80/" 200 267
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "OPTIONS /api/userpermissions/134/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 9, 'module': 7, 'menu': 36, 'can_view': False, 'can_create': False, 'can_edit': False, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "PUT /api/userpermissions/134/" 200 265
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "OPTIONS /api/userpermissions/75/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 9, 'module': 7, 'menu': 37, 'can_view': False, 'can_create': False, 'can_edit': False, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "PUT /api/userpermissions/75/" 200 258
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "OPTIONS /api/userpermissions/135/" 200 -
+DEBUG: UserPermissionViewSet.update called. request.data= {'user': 9, 'module': 7, 'menu': 38, 'can_view': False, 'can_create': False, 'can_edit': False, 'can_delete': False}
+127.0.0.1:65228 - - [18/Apr/2026:12:45:28] "PUT /api/userpermissions/135/" 200 255
+127.0.0.1:65228 - - [18/Apr/2026:12:45:39] "OPTIONS /api/userpermissions/?user=8&limit=1000&offset=0" 200 -
+127.0.0.1:65228 - - [18/Apr/2026:12:45:40] "GET /api/userpermissions/?user=8&limit=1000&offset=0" 200 3721
+127.0.0.1:65228 - - [18/Apr/2026:12:45:46] "GET /api/users/" 200 4768
+127.0.0.1:65228 - - [18/Apr/2026:12:46:11] "GET /api/users/" 200 4768
+127.0.0.1:65228 - - [18/Apr/2026:12:46:17] "GET /api/users/" 200 4768
+127.0.0.1:65228 - - [18/Apr/2026:12:46:18] "GET /api/users/" 200 4768
+127.0.0.1:62214 - - [18/Apr/2026:12:47:33] "GET /api/users/" 200 4768
+127.0.0.1:63133 - - [18/Apr/2026:12:47:35] "GET /api/docrec/next-id/?apply_for=IV&doc_rec_date=2026-04-18" 200 22
+127.0.0.1:57686 - - [18/Apr/2026:12:47:35] "GET /api/docrec/next-id/?apply_for=IV&doc_rec_date=2026-04-18" 200 22
+127.0.0.1:60789 - - [18/Apr/2026:12:47:35] "GET /api/docrec/?doc_rec_id=IV260132" 200 12123
+127.0.0.1:57320 - - [18/Apr/2026:12:47:36] "GET /api/inst-verification-main/?limit=50" 200 30197
+127.0.0.1:59015 - - [18/Apr/2026:12:47:36] "GET /api/inst-letter/suggest-doc-rec/?number=26132" 200 64
+127.0.0.1:50850 - - [18/Apr/2026:12:47:39] "GET /api/inst-verification-main/1455/" 200 606
+127.0.0.1:58837 - - [18/Apr/2026:12:47:39] "GET /api/inst-verification-student/?doc_rec=IV260131" 200 325
+127.0.0.1:59970 - - [18/Apr/2026:12:47:39] "GET /api/inst-verification-main/search-rec-inst/?q=Himadi%20Solutions%20Pvt%20Ltd" 200 221
+127.0.0.1:59969 - - [18/Apr/2026:12:47:39] "GET /api/docrec/?doc_rec_id=IV260131" 200 12123
+127.0.0.1:63889 - - [18/Apr/2026:12:47:40] "GET /api/inst-letter/suggest-doc-rec/?number=26131" 200 64
+127.0.0.1:63381 - - [18/Apr/2026:12:47:47] "POST /api/inst-letter/generate-pdf/" 200 5273
+127.0.0.1:62214 - - [18/Apr/2026:12:47:48] "GET /api/users/" 200 4768
+127.0.0.1:62214 - - [18/Apr/2026:12:48:05] "GET /api/users/" 200 4768
+127.0.0.1:50783 - - [18/Apr/2026:12:48:21] "WSDISCONNECT /ws/chat/" - -
+127.0.0.1:62214 - - [18/Apr/2026:12:48:21] "POST /api/token/verify/" 200 2
+127.0.0.1:55361 - - [18/Apr/2026:12:48:21] "POST /api/token/verify/" 200 2
+127.0.0.1:55361 - - [18/Apr/2026:12:48:21] "GET /api/profile/" 200 278
+127.0.0.1:62214 - - [18/Apr/2026:12:48:21] "GET /api/profile/" 200 278
+127.0.0.1:55361 - - [18/Apr/2026:12:48:21] "GET /api/check-admin-access/" 200 17
+127.0.0.1:55361 - - [18/Apr/2026:12:48:21] "GET /api/check-admin-access/" 200 17
+127.0.0.1:55368 - - [18/Apr/2026:12:48:21] "GET /api/dashboard-preferences/" 200 80
+127.0.0.1:55361 - - [18/Apr/2026:12:48:21] "GET /api/modules/" 200 556
+127.0.0.1:62214 - - [18/Apr/2026:12:48:21] "GET /api/menus/" 200 3674
+127.0.0.1:51794 - - [18/Apr/2026:12:48:21] "GET /api/migration/?status=pending&limit=50" 200 52
+127.0.0.1:54595 - - [18/Apr/2026:12:48:22] "GET /api/chat/pending-files/" 200 2
+127.0.0.1:51796 - - [18/Apr/2026:12:48:22] "GET /api/verification/?status=IN_PROGRESS&limit=25" 200 21228
+127.0.0.1:61848 - - [18/Apr/2026:12:48:22] "GET /api/modules/" 200 556
+127.0.0.1:57173 - - [18/Apr/2026:12:48:22] "GET /api/users/" 200 4768
+127.0.0.1:59253 - - [18/Apr/2026:12:48:22] "PUT /api/dashboard-preferences/" 200 80
+127.0.0.1:60877 - - [18/Apr/2026:12:48:22] "GET /api/migration/?status=pending&limit=50" 200 52
+127.0.0.1:55361 - - [18/Apr/2026:12:48:22] "GET /api/menus/" 200 3674
+127.0.0.1:61354 - - [18/Apr/2026:12:48:22] "GET /api/dashboard-preferences/" 200 80
+127.0.0.1:59039 - - [18/Apr/2026:12:48:22] "GET /api/verification/?status=IN_PROGRESS&limit=25" 200 21228
+127.0.0.1:54595 - - [18/Apr/2026:12:48:22] "GET /api/users/" 200 4768
+127.0.0.1:55361 - - [18/Apr/2026:12:48:22] "GET /api/my-navigation/" 200 2639
+127.0.0.1:64650 - - [18/Apr/2026:12:48:22] "PUT /api/dashboard-preferences/" 200 80
+127.0.0.1:64312 - - [18/Apr/2026:12:48:22] "PUT /api/dashboard-preferences/" 200 80
+127.0.0.1:51795 - - [18/Apr/2026:12:48:22] "GET /api/provisional/?status=pending&limit=50" 200 21477
+127.0.0.1:52565 - - [18/Apr/2026:12:48:22] "PUT /api/dashboard-preferences/" 200 80
+127.0.0.1:51773 - - [18/Apr/2026:12:48:22] "PUT /api/dashboard-preferences/" 200 80
+127.0.0.1:62205 - - [18/Apr/2026:12:48:22] "WSCONNECTING /ws/chat/" - -
+127.0.0.1:62205 - - [18/Apr/2026:12:48:22] "WSCONNECT /ws/chat/" - -
+127.0.0.1:64116 - - [18/Apr/2026:12:48:22] "GET /api/provisional/?status=pending&limit=50" 200 21477
+127.0.0.1:55361 - - [18/Apr/2026:12:48:29] "GET /api/my-navigation/" 200 2639
+127.0.0.1:52143 - - [18/Apr/2026:12:48:30] "GET /api/mainbranch/" 200 5851
+127.0.0.1:52142 - - [18/Apr/2026:12:48:30] "GET /api/institutes/" 200 9541
+127.0.0.1:52144 - - [18/Apr/2026:12:48:30] "GET /api/subbranch/" 200 10297
+127.0.0.1:54595 - - [18/Apr/2026:12:48:30] "GET /api/my-navigation/" 200 2639
+127.0.0.1:52149 - - [18/Apr/2026:12:48:30] "GET /api/mainbranch/" 200 5851
+127.0.0.1:52150 - - [18/Apr/2026:12:48:30] "GET /api/institutes/" 200 9541
+127.0.0.1:52154 - - [18/Apr/2026:12:48:30] "GET /api/subbranch/" 200 10297
+127.0.0.1:54595 - - [18/Apr/2026:12:48:30] "OPTIONS /api/enrollments/?page=1&limit=100&cancel=no" 200 -
+127.0.0.1:54595 - - [18/Apr/2026:12:48:30] "GET /api/enrollments/?page=1&limit=100&cancel=no" 200 51838
+127.0.0.1:54595 - - [18/Apr/2026:12:48:30] "OPTIONS /api/verification/?limit=200&include_pending=true" 200 -
+127.0.0.1:55361 - - [18/Apr/2026:12:48:30] "OPTIONS /api/verification/?limit=200&include_pending=true" 200 -
+127.0.0.1:55361 - - [18/Apr/2026:12:48:30] "GET /api/verification/?limit=200&include_pending=true" 200 169161
+127.0.0.1:54595 - - [18/Apr/2026:12:48:31] "GET /api/verification/?limit=200&include_pending=true" 200 169161
+127.0.0.1:55361 - - [18/Apr/2026:12:48:31] "GET /api/verification/?limit=200&include_pending=true" 200 169161
+127.0.0.1:57528 - - [18/Apr/2026:12:48:34] "GET /api/docrec/next-id/?apply_for=IV&doc_rec_date=2026-04-18" 200 22
+127.0.0.1:57530 - - [18/Apr/2026:12:48:34] "GET /api/docrec/next-id/?apply_for=IV&doc_rec_date=2026-04-18" 200 22
+127.0.0.1:52971 - - [18/Apr/2026:12:48:34] "GET /api/docrec/?doc_rec_id=IV260132" 200 12123
+127.0.0.1:60754 - - [18/Apr/2026:12:48:35] "GET /api/inst-verification-main/?limit=50" 200 30197
+127.0.0.1:62823 - - [18/Apr/2026:12:48:35] "GET /api/inst-letter/suggest-doc-rec/?number=26132" 200 64
+127.0.0.1:55361 - - [18/Apr/2026:12:49:21] "GET /api/users/" 200 4768
+127.0.0.1:55361 - - [18/Apr/2026:12:49:32] "GET /api/users/" 200 4768
+127.0.0.1:58169 - - [18/Apr/2026:12:52:33] "GET /api/users/" 200 4768
+127.0.0.1:59797 - - [18/Apr/2026:12:55:33] "GET /api/users/" 200 4768
+127.0.0.1:51901 - - [18/Apr/2026:12:58:21] "GET /api/users/" 200 4768
+127.0.0.1:58548 - - [18/Apr/2026:12:58:41] "GET /api/institutes/" 200 9541
+127.0.0.1:58549 - - [18/Apr/2026:12:58:41] "GET /api/mainbranch/" 200 5851
+127.0.0.1:51901 - - [18/Apr/2026:12:58:41] "GET /api/my-navigation/" 200 2639
+127.0.0.1:58550 - - [18/Apr/2026:12:58:41] "GET /api/subbranch/" 200 10297
+127.0.0.1:54600 - - [18/Apr/2026:12:58:41] "GET /api/institutes/" 200 9541
+127.0.0.1:55649 - - [18/Apr/2026:12:58:41] "GET /api/mainbranch/" 200 5851
+127.0.0.1:63342 - - [18/Apr/2026:12:58:41] "GET /api/my-navigation/" 200 2639
+127.0.0.1:51560 - - [18/Apr/2026:12:58:41] "GET /api/subbranch/" 200 10297
+127.0.0.1:63342 - - [18/Apr/2026:12:58:41] "GET /api/enrollments/?page=1&limit=100&cancel=no" 200 51838
+127.0.0.1:63342 - - [18/Apr/2026:12:58:43] "GET /api/verification/?limit=200&include_pending=true" 200 169161
+127.0.0.1:51901 - - [18/Apr/2026:12:58:43] "GET /api/verification/?limit=200&include_pending=true" 200 169161
+127.0.0.1:63342 - - [18/Apr/2026:12:58:43] "GET /api/verification/?limit=200&include_pending=true" 200 169161
+127.0.0.1:61602 - - [18/Apr/2026:12:58:44] "GET /api/institutes/" 200 9541
+127.0.0.1:53693 - - [18/Apr/2026:12:58:44] "GET /api/institutes/" 200 9541
+127.0.0.1:60783 - - [18/Apr/2026:12:58:45] "GET /api/migration/" 200 52
+127.0.0.1:52334 - - [18/Apr/2026:12:58:46] "GET /api/institutes/" 200 9541
+127.0.0.1:62484 - - [18/Apr/2026:12:58:46] "GET /api/institutes/" 200 9541
+127.0.0.1:54770 - - [18/Apr/2026:12:58:46] "GET /api/mainbranch/" 200 5851
+127.0.0.1:57385 - - [18/Apr/2026:12:58:46] "GET /api/mainbranch/" 200 5851
+127.0.0.1:60513 - - [18/Apr/2026:12:58:47] "GET /api/subbranch/" 200 10297
+127.0.0.1:55227 - - [18/Apr/2026:12:58:47] "GET /api/subbranch/" 200 10297
+127.0.0.1:56662 - - [18/Apr/2026:12:58:47] "GET /api/provisional/" 200 21462
+127.0.0.1:63342 - - [18/Apr/2026:12:58:49] "GET /api/convocations/list_all/" 200 2686
+127.0.0.1:52330 - - [18/Apr/2026:12:58:49] "GET /api/convocations/list_all/" 200 2686
+127.0.0.1:51901 - - [18/Apr/2026:12:58:49] "GET /api/degrees/?page=1&page_size=50" 200 31860
+127.0.0.1:52330 - - [18/Apr/2026:12:58:49] "GET /api/degrees/?page=1&page_size=50" 200 31860
+127.0.0.1:52335 - - [18/Apr/2026:12:58:50] "GET /api/docrec/next-id/?apply_for=IV&doc_rec_date=2026-04-18" 200 22
+127.0.0.1:52333 - - [18/Apr/2026:12:58:50] "GET /api/docrec/next-id/?apply_for=IV&doc_rec_date=2026-04-18" 200 22
+127.0.0.1:61369 - - [18/Apr/2026:12:58:50] "GET /api/docrec/?doc_rec_id=IV260132" 200 12123
+127.0.0.1:64329 - - [18/Apr/2026:12:58:50] "GET /api/inst-verification-main/?limit=50" 200 30197
+127.0.0.1:64514 - - [18/Apr/2026:12:58:50] "GET /api/inst-letter/suggest-doc-rec/?number=26132" 200 64
+127.0.0.1:52330 - - [18/Apr/2026:12:59:00] "OPTIONS /api/exam/?exam_year_session=2026-1" 200 -
+127.0.0.1:51901 - - [18/Apr/2026:12:59:00] "OPTIONS /api/centre/?exam_year_session=2026-1" 200 -
+127.0.0.1:63342 - - [18/Apr/2026:12:59:00] "OPTIONS /api/dvd/?exam_year_session=2026-1" 200 -
+127.0.0.1:53811 - - [18/Apr/2026:12:59:00] "OPTIONS /api/exam/?exam_year_session=2026-1" 200 -
+127.0.0.1:58650 - - [18/Apr/2026:12:59:00] "OPTIONS /api/centre/?exam_year_session=2026-1" 200 -
+127.0.0.1:64630 - - [18/Apr/2026:12:59:00] "OPTIONS /api/dvd/?exam_year_session=2026-1" 200 -
+127.0.0.1:63342 - - [18/Apr/2026:12:59:00] "GET /api/centre/?exam_year_session=2026-1" 200 50136
+127.0.0.1:53811 - - [18/Apr/2026:12:59:00] "GET /api/dvd/?exam_year_session=2026-1" 200 67818
+127.0.0.1:51901 - - [18/Apr/2026:12:59:00] "GET /api/exam/?exam_year_session=2026-1" 200 661618
+127.0.0.1:64630 - - [18/Apr/2026:12:59:00] "GET /api/centre/?exam_year_session=2026-1" 200 50136
+127.0.0.1:63342 - - [18/Apr/2026:12:59:00] "GET /api/dvd/?exam_year_session=2026-1" 200 67818
+127.0.0.1:53811 - - [18/Apr/2026:12:59:00] "GET /api/exam/?exam_year_session=2026-1" 200 661618
+127.0.0.1:53811 - - [18/Apr/2026:12:59:21] "GET /api/users/" 200 4768
+127.0.0.1:53811 - - [18/Apr/2026:12:59:55] "OPTIONS /api/cctv-outward/" 200 -
+127.0.0.1:63342 - - [18/Apr/2026:12:59:55] "OPTIONS /api/institutes/" 200 -
+127.0.0.1:53811 - - [18/Apr/2026:12:59:55] "GET /api/institutes/" 200 9541
+127.0.0.1:63342 - - [18/Apr/2026:12:59:55] "GET /api/cctv-outward/" 200 10907
+127.0.0.1:63342 - - [18/Apr/2026:13:00:21] "GET /api/users/" 200 4768
+127.0.0.1:63342 - - [18/Apr/2026:13:00:29] "GET /api/users/" 200 4768
+127.0.0.1:63342 - - [18/Apr/2026:13:01:12] "GET /api/users/" 200 4768
+127.0.0.1:63342 - - [18/Apr/2026:13:01:18] "GET /api/users/" 200 4768
+127.0.0.1:63342 - - [18/Apr/2026:13:01:34] "GET /api/users/" 200 4768
+127.0.0.1:63342 - - [18/Apr/2026:13:01:43] "GET /api/users/" 200 4768
+127.0.0.1:63342 - - [18/Apr/2026:13:01:48] "GET /api/users/" 200 4768
+127.0.0.1:63342 - - [18/Apr/2026:13:01:50] "GET /api/users/" 200 4768
+127.0.0.1:61900 - - [18/Apr/2026:13:04:14] "GET /api/dvd/?exam_year_session=2026-1" 200 67818
+127.0.0.1:52657 - - [18/Apr/2026:13:04:14] "GET /api/centre/?exam_year_session=2026-1" 200 50136
+127.0.0.1:59558 - - [18/Apr/2026:13:04:14] "GET /api/institutes/" 200 9541
+127.0.0.1:60049 - - [18/Apr/2026:13:04:14] "GET /api/cctv-outward/" 200 10907
+127.0.0.1:50089 - - [18/Apr/2026:13:04:14] "GET /api/exam/?exam_year_session=2026-1" 200 661618
+127.0.0.1:50089 - - [18/Apr/2026:13:04:17] "GET /api/users/" 200 4768
+127.0.0.1:50089 - - [18/Apr/2026:13:04:46] "GET /api/users/" 200 4768
+127.0.0.1:49722 - - [18/Apr/2026:13:07:47] "GET /api/users/" 200 4768
+127.0.0.1:63037 - - [18/Apr/2026:13:10:47] "OPTIONS /api/users/" 200 -
+127.0.0.1:63037 - - [18/Apr/2026:13:10:47] "GET /api/users/" 200 4768
+127.0.0.1:62398 - - [18/Apr/2026:13:13:47] "GET /api/users/" 200 4768
+127.0.0.1:63266 - - [18/Apr/2026:13:16:02] "POST /api/backlogin/" 200 495
+127.0.0.1:63268 - - [18/Apr/2026:13:16:02] "POST /api/token/verify/" 200 2
+127.0.0.1:63270 - - [18/Apr/2026:13:16:02] "GET /api/profile/" 200 248
+127.0.0.1:63272 - - [18/Apr/2026:13:16:02] "GET /api/check-admin-access/" 200 18
+127.0.0.1:63274 - - [18/Apr/2026:13:16:02] "GET /api/my-navigation/" 200 2671
+127.0.0.1:63405 - - [18/Apr/2026:13:16:17] "POST /api/token/verify/" 200 2
+127.0.0.1:63407 - - [18/Apr/2026:13:16:17] "GET /api/profile/" 200 248
+127.0.0.1:63409 - - [18/Apr/2026:13:16:17] "GET /api/check-admin-access/" 200 18
+127.0.0.1:63411 - - [18/Apr/2026:13:16:17] "GET /api/my-navigation/" 200 2671
+127.0.0.1:63414 - - [18/Apr/2026:13:16:17] "GET /api/modules/" 200 556
+127.0.0.1:63428 - - [18/Apr/2026:13:16:17] "GET /api/my-navigation/" 200 2671
+127.0.0.1:63430 - - [18/Apr/2026:13:16:17] "GET /api/empprofile/?limit=50" 200 52
+127.0.0.1:63422 - - [18/Apr/2026:13:16:17] "GET /api/menus/" 200 3674
+127.0.0.1:63415 - - [18/Apr/2026:13:16:17] "GET /api/users/" 200 4768
+127.0.0.1:63413 - - [18/Apr/2026:13:16:17] "GET /api/dashboard-preferences/" 200 60
+127.0.0.1:63436 - - [18/Apr/2026:13:16:17] "PUT /api/dashboard-preferences/" 200 80
+127.0.0.1:63438 - - [18/Apr/2026:13:16:17] "GET /api/verification/?status=IN_PROGRESS&limit=25" 200 21229
+127.0.0.1:63432 - - [18/Apr/2026:13:16:17] "GET /api/holidays/?limit=50" 200 538
+127.0.0.1:63440 - - [18/Apr/2026:13:16:17] "PUT /api/dashboard-preferences/" 200 45
+127.0.0.1:63434 - - [18/Apr/2026:13:16:17] "GET /api/my-navigation/" 200 2671
+127.0.0.1:63442 - - [18/Apr/2026:13:16:18] "PUT /api/dashboard-preferences/" 200 45
+127.0.0.1:63444 - - [18/Apr/2026:13:16:18] "PUT /api/dashboard-preferences/" 200 72
+127.0.0.1:62372 - - [18/Apr/2026:13:16:47] "GET /api/users/" 200 4768
+127.0.0.1:62374 - - [18/Apr/2026:13:16:47] "GET /api/my-navigation/" 200 2671
+127.0.0.1:62377 - - [18/Apr/2026:13:16:47] "GET /api/receipts/flattened/?date=2026-04-18" 200 2
+127.0.0.1:62376 - - [18/Apr/2026:13:16:47] "GET /api/cash-register/next-receipt/?payment_mode=CASH&date=2026-04-18" 200 69
+127.0.0.1:62378 - - [18/Apr/2026:13:16:47] "GET /api/fee-types/?active=true" 200 4723
+127.0.0.1:62382 - - [18/Apr/2026:13:16:47] "GET /api/cash-register/next-receipt/?payment_mode=CASH&date=2026-04-18" 200 69
+127.0.0.1:61756 - - [18/Apr/2026:13:17:17] "GET /api/users/" 200 4768
+127.0.0.1:61764 - - [18/Apr/2026:13:18:17] "GET /api/users/" 200 4768
+127.0.0.1:61769 - - [18/Apr/2026:13:18:28] "GET /api/receipts/rec-range/?date_from=2026-04-18&date_to=2026-04-18&report_by=Daily&payment_mode=CASH" 200 2
+127.0.0.1:61768 - - [18/Apr/2026:13:18:28] "GET /api/cash-outward/?date_from=2026-04-18&date_to=2026-04-18" 200 52
+127.0.0.1:61766 - - [18/Apr/2026:13:18:28] "GET /api/cash-on-hand/report/?date=2026-04-18" 200 285
+127.0.0.1:61767 - - [18/Apr/2026:13:18:28] "GET /api/receipts/fees-aggregate/?date_from=2026-04-18&date_to=2026-04-18&report_by=Daily&payment_mode=CASH" 200 2
+127.0.0.1:61780 - - [18/Apr/2026:13:18:36] "GET /api/receipts/rec-range/?date_from=2026-04-18&date_to=2026-04-18&report_by=Daily&payment_mode=CASH" 200 2
+127.0.0.1:61778 - - [18/Apr/2026:13:18:36] "GET /api/cash-outward/?date_from=2026-04-18&date_to=2026-04-18&txn_type=DEPOSIT" 200 52
+127.0.0.1:61779 - - [18/Apr/2026:13:18:36] "GET /api/cash-on-hand/report/?date=2026-04-18" 200 285
+127.0.0.1:61777 - - [18/Apr/2026:13:18:36] "GET /api/cash-outward/?date_from=2026-04-18&date_to=2026-04-18" 200 52
+127.0.0.1:61776 - - [18/Apr/2026:13:18:36] "GET /api/receipts/fees-aggregate/?date_from=2026-04-18&date_to=2026-04-18&report_by=Daily&payment_mode=CASH" 200 2
+127.0.0.1:61795 - - [18/Apr/2026:13:18:39] "GET /api/cash-outward/?date_from=2026-04-01&date_to=2026-04-18&txn_type=DEPOSIT" 200 1237
+127.0.0.1:61808 - - [18/Apr/2026:13:19:08] "GET /api/users/" 200 4768
+127.0.0.1:61811 - - [18/Apr/2026:13:19:13] "GET /api/users/" 200 4768
+127.0.0.1:61815 - - [18/Apr/2026:13:19:17] "GET /api/receipts/fees-aggregate/?date_from=2026-04-18&date_to=2026-04-18&report_by=Daily&payment_mode=CASH" 200 2
+127.0.0.1:61816 - - [18/Apr/2026:13:19:17] "GET /api/receipts/rec-range/?date_from=2026-04-18&date_to=2026-04-18&report_by=Daily&payment_mode=CASH" 200 2
+127.0.0.1:61813 - - [18/Apr/2026:13:19:17] "GET /api/cash-on-hand/report/?date=2026-04-18" 200 285
+127.0.0.1:61814 - - [18/Apr/2026:13:19:17] "GET /api/cash-outward/?date_from=2026-04-18&date_to=2026-04-18" 200 52
+127.0.0.1:61824 - - [18/Apr/2026:13:19:29] "GET /api/receipts/fees-aggregate/?date_from=2026-04-18&date_to=2026-04-18&report_by=Daily&payment_mode=CASH" 200 2
+127.0.0.1:61821 - - [18/Apr/2026:13:19:29] "GET /api/receipts/rec-range/?date_from=2026-04-18&date_to=2026-04-18&report_by=Daily&payment_mode=CASH" 200 2
+127.0.0.1:61823 - - [18/Apr/2026:13:19:29] "GET /api/cash-outward/?date_from=2026-04-01&date_to=2026-04-18&txn_type=EXPENSE" 200 214
+127.0.0.1:61825 - - [18/Apr/2026:13:19:29] "GET /api/cash-outward/?date_from=2026-04-18&date_to=2026-04-18" 200 52
+127.0.0.1:61822 - - [18/Apr/2026:13:19:29] "GET /api/cash-on-hand/report/?date=2026-04-18" 200 285
+127.0.0.1:61832 - - [18/Apr/2026:13:19:30] "GET /api/cash-on-hand/report/?date=2026-04-18" 200 285

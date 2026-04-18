@@ -1327,10 +1327,15 @@ const CCTVMonitoring = ({
                     const cdLabel = [row.cc_start_label, row.cc_end_label]
                       .filter(Boolean)
                       .join(" - ");
+                    const rowHighlightClass = row.return_received
+                      ? row.case_found
+                        ? "bg-orange-50"
+                        : "bg-sky-50"
+                      : "";
                     return (
                       <tr
                         key={row.id}
-                        className={`border-b last:border-b-0 ${row.return_received ? "bg-green-50" : ""}`}
+                        className={`border-b last:border-b-0 ${rowHighlightClass}`}
                       >
                         <td className="px-3 py-2 align-top">{row.outward_date || "—"}</td>
                         <td className="px-3 py-2 align-top">{row.cctv_record_no || "—"}</td>
