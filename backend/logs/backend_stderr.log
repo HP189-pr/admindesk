@@ -51870,3 +51870,31 @@ Unauthorized: /api/token/verify/
 2026-04-18 11:09:59,638 WARNING  Unauthorized: /api/token/verify/
 Unauthorized: /api/token/verify/
 2026-04-18 11:09:59,636 WARNING  Unauthorized: /api/token/verify/
+2026-04-18 11:58:41,127 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26131'}
+2026-04-18 11:58:41,135 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-18 11:58:41,148 INFO     InstLetterPDF grouped records: keys=['2026/131']
+2026-04-18 11:58:41,157 INFO     DEBUG rec_inst_pin value: '110018'
+2026-04-18 11:59:18,004 INFO     InstLetterStudent update payload_keys=['doc_rec_key', 'enrollment', 'enrollment_no_text', 'iv_degree_name', 'month_year', 'sr_no', 'student_name', 'study_mode', 'type_of_credential', 'verification_status']
+2026-04-18 11:59:22,845 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26131'}
+2026-04-18 11:59:22,847 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-18 11:59:22,853 INFO     InstLetterPDF grouped records: keys=['2026/131']
+2026-04-18 11:59:22,853 INFO     DEBUG rec_inst_pin value: '110018'
+2026-04-18 11:59:41,790 INFO     InstLetterStudent update payload_keys=['doc_rec_key', 'enrollment', 'enrollment_no_text', 'iv_degree_name', 'month_year', 'sr_no', 'student_name', 'study_mode', 'type_of_credential', 'verification_status']
+2026-04-18 11:59:46,581 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26131'}
+2026-04-18 11:59:46,583 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-18 11:59:46,589 INFO     InstLetterPDF grouped records: keys=['2026/131']
+2026-04-18 11:59:46,592 INFO     DEBUG rec_inst_pin value: '110018'
+2026-04-18 12:02:14,021 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26131'}
+2026-04-18 12:02:14,024 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-18 12:02:14,032 INFO     InstLetterPDF grouped records: keys=['2026/131']
+2026-04-18 12:02:14,035 INFO     DEBUG rec_inst_pin value: '110018'
+2026-04-18 12:05:02,828 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26131'}
+2026-04-18 12:05:02,836 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-18 12:05:02,843 INFO     InstLetterPDF grouped records: keys=['2026/131']
+2026-04-18 12:05:02,844 INFO     DEBUG rec_inst_pin value: '110018'
+2026-04-18 12:40:43,111 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26131'}
+2026-04-18 12:40:43,125 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-18 12:40:43,145 INFO     InstLetterPDF grouped records: keys=['2026/131']
+2026-04-18 12:40:43,153 INFO     DEBUG rec_inst_pin value: '110018'
+Unauthorized: /api/users/
+2026-04-18 12:42:45,301 WARNING  Unauthorized: /api/users/

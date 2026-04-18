@@ -5,6 +5,9 @@ module.exports = {
   ],
   theme: {
     extend: {
+      gridTemplateColumns: {
+        24: 'repeat(24, minmax(0, 1fr))',
+      },
       colors: {
         peacockTeal: '#00b3b3',
         peacockGreen: '#009966',

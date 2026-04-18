@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from pathlib import Path
 import json
 import re, logging
+from xml.sax.saxutils import escape
 from django.db.models.functions import Lower
 from .domain_letter import InstLetterMain, InstLetterStudent
 from .models import Enrollment, MainBranch, SubBranch, Institute
@@ -519,7 +520,31 @@ class InstLetterPDF(APIView):
                     story.append(Spacer(1, 3 * mm))
 
                     # Remark and closing
-                    story.append(Paragraph("<strong>Remark:</strong> The above record has been verified and found correct as per university records.", normal))
+                    student_remarks = []
+                    seen_remarks = set()
+                    for s in merged:
+                        if not isinstance(s, dict):
+                            continue
+                        candidate_remark = str(
+                            s.get('verification_status') or s.get('status') or ""
+                        ).strip()
+                        if not candidate_remark or candidate_remark in seen_remarks:
+                            continue
+                        seen_remarks.add(candidate_remark)
+                        student_remarks.append(candidate_remark)
+
+                    if student_remarks:
+                        remark_text = student_remarks[0]
+                    else:
+                        remark_text = (
+                            rep_main.get('iv_status')
+                            or "The above record has been verified and found correct as per university records."
+                        )
+
+                    story.append(Paragraph(
+                        f"<strong>Remark:</strong> {escape(str(remark_text))}",
+                        normal
+                    ))
                     story.append(Spacer(1, 12))
                     story.append(Paragraph("Should you require any additional information or have further inquiries, please do not hesitate to reach out to us.", normal))
                     story.append(Spacer(1, 36))
@@ -812,6 +837,12 @@ class InstLetterStudentViewSet(viewsets.ModelViewSet):
             data = {k: raw_data[k] for k in raw_data}
         else:
             data = dict(raw_data or {})
+
+        # Backward compatibility: some clients still send the student remark/status
+        # under `status`, while the model field is `verification_status`.
+        if not data.get('verification_status') and data.get('status'):
+            data['verification_status'] = data.get('status')
+
         for key in self.FK_TRIM_KEYS:
             data.pop(key, None)
         return data

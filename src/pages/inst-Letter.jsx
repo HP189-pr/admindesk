@@ -25,7 +25,7 @@ const DOCREC_APPLY_FOR = "IV";
 const DOCREC_PAY_BY = "NA";
 const DEFAULT_CREDENTIAL_OPTIONS = ["Passing On", "Awarded On"];
 const DEFAULT_DEGREE_AWARDED_OPTIONS = [];
-const DEFAULT_STATUS_OPTIONS = ["Verified and found correct"];
+const DEFAULT_STATUS_OPTIONS = ["The above record has been verified and found correct as per university records."];
 const STORAGE_KEYS = {
 	credential: "inst_letter_credential_options",
 	degreeAwarded: "inst_letter_degree_awarded_options",
@@ -1358,28 +1358,62 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 						</div>
 					</div>
 
-					<div className="grid gap-2 md:grid-cols-12">
-						<div className="md:col-span-1 max-w-[100]">
+					<div className="grid grid-cols-1 gap-3 md:grid-cols-24 md:gap-x-1 md:gap-y-0 items-end">
+
+
+						{/* Sr No */}
+						<div className="md:col-span-1 ">
 							<label className="label">Sr No</label>
 							<input
-								className="input"
-								value={sform.sr_no}
-								onChange={(e) => setSForm((prev) => ({ ...prev, sr_no: e.target.value.replace(/\D/g, "") }))}
+							className="input px-2"
+							value={sform.sr_no}
+							onChange={(e) =>
+								setSForm((prev) => ({
+								...prev,
+								sr_no: e.target.value.replace(/\D/g, "")
+								}))
+							}
 							/>
 						</div>
-						<div className="md:col-span-2">
+
+						{/* Enrollment */}
+						<div className="md:col-span-3">
 							<label className="label">Enrollment</label>
-							<input className="input" value={sform.enrollment} onChange={(e) => setSForm((prev) => ({ ...prev, enrollment: e.target.value }))} />
+							<input
+							className="input"
+							value={sform.enrollment}
+							onChange={(e) =>
+								setSForm((prev) => ({ ...prev, enrollment: e.target.value }))
+							}
+							/>
 						</div>
-						<div className="md:col-span-2">
+
+						{/* Student Name (INCREASED) */}
+						<div className="md:col-span-6">
 							<label className="label">Student Name</label>
-							<input className="input" value={sform.student_name} onChange={(e) => setSForm((prev) => ({ ...prev, student_name: e.target.value }))} />
+							<input
+							className="input"
+							value={sform.student_name}
+							onChange={(e) =>
+								setSForm((prev) => ({ ...prev, student_name: e.target.value }))
+							}
+							/>
 						</div>
-						<div className="md:col-span-2">
+
+						{/* Degree Name */}
+						<div className="md:col-span-3">
 							<label className="label">Degree Name</label>
-							<input className="input" value={sform.iv_degree_name} onChange={(e) => setSForm((prev) => ({ ...prev, iv_degree_name: e.target.value }))} />
+							<input
+							className="input"
+							value={sform.iv_degree_name}
+							onChange={(e) =>
+								setSForm((prev) => ({ ...prev, iv_degree_name: e.target.value }))
+							}
+							/>
 						</div>
-						<div className="md:col-span-1 relative" ref={credentialDropdownRef}>
+
+						
+						<div className="md:col-span-2 relative" ref={credentialDropdownRef}>
 							<label className="label">Credential</label>
 							<div className="relative">
 								<input
@@ -1425,11 +1459,11 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 								)}
 							</div>
 						</div>
-						<div className="md:col-span-1">
+						<div className="md:col-span-2">
 							<label className="label">Month / Year</label>
 							<input className="input" value={sform.month_year} onChange={(e) => setSForm((prev) => ({ ...prev, month_year: e.target.value }))} />
 						</div>
-						<div className="md:col-span-1">
+						<div className="md:col-span-2">
 							<label className="label">Study Mode</label>
 							<select className="input" value={sform.study_mode} onChange={(e) => setSForm((prev) => ({ ...prev, study_mode: e.target.value }))}>
 								{['', ...STUDY_MODE_OPTIONS].map((opt) => (
@@ -1439,7 +1473,7 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 								))}
 							</select>
 						</div>
-						<div className="md:col-span-2">
+						<div className="md:col-span-5">
 							<label className="label">Status</label>
 							<input className="input" value={sform.verification_status} onChange={(e) => setSForm((prev) => ({ ...prev, verification_status: e.target.value }))} />
 						</div>
