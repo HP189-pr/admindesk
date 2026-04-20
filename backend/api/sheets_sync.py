@@ -52,6 +52,14 @@ CASH_SHEET_WORKSHEET_CANDIDATES = (
     "CashSheet",
 )
 
+UPI_SHEET_WORKSHEET_CANDIDATES = (
+    "UPISheet",
+)
+
+BANK_SHEET_WORKSHEET_CANDIDATES = (
+    "BankSheet",
+)
+
 CASH_SHEET_BASE_HEADERS = ["date"]
 
 CASH_SHEET_TRAILING_HEADERS = [
@@ -256,6 +264,32 @@ def _get_first_named_worksheet(sheet_id: str, sheet_names: Iterable[str]) -> gsp
             last_error = exc
             continue
     raise RuntimeError(f"Worksheet not found in sheet {sheet_id}: {', '.join(sheet_names)}") from last_error
+
+
+def _get_or_create_named_worksheet(
+    sheet_id: str,
+    sheet_names: Iterable[str],
+    *,
+    rows: int = 1000,
+    cols: int = 26,
+) -> gspread.Worksheet:
+    sheet = _open_sheet(sheet_id)
+    names = [str(name).strip() for name in sheet_names if str(name).strip()]
+    last_error = None
+    for sheet_name in names:
+        try:
+            return sheet.worksheet(sheet_name)
+        except Exception as exc:
+            last_error = exc
+            continue
+    if not names:
+        raise RuntimeError(f"No worksheet names provided for sheet {sheet_id}")
+    try:
+        return sheet.add_worksheet(title=names[0], rows=rows, cols=cols)
+    except Exception as exc:
+        raise RuntimeError(
+            f"Worksheet not found and could not be created in sheet {sheet_id}: {', '.join(names)}"
+        ) from exc
 
 
 @lru_cache(maxsize=None)
@@ -1252,6 +1286,7 @@ def import_cctv_exams_from_sheet(
 def sync_cash_register_to_sheet(
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
+    all_dates: bool = False,
     sheet_id: Optional[str] = None,
 ) -> Dict[str, int]:
     """Append cash register receipt items to the Google Sheet.
@@ -1281,7 +1316,8 @@ def sync_cash_register_to_sheet(
 
     # Query receipts in the date range first so we can clean legacy combined rows.
     receipt_query = Receipt.objects.select_related("created_by").prefetch_related("items__fee_type")
-    receipt_query = receipt_query.filter(date__gte=resolved_from, date__lte=resolved_to)
+    if not all_dates:
+        receipt_query = receipt_query.filter(date__gte=resolved_from, date__lte=resolved_to)
     qs = list(receipt_query.order_by("date", "rec_ref", "rec_no"))
     target_receipt_numbers = {
         str(receipt.receipt_no_full or "").strip()
@@ -1560,6 +1596,7 @@ def sync_cash_register_to_sheet(
 def sync_cash_deposite_to_sheet(
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
+    all_dates: bool = False,
     sheet_id: Optional[str] = None,
 ) -> Dict[str, int]:
     """Upsert cash-on-hand denomination rows into the Cash-Deposite worksheet."""
@@ -1612,7 +1649,8 @@ def sync_cash_deposite_to_sheet(
             existing_rows_by_date[date_key] = [str(value).strip() for value in row[:len(CASH_DEPOSITE_SHEET_HEADERS)]]
 
     cash_query = CashOnHand.objects.prefetch_related("items")
-    cash_query = cash_query.filter(date__gte=resolved_from, date__lte=resolved_to)
+    if not all_dates:
+        cash_query = cash_query.filter(date__gte=resolved_from, date__lte=resolved_to)
     qs = list(cash_query.order_by("date"))
 
     appended = 0
@@ -1666,17 +1704,22 @@ def sync_cash_deposite_to_sheet(
     return {"appended": appended, "updated": updated, "skipped": skipped, "total": total_db}
 
 
-def sync_cash_sheet_to_sheet(
+def _sync_payment_mode_sheet_to_sheet(
+    *,
+    payment_mode: str,
+    worksheet_candidates: Iterable[str],
+    log_label: str,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
+    all_dates: bool = False,
     sheet_id: Optional[str] = None,
 ) -> Dict[str, int]:
-    """Upsert one CashSheet row per date for CASH receipts only."""
-    from .domain_cash_register import Receipt
+    """Upsert one daily summary row for a payment-mode worksheet."""
+    from .domain_cash_register import FeeType, Receipt
 
     sheet_id = sheet_id or _get_setting("GOOGLE_CASH_REGISTER_SPREADSHEET_ID")
     if not sheet_id:
-        logger.warning("sync_cash_sheet_to_sheet: GOOGLE_CASH_REGISTER_SPREADSHEET_ID not configured")
+        logger.warning("%s: GOOGLE_CASH_REGISTER_SPREADSHEET_ID not configured", log_label)
         return {"appended": 0, "updated": 0, "skipped": 0, "total": 0}
 
     today_str = timezone.now().date().isoformat()
@@ -1684,48 +1727,46 @@ def sync_cash_sheet_to_sheet(
     resolved_to = date_to or resolved_from
 
     try:
-        worksheet = _get_first_named_worksheet(sheet_id, CASH_SHEET_WORKSHEET_CANDIDATES)
+        worksheet = _get_or_create_named_worksheet(sheet_id, worksheet_candidates)
     except Exception as exc:
-        logger.error("sync_cash_sheet_to_sheet: cannot open worksheet in sheet %s: %s", sheet_id, exc)
+        logger.error("%s: cannot open worksheet in sheet %s: %s", log_label, sheet_id, exc)
         return {"appended": 0, "updated": 0, "skipped": 0, "total": 0}
 
     try:
         existing_values = worksheet.get_all_values()
     except Exception as exc:
-        logger.error("sync_cash_sheet_to_sheet: cannot read worksheet: %s", exc)
+        logger.error("%s: cannot read worksheet: %s", log_label, exc)
         return {"appended": 0, "updated": 0, "skipped": 0, "total": 0}
 
     header_row = existing_values[0] if existing_values else []
     existing_headers = [str(value).strip() for value in header_row if str(value).strip()]
 
-    cash_receipt_query = Receipt.objects.filter(payment_mode="CASH").exclude(is_cancelled=True).prefetch_related("items__fee_type")
-    cash_receipt_query = cash_receipt_query.filter(date__gte=resolved_from, date__lte=resolved_to)
-    qs = list(cash_receipt_query.order_by("date", "rec_no", "receipt_no_full"))
+    receipt_query = (
+        Receipt.objects.filter(payment_mode=payment_mode)
+        .exclude(is_cancelled=True)
+        .prefetch_related("items__fee_type")
+    )
+    if not all_dates:
+        receipt_query = receipt_query.filter(date__gte=resolved_from, date__lte=resolved_to)
+    qs = list(receipt_query.order_by("date", "rec_no", "receipt_no_full"))
 
-    fee_type_codes = sorted({
-        str(item.fee_type.code).strip()
-        for receipt in qs
-        for item in receipt.items.all()
-        if item.fee_type and str(item.fee_type.code).strip()
-    })
-
-    existing_fee_headers = [
-        header for header in existing_headers
-        if header not in CASH_SHEET_BASE_HEADERS
-        and header not in CASH_SHEET_TRAILING_HEADERS
-        and header.strip().lower() not in CASH_SHEET_LEGACY_IGNORED_HEADERS
+    active_fee_type_codes = list(
+        FeeType.objects.filter(is_active=True)
+        .order_by("code")
+        .values_list("code", flat=True)
+    )
+    merged_fee_headers = [
+        str(code).strip()
+        for code in active_fee_type_codes
+        if str(code).strip()
     ]
-    merged_fee_headers = list(existing_fee_headers)
-    for fee_code in fee_type_codes:
-        if fee_code not in merged_fee_headers:
-            merged_fee_headers.append(fee_code)
 
     final_headers = [
         *CASH_SHEET_BASE_HEADERS,
         *merged_fee_headers,
         *CASH_SHEET_TRAILING_HEADERS,
     ]
-    sheet_width = max(len(header_row), len(final_headers))
+    sheet_width = max(len(header_row), len(final_headers), 1)
 
     def _column_label(column_number: int) -> str:
         return "".join(ch for ch in rowcol_to_a1(1, column_number) if ch.isalpha())
@@ -1737,10 +1778,10 @@ def sync_cash_sheet_to_sheet(
             worksheet.update(f"A1:{end_col}1", [header_payload], value_input_option="USER_ENTERED")
             existing_values = [final_headers, *existing_values[1:]] if existing_values else [final_headers]
         except Exception as exc:
-            logger.error("sync_cash_sheet_to_sheet: cannot update header row: %s", exc)
+            logger.error("%s: cannot update header row: %s", log_label, exc)
             return {"appended": 0, "updated": 0, "skipped": 0, "total": 0}
 
-    def _pad_existing_cash_sheet_row(row: list[str], width: int) -> list[str]:
+    def _pad_existing_row(row: list[str], width: int) -> list[str]:
         trimmed = [str(value).strip() for value in row]
         return trimmed + ([""] * (width - len(trimmed)))
 
@@ -1750,7 +1791,7 @@ def sync_cash_sheet_to_sheet(
         if row and row[0]:
             date_key = str(row[0]).strip()
             existing_dates[date_key] = row_index
-            existing_rows_by_date[date_key] = [str(value).strip() for value in _pad_existing_cash_sheet_row(row, sheet_width)]
+            existing_rows_by_date[date_key] = [str(value).strip() for value in _pad_existing_row(row, sheet_width)]
 
     summary_by_date: Dict[str, Dict[str, object]] = {}
     for receipt in qs:
@@ -1822,12 +1863,13 @@ def sync_cash_sheet_to_sheet(
                 existing_rows_by_date[date_key] = [str(value).strip() for value in row_payload]
                 appended += 1
         except Exception as exc:
-            logger.error("sync_cash_sheet_to_sheet: failed to upsert row for %s: %s", date_key, exc)
+            logger.error("%s: failed to upsert row for %s: %s", log_label, date_key, exc)
 
     total_dates = len(summary_by_date)
     skipped = max(total_dates - appended - updated, 0)
     logger.info(
-        "sync_cash_sheet_to_sheet: %s→%s appended=%d updated=%d total=%d",
+        "%s: %s→%s appended=%d updated=%d total=%d",
+        log_label,
         resolved_from,
         resolved_to,
         appended,
@@ -1835,3 +1877,57 @@ def sync_cash_sheet_to_sheet(
         total_dates,
     )
     return {"appended": appended, "updated": updated, "skipped": skipped, "total": total_dates}
+
+
+def sync_cash_sheet_to_sheet(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    all_dates: bool = False,
+    sheet_id: Optional[str] = None,
+) -> Dict[str, int]:
+    """Upsert one CashSheet row per date for CASH receipts only."""
+    return _sync_payment_mode_sheet_to_sheet(
+        payment_mode="CASH",
+        worksheet_candidates=CASH_SHEET_WORKSHEET_CANDIDATES,
+        log_label="sync_cash_sheet_to_sheet",
+        date_from=date_from,
+        date_to=date_to,
+        all_dates=all_dates,
+        sheet_id=sheet_id,
+    )
+
+
+def sync_upi_sheet_to_sheet(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    all_dates: bool = False,
+    sheet_id: Optional[str] = None,
+) -> Dict[str, int]:
+    """Upsert one UPISheet row per date for UPI receipts only."""
+    return _sync_payment_mode_sheet_to_sheet(
+        payment_mode="UPI",
+        worksheet_candidates=UPI_SHEET_WORKSHEET_CANDIDATES,
+        log_label="sync_upi_sheet_to_sheet",
+        date_from=date_from,
+        date_to=date_to,
+        all_dates=all_dates,
+        sheet_id=sheet_id,
+    )
+
+
+def sync_bank_sheet_to_sheet(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    all_dates: bool = False,
+    sheet_id: Optional[str] = None,
+) -> Dict[str, int]:
+    """Upsert one BankSheet row per date for BANK receipts only."""
+    return _sync_payment_mode_sheet_to_sheet(
+        payment_mode="BANK",
+        worksheet_candidates=BANK_SHEET_WORKSHEET_CANDIDATES,
+        log_label="sync_bank_sheet_to_sheet",
+        date_from=date_from,
+        date_to=date_to,
+        all_dates=all_dates,
+        sheet_id=sheet_id,
+    )

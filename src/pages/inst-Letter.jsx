@@ -1084,7 +1084,7 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 					<PanelToggleButton open={showEditorPanels} onClick={() => setShowEditorPanels((prev) => !prev)} />
 				</div>
 				{showEditorPanels && (
-				<fieldset className="action-panel-body space-y-4" disabled={detailLoading}>
+				<fieldset className="action-panel-body space-y-2" disabled={detailLoading}>
 					<div className="grid gap-3 md:grid-cols-12">
 						<div className="md:col-span-2">
 							<label className="label">Doc Rec ID</label>
@@ -1338,7 +1338,7 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 			</section>
 
 			{showEditorPanels && (
-				<section className="rounded-2xl border bg-white p-4 shadow-sm space-y-5">
+				<section className="rounded-2xl border bg-white p-4 shadow-sm space-y-2">
 					<div className="flex items-center justify-between">
 						<h3 className="text-lg font-semibold">Students</h3>
 						<div className="flex gap-2">

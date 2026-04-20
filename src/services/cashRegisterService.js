@@ -203,10 +203,12 @@ export const updateCashDay = async (payload) => {
    📊 GOOGLE SHEET SYNC
 ---------------------------------------------------- */
 
-export const syncCashRegisterToSheet = async ({ date_from, date_to } = {}) => {
+export const syncCashRegisterToSheet = async ({ date_from, date_to, all_dates, sync_target } = {}) => {
   const payload = {};
   if (date_from) payload.date_from = date_from;
   if (date_to) payload.date_to = date_to;
+  if (all_dates) payload.all_dates = true;
+  if (sync_target) payload.sync_target = sync_target;
   const response = await LONG_API.post(`${CASH_REGISTER_BASE}sync-to-sheet/`, payload);
   return response.data;
 };

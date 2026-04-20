@@ -217,14 +217,49 @@ class CCTVCentreEntryViewSet(CctvPermissionMixin, viewsets.ModelViewSet):
         centre = serializer.save()
         new_no_of_cd = centre.no_of_cd
 
-        if old_no_of_cd == new_no_of_cd or centre.start_number is None:
+        if new_no_of_cd <= 0:
+            centre.start_number = None
+            centre.end_number = None
+            centre.start_label = None
+            centre.end_label = None
+            centre.cc_total = 0
+            centre.cc_start_label = None
+            centre.cc_end_label = None
+            centre.save(
+                update_fields=[
+                    "start_number",
+                    "end_number",
+                    "start_label",
+                    "end_label",
+                    "cc_total",
+                    "cc_start_label",
+                    "cc_end_label",
+                ]
+            )
+            CCTVDVD.objects.filter(centre=centre).delete()
             return
+
+        if old_no_of_cd == new_no_of_cd and centre.start_number is not None:
+            return
+
+        if centre.start_number is None:
+            last = (
+                CCTVCentreEntry.objects.filter(
+                    session=centre.session,
+                    end_number__isnull=False,
+                )
+                .exclude(pk=centre.pk)
+                .aggregate(max_end=Max("end_number"))
+            )
+            last_number = last["max_end"] or 0
+            centre.start_number = last_number + 1
+            centre.start_label = f"{centre.session}-{centre.start_number}"
 
         # Recalculate end_number keeping start_number fixed
         new_end = centre.start_number + new_no_of_cd - 1
         centre.end_number = new_end
         centre.end_label = f"{centre.session}-{new_end}"
-        centre.save(update_fields=["end_number", "end_label"])
+        centre.save(update_fields=["start_number", "end_number", "start_label", "end_label"])
 
         # Create any missing DVD records (when count increased)
         existing_numbers = set(

@@ -51906,3 +51906,158 @@ Unauthorized: /api/users/
 2026-04-18 12:47:47,675 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
 2026-04-18 12:47:47,680 INFO     InstLetterPDF grouped records: keys=['2026/131']
 2026-04-18 12:47:47,680 INFO     DEBUG rec_inst_pin value: '110018'
+2026-04-18 13:32:13,893 INFO     sync_cash_deposite_to_sheet: 2026-04-18\u21922026-04-18 appended=0 updated=0 total=0
+2026-04-18 13:32:15,310 INFO     sync_cash_sheet_to_sheet: 2026-04-18\u21922026-04-18 appended=0 updated=0 total=0
+2026-04-18 13:32:15,310 INFO     sync_cash_register_to_sheet: 2026-04-18\u21922026-04-18 appended=0 skipped=0 total=0
+2026-04-18 13:32:20,065 INFO     sync_cash_deposite_to_sheet: 2026-04-15\u21922026-04-15 appended=1 updated=0 total=1
+2026-04-18 13:32:21,715 INFO     sync_cash_sheet_to_sheet: 2026-04-15\u21922026-04-15 appended=1 updated=0 total=1
+2026-04-18 13:32:21,715 INFO     sync_cash_register_to_sheet: 2026-04-15\u21922026-04-15 appended=18 skipped=0 total=11
+2026-04-18 13:32:28,724 INFO     sync_cash_deposite_to_sheet: 2026-04-16\u21922026-04-16 appended=0 updated=0 total=1
+2026-04-18 13:32:30,396 INFO     sync_cash_sheet_to_sheet: 2026-04-16\u21922026-04-16 appended=0 updated=1 total=1
+2026-04-18 13:32:30,396 INFO     sync_cash_register_to_sheet: 2026-04-16\u21922026-04-16 appended=0 skipped=13 total=8
+2026-04-18 13:32:36,876 INFO     sync_cash_deposite_to_sheet: 2026-04-17\u21922026-04-17 appended=1 updated=0 total=1
+2026-04-18 13:32:38,133 INFO     sync_cash_sheet_to_sheet: 2026-04-17\u21922026-04-17 appended=0 updated=0 total=1
+2026-04-18 13:32:38,133 INFO     sync_cash_register_to_sheet: 2026-04-17\u21922026-04-17 appended=0 skipped=12 total=6
+2026-04-18 13:32:45,905 INFO     sync_cash_deposite_to_sheet: 2026-04-18\u21922026-04-18 appended=0 updated=0 total=0
+2026-04-18 13:32:47,206 INFO     sync_cash_sheet_to_sheet: 2026-04-18\u21922026-04-18 appended=0 updated=0 total=0
+2026-04-18 13:32:47,206 INFO     sync_cash_register_to_sheet: 2026-04-18\u21922026-04-18 appended=0 skipped=0 total=0
+2026-04-18 13:49:13,290 INFO     sync_cash_deposite_to_sheet: 2026-04-18\u21922026-04-18 appended=0 updated=0 total=0
+2026-04-18 13:49:15,202 INFO     sync_cash_sheet_to_sheet: 2026-04-18\u21922026-04-18 appended=0 updated=0 total=0
+2026-04-18 13:49:15,202 INFO     sync_cash_register_to_sheet: 2026-04-18\u21922026-04-18 appended=0 skipped=0 total=0
+2026-04-18 13:57:58,402 INFO     sync_cash_deposite_to_sheet: 2026-04-01\u21922026-04-01 appended=0 updated=0 total=1
+2026-04-18 13:58:00,067 INFO     sync_cash_sheet_to_sheet: 2026-04-01\u21922026-04-01 appended=0 updated=1 total=1
+2026-04-18 13:58:00,067 INFO     sync_cash_register_to_sheet: 2026-04-01\u21922026-04-01 appended=0 skipped=20 total=11
+2026-04-18 13:58:05,609 INFO     sync_cash_deposite_to_sheet: 2026-04-02\u21922026-04-02 appended=0 updated=0 total=1
+2026-04-18 13:58:07,216 INFO     sync_cash_sheet_to_sheet: 2026-04-02\u21922026-04-02 appended=0 updated=1 total=1
+2026-04-18 13:58:07,216 INFO     sync_cash_register_to_sheet: 2026-04-02\u21922026-04-02 appended=0 skipped=16 total=11
+2026-04-18 13:58:11,013 INFO     sync_cash_deposite_to_sheet: 2026-04-03\u21922026-04-03 appended=0 updated=0 total=0
+2026-04-18 13:58:12,227 INFO     sync_cash_sheet_to_sheet: 2026-04-03\u21922026-04-03 appended=0 updated=0 total=0
+2026-04-18 13:58:12,227 INFO     sync_cash_register_to_sheet: 2026-04-03\u21922026-04-03 appended=0 skipped=0 total=0
+2026-04-18 13:58:20,662 INFO     sync_cash_deposite_to_sheet: 2026-04-04\u21922026-04-04 appended=0 updated=0 total=1
+2026-04-18 13:58:22,252 INFO     sync_cash_sheet_to_sheet: 2026-04-04\u21922026-04-04 appended=0 updated=1 total=1
+2026-04-18 13:58:22,252 INFO     sync_cash_register_to_sheet: 2026-04-04\u21922026-04-04 appended=0 skipped=15 total=10
+2026-04-18 13:58:29,760 INFO     sync_cash_deposite_to_sheet: 2026-04-06\u21922026-04-06 appended=0 updated=0 total=1
+2026-04-18 13:58:31,343 INFO     sync_cash_sheet_to_sheet: 2026-04-06\u21922026-04-06 appended=0 updated=1 total=1
+2026-04-18 13:58:31,344 INFO     sync_cash_register_to_sheet: 2026-04-06\u21922026-04-06 appended=0 skipped=21 total=14
+2026-04-18 13:58:46,649 INFO     sync_cash_deposite_to_sheet: 2026-04-06\u21922026-04-06 appended=0 updated=0 total=1
+2026-04-18 13:58:47,880 INFO     sync_cash_sheet_to_sheet: 2026-04-06\u21922026-04-06 appended=0 updated=0 total=1
+2026-04-18 13:58:47,880 INFO     sync_cash_register_to_sheet: 2026-04-06\u21922026-04-06 appended=0 skipped=21 total=14
+2026-04-18 13:58:54,393 INFO     sync_cash_deposite_to_sheet: 2026-04-07\u21922026-04-07 appended=0 updated=0 total=1
+2026-04-18 13:58:56,026 INFO     sync_cash_sheet_to_sheet: 2026-04-07\u21922026-04-07 appended=0 updated=1 total=1
+2026-04-18 13:58:56,026 INFO     sync_cash_register_to_sheet: 2026-04-07\u21922026-04-07 appended=0 skipped=11 total=8
+2026-04-18 13:59:06,374 INFO     sync_cash_deposite_to_sheet: 2026-04-08\u21922026-04-08 appended=0 updated=0 total=1
+2026-04-18 13:59:07,971 INFO     sync_cash_sheet_to_sheet: 2026-04-08\u21922026-04-08 appended=0 updated=1 total=1
+2026-04-18 13:59:07,971 INFO     sync_cash_register_to_sheet: 2026-04-08\u21922026-04-08 appended=0 skipped=16 total=12
+2026-04-18 14:00:03,954 INFO     sync_cash_deposite_to_sheet: 2026-04-08\u21922026-04-08 appended=0 updated=0 total=1
+2026-04-18 14:00:05,166 INFO     sync_cash_sheet_to_sheet: 2026-04-08\u21922026-04-08 appended=0 updated=0 total=1
+2026-04-18 14:00:05,166 INFO     sync_cash_register_to_sheet: 2026-04-08\u21922026-04-08 appended=0 skipped=16 total=12
+2026-04-18 14:00:34,085 INFO     sync_cash_deposite_to_sheet: 2026-04-09\u21922026-04-09 appended=0 updated=0 total=1
+2026-04-18 14:00:35,687 INFO     sync_cash_sheet_to_sheet: 2026-04-09\u21922026-04-09 appended=0 updated=1 total=1
+2026-04-18 14:00:35,687 INFO     sync_cash_register_to_sheet: 2026-04-09\u21922026-04-09 appended=0 skipped=12 total=8
+2026-04-18 14:00:42,654 INFO     sync_cash_deposite_to_sheet: 2026-04-10\u21922026-04-10 appended=0 updated=0 total=1
+2026-04-18 14:00:44,299 INFO     sync_cash_sheet_to_sheet: 2026-04-10\u21922026-04-10 appended=0 updated=1 total=1
+2026-04-18 14:00:44,299 INFO     sync_cash_register_to_sheet: 2026-04-10\u21922026-04-10 appended=0 skipped=11 total=7
+2026-04-18 14:00:50,811 INFO     sync_cash_deposite_to_sheet: 2026-04-11\u21922026-04-11 appended=0 updated=0 total=1
+2026-04-18 14:00:52,531 INFO     sync_cash_sheet_to_sheet: 2026-04-11\u21922026-04-11 appended=0 updated=1 total=1
+2026-04-18 14:00:52,531 INFO     sync_cash_register_to_sheet: 2026-04-11\u21922026-04-11 appended=0 skipped=10 total=8
+2026-04-18 14:01:00,558 INFO     sync_cash_deposite_to_sheet: 2026-04-13\u21922026-04-13 appended=0 updated=0 total=1
+2026-04-18 14:01:02,196 INFO     sync_cash_sheet_to_sheet: 2026-04-13\u21922026-04-13 appended=0 updated=1 total=1
+2026-04-18 14:01:02,196 INFO     sync_cash_register_to_sheet: 2026-04-13\u21922026-04-13 appended=0 skipped=12 total=6
+2026-04-18 14:01:08,529 INFO     sync_cash_deposite_to_sheet: 2026-04-14\u21922026-04-14 appended=0 updated=0 total=0
+2026-04-18 14:01:09,786 INFO     sync_cash_sheet_to_sheet: 2026-04-14\u21922026-04-14 appended=0 updated=0 total=0
+2026-04-18 14:01:09,786 INFO     sync_cash_register_to_sheet: 2026-04-14\u21922026-04-14 appended=0 skipped=0 total=0
+2026-04-18 14:01:16,596 INFO     sync_cash_deposite_to_sheet: 2026-04-15\u21922026-04-15 appended=0 updated=0 total=1
+2026-04-18 14:01:18,210 INFO     sync_cash_sheet_to_sheet: 2026-04-15\u21922026-04-15 appended=0 updated=1 total=1
+2026-04-18 14:01:18,210 INFO     sync_cash_register_to_sheet: 2026-04-15\u21922026-04-15 appended=0 skipped=18 total=11
+2026-04-18 14:01:24,091 INFO     sync_cash_deposite_to_sheet: 2026-04-16\u21922026-04-16 appended=0 updated=0 total=1
+2026-04-18 14:01:25,653 INFO     sync_cash_sheet_to_sheet: 2026-04-16\u21922026-04-16 appended=0 updated=1 total=1
+2026-04-18 14:01:25,653 INFO     sync_cash_register_to_sheet: 2026-04-16\u21922026-04-16 appended=0 skipped=13 total=8
+2026-04-18 14:01:32,089 INFO     sync_cash_deposite_to_sheet: 2026-04-17\u21922026-04-17 appended=0 updated=0 total=1
+2026-04-18 14:01:33,684 INFO     sync_cash_sheet_to_sheet: 2026-04-17\u21922026-04-17 appended=0 updated=1 total=1
+2026-04-18 14:01:33,684 INFO     sync_cash_register_to_sheet: 2026-04-17\u21922026-04-17 appended=0 skipped=12 total=6
+2026-04-18 14:01:41,288 INFO     sync_cash_deposite_to_sheet: 2026-04-18\u21922026-04-18 appended=0 updated=0 total=0
+2026-04-18 14:01:42,491 INFO     sync_cash_sheet_to_sheet: 2026-04-18\u21922026-04-18 appended=0 updated=0 total=0
+2026-04-18 14:01:42,491 INFO     sync_cash_register_to_sheet: 2026-04-18\u21922026-04-18 appended=0 skipped=0 total=0
+2026-04-18 14:10:39,190 INFO     sync_cash_deposite_to_sheet: 2026-04-18\u21922026-04-18 appended=0 updated=0 total=0
+2026-04-18 14:10:40,479 INFO     sync_cash_sheet_to_sheet: 2026-04-18\u21922026-04-18 appended=0 updated=0 total=0
+2026-04-18 14:10:40,480 INFO     sync_cash_register_to_sheet: 2026-04-18\u21922026-04-18 appended=0 skipped=0 total=0
+2026-04-18 14:11:02,866 INFO     sync_cash_deposite_to_sheet: 2026-04-18\u21922026-04-18 appended=0 updated=0 total=0
+2026-04-18 14:11:04,114 INFO     sync_cash_sheet_to_sheet: 2026-04-18\u21922026-04-18 appended=0 updated=0 total=0
+2026-04-18 14:11:04,114 INFO     sync_cash_register_to_sheet: 2026-04-18\u21922026-04-18 appended=0 skipped=0 total=0
+2026-04-18 14:11:14,994 INFO     sync_cash_deposite_to_sheet: 2026-04-18\u21922026-04-18 appended=0 updated=0 total=0
+2026-04-18 14:11:16,290 INFO     sync_cash_sheet_to_sheet: 2026-04-18\u21922026-04-18 appended=0 updated=0 total=0
+2026-04-18 14:11:16,290 INFO     sync_cash_register_to_sheet: 2026-04-18\u21922026-04-18 appended=0 skipped=0 total=0
+2026-04-18 14:11:50,026 INFO     sync_cash_deposite_to_sheet: 2026-04-18\u21922026-04-18 appended=0 updated=0 total=0
+2026-04-18 14:11:51,620 INFO     sync_cash_sheet_to_sheet: 2026-04-18\u21922026-04-18 appended=0 updated=0 total=0
+2026-04-18 14:11:51,620 INFO     sync_cash_register_to_sheet: 2026-04-18\u21922026-04-18 appended=0 skipped=0 total=0
+2026-04-18 14:12:51,642 INFO     Killed 0 pending application instances
+2026-04-18 14:13:15,144 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-04-18 14:13:15,146 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-04-18 14:13:15,146 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-04-18 14:13:15,146 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/token/verify/
+2026-04-18 15:22:14,684 WARNING  Unauthorized: /api/token/verify/
+2026-04-18 15:54:34,190 INFO     Killed 0 pending application instances
+2026-04-20 08:30:11,340 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-04-20 08:30:11,343 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-04-20 08:30:11,343 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-04-20 08:30:11,343 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/token/verify/
+2026-04-20 08:38:28,728 WARNING  Unauthorized: /api/token/verify/
+Unauthorized: /api/users/
+2026-04-20 10:40:19,393 WARNING  Unauthorized: /api/users/
+Bad Request: /api/centre/
+2026-04-20 11:49:29,378 WARNING  Bad Request: /api/centre/
+Bad Request: /api/centre/
+2026-04-20 11:49:57,440 WARNING  Bad Request: /api/centre/
+Bad Request: /api/centre/
+2026-04-20 11:51:24,474 WARNING  Bad Request: /api/centre/
+Bad Request: /api/centre/
+2026-04-20 12:23:49,819 WARNING  Bad Request: /api/centre/
+Bad Request: /api/centre/
+2026-04-20 12:23:55,716 WARNING  Bad Request: /api/centre/
+Bad Request: /api/centre/
+2026-04-20 12:23:57,656 WARNING  Bad Request: /api/centre/
+Bad Request: /api/centre/
+2026-04-20 12:24:08,307 WARNING  Bad Request: /api/centre/
+Unauthorized: /api/token/verify/
+2026-04-20 12:24:39,349 WARNING  Unauthorized: /api/token/verify/
+Unauthorized: /api/token/verify/
+2026-04-20 12:24:39,352 WARNING  Unauthorized: /api/token/verify/
+Bad Request: /api/centre/
+2026-04-20 12:28:56,167 WARNING  Bad Request: /api/centre/
+Bad Request: /api/centre/
+2026-04-20 12:29:42,850 WARNING  Bad Request: /api/centre/
+Bad Request: /api/centre/
+2026-04-20 12:29:49,536 WARNING  Bad Request: /api/centre/
+Bad Request: /api/centre/
+2026-04-20 12:29:53,548 WARNING  Bad Request: /api/centre/
+Bad Request: /api/centre/
+2026-04-20 12:30:04,069 WARNING  Bad Request: /api/centre/
+Bad Request: /api/centre/
+2026-04-20 12:30:16,740 WARNING  Bad Request: /api/centre/
+Bad Request: /api/centre/
+2026-04-20 12:31:55,772 WARNING  Bad Request: /api/centre/
+Bad Request: /api/centre/
+2026-04-20 12:32:15,475 WARNING  Bad Request: /api/centre/
+Bad Request: /api/centre/
+2026-04-20 12:34:00,828 WARNING  Bad Request: /api/centre/
+Bad Request: /api/centre/
+2026-04-20 12:35:06,020 WARNING  Bad Request: /api/centre/
+Bad Request: /api/centre/
+2026-04-20 12:35:31,621 WARNING  Bad Request: /api/centre/
+Bad Request: /api/centre/
+2026-04-20 12:35:39,804 WARNING  Bad Request: /api/centre/
+Bad Request: /api/centre/
+2026-04-20 12:35:44,937 WARNING  Bad Request: /api/centre/
+Bad Request: /api/centre/
+2026-04-20 12:36:36,529 WARNING  Bad Request: /api/centre/
+Bad Request: /api/centre/
+2026-04-20 12:36:49,861 WARNING  Bad Request: /api/centre/
+Bad Request: /api/centre/
+2026-04-20 12:36:52,888 WARNING  Bad Request: /api/centre/
+2026-04-20 12:39:07,196 INFO     Killed 1 pending application instances
+2026-04-20 12:39:08,660 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-04-20 12:39:08,661 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-04-20 12:39:08,661 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-04-20 12:39:08,661 INFO     Listening on TCP address 0.0.0.0:8001

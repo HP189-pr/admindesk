@@ -667,6 +667,7 @@ const CCTVMonitoring = ({
                 <tbody>
                   {groupedExams.map((group, index) => {
                     const groupPlaceHasValue = {};
+                    const groupPlaceHasNegative = {};
                     placeColumns.forEach((place) => {
                       const hasValue = centres.some((row) => {
                         const exam = examsById[String(row.exam)];
@@ -677,7 +678,26 @@ const CCTVMonitoring = ({
                           exam.course === group.course
                         );
                       });
+                      const hasNegativeValue = centres.some((row) => {
+                        const exam = examsById[String(row.exam)];
+                        if (!exam) return false;
+                        return (
+                          String(row.place).trim() === String(place).trim() &&
+                          exam.exam_date === group.exam_date &&
+                          exam.course === group.course &&
+                          Number(row.no_of_cd) < 0
+                        );
+                      });
+                      const hasNegativeInput = group.rows.some((exam) => {
+                        const session = sessionByExam[exam.id] || "A";
+                        const inputValue = placeInputByKey[`${exam.id}:${session}:${place}`];
+                        if (inputValue === undefined || inputValue === "") return false;
+                        const numericInputValue = Number(inputValue);
+                        return Number.isFinite(numericInputValue) && numericInputValue < 0;
+                      });
                       groupPlaceHasValue[String(place).trim()] = hasValue;
+                      groupPlaceHasNegative[String(place).trim()] =
+                        hasNegativeValue || hasNegativeInput;
                     });
 
                     return (
@@ -776,23 +796,29 @@ const CCTVMonitoring = ({
                                       String(row.place).trim() === String(place).trim()
                                   );
                                   const displayValue =
-                                    placeInputByKey[placeKey] ?? (centreRow?.no_of_cd ? String(centreRow.no_of_cd) : "");
+                                    placeInputByKey[placeKey] ??
+                                    (centreRow?.no_of_cd !== undefined && centreRow?.no_of_cd !== null
+                                      ? String(centreRow.no_of_cd)
+                                      : "");
                                   const groupHasPlaceValue = groupPlaceHasValue[String(place).trim()];
+                                  const groupHasNegativeValue =
+                                    groupPlaceHasNegative[String(place).trim()];
+                                  const valueBgClass = groupHasNegativeValue
+                                    ? "bg-red-100"
+                                    : groupHasPlaceValue
+                                    ? "bg-green-100"
+                                    : "";
 
                                   return (
                                     <td
                                       key={place}
-                                      className={`w-10 p-0 text-center ${
-                                        groupHasPlaceValue ? "bg-green-100" : ""
-                                      }`}
+                                      className={`w-10 p-0 text-center ${valueBgClass}`}
                                     >
                                       <input
                                         type="number"
                                         placeholder="0"
                                         value={displayValue}
-                                        className={`w-full h-6 text-xs text-center border box-border p-0 m-0 ${
-                                          groupHasPlaceValue ? "bg-green-100" : ""
-                                        }`}
+                                        className={`w-full h-6 text-xs text-center border box-border p-0 m-0 ${valueBgClass}`}
                                         onChange={(e) => {
                                           const nextValue = e.target.value;
                                           setPlaceInputByKey((prev) => ({
@@ -801,33 +827,47 @@ const CCTVMonitoring = ({
                                           }));
                                         }}
                                         onBlur={async (e) => {
-                                          const value = Number(e.target.value);
-                                          if (!value || value <= 0) return;
+                                          const rawValue = e.target.value.trim();
+                                          if (rawValue === "") return;
+                                          const value = Number(rawValue);
+                                          if (!Number.isFinite(value)) return;
                                           const canAct = centreRow
                                             ? rights.can_edit
                                             : rights.can_create;
                                           if (!canAct) return;
-                                          if (centreRow) {
-                                            // Update existing centre — backend recalculates DVD range
-                                            if (Number(centreRow.no_of_cd) !== value) {
-                                              await updateCentre(centreRow.id, { no_of_cd: value });
+                                          try {
+                                            if (centreRow) {
+                                              // Update existing centre — backend recalculates DVD range
+                                              if (Number(centreRow.no_of_cd) !== value) {
+                                                await updateCentre(centreRow.id, { no_of_cd: value });
+                                              }
+                                            } else {
+                                              // Create new centre with auto-assigned DVD sequence
+                                              await createCentre({
+                                                exam: exam.id,
+                                                session: sessionByExam[exam.id] || "A",
+                                                place,
+                                                no_of_cd: value,
+                                              });
                                             }
-                                          } else {
-                                            // Create new centre with auto-assigned DVD sequence
-                                            await createCentre({
-                                              exam: exam.id,
-                                              session: sessionByExam[exam.id] || "A",
-                                              place,
-                                              no_of_cd: value,
+                                            setPlaceInputByKey((prev) => {
+                                              const next = { ...prev };
+                                              delete next[placeKey];
+                                              return next;
                                             });
+                                            await fetchCentres();
+                                            await fetchDvds();
+                                          } catch (err) {
+                                            const detail = err?.response?.data;
+                                            const msg =
+                                              detail?.detail ||
+                                              Object.entries(detail || {})
+                                                .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(", ") : messages}`)
+                                                .join("; ") ||
+                                              err.message ||
+                                              "Failed to save CCTV centre entry.";
+                                            setFlashMessage("error", msg);
                                           }
-                                          setPlaceInputByKey((prev) => {
-                                            const next = { ...prev };
-                                            delete next[placeKey];
-                                            return next;
-                                          });
-                                          await fetchCentres();
-                                          await fetchDvds();
                                         }}
                                       />
                                     </td>

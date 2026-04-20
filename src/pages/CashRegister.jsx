@@ -38,6 +38,21 @@ const BANK_PREFIX_OPTIONS = [
   { value: 'OTHER', label: 'Other' },
 ];
 
+const SHEET_SYNC_OPTIONS = [
+  { value: 'selected-all', label: 'Selected Date - All Sheets', syncTarget: 'all', allDates: false },
+  { value: 'selected-register', label: 'Selected Date - Cash Register', syncTarget: 'cash_register', allDates: false },
+  { value: 'selected-deposite', label: 'Selected Date - Cash-Deposite', syncTarget: 'cash_deposite', allDates: false },
+  { value: 'selected-sheet', label: 'Selected Date - CashSheet', syncTarget: 'cash_sheet', allDates: false },
+  { value: 'selected-upi-sheet', label: 'Selected Date - UPISheet', syncTarget: 'upi_sheet', allDates: false },
+  { value: 'selected-bank-sheet', label: 'Selected Date - BankSheet', syncTarget: 'bank_sheet', allDates: false },
+  { value: 'all-all', label: 'All Dates - All Sheets', syncTarget: 'all', allDates: true },
+  { value: 'all-register', label: 'All Dates - Cash Register', syncTarget: 'cash_register', allDates: true },
+  { value: 'all-deposite', label: 'All Dates - Cash-Deposite', syncTarget: 'cash_deposite', allDates: true },
+  { value: 'all-sheet', label: 'All Dates - CashSheet', syncTarget: 'cash_sheet', allDates: true },
+  { value: 'all-upi-sheet', label: 'All Dates - UPISheet', syncTarget: 'upi_sheet', allDates: true },
+  { value: 'all-bank-sheet', label: 'All Dates - BankSheet', syncTarget: 'bank_sheet', allDates: true },
+];
+
 const RECEIPT_PREFIX_BY_MODE = {
   CASH: 'C01',
   UPI: '8785',
@@ -175,7 +190,12 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
   const [status, setStatus] = useState(null);
   const [pageError, setPageError] = useState('');
   const [sheetSyncing, setSheetSyncing] = useState(false);
+  const [sheetSyncOption, setSheetSyncOption] = useState('all-all');
   const actionSummary = ACTION_DESCRIPTIONS[selectedTopbarMenu] || ACTION_DESCRIPTIONS['➕ Add'];
+  const selectedSheetSyncOption = useMemo(
+    () => SHEET_SYNC_OPTIONS.find((option) => option.value === sheetSyncOption) || SHEET_SYNC_OPTIONS[0],
+    [sheetSyncOption]
+  );
   const formatAmount = useCallback((value) => {
     const num = Number(value || 0);
     return num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -701,31 +721,69 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     setSelectedTopbarMenu(action);
   };
 
-  const handleSyncToSheet = useCallback(async () => {
+  const handleSyncToSheet = useCallback(async ({ allDates = false, syncTarget = 'all' } = {}) => {
     if (sheetSyncing) return;
     setSheetSyncing(true);
-    setFlash('info', 'Syncing selected date to Google Sheets...');
+    const scopeLabel = allDates ? 'all dates' : (filters.date || 'selected date');
+    const targetLabelMap = {
+      all: 'all sheets',
+      cash_register: 'Cash Register',
+      cash_deposite: 'Cash-Deposite',
+      cash_sheet: 'CashSheet',
+      upi_sheet: 'UPISheet',
+      bank_sheet: 'BankSheet',
+    };
+    const targetLabel = targetLabelMap[syncTarget] || 'all sheets';
+    setFlash('info', `Syncing ${targetLabel} for ${scopeLabel}...`);
     try {
-      const result = await syncCashRegisterToSheet({
-        date_from: filters.date,
-        date_to: filters.date,
-      });
+      const payload = {
+        sync_target: syncTarget,
+        all_dates: allDates,
+      };
+      if (!allDates && filters.date) {
+        payload.date_from = filters.date;
+        payload.date_to = filters.date;
+      }
+      const result = await syncCashRegisterToSheet(payload);
       const cashDeposite = result.cash_deposite || {};
       const cashSheet = result.cash_sheet || {};
-      if (!result.total && !cashDeposite.total && !cashSheet.total) {
-        setFlash('error', 'No Cash Register, Cash-Deposite, or CashSheet data found for the selected date.');
+      const upiSheet = result.upi_sheet || {};
+      const bankSheet = result.bank_sheet || {};
+      if (!result.total && !cashDeposite.total && !cashSheet.total && !upiSheet.total && !bankSheet.total) {
+        setFlash('error', `No ${targetLabel} data found for ${scopeLabel}.`);
         return;
       }
-      setFlash(
-        'success',
-        `Sheet sync done for ${filters.date}. Receipts appended: ${result.appended}, updated: ${result.updated || 0}, skipped: ${result.skipped}. Cash-Deposite appended: ${cashDeposite.appended || 0}, updated: ${cashDeposite.updated || 0}. CashSheet appended: ${cashSheet.appended || 0}, updated: ${cashSheet.updated || 0}`
-      );
+      const messages = [];
+      if (syncTarget === 'all' || syncTarget === 'cash_register') {
+        messages.push(`Cash Register appended: ${result.appended || 0}, updated: ${result.updated || 0}, skipped: ${result.skipped || 0}`);
+      }
+      if (syncTarget === 'all' || syncTarget === 'cash_deposite') {
+        messages.push(`Cash-Deposite appended: ${cashDeposite.appended || 0}, updated: ${cashDeposite.updated || 0}, skipped: ${cashDeposite.skipped || 0}`);
+      }
+      if (syncTarget === 'all' || syncTarget === 'cash_sheet') {
+        messages.push(`CashSheet appended: ${cashSheet.appended || 0}, updated: ${cashSheet.updated || 0}, skipped: ${cashSheet.skipped || 0}`);
+      }
+      if (syncTarget === 'all' || syncTarget === 'upi_sheet') {
+        messages.push(`UPISheet appended: ${upiSheet.appended || 0}, updated: ${upiSheet.updated || 0}, skipped: ${upiSheet.skipped || 0}`);
+      }
+      if (syncTarget === 'all' || syncTarget === 'bank_sheet') {
+        messages.push(`BankSheet appended: ${bankSheet.appended || 0}, updated: ${bankSheet.updated || 0}, skipped: ${bankSheet.skipped || 0}`);
+      }
+      setFlash('success', `Sheet sync done for ${scopeLabel}. ${messages.join('. ')}`);
     } catch (err) {
       setFlash('error', err?.response?.data?.detail || err.message || 'Sheet sync failed');
     } finally {
       setSheetSyncing(false);
     }
   }, [filters.date, sheetSyncing, setFlash]);
+
+  const handleAdvancedSheetSync = useCallback(async () => {
+    const selected = selectedSheetSyncOption;
+    await handleSyncToSheet({
+      allDates: selected.allDates,
+      syncTarget: selected.syncTarget,
+    });
+  }, [handleSyncToSheet, selectedSheetSyncOption]);
 
   const handleModeCardClick = (modeValue) => {
     setFilters((prev) => ({
@@ -1045,18 +1103,43 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
         onToggleChatbox={onToggleChatbox}
         actionsOnLeft
         rightSlot={
-          <button
-            onClick={handleSyncToSheet}
-            className="refresh-icon-button"
-            disabled={loading || sheetSyncing}
-            title={sheetSyncing ? 'Syncing to Sheet…' : 'Sync to Google Sheet'}
-            aria-label={sheetSyncing ? 'Syncing' : 'Sync to Sheet'}
-          >
-            <span className={`refresh-symbol ${sheetSyncing ? 'animate-spin' : ''}`} aria-hidden="true">↻</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleSyncToSheet({ allDates: false, syncTarget: 'all' })}
+              className="refresh-icon-button"
+              disabled={loading || sheetSyncing}
+              title={sheetSyncing ? 'Syncing to Sheet…' : 'Sync selected date to all sheets'}
+              aria-label={sheetSyncing ? 'Syncing' : 'Sync selected date to all sheets'}
+            >
+              <span className={`refresh-symbol ${sheetSyncing ? 'animate-spin' : ''}`} aria-hidden="true">↻</span>
+            </button>
+            <select
+              value={sheetSyncOption}
+              onChange={(e) => setSheetSyncOption(e.target.value)}
+              disabled={sheetSyncing}
+              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm"
+              title="Choose sheet refresh scope"
+              aria-label="Choose sheet refresh scope"
+            >
+              {SHEET_SYNC_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={handleAdvancedSheetSync}
+              disabled={loading || sheetSyncing}
+              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              title="Refresh using selected sheet option"
+            >
+              {sheetSyncing ? 'Refreshing...' : 'Run Refresh'}
+            </button>
+          </div>
         }
       />
-      <div className="w-full space-y-5">
+      <div className="w-full space-y-4">
         {status && (
           <section
             className={`rounded-2xl border border-slate-200 bg-white p-4 text-sm shadow-sm ${
@@ -1071,7 +1154,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
 
         {/* Filters */}
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold text-gray-800">Filter by date</h2>
             <button
               type="button"
@@ -1081,7 +1164,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
               Reset to today
             </button>
           </div>
-          <div className="mt-4 flex flex-wrap items-center gap-3">
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
             <label className="flex flex-col text-xs font-medium text-gray-600">
               <span>Date</span>
               <input
@@ -1106,7 +1189,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                 ))}
               </select>
             </label>
-            <div className="flex flex-1 flex-wrap justify-end gap-3">
+            <div className="flex flex-1 flex-wrap justify-end gap-x-3 gap-y-2">
               {PAYMENT_MODES.map((mode) => {
                 const summary = totalsByMode[mode.value] || { amount: 0, count: 0 };
                 const isActive = filters.payment_mode === mode.value;
@@ -1128,15 +1211,15 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                     type="button"
                     key={mode.value}
                     onClick={() => handleModeCardClick(mode.value)}
-                    className={`min-w-[160px] flex-1 overflow-hidden rounded-lg border px-4 py-3 text-left text-sm font-semibold shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${style} ${isActive ? 'ring-2 ring-blue-500' : ''}`}
+                    className={`min-w-[140px] flex-1 overflow-hidden rounded-lg border px-3 py-1.5 text-left text-xs font-medium shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${style} ${isActive ? 'ring-2 ring-blue-500' : ''}`}
                   >
-                    <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide">
+                    <div className="flex items-center justify-between text-[10px] font-medium uppercase tracking-tight">
                       <span>{mode.label}</span>
                       <span>{summary.count} receipt(s)</span>
                     </div>
-                    <div className="mt-2 text-2xl font-semibold">₹ {formatAmount(summary.amount)}</div>
+                    <div className="mt-1 text-lg font-semibold">₹ {formatAmount(summary.amount)}</div>
                     {mode.value !== 'BANK' && range && (
-                      <div className="mt-1 font-mono text-[10px] opacity-70 leading-tight">
+                      <div className="mt-0.5 font-mono text-[9px] opacity-70 leading-tight">
                         <span>REC {formatReceiptDisplay(range.start)}</span>
                         {range.startSeq !== range.endSeq && (
                           <span> → {formatReceiptDisplay(range.end)}</span>
@@ -1144,18 +1227,15 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
                       </div>
                     )}
                     {mode.value === 'BANK' && sortedBankEntries.length > 0 && (
-                      <div className="mt-2 min-w-0 space-y-1 border-t border-current pt-1.5" style={{ borderOpacity: 0.2 }}>
+                      <div className="mt-1 min-w-0 space-y-0.5 border-t border-current pt-1" style={{ borderOpacity: 0.2 }}>
                         {sortedBankEntries.map(([prefix, data]) => (
-                          <div key={prefix} className="min-w-0 text-xs">
-                            <div className="flex min-w-0 items-center justify-between gap-2">
-                              <span className="w-10 shrink-0 font-bold">{prefix}</span>
-                              <span className="shrink-0 text-right">₹{formatAmount(data.amount)}</span>
-                            </div>
+                          <div key={prefix} className="flex min-w-0 items-center gap-2 text-[9px] leading-tight">
+                            <span className="shrink-0 font-bold">{prefix}</span>
                             {data.start && (
-                              <div className="mt-0.5 min-w-0 break-all font-mono text-[9px] leading-tight opacity-70">
+                              <div className="min-w-0 break-all font-mono opacity-70">
                                 {formatReceiptDisplay(data.start)}
                                 {data.startSeq !== data.endSeq && (
-                                  <> → {formatReceiptDisplay(data.end)}</>
+                                  <> to {formatReceiptDisplay(data.end)}</>
                                 )}
                               </div>
                             )}
@@ -1172,7 +1252,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
 
         {/* Entry form */}
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="mb-4 flex flex-col gap-2 border-b border-gray-100 pb-3 md:flex-row md:items-center md:justify-between">
+          <div className="mb-3 flex flex-col gap-1.5 border-b border-gray-100 pb-2.5 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-gray-800">
                 {editingEntry ? `Update receipt ${formatReceiptDisplay(editingEntry.receipt_no_full)}` : 'New entry'}
@@ -1186,8 +1266,8 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
               {previewError && <p className="text-xs text-red-600">{previewError}</p>}
             </div>
           </div>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="flex flex-wrap items-end gap-4 lg:flex-nowrap">
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="flex flex-wrap items-end gap-x-3 gap-y-2 lg:flex-nowrap">
               <label className="text-sm font-medium text-gray-700 w-full sm:w-[190px] lg:w-[200px]">
               Date
               <input

@@ -46,6 +46,10 @@ class CCTVCentreEntry(models.Model):
         ("B", "B"),
         ("C", "C"),
         ("D", "D"),
+        ("E", "E"),
+        ("F", "F"),
+        ("G", "G"),
+        ("H", "H"),
     )
 
     exam = models.ForeignKey(
@@ -71,16 +75,23 @@ class CCTVCentreEntry(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.pk:
-            last = CCTVCentreEntry.objects.filter(
-                session=self.session,
-            ).aggregate(max_end=Max("end_number"))
+            if self.no_of_cd <= 0:
+                self.start_number = None
+                self.end_number = None
+                self.start_label = None
+                self.end_label = None
+            else:
+                last = CCTVCentreEntry.objects.filter(
+                    session=self.session,
+                    end_number__isnull=False,
+                ).aggregate(max_end=Max("end_number"))
 
-            last_number = last["max_end"] or 0
-            self.start_number = last_number + 1
-            self.end_number = last_number + self.no_of_cd
+                last_number = last["max_end"] or 0
+                self.start_number = last_number + 1
+                self.end_number = last_number + self.no_of_cd
 
-            self.start_label = f"{self.session}-{self.start_number}"
-            self.end_label = f"{self.session}-{self.end_number}"
+                self.start_label = f"{self.session}-{self.start_number}"
+                self.end_label = f"{self.session}-{self.end_number}"
 
         super().save(*args, **kwargs)
 

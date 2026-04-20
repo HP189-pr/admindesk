@@ -632,11 +632,51 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=["post"], url_path="sync-to-sheet")
     def sync_to_sheet(self, request):
         """Push receipts for a given date range to the Google Sheet."""
-        from .sheets_sync import sync_cash_register_to_sheet
+        from .sheets_sync import (
+            sync_bank_sheet_to_sheet,
+            sync_cash_deposite_to_sheet,
+            sync_cash_register_to_sheet,
+            sync_cash_sheet_to_sheet,
+            sync_upi_sheet_to_sheet,
+        )
         date_from = (request.data.get("date_from") or "").strip() or None
         date_to = (request.data.get("date_to") or "").strip() or None
+        sync_target = str(request.data.get("sync_target") or "all").strip().lower()
+        all_dates = bool(request.data.get("all_dates"))
         try:
-            result = sync_cash_register_to_sheet(date_from=date_from, date_to=date_to)
+            result = {}
+            if sync_target in {"all", "cash_register"}:
+                result.update(
+                    sync_cash_register_to_sheet(
+                        date_from=date_from,
+                        date_to=date_to,
+                        all_dates=all_dates,
+                    )
+                )
+            if sync_target in {"all", "cash_deposite"}:
+                result["cash_deposite"] = sync_cash_deposite_to_sheet(
+                    date_from=date_from,
+                    date_to=date_to,
+                    all_dates=all_dates,
+                )
+            if sync_target in {"all", "cash_sheet"}:
+                result["cash_sheet"] = sync_cash_sheet_to_sheet(
+                    date_from=date_from,
+                    date_to=date_to,
+                    all_dates=all_dates,
+                )
+            if sync_target in {"all", "upi_sheet"}:
+                result["upi_sheet"] = sync_upi_sheet_to_sheet(
+                    date_from=date_from,
+                    date_to=date_to,
+                    all_dates=all_dates,
+                )
+            if sync_target in {"all", "bank_sheet"}:
+                result["bank_sheet"] = sync_bank_sheet_to_sheet(
+                    date_from=date_from,
+                    date_to=date_to,
+                    all_dates=all_dates,
+                )
         except Exception as exc:
             return Response({"detail": str(exc)}, status=500)
         return Response(result)
