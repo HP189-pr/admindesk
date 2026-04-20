@@ -81,6 +81,12 @@ def _fiscal_year_suffix(entry_date: date) -> int:
     return start_year % 100
 
 
+def _current_fiscal_year_range(today: Optional[date] = None) -> tuple[date, date]:
+    today = today or timezone.now().date()
+    start_year = today.year if today.month >= 4 else today.year - 1
+    return date(start_year, 4, 1), date(start_year + 1, 3, 31)
+
+
 def _normalize(value: Optional[str]) -> str:
     return (value or "").strip().lower()
 
@@ -643,6 +649,11 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
         date_to = (request.data.get("date_to") or "").strip() or None
         sync_target = str(request.data.get("sync_target") or "all").strip().lower()
         all_dates = bool(request.data.get("all_dates"))
+        if all_dates:
+            fiscal_start, fiscal_end = _current_fiscal_year_range()
+            date_from = date_from or fiscal_start.isoformat()
+            date_to = date_to or fiscal_end.isoformat()
+            all_dates = False
         try:
             result = {}
             if sync_target in {"all", "cash_register"}:

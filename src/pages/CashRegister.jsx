@@ -66,6 +66,16 @@ const fiscalYearCode = (dateStr) => {
   return String(year).slice(-2);
 };
 
+const fiscalYearRange = (dateStr) => {
+  const dt = dateStr ? new Date(dateStr) : new Date();
+  const safeDate = Number.isNaN(dt.getTime()) ? new Date() : dt;
+  const startYear = safeDate.getMonth() >= 3 ? safeDate.getFullYear() : safeDate.getFullYear() - 1;
+  return {
+    start: `${startYear}-04-01`,
+    end: `${startYear + 1}-03-31`,
+  };
+};
+
 const TOPBAR_ACTIONS = ['➕ Add', '🔍 Search', 'Statement', 'Cash Activities'];
 const AUTO_CANCEL_REASON = 'cancelled from new entry panel';
 const ACTION_DESCRIPTIONS = {
@@ -724,7 +734,10 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
   const handleSyncToSheet = useCallback(async ({ allDates = false, syncTarget = 'all' } = {}) => {
     if (sheetSyncing) return;
     setSheetSyncing(true);
-    const scopeLabel = allDates ? 'all dates' : (filters.date || 'selected date');
+    const fiscalRange = fiscalYearRange(today);
+    const scopeLabel = allDates
+      ? `current fiscal year (${fiscalRange.start} to ${fiscalRange.end})`
+      : (filters.date || 'selected date');
     const targetLabelMap = {
       all: 'all sheets',
       cash_register: 'Cash Register',
@@ -738,9 +751,11 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
     try {
       const payload = {
         sync_target: syncTarget,
-        all_dates: allDates,
       };
-      if (!allDates && filters.date) {
+      if (allDates) {
+        payload.date_from = fiscalRange.start;
+        payload.date_to = fiscalRange.end;
+      } else if (filters.date) {
         payload.date_from = filters.date;
         payload.date_to = filters.date;
       }
