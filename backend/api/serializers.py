@@ -441,6 +441,40 @@ class MigrationRecordSerializer(serializers.ModelSerializer):
     doc_rec = serializers.CharField(read_only=True)
     # Expose related institute code for UI list display
     institute_code = serializers.CharField(source='institute.institute_code', read_only=True, allow_null=True)
+    student_name = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    enrollment = serializers.SlugRelatedField(
+        slug_field='enrollment_no',
+        queryset=Enrollment.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    enrollment_no = serializers.SlugRelatedField(
+        slug_field='enrollment_no',
+        queryset=Enrollment.objects.all(),
+        source='enrollment',
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
+    institute = serializers.SlugRelatedField(
+        slug_field='institute_id',
+        queryset=Institute.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    maincourse = serializers.SlugRelatedField(
+        slug_field='maincourse_id',
+        queryset=MainBranch.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    subcourse = serializers.SlugRelatedField(
+        slug_field='subcourse_id',
+        queryset=SubBranch.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+
     class Meta:
         model = MigrationRecord
         fields = '__all__'
@@ -501,63 +535,6 @@ class MigrationRecordSerializer(serializers.ModelSerializer):
     def update(self, instance, validated):
         self._normalize_doc_rec(validated, instance=instance)
         self._apply_business_rules(validated, instance=instance)
-        return super().update(instance, validated)
-    student_name = serializers.CharField(required=False, allow_blank=True, allow_null=True)
-    # Allow binding enrollment using its enrollment_no (slug) when creating via API
-    enrollment_no = serializers.SlugRelatedField(
-        slug_field='enrollment_no', queryset=Enrollment.objects.all(), source='enrollment', write_only=True, required=False, allow_null=True
-    )
-    enrollment = serializers.CharField(source='enrollment.enrollment_no', read_only=True)
-    class Meta:
-        model = ProvisionalRecord
-        fields = '__all__'
-        read_only_fields = ['id', 'created_at', 'updated_at', 'created_by']
-
-    def create(self, validated):
-        request = self.context.get('request')
-        if request and request.user and request.user.is_authenticated:
-            validated['created_by'] = request.user
-
-        # 🔑 Normalize doc_rec from either key
-        doc_rec_val = None
-        if 'doc_rec_key' in validated:
-            doc_rec_val = validated.pop('doc_rec_key')
-        elif 'doc_rec_id' in validated:
-            doc_rec_val = validated.pop('doc_rec_id')
-        if doc_rec_val not in (None, ''):
-            validated['doc_rec'] = doc_rec_val
-        else:
-            validated['doc_rec'] = None
-
-        # Auto-populate from enrollment
-        enr = validated.get('enrollment')
-        if enr:
-            if not validated.get('student_name'):
-                validated['student_name'] = enr.student_name or ''
-            if not validated.get('institute'):
-                validated['institute'] = enr.institute
-            if not validated.get('subcourse'):
-                validated['subcourse'] = enr.subcourse
-            if not validated.get('maincourse'):
-                validated['maincourse'] = enr.maincourse
-
-        # Default status
-        if not validated.get('prv_status'):
-            try:
-                validated['prv_status'] = ProvisionalStatus.ISSUED
-            except Exception:
-                validated['prv_status'] = 'Issued'
-
-        return super().create(validated)
-
-    def update(self, instance, validated):
-        doc_rec_val = None
-        if 'doc_rec_key' in validated:
-            doc_rec_val = validated.pop('doc_rec_key')
-        elif 'doc_rec_id' in validated:
-            doc_rec_val = validated.pop('doc_rec_id')
-        if doc_rec_val not in (None, ''):
-            instance.doc_rec = doc_rec_val
         return super().update(instance, validated)
 
 

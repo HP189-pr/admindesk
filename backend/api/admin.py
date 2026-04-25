@@ -246,14 +246,25 @@ class InstLetterMainAdmin(admin.ModelAdmin):
 
 @admin.register(MigrationRecord)
 class MigrationRecordAdmin(CommonAdminMixin):
-    list_display = ("id", "mg_number", "mg_date", "student_name", "enrollment", "book_no", "mg_cancelled", "mg_status", "doc_rec", "pay_rec_no", "created_by", "created_at")
+    list_display = (
+        "id", "mg_number", "mg_date", "student_name", "enrollment",
+        "book_no_display",  
+        "mg_cancelled", "mg_status", "doc_rec", "pay_rec_no",
+        "created_by", "created_at"
+    )
+
+    def book_no_display(self, obj):
+        return int(obj.book_no) if obj.book_no is not None else ""
+
+    book_no_display.short_description = "Book No"
+    book_no_display.admin_order_field = "book_no"  
+
     list_filter = ("mg_status", "mg_cancelled", "mg_date", "institute")
-    # doc_rec is stored as a varchar (doc_rec_id string) so search on the field directly
     search_fields = ("mg_number", "student_name", "book_no", "mg_remark", "enrollment__enrollment_no", "doc_rec")
-    # remove doc_rec from autocomplete_fields because it's not a FK anymore
     autocomplete_fields = ("enrollment", "institute", "maincourse", "subcourse", "created_by")
     readonly_fields = ("created_at", "updated_at")
-    def save_model(self, request, obj, form, change):  # type: ignore[override]
+
+    def save_model(self, request, obj, form, change):  
         if not change and not obj.created_by:
             _assign_user_field(obj, request.user, 'created_by')
         super().save_model(request, obj, form, change)

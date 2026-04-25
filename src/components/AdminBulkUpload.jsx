@@ -170,19 +170,38 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
       xhr.upload.onprogress = (e)=>{ if(e.lengthComputable && onProgress) onProgress(Math.round((e.loaded/e.total)*100)); };
       // Tolerant JSON parsing: sometimes server may return HTML wrapper (Django error page)
       // so attempt to extract JSON substring if direct parse fails.
-      xhr.onreadystatechange = ()=>{ if(xhr.readyState===4){ try{ resolve(JSON.parse(xhr.responseText||'{}')); }catch(e){
+      xhr.onreadystatechange = ()=>{ if(xhr.readyState===4){
+        const rawText = xhr.responseText || '';
+        let parsed = null;
+        try{
+          parsed = JSON.parse(rawText || '{}');
+        }catch(e){
           try{
-            const txt = xhr.responseText||'';
-            const first = txt.indexOf('{');
-            const last = txt.lastIndexOf('}');
+            const first = rawText.indexOf('{');
+            const last = rawText.lastIndexOf('}');
             if(first>=0 && last>first){
-              const sub = txt.substring(first, last+1);
-              return resolve(JSON.parse(sub));
+              const sub = rawText.substring(first, last+1);
+              parsed = JSON.parse(sub);
             }
           }catch(_){ /* fallthrough */ }
-          // if still failing, resolve with raw text so caller can display it
-          return resolve({error:true, detail: 'Invalid JSON response from server', raw: xhr.responseText});
-        } } };
+        }
+        if(xhr.status < 200 || xhr.status >= 300){
+          const serverDetail = parsed?.detail || parsed?.error;
+          const statusDetail = xhr.status === 413
+            ? 'File is too large for the server upload limit.'
+            : `Upload failed with status ${xhr.status || 'unknown'}.`;
+          return resolve({
+            error: true,
+            detail: serverDetail || statusDetail,
+            status: xhr.status,
+            raw: rawText,
+          });
+        }
+        if(parsed){
+          return resolve(parsed);
+        }
+        return resolve({error:true, detail: 'Invalid JSON response from server', status: xhr.status, raw: rawText});
+      } };
       xhr.onerror = (e)=> reject(e);
       xhr.send(fd);
     });

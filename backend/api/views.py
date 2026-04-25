@@ -1113,7 +1113,11 @@ class VerificationViewSet(viewsets.ModelViewSet):
 
 class MigrationRecordViewSet(viewsets.ModelViewSet):
     # doc_rec is stored as a plain varchar (doc_rec_id string) so do not select_related it
-    queryset = MigrationRecord.objects.select_related('enrollment', 'institute').order_by('-id')
+    queryset = MigrationRecord.objects.select_related('enrollment', 'institute').order_by(
+        F('mg_date').desc(nulls_last=True),
+        F('mg_number').desc(nulls_last=True),
+        '-id',
+    )
     serializer_class = MigrationRecordSerializer
     permission_classes = [IsAuthenticated]
 
@@ -1146,10 +1150,18 @@ class MigrationRecordViewSet(viewsets.ModelViewSet):
             if norm_search:
                 filters |= Q(n_name__contains=norm_search) | Q(n_mg__contains=norm_search)
             qs = qs.filter(filters)
-        return qs
+        return qs.order_by(
+            F('mg_date').desc(nulls_last=True),
+            F('mg_number').desc(nulls_last=True),
+            '-id',
+        )
 
     def _report_queryset(self, request):
-        queryset = MigrationRecord.objects.select_related('institute', 'subcourse', 'maincourse', 'enrollment')
+        queryset = MigrationRecord.objects.select_related('institute', 'subcourse', 'maincourse', 'enrollment').order_by(
+            F('mg_date').desc(nulls_last=True),
+            F('mg_number').desc(nulls_last=True),
+            '-id',
+        )
 
         year = (request.query_params.get('year') or '').strip()
         if year.isdigit():

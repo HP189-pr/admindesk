@@ -53794,3 +53794,1069 @@ Unauthorized: /api/token/verify/
 2026-04-25 09:57:59,214 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
 2026-04-25 09:57:59,232 INFO     InstLetterPDF grouped records: keys=['2026/135']
 2026-04-25 09:57:59,233 INFO     DEBUG rec_inst_pin value: '380001'
+2026-04-25 10:04:02,830 INFO     Killed 0 pending application instances
+2026-04-25 10:04:26,196 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-04-25 10:04:26,198 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-04-25 10:04:26,198 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-04-25 10:04:26,198 INFO     Listening on TCP address 0.0.0.0:8001
+2026-04-25 10:05:21,769 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26135'}
+2026-04-25 10:05:21,769 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-25 10:05:21,789 INFO     InstLetterPDF grouped records: keys=['2026/135']
+2026-04-25 10:05:21,789 INFO     DEBUG rec_inst_pin value: '380001'
+2026-04-25 10:05:34,809 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26134'}
+2026-04-25 10:05:34,813 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-25 10:05:34,819 INFO     InstLetterPDF grouped records: keys=['2026/134']
+2026-04-25 10:05:34,819 INFO     DEBUG rec_inst_pin value: '382028'
+Not Found: /favicon.ico
+2026-04-25 11:24:58,287 WARNING  Not Found: /favicon.ico
+2026-04-25 11:33:36,895 INFO     Killed 0 pending application instances
+2026-04-25 11:33:59,262 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-04-25 11:33:59,262 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-04-25 11:33:59,262 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-04-25 11:33:59,264 INFO     Listening on TCP address 0.0.0.0:8001
+Not Found: /favicon.ico
+2026-04-25 11:34:34,340 WARNING  Not Found: /favicon.ico
+2026-04-25 11:35:34,074 WARNING  Excel import failed for model=MigrationRecord sheet=Sheet1
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\admin_excelupload.py", line 535, in _handle_commit_action
+    counts, log = self._run_commit_import(request, df, eff, sheet_norm)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\admin_excelupload.py", line 430, in _run_commit_import
+    raise ValueError("Sheet name does not match expected for this model.")
+ValueError: Sheet name does not match expected for this model.
+Internal Server Error: /admin/api/migrationrecord/upload-excel/
+2026-04-25 11:35:34,085 ERROR    Internal Server Error: /admin/api/migrationrecord/upload-excel/
+2026-04-25 11:36:47,790 WARNING  Excel import failed for model=MigrationRecord sheet=migrationrecord_template
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\admin_excelupload.py", line 535, in _handle_commit_action
+    counts, log = self._run_commit_import(request, df, eff, sheet_norm)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\admin_excelupload.py", line 430, in _run_commit_import
+    raise ValueError("Sheet name does not match expected for this model.")
+ValueError: Sheet name does not match expected for this model.
+Internal Server Error: /admin/api/migrationrecord/upload-excel/
+2026-04-25 11:36:47,795 ERROR    Internal Server Error: /admin/api/migrationrecord/upload-excel/
+Unauthorized: /api/users/
+2026-04-25 11:46:12,054 WARNING  Unauthorized: /api/users/
+2026-04-25 13:05:18,252 WARNING  Excel import failed for model=MigrationRecord sheet=migrationrecord_template
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\admin_excelupload.py", line 535, in _handle_commit_action
+    counts, log = self._run_commit_import(request, df, eff, sheet_norm)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\admin_excelupload.py", line 430, in _run_commit_import
+    raise ValueError("Sheet name does not match expected for this model.")
+ValueError: Sheet name does not match expected for this model.
+Internal Server Error: /admin/api/migrationrecord/upload-excel/
+2026-04-25 13:05:18,260 ERROR    Internal Server Error: /admin/api/migrationrecord/upload-excel/
+Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2026-04-25 13:06:53,207 WARNING  Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2026-04-25 13:12:18,247 WARNING  Excel import failed for model=MigrationRecord sheet=migrationrecord_template
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\admin_excelupload.py", line 535, in _handle_commit_action
+    counts, log = self._run_commit_import(request, df, eff, sheet_norm)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\admin_excelupload.py", line 430, in _run_commit_import
+    raise ValueError("Sheet name does not match expected for this model.")
+ValueError: Sheet name does not match expected for this model.
+Internal Server Error: /admin/api/migrationrecord/upload-excel/
+2026-04-25 13:12:18,256 ERROR    Internal Server Error: /admin/api/migrationrecord/upload-excel/
+Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2026-04-25 13:12:25,356 WARNING  Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2026-04-25 13:12:49,803 WARNING  Excel import failed for model=MigrationRecord sheet=migrationrecord_template
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\admin_excelupload.py", line 535, in _handle_commit_action
+    counts, log = self._run_commit_import(request, df, eff, sheet_norm)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\admin_excelupload.py", line 430, in _run_commit_import
+    raise ValueError("Sheet name does not match expected for this model.")
+ValueError: Sheet name does not match expected for this model.
+Internal Server Error: /admin/api/migrationrecord/upload-excel/
+2026-04-25 13:12:49,809 ERROR    Internal Server Error: /admin/api/migrationrecord/upload-excel/
+Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2026-04-25 13:13:57,293 WARNING  Not Found: /.well-known/appspecific/com.chrome.devtools.json
+Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2026-04-25 13:13:59,271 WARNING  Not Found: /.well-known/appspecific/com.chrome.devtools.json
+Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2026-04-25 13:14:00,856 WARNING  Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2026-04-25 13:14:16,332 WARNING  Excel import failed for model=MigrationRecord sheet=migrationrecord_template
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\admin_excelupload.py", line 535, in _handle_commit_action
+    counts, log = self._run_commit_import(request, df, eff, sheet_norm)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\admin_excelupload.py", line 430, in _run_commit_import
+    raise ValueError("Sheet name does not match expected for this model.")
+ValueError: Sheet name does not match expected for this model.
+Internal Server Error: /admin/api/migrationrecord/upload-excel/
+2026-04-25 13:14:16,340 ERROR    Internal Server Error: /admin/api/migrationrecord/upload-excel/
+2026-04-25 13:15:42,502 INFO     Killed 0 pending application instances
+2026-04-25 13:15:44,038 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-04-25 13:15:44,038 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-04-25 13:15:44,038 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-04-25 13:15:44,039 INFO     Listening on TCP address 0.0.0.0:8001
+Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2026-04-25 13:16:05,691 WARNING  Not Found: /.well-known/appspecific/com.chrome.devtools.json
+Internal Server Error: /api/migration/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 437, in get_attribute
+    return get_attribute(instance, self.source_attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 104, in get_attribute
+    instance = getattr(instance, attr)
+               ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MigrationRecord' object has no attribute 'prv_number'. Did you mean: 'mg_number'?
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\mixins.py", line 43, in list
+    return self.get_paginated_response(serializer.data)
+                                       ^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 795, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 249, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 714, in to_representation
+    self.child.to_representation(item) for item in iterable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 525, in to_representation
+    attribute = field.get_attribute(instance)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 470, in get_attribute
+    raise type(exc)(msg)
+AttributeError: Got AttributeError when attempting to get a value for field `prv_number` on serializer `MigrationRecordSerializer`.
+The serializer field might be named incorrectly and not match any attribute or key on the `MigrationRecord` instance.
+Original exception text was: 'MigrationRecord' object has no attribute 'prv_number'.
+2026-04-25 13:30:13,478 ERROR    Internal Server Error: /api/migration/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 437, in get_attribute
+    return get_attribute(instance, self.source_attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 104, in get_attribute
+    instance = getattr(instance, attr)
+               ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MigrationRecord' object has no attribute 'prv_number'. Did you mean: 'mg_number'?
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\mixins.py", line 43, in list
+    return self.get_paginated_response(serializer.data)
+                                       ^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 795, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 249, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 714, in to_representation
+    self.child.to_representation(item) for item in iterable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 525, in to_representation
+    attribute = field.get_attribute(instance)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 470, in get_attribute
+    raise type(exc)(msg)
+AttributeError: Got AttributeError when attempting to get a value for field `prv_number` on serializer `MigrationRecordSerializer`.
+The serializer field might be named incorrectly and not match any attribute or key on the `MigrationRecord` instance.
+Original exception text was: 'MigrationRecord' object has no attribute 'prv_number'.
+Internal Server Error: /api/migration/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 437, in get_attribute
+    return get_attribute(instance, self.source_attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 104, in get_attribute
+    instance = getattr(instance, attr)
+               ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MigrationRecord' object has no attribute 'prv_number'. Did you mean: 'mg_number'?
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\mixins.py", line 43, in list
+    return self.get_paginated_response(serializer.data)
+                                       ^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 795, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 249, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 714, in to_representation
+    self.child.to_representation(item) for item in iterable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 525, in to_representation
+    attribute = field.get_attribute(instance)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 470, in get_attribute
+    raise type(exc)(msg)
+AttributeError: Got AttributeError when attempting to get a value for field `prv_number` on serializer `MigrationRecordSerializer`.
+The serializer field might be named incorrectly and not match any attribute or key on the `MigrationRecord` instance.
+Original exception text was: 'MigrationRecord' object has no attribute 'prv_number'.
+2026-04-25 13:30:36,012 ERROR    Internal Server Error: /api/migration/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 437, in get_attribute
+    return get_attribute(instance, self.source_attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 104, in get_attribute
+    instance = getattr(instance, attr)
+               ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MigrationRecord' object has no attribute 'prv_number'. Did you mean: 'mg_number'?
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\mixins.py", line 43, in list
+    return self.get_paginated_response(serializer.data)
+                                       ^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 795, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 249, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 714, in to_representation
+    self.child.to_representation(item) for item in iterable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 525, in to_representation
+    attribute = field.get_attribute(instance)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 470, in get_attribute
+    raise type(exc)(msg)
+AttributeError: Got AttributeError when attempting to get a value for field `prv_number` on serializer `MigrationRecordSerializer`.
+The serializer field might be named incorrectly and not match any attribute or key on the `MigrationRecord` instance.
+Original exception text was: 'MigrationRecord' object has no attribute 'prv_number'.
+Internal Server Error: /api/migration/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 437, in get_attribute
+    return get_attribute(instance, self.source_attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 104, in get_attribute
+    instance = getattr(instance, attr)
+               ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MigrationRecord' object has no attribute 'prv_number'. Did you mean: 'mg_number'?
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\mixins.py", line 43, in list
+    return self.get_paginated_response(serializer.data)
+                                       ^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 795, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 249, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 714, in to_representation
+    self.child.to_representation(item) for item in iterable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 525, in to_representation
+    attribute = field.get_attribute(instance)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 470, in get_attribute
+    raise type(exc)(msg)
+AttributeError: Got AttributeError when attempting to get a value for field `prv_number` on serializer `MigrationRecordSerializer`.
+The serializer field might be named incorrectly and not match any attribute or key on the `MigrationRecord` instance.
+Original exception text was: 'MigrationRecord' object has no attribute 'prv_number'.
+2026-04-25 13:30:53,181 ERROR    Internal Server Error: /api/migration/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 437, in get_attribute
+    return get_attribute(instance, self.source_attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 104, in get_attribute
+    instance = getattr(instance, attr)
+               ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MigrationRecord' object has no attribute 'prv_number'. Did you mean: 'mg_number'?
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\mixins.py", line 43, in list
+    return self.get_paginated_response(serializer.data)
+                                       ^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 795, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 249, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 714, in to_representation
+    self.child.to_representation(item) for item in iterable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 525, in to_representation
+    attribute = field.get_attribute(instance)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 470, in get_attribute
+    raise type(exc)(msg)
+AttributeError: Got AttributeError when attempting to get a value for field `prv_number` on serializer `MigrationRecordSerializer`.
+The serializer field might be named incorrectly and not match any attribute or key on the `MigrationRecord` instance.
+Original exception text was: 'MigrationRecord' object has no attribute 'prv_number'.
+2026-04-25 13:31:31,176 WARNING  Application instance <Task pending name='Task-33' coro=<ProtocolTypeRouter.__call__() running at E:\admindesk\.venv\Lib\site-packages\channels\routing.py:48> wait_for=<_GatheringFuture pending cb=[Task.task_wakeup()]>> for connection <WebRequest at 0x21dec0d0350 method=POST uri=/admin/api/migrationrecord/upload-excel/ clientproto=HTTP/1.1> took too long to shut down and was killed.
+Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2026-04-25 14:44:14,698 WARNING  Not Found: /.well-known/appspecific/com.chrome.devtools.json
+Internal Server Error: /api/migration/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 437, in get_attribute
+    return get_attribute(instance, self.source_attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 104, in get_attribute
+    instance = getattr(instance, attr)
+               ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MigrationRecord' object has no attribute 'prv_number'. Did you mean: 'mg_number'?
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\mixins.py", line 43, in list
+    return self.get_paginated_response(serializer.data)
+                                       ^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 795, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 249, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 714, in to_representation
+    self.child.to_representation(item) for item in iterable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 525, in to_representation
+    attribute = field.get_attribute(instance)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 470, in get_attribute
+    raise type(exc)(msg)
+AttributeError: Got AttributeError when attempting to get a value for field `prv_number` on serializer `MigrationRecordSerializer`.
+The serializer field might be named incorrectly and not match any attribute or key on the `MigrationRecord` instance.
+Original exception text was: 'MigrationRecord' object has no attribute 'prv_number'.
+2026-04-25 14:46:11,946 ERROR    Internal Server Error: /api/migration/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 437, in get_attribute
+    return get_attribute(instance, self.source_attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 104, in get_attribute
+    instance = getattr(instance, attr)
+               ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MigrationRecord' object has no attribute 'prv_number'. Did you mean: 'mg_number'?
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\mixins.py", line 43, in list
+    return self.get_paginated_response(serializer.data)
+                                       ^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 795, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 249, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 714, in to_representation
+    self.child.to_representation(item) for item in iterable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 525, in to_representation
+    attribute = field.get_attribute(instance)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 470, in get_attribute
+    raise type(exc)(msg)
+AttributeError: Got AttributeError when attempting to get a value for field `prv_number` on serializer `MigrationRecordSerializer`.
+The serializer field might be named incorrectly and not match any attribute or key on the `MigrationRecord` instance.
+Original exception text was: 'MigrationRecord' object has no attribute 'prv_number'.
+Internal Server Error: /api/migration/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 437, in get_attribute
+    return get_attribute(instance, self.source_attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 104, in get_attribute
+    instance = getattr(instance, attr)
+               ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MigrationRecord' object has no attribute 'prv_number'. Did you mean: 'mg_number'?
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\mixins.py", line 43, in list
+    return self.get_paginated_response(serializer.data)
+                                       ^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 795, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 249, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 714, in to_representation
+    self.child.to_representation(item) for item in iterable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 525, in to_representation
+    attribute = field.get_attribute(instance)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 470, in get_attribute
+    raise type(exc)(msg)
+AttributeError: Got AttributeError when attempting to get a value for field `prv_number` on serializer `MigrationRecordSerializer`.
+The serializer field might be named incorrectly and not match any attribute or key on the `MigrationRecord` instance.
+Original exception text was: 'MigrationRecord' object has no attribute 'prv_number'.
+2026-04-25 14:46:12,113 ERROR    Internal Server Error: /api/migration/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 437, in get_attribute
+    return get_attribute(instance, self.source_attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 104, in get_attribute
+    instance = getattr(instance, attr)
+               ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MigrationRecord' object has no attribute 'prv_number'. Did you mean: 'mg_number'?
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\mixins.py", line 43, in list
+    return self.get_paginated_response(serializer.data)
+                                       ^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 795, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 249, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 714, in to_representation
+    self.child.to_representation(item) for item in iterable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 525, in to_representation
+    attribute = field.get_attribute(instance)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 470, in get_attribute
+    raise type(exc)(msg)
+AttributeError: Got AttributeError when attempting to get a value for field `prv_number` on serializer `MigrationRecordSerializer`.
+The serializer field might be named incorrectly and not match any attribute or key on the `MigrationRecord` instance.
+Original exception text was: 'MigrationRecord' object has no attribute 'prv_number'.
+Internal Server Error: /api/migration/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 437, in get_attribute
+    return get_attribute(instance, self.source_attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 104, in get_attribute
+    instance = getattr(instance, attr)
+               ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MigrationRecord' object has no attribute 'prv_number'. Did you mean: 'mg_number'?
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\mixins.py", line 43, in list
+    return self.get_paginated_response(serializer.data)
+                                       ^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 795, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 249, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 714, in to_representation
+    self.child.to_representation(item) for item in iterable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 525, in to_representation
+    attribute = field.get_attribute(instance)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 470, in get_attribute
+    raise type(exc)(msg)
+AttributeError: Got AttributeError when attempting to get a value for field `prv_number` on serializer `MigrationRecordSerializer`.
+The serializer field might be named incorrectly and not match any attribute or key on the `MigrationRecord` instance.
+Original exception text was: 'MigrationRecord' object has no attribute 'prv_number'.
+2026-04-25 14:46:21,761 ERROR    Internal Server Error: /api/migration/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 437, in get_attribute
+    return get_attribute(instance, self.source_attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 104, in get_attribute
+    instance = getattr(instance, attr)
+               ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MigrationRecord' object has no attribute 'prv_number'. Did you mean: 'mg_number'?
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\mixins.py", line 43, in list
+    return self.get_paginated_response(serializer.data)
+                                       ^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 795, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 249, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 714, in to_representation
+    self.child.to_representation(item) for item in iterable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 525, in to_representation
+    attribute = field.get_attribute(instance)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 470, in get_attribute
+    raise type(exc)(msg)
+AttributeError: Got AttributeError when attempting to get a value for field `prv_number` on serializer `MigrationRecordSerializer`.
+The serializer field might be named incorrectly and not match any attribute or key on the `MigrationRecord` instance.
+Original exception text was: 'MigrationRecord' object has no attribute 'prv_number'.
+Internal Server Error: /api/migration/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 437, in get_attribute
+    return get_attribute(instance, self.source_attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 104, in get_attribute
+    instance = getattr(instance, attr)
+               ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MigrationRecord' object has no attribute 'prv_number'. Did you mean: 'mg_number'?
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\mixins.py", line 43, in list
+    return self.get_paginated_response(serializer.data)
+                                       ^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 795, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 249, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 714, in to_representation
+    self.child.to_representation(item) for item in iterable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 525, in to_representation
+    attribute = field.get_attribute(instance)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 470, in get_attribute
+    raise type(exc)(msg)
+AttributeError: Got AttributeError when attempting to get a value for field `prv_number` on serializer `MigrationRecordSerializer`.
+The serializer field might be named incorrectly and not match any attribute or key on the `MigrationRecord` instance.
+Original exception text was: 'MigrationRecord' object has no attribute 'prv_number'.
+2026-04-25 14:46:29,120 ERROR    Internal Server Error: /api/migration/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 437, in get_attribute
+    return get_attribute(instance, self.source_attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 104, in get_attribute
+    instance = getattr(instance, attr)
+               ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MigrationRecord' object has no attribute 'prv_number'. Did you mean: 'mg_number'?
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\mixins.py", line 43, in list
+    return self.get_paginated_response(serializer.data)
+                                       ^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 795, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 249, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 714, in to_representation
+    self.child.to_representation(item) for item in iterable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\serializers.py", line 525, in to_representation
+    attribute = field.get_attribute(instance)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\fields.py", line 470, in get_attribute
+    raise type(exc)(msg)
+AttributeError: Got AttributeError when attempting to get a value for field `prv_number` on serializer `MigrationRecordSerializer`.
+The serializer field might be named incorrectly and not match any attribute or key on the `MigrationRecord` instance.
+Original exception text was: 'MigrationRecord' object has no attribute 'prv_number'.
+2026-04-25 14:47:18,032 INFO     Killed 1 pending application instances
+2026-04-25 14:47:20,260 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-04-25 14:47:20,260 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-04-25 14:47:20,260 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-04-25 14:47:20,262 INFO     Listening on TCP address 0.0.0.0:8001
+2026-04-25 14:50:56,033 INFO     Killed 1 pending application instances
+2026-04-25 14:50:57,832 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-04-25 14:50:57,832 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-04-25 14:50:57,832 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-04-25 14:50:57,833 INFO     Listening on TCP address 0.0.0.0:8001

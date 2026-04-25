@@ -29,7 +29,7 @@ def generate_migration_doc_rec_id(mg_number):
             return None
         short_year = parts[0][-2:]
         number = int(parts[1])
-        return f"mg{short_year}{number:06d}"
+        return f"mg{short_year}{number:05d}"
     except Exception:
         return None
 
@@ -52,12 +52,12 @@ def generate_next_migration_identifiers(target_date=None, *, lock=False):
                 last_no = int(match.group(1))
 
         next_no = last_no + 1
-        mg_number = f"{year}/{next_no:06d}"
-        doc_rec = f"mg{str(year)[-2:]}{next_no:06d}"
+        mg_number = f"{year}/{next_no:05d}"
+        doc_rec = f"mg{str(year)[-2:]}{next_no:05d}"
         return mg_number, doc_rec
     except Exception:
         year = timezone.localdate().year
-        return f"{year}/000001", f"mg{str(year)[-2:]}000001"
+        return f"{year}/00001", f"mg{str(year)[-2:]}00001"
 
 class MailStatus(models.TextChoices):
     NOT_SENT = 'NOT_SENT', 'Not Sent'

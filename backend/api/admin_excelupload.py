@@ -20,7 +20,7 @@ except Exception:  # pragma: no cover
 
 from .cash_register import ReceiptNumberService
 from .domain_cash_register import FeeType, Receipt, ReceiptItem, normalize_receipt_no, split_receipt
-from .models import Enrollment
+from .models import Enrollment, MigrationRecord, ProvisionalRecord
 from .excel_import.column_mapper import _build_allowed_maps, _resolve_column_name
 from .excel_import.controller_utils import build_preview_rows, detect_best_header_row, is_truthy
 from .excel_import.engine import ImportContext, run_row_importer
@@ -381,9 +381,9 @@ class ExcelUploadMixin:
             normalize_dates(["doc_rec_date", "date", "birth_date"])
             if issubclass(self.model, Enrollment) or sheet_norm == "enrollment":
                 normalize_dates(["enrollment_date", "admission_date"])
-            elif sheet_norm == "migration":
+            elif issubclass(self.model, MigrationRecord) or sheet_norm == "migration":
                 normalize_dates(["mg_date"])
-            elif sheet_norm == "provisional":
+            elif issubclass(self.model, ProvisionalRecord) or sheet_norm == "provisional":
                 normalize_dates(["prv_date"])
 
         return df

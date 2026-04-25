@@ -6,9 +6,11 @@ import PageTopbar from "../components/PageTopbar";
 import SearchField from '../components/SearchField';
 import useEnrollmentLookup from '../hooks/useEnrollmentLookup';
 import MigrationReport from '../report/migration_report';
+import { getMigrations } from '../services/migrationservice';
 
 const ACTIONS = ["➕", "✏️ Edit", "🔍", "📄 Report"];
 const LEGACY_MIGRATION_STATUSES = new Set(['RECEIVED']);
+const MIGRATION_LIST_LIMIT = 200;
 
 const isCancelledMigrationRecord = (record = {}) => {
   const cancelled = String(record.mg_cancelled || '').trim().toLowerCase();
@@ -178,12 +180,10 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
     setError(null);
     try {
       const trimmedQuery = (queryValue || '').trim();
-      const url = trimmedQuery ? `/api/migration/?search=${encodeURIComponent(trimmedQuery)}` : `/api/migration/`;
-      const res = await fetch(url, { headers: { ...authHeaders() } });
-      if (!res.ok) {
-        throw new Error(`Server error: ${res.status} ${res.statusText}`);
-      }
-      const data = await res.json();
+      const data = await getMigrations({
+        limit: MIGRATION_LIST_LIMIT,
+        ...(trimmedQuery ? { search: trimmedQuery } : {}),
+      });
       const rows = Array.isArray(data) ? data : data.results || [];
       setList(rows);
       return rows;
@@ -552,7 +552,9 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
-            <p className="text-xs text-slate-500">Results update automatically while you type.</p>
+            <p className="text-xs text-slate-500">
+              Showing first {MIGRATION_LIST_LIMIT} records by MG date and MG number. Search finds matching records beyond the first page.
+            </p>
           </div>
         )}
 
@@ -572,12 +574,12 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
           <table className="min-w-[1100px] w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
+                <th className="text-left py-2 px-3 whitespace-nowrap w-[11ch]">Date</th>
                 <th className="text-left py-2 px-3 whitespace-nowrap">MG No</th>
                 <th className="text-left py-2 px-3">Enroll</th>
                 <th className="text-left py-2 px-3">Name</th>
-                <th className="text-left py-2 px-3 whitespace-nowrap">Inst Code</th>
-                <th className="text-left py-2 px-3">MG Date</th>
                 <th className="text-left py-2 px-3">Book No</th>
+                <th className="text-left py-2 px-3 whitespace-nowrap">Inst Code</th>
                 <th className="text-left py-2 px-3">Status</th>
                 <th className="text-left py-2 px-3">Pay Rec</th>
                 <th className="text-left py-2 px-3">MG Remark</th>
@@ -598,12 +600,12 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
                     populateFormFromRecord(row);
                   }}
                 >
+                  <td className="py-2 px-3 whitespace-nowrap w-[11ch]">{row.mg_date || '-'}</td>
                   <td className="py-2 px-3 whitespace-nowrap">{row.mg_number || '-'}</td>
                   <td className="py-2 px-3">{row.enrollment || row.enrollment_no || '-'}</td>
                   <td className="py-2 px-3">{row.student_name || '-'}</td>
-                  <td className="py-2 px-3 whitespace-nowrap">{row.institute_code || instCodeById[String(row.institute_id || row.institute || '')] || '-'}</td>
-                  <td className="py-2 px-3">{row.mg_date || '-'}</td>
                   <td className="py-2 px-3">{row.book_no || '-'}</td>
+                  <td className="py-2 px-3 whitespace-nowrap">{row.institute_code || instCodeById[String(row.institute_id || row.institute || '')] || '-'}</td>
                   <td className="py-2 px-3">{row.mg_status || '-'}</td>
                   <td className="py-2 px-3">{row.pay_rec_no || '-'}</td>
                   <td className="py-2 px-3">{row.mg_remark || '-'}</td>

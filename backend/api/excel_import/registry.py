@@ -143,11 +143,27 @@ def get_bulk_importer(service: Optional[str]):
     return _BULK_IMPORTER_REGISTRY.get(str(service or "").strip().upper())
 
 
-def get_admin_importer(model, sheet_name: Optional[str] = None):
+def _admin_sheet_name_matches(model, allowed_sheet_names: Optional[Set[str]], sheet_name: Optional[str]) -> bool:
+    if not allowed_sheet_names:
+        return True
+
     normalized_sheet = str(sheet_name or "").strip().lower()
+    if normalized_sheet in allowed_sheet_names:
+        return True
+
+    model_name = getattr(getattr(model, "_meta", None), "model_name", "")
+    accepted_model_sheet_names = {
+        str(model_name).lower(),
+        f"{str(model_name).lower()}_template",
+    }
+    return normalized_sheet in accepted_model_sheet_names
+
+
+def get_admin_importer(model, sheet_name: Optional[str] = None):
+    fallback_handler = None
     for registration in _ADMIN_IMPORTER_REGISTRY:
         if issubclass(model, registration.model):
-            if registration.sheet_names and normalized_sheet not in registration.sheet_names:
-                continue
-            return registration.handler
-    return None
+            fallback_handler = registration.handler
+            if _admin_sheet_name_matches(model, registration.sheet_names, sheet_name):
+                return registration.handler
+    return fallback_handler

@@ -16,6 +16,13 @@ warnings.filterwarnings(
     RuntimeWarning,
 )
 
+DATA_UPLOAD_MAX_MEMORY_SIZE = int(os.getenv("DJANGO_DATA_UPLOAD_MAX_MEMORY_SIZE", 100 * 1024 * 1024))
+FILE_UPLOAD_MAX_MEMORY_SIZE = int(os.getenv("DJANGO_FILE_UPLOAD_MAX_MEMORY_SIZE", 10 * 1024 * 1024))
+FILE_UPLOAD_HANDLERS = [
+    "django.core.files.uploadhandler.TemporaryFileUploadHandler",
+    "django.core.files.uploadhandler.MemoryFileUploadHandler",
+]
+
 try:
     from dotenv import load_dotenv
 except Exception:
