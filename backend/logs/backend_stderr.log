@@ -52386,3 +52386,1411 @@ Unauthorized: /api/token/verify/
 2026-04-20 15:35:28,268 ERROR    sync_upi_sheet_to_sheet: cannot open worksheet in sheet 1SCzSewJ9121xX4yvuGBDV14Wn5IcuqnQhv7v5QUfkmw: Worksheet not found and could not be created in sheet 1SCzSewJ9121xX4yvuGBDV14Wn5IcuqnQhv7v5QUfkmw: UPISheet
 2026-04-20 15:35:29,394 ERROR    sync_bank_sheet_to_sheet: cannot open worksheet in sheet 1SCzSewJ9121xX4yvuGBDV14Wn5IcuqnQhv7v5QUfkmw: Worksheet not found and could not be created in sheet 1SCzSewJ9121xX4yvuGBDV14Wn5IcuqnQhv7v5QUfkmw: BankSheet
 2026-04-20 15:40:24,625 INFO     Killed 1 pending application instances
+2026-04-20 15:40:27,074 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-04-20 15:40:27,074 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-04-20 15:40:27,074 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-04-20 15:40:27,075 INFO     Listening on TCP address 0.0.0.0:8001
+2026-04-20 15:40:51,499 INFO     sync_cash_deposite_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=0 total=14
+2026-04-20 15:40:57,420 INFO     sync_cash_sheet_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=7 total=15
+2026-04-20 15:40:57,421 INFO     sync_cash_register_to_sheet: 2026-04-01\u21922027-03-31 appended=0 skipped=204 total=133
+2026-04-20 15:40:58,680 INFO     sync_cash_deposite_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=0 total=14
+2026-04-20 15:40:59,942 INFO     sync_cash_sheet_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=0 total=15
+2026-04-20 15:41:06,510 INFO     sync_upi_sheet_to_sheet: 2026-04-01\u21922027-03-31 appended=10 updated=0 total=10
+2026-04-20 15:41:13,186 INFO     sync_bank_sheet_to_sheet: 2026-04-01\u21922027-03-31 appended=10 updated=0 total=10
+2026-04-20 15:57:49,161 INFO     Killed 0 pending application instances
+2026-04-21 08:23:20,374 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-04-21 08:23:20,374 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-04-21 08:23:20,374 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-04-21 08:23:20,374 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/token/verify/
+2026-04-21 09:18:46,851 WARNING  Unauthorized: /api/token/verify/
+2026-04-21 09:23:08,328 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26132'}
+2026-04-21 09:23:08,331 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-21 09:23:08,341 INFO     InstLetterPDF grouped records: keys=['2026/132']
+2026-04-21 09:23:08,341 INFO     DEBUG rec_inst_pin value: '201307'
+2026-04-21 09:32:31,194 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26132'}
+2026-04-21 09:32:31,197 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-21 09:32:31,200 INFO     InstLetterPDF grouped records: keys=['2026/132']
+2026-04-21 09:32:31,200 INFO     DEBUG rec_inst_pin value: '201307'
+2026-04-21 09:35:17,052 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26132'}
+2026-04-21 09:35:17,054 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-21 09:35:17,059 INFO     InstLetterPDF grouped records: keys=['2026/132']
+2026-04-21 09:35:17,059 INFO     DEBUG rec_inst_pin value: '201307'
+2026-04-21 09:43:26,927 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26132'}
+2026-04-21 09:43:26,933 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-21 09:43:26,940 INFO     InstLetterPDF grouped records: keys=['2026/132']
+2026-04-21 09:43:26,952 INFO     DEBUG rec_inst_pin value: '201307'
+Unauthorized: /api/token/verify/
+2026-04-21 09:46:32,868 WARNING  Unauthorized: /api/token/verify/
+Unauthorized: /api/users/
+2026-04-21 11:29:12,226 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-04-21 13:12:43,848 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-04-21 13:12:43,940 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/token/verify/
+2026-04-21 13:57:12,075 WARNING  Unauthorized: /api/token/verify/
+Not Found: /favicon.ico
+2026-04-21 14:21:30,912 WARNING  Not Found: /favicon.ico
+Internal Server Error: /admin/api/empprofile/12/delete/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedFunction: operator does not exist: bigint = character varying
+LINE 1: ...pi_empprofile" ON ("api_leaveallocation"."emp_id" = "api_emp...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 718, in wrapper
+    return self.admin_site.admin_view(view)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\cache.py", line 80, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\sites.py", line 241, in inner
+    return view(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 2181, in delete_view
+    return self._delete_view(request, object_id, extra_context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 2208, in _delete_view
+    ) = self.get_deleted_objects([obj], request)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 2176, in get_deleted_objects
+    return get_deleted_objects(objs, request, self.admin_site)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\utils.py", line 138, in get_deleted_objects
+    collector.collect(objs)
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\utils.py", line 205, in collect
+    return super().collect(objs, source_attr=source_attr, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\deletion.py", line 344, in collect
+    if getattr(on_delete, "lazy_sub_objs", False) or sub_objs:
+                                                     ^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\query.py", line 414, in __bool__
+    self._fetch_all()
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\query.py", line 1928, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\query.py", line 91, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1574, in execute_sql
+    cursor.execute(sql, params)
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: operator does not exist: bigint = character varying
+LINE 1: ...pi_empprofile" ON ("api_leaveallocation"."emp_id" = "api_emp...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+2026-04-21 14:38:30,816 ERROR    Internal Server Error: /admin/api/empprofile/12/delete/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedFunction: operator does not exist: bigint = character varying
+LINE 1: ...pi_empprofile" ON ("api_leaveallocation"."emp_id" = "api_emp...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 718, in wrapper
+    return self.admin_site.admin_view(view)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\cache.py", line 80, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\sites.py", line 241, in inner
+    return view(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 2181, in delete_view
+    return self._delete_view(request, object_id, extra_context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 2208, in _delete_view
+    ) = self.get_deleted_objects([obj], request)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 2176, in get_deleted_objects
+    return get_deleted_objects(objs, request, self.admin_site)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\utils.py", line 138, in get_deleted_objects
+    collector.collect(objs)
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\utils.py", line 205, in collect
+    return super().collect(objs, source_attr=source_attr, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\deletion.py", line 344, in collect
+    if getattr(on_delete, "lazy_sub_objs", False) or sub_objs:
+                                                     ^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\query.py", line 414, in __bool__
+    self._fetch_all()
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\query.py", line 1928, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\query.py", line 91, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1574, in execute_sql
+    cursor.execute(sql, params)
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: operator does not exist: bigint = character varying
+LINE 1: ...pi_empprofile" ON ("api_leaveallocation"."emp_id" = "api_emp...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+Internal Server Error: /admin/api/empprofile/12/delete/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedFunction: operator does not exist: bigint = character varying
+LINE 1: ...pi_empprofile" ON ("api_leaveallocation"."emp_id" = "api_emp...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 718, in wrapper
+    return self.admin_site.admin_view(view)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\cache.py", line 80, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\sites.py", line 241, in inner
+    return view(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 2181, in delete_view
+    return self._delete_view(request, object_id, extra_context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 2208, in _delete_view
+    ) = self.get_deleted_objects([obj], request)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 2176, in get_deleted_objects
+    return get_deleted_objects(objs, request, self.admin_site)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\utils.py", line 138, in get_deleted_objects
+    collector.collect(objs)
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\utils.py", line 205, in collect
+    return super().collect(objs, source_attr=source_attr, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\deletion.py", line 344, in collect
+    if getattr(on_delete, "lazy_sub_objs", False) or sub_objs:
+                                                     ^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\query.py", line 414, in __bool__
+    self._fetch_all()
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\query.py", line 1928, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\query.py", line 91, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1574, in execute_sql
+    cursor.execute(sql, params)
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: operator does not exist: bigint = character varying
+LINE 1: ...pi_empprofile" ON ("api_leaveallocation"."emp_id" = "api_emp...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+2026-04-21 14:38:34,496 ERROR    Internal Server Error: /admin/api/empprofile/12/delete/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedFunction: operator does not exist: bigint = character varying
+LINE 1: ...pi_empprofile" ON ("api_leaveallocation"."emp_id" = "api_emp...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 718, in wrapper
+    return self.admin_site.admin_view(view)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\cache.py", line 80, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\sites.py", line 241, in inner
+    return view(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 2181, in delete_view
+    return self._delete_view(request, object_id, extra_context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 2208, in _delete_view
+    ) = self.get_deleted_objects([obj], request)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 2176, in get_deleted_objects
+    return get_deleted_objects(objs, request, self.admin_site)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\utils.py", line 138, in get_deleted_objects
+    collector.collect(objs)
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\utils.py", line 205, in collect
+    return super().collect(objs, source_attr=source_attr, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\deletion.py", line 344, in collect
+    if getattr(on_delete, "lazy_sub_objs", False) or sub_objs:
+                                                     ^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\query.py", line 414, in __bool__
+    self._fetch_all()
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\query.py", line 1928, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\query.py", line 91, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1574, in execute_sql
+    cursor.execute(sql, params)
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: operator does not exist: bigint = character varying
+LINE 1: ...pi_empprofile" ON ("api_leaveallocation"."emp_id" = "api_emp...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+Internal Server Error: /admin/api/empprofile/12/delete/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedFunction: operator does not exist: bigint = character varying
+LINE 1: ...pi_empprofile" ON ("api_leaveallocation"."emp_id" = "api_emp...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 718, in wrapper
+    return self.admin_site.admin_view(view)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\cache.py", line 80, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\sites.py", line 241, in inner
+    return view(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 2181, in delete_view
+    return self._delete_view(request, object_id, extra_context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 2208, in _delete_view
+    ) = self.get_deleted_objects([obj], request)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 2176, in get_deleted_objects
+    return get_deleted_objects(objs, request, self.admin_site)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\utils.py", line 138, in get_deleted_objects
+    collector.collect(objs)
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\utils.py", line 205, in collect
+    return super().collect(objs, source_attr=source_attr, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\deletion.py", line 344, in collect
+    if getattr(on_delete, "lazy_sub_objs", False) or sub_objs:
+                                                     ^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\query.py", line 414, in __bool__
+    self._fetch_all()
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\query.py", line 1928, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\query.py", line 91, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1574, in execute_sql
+    cursor.execute(sql, params)
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: operator does not exist: bigint = character varying
+LINE 1: ...pi_empprofile" ON ("api_leaveallocation"."emp_id" = "api_emp...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+2026-04-21 14:39:20,409 ERROR    Internal Server Error: /admin/api/empprofile/12/delete/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedFunction: operator does not exist: bigint = character varying
+LINE 1: ...pi_empprofile" ON ("api_leaveallocation"."emp_id" = "api_emp...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 718, in wrapper
+    return self.admin_site.admin_view(view)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\cache.py", line 80, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\sites.py", line 241, in inner
+    return view(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 2181, in delete_view
+    return self._delete_view(request, object_id, extra_context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 2208, in _delete_view
+    ) = self.get_deleted_objects([obj], request)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 2176, in get_deleted_objects
+    return get_deleted_objects(objs, request, self.admin_site)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\utils.py", line 138, in get_deleted_objects
+    collector.collect(objs)
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\utils.py", line 205, in collect
+    return super().collect(objs, source_attr=source_attr, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\deletion.py", line 344, in collect
+    if getattr(on_delete, "lazy_sub_objs", False) or sub_objs:
+                                                     ^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\query.py", line 414, in __bool__
+    self._fetch_all()
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\query.py", line 1928, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\query.py", line 91, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1574, in execute_sql
+    cursor.execute(sql, params)
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: operator does not exist: bigint = character varying
+LINE 1: ...pi_empprofile" ON ("api_leaveallocation"."emp_id" = "api_emp...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+Internal Server Error: /admin/api/empprofile/12/delete/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedFunction: operator does not exist: bigint = character varying
+LINE 1: ...pi_empprofile" ON ("api_leaveallocation"."emp_id" = "api_emp...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 718, in wrapper
+    return self.admin_site.admin_view(view)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\cache.py", line 80, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\sites.py", line 241, in inner
+    return view(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 2181, in delete_view
+    return self._delete_view(request, object_id, extra_context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 2208, in _delete_view
+    ) = self.get_deleted_objects([obj], request)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 2176, in get_deleted_objects
+    return get_deleted_objects(objs, request, self.admin_site)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\utils.py", line 138, in get_deleted_objects
+    collector.collect(objs)
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\utils.py", line 205, in collect
+    return super().collect(objs, source_attr=source_attr, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\deletion.py", line 344, in collect
+    if getattr(on_delete, "lazy_sub_objs", False) or sub_objs:
+                                                     ^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\query.py", line 414, in __bool__
+    self._fetch_all()
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\query.py", line 1928, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\query.py", line 91, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1574, in execute_sql
+    cursor.execute(sql, params)
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: operator does not exist: bigint = character varying
+LINE 1: ...pi_empprofile" ON ("api_leaveallocation"."emp_id" = "api_emp...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+2026-04-21 14:39:49,903 ERROR    Internal Server Error: /admin/api/empprofile/12/delete/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedFunction: operator does not exist: bigint = character varying
+LINE 1: ...pi_empprofile" ON ("api_leaveallocation"."emp_id" = "api_emp...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 718, in wrapper
+    return self.admin_site.admin_view(view)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\cache.py", line 80, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\sites.py", line 241, in inner
+    return view(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\utils\decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 2181, in delete_view
+    return self._delete_view(request, object_id, extra_context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 2208, in _delete_view
+    ) = self.get_deleted_objects([obj], request)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\options.py", line 2176, in get_deleted_objects
+    return get_deleted_objects(objs, request, self.admin_site)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\utils.py", line 138, in get_deleted_objects
+    collector.collect(objs)
+  File "E:\admindesk\.venv\Lib\site-packages\django\contrib\admin\utils.py", line 205, in collect
+    return super().collect(objs, source_attr=source_attr, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\deletion.py", line 344, in collect
+    if getattr(on_delete, "lazy_sub_objs", False) or sub_objs:
+                                                     ^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\query.py", line 414, in __bool__
+    self._fetch_all()
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\query.py", line 1928, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\query.py", line 91, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1574, in execute_sql
+    cursor.execute(sql, params)
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "E:\admindesk\.venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: operator does not exist: bigint = character varying
+LINE 1: ...pi_empprofile" ON ("api_leaveallocation"."emp_id" = "api_emp...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+2026-04-21 14:40:34,457 INFO     Updated tr_request_no for record 338 from 25003 to 25003
+2026-04-21 14:40:34,465 INFO     Updated tr_request_no for record 342 from 25007 to 25007
+2026-04-21 14:40:34,470 INFO     Updated tr_request_no for record 478 from 25011 to 25011
+2026-04-21 14:40:34,472 INFO     Updated tr_request_no for record 347 from 25012 to 25012
+2026-04-21 14:40:34,478 INFO     Updated tr_request_no for record 350 from 25015 to 25015
+2026-04-21 14:40:34,483 INFO     Updated tr_request_no for record 371 from 25019 to 25019
+2026-04-21 14:40:34,487 INFO     Updated tr_request_no for record 357 from 25022 to 25022
+2026-04-21 14:40:34,495 INFO     Updated tr_request_no for record 362 from 25027 to 25027
+2026-04-21 14:40:34,498 INFO     Updated tr_request_no for record 357 from 25028 to 25028
+2026-04-21 14:40:34,501 INFO     Updated tr_request_no for record 362 from 25030 to 25030
+2026-04-21 14:40:34,507 INFO     Updated tr_request_no for record 347 from 25034 to 25034
+2026-04-21 14:40:34,511 INFO     Updated tr_request_no for record 371 from 25036 to 25036
+2026-04-21 14:40:34,524 INFO     Updated tr_request_no for record 379 from 25044 to 25044
+2026-04-21 14:40:34,529 INFO     Updated tr_request_no for record 382 from 25047 to 25047
+2026-04-21 14:40:34,542 INFO     Updated tr_request_no for record 393 from 25058 to 25058
+2026-04-21 14:40:34,546 INFO     Updated tr_request_no for record 396 from 25061 to 25061
+2026-04-21 14:40:34,549 INFO     Updated tr_request_no for record 398 from 25063 to 25063
+2026-04-21 14:40:34,553 INFO     Updated tr_request_no for record 618 from 25065 to 25065
+2026-04-21 14:40:34,558 INFO     Updated tr_request_no for record 347 from 25068 to 25068
+2026-04-21 14:40:34,562 INFO     Updated tr_request_no for record 405 from 25070 to 25070
+2026-04-21 14:40:34,575 INFO     Updated tr_request_no for record 398 from 25080 to 25080
+2026-04-21 14:40:34,579 INFO     Updated tr_request_no for record 417 from 25082 to 25082
+2026-04-21 14:40:34,582 INFO     Updated tr_request_no for record 418 from 25083 to 25083
+2026-04-21 14:40:34,598 INFO     Updated tr_request_no for record 433 from 25098 to 25098
+2026-04-21 14:40:34,602 INFO     Updated tr_request_no for record 434 from 25099 to 25099
+2026-04-21 14:40:34,604 INFO     Updated tr_request_no for record 433 from 25100 to 25100
+2026-04-21 14:40:34,610 INFO     Updated tr_request_no for record 491 from 25103 to 25103
+2026-04-21 14:40:34,616 INFO     Updated tr_request_no for record 418 from 25106 to 25106
+2026-04-21 14:40:34,628 INFO     Updated tr_request_no for record 451 from 25116 to 25116
+2026-04-21 14:40:34,632 INFO     Updated tr_request_no for record 453 from 25118 to 25118
+2026-04-21 14:40:34,635 INFO     Updated tr_request_no for record 434 from 25119 to 25119
+2026-04-21 14:40:34,644 INFO     Updated tr_request_no for record 460 from 25125 to 25125
+2026-04-21 14:40:34,650 INFO     Updated tr_request_no for record 451 from 25129 to 25129
+2026-04-21 14:40:34,669 INFO     Updated tr_request_no for record 478 from 25143 to 25143
+2026-04-21 14:40:34,676 INFO     Updated tr_request_no for record 357 from 25148 to 25148
+2026-04-21 14:40:34,687 INFO     Updated tr_request_no for record 491 from 25156 to 25156
+2026-04-21 14:40:34,711 INFO     Updated tr_request_no for record 511 from 25176 to 25176
+2026-04-21 14:40:34,714 INFO     Updated tr_request_no for record 512 from 25177 to 25177
+2026-04-21 14:40:34,716 INFO     Updated tr_request_no for record 513 from 25178 to 25178
+2026-04-21 14:40:34,721 INFO     Updated tr_request_no for record 515 from 25180 to 25180
+2026-04-21 14:40:34,725 INFO     Updated tr_request_no for record 515 from 25181 to 25181
+2026-04-21 14:40:34,729 INFO     Updated tr_request_no for record 511 from 25182 to 25182
+2026-04-21 14:40:34,732 INFO     Updated tr_request_no for record 512 from 25183 to 25183
+2026-04-21 14:40:34,735 INFO     Updated tr_request_no for record 382 from 25184 to 25184
+2026-04-21 14:40:34,739 INFO     Updated tr_request_no for record 417 from 25186 to 25186
+2026-04-21 14:40:34,742 INFO     Updated tr_request_no for record 522 from 25187 to 25187
+2026-04-21 14:40:34,745 INFO     Updated tr_request_no for record 342 from 25188 to 25188
+2026-04-21 14:40:34,748 INFO     Updated tr_request_no for record 405 from 25189 to 25189
+2026-04-21 14:40:34,751 INFO     Updated tr_request_no for record 513 from 25191 to 25191
+2026-04-21 14:40:34,753 INFO     Updated tr_request_no for record 527 from 25192 to 25192
+2026-04-21 14:40:34,757 INFO     Updated tr_request_no for record 527 from 25194 to 25194
+2026-04-21 14:40:34,761 INFO     Updated tr_request_no for record 522 from 25195 to 25195
+2026-04-21 14:40:34,764 INFO     Updated tr_request_no for record 531 from 25196 to 25196
+2026-04-21 14:40:34,766 INFO     Updated tr_request_no for record 531 from 25197 to 25197
+2026-04-21 14:40:34,775 INFO     Updated tr_request_no for record 539 from 25204 to 25204
+2026-04-21 14:40:34,778 INFO     Updated tr_request_no for record 539 from 25205 to 25205
+2026-04-21 14:40:34,782 INFO     Updated tr_request_no for record 542 from 25207 to 25207
+2026-04-21 14:40:34,785 INFO     Updated tr_request_no for record 542 from 25208 to 25208
+2026-04-21 14:40:34,788 INFO     Updated tr_request_no for record 544 from 25209 to 25209
+2026-04-21 14:40:34,791 INFO     Updated tr_request_no for record 531 from 25210 to 25210
+2026-04-21 14:40:34,796 INFO     Updated tr_request_no for record 549 from 25214 to 25214
+2026-04-21 14:40:34,799 INFO     Updated tr_request_no for record 453 from 25215 to 25215
+2026-04-21 14:40:34,802 INFO     Updated tr_request_no for record 551 from 25216 to 25216
+2026-04-21 14:40:34,807 INFO     Updated tr_request_no for record 544 from 25219 to 25219
+2026-04-21 14:40:34,810 INFO     Updated tr_request_no for record 556 from 25221 to 25221
+2026-04-21 14:40:34,813 INFO     Updated tr_request_no for record 557 from 25222 to 25222
+2026-04-21 14:40:34,817 INFO     Updated tr_request_no for record 556 from 25224 to 25224
+2026-04-21 14:40:34,822 INFO     Updated tr_request_no for record 539 from 25227 to 25227
+2026-04-21 14:40:34,827 INFO     Updated tr_request_no for record 338 from 25230 to 25230
+2026-04-21 14:40:34,829 INFO     Updated tr_request_no for record 566 from 25231 to 25231
+2026-04-21 14:40:34,845 INFO     Updated tr_request_no for record 511 from 25244 to 25244
+2026-04-21 14:40:34,854 INFO     Updated tr_request_no for record 587 from 25252 to 25252
+2026-04-21 14:40:34,863 INFO     Updated tr_request_no for record 596 from 25261 to 25261
+2026-04-21 14:40:34,865 INFO     Updated tr_request_no for record 551 from 25262 to 25262
+2026-04-21 14:40:34,891 INFO     Updated tr_request_no for record 613 from 25278 to 25278
+2026-04-21 14:40:34,904 INFO     Updated tr_request_no for record 618 from 25283 to 25283
+2026-04-21 14:40:34,928 INFO     Updated tr_request_no for record 557 from 25301 to 25301
+2026-04-21 14:40:34,934 INFO     Updated tr_request_no for record 549 from 25305 to 25305
+2026-04-21 14:40:34,940 INFO     Updated tr_request_no for record 714 from 25309 to 25309
+2026-04-21 14:40:34,943 INFO     Updated tr_request_no for record 714 from 25310 to 25310
+2026-04-21 14:40:34,956 INFO     Updated tr_request_no for record 653 from 25318 to 25318
+2026-04-21 14:40:34,968 INFO     Updated tr_request_no for record 587 from 25327 to 25327
+2026-04-21 14:40:34,971 INFO     Updated tr_request_no for record 596 from 25328 to 25328
+2026-04-21 14:40:34,974 INFO     Updated tr_request_no for record 396 from 25329 to 25329
+2026-04-21 14:40:35,006 INFO     Updated tr_request_no for record 460 from 25356 to 25356
+2026-04-21 14:40:35,016 INFO     Updated tr_request_no for record 739 from 25365 to 25365
+2026-04-21 14:40:35,023 INFO     Updated tr_request_no for record 739 from 25370 to 25370
+2026-04-21 14:40:35,036 INFO     Updated tr_request_no for record 750 from 25377 to 25377
+2026-04-21 14:40:35,050 INFO     Updated tr_request_no for record 653 from 25385 to 25385
+2026-04-21 14:40:35,056 INFO     Updated tr_request_no for record 761 from 25389 to 25389
+2026-04-21 14:40:35,064 INFO     Updated tr_request_no for record 761 from 25393 to 25393
+2026-04-21 14:40:35,067 INFO     Updated tr_request_no for record 379 from 25394 to 25394
+2026-04-21 14:40:35,083 INFO     Updated tr_request_no for record 750 from 25406 to 25406
+2026-04-21 14:40:35,089 INFO     Updated tr_request_no for record 566 from 25410 to 25410
+2026-04-21 14:40:35,095 INFO     Updated tr_request_no for record 783 from 25415 to 25415
+2026-04-21 14:40:35,098 INFO     Updated tr_request_no for record 783 from 25416 to 25416
+2026-04-21 14:40:35,106 INFO     Updated tr_request_no for record 350 from 25422 to 25422
+2026-04-21 14:40:35,112 INFO     Updated tr_request_no for record 613 from 25426 to 25426
+2026-04-21 14:40:35,115 INFO     Updated tr_request_no for record 613 from 25428 to 25428
+2026-04-21 14:40:35,130 INFO     Updated tr_request_no for record 393 from 25438 to 25438
+2026-04-21 14:40:35,149 INFO     Updated tr_request_no for record 750 from 25451 to 25451
+Unauthorized: /api/users/
+2026-04-21 15:18:16,380 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-04-21 15:53:19,052 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-04-21 15:53:19,171 WARNING  Unauthorized: /api/users/
+2026-04-21 15:53:56,794 INFO     Killed 0 pending application instances
+2026-04-22 12:46:42,235 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-04-22 12:46:42,237 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-04-22 12:46:42,237 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-04-22 12:46:42,237 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/token/verify/
+2026-04-22 12:46:44,544 WARNING  Unauthorized: /api/token/verify/
+Forbidden: /api/transcript-requests/sync-from-sheet/
+2026-04-22 12:48:57,204 WARNING  Forbidden: /api/transcript-requests/sync-from-sheet/
+Unauthorized: /api/token/verify/
+2026-04-22 12:57:57,767 WARNING  Unauthorized: /api/token/verify/
+Forbidden: /api/transcript-requests/sync-from-sheet/
+2026-04-22 12:58:55,521 WARNING  Forbidden: /api/transcript-requests/sync-from-sheet/
+Bad Request: /api/verification/37665/
+2026-04-22 13:17:54,440 WARNING  Bad Request: /api/verification/37665/
+Unauthorized: /api/users/
+2026-04-22 14:59:55,251 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/token/verify/
+2026-04-22 15:06:35,647 WARNING  Unauthorized: /api/token/verify/
+2026-04-22 15:12:37,487 WARNING  Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001411290DE20>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-04-22 15:12:37,487 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000014112CEFE60>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-04-22 15:12:37,487 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000014112DC25A0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-04-22 15:12:37,487 WARNING  Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000014112D74140>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-04-22 15:12:37,487 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000014112D76C00>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-04-22 15:12:37,487 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000014112D77650>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-04-22 15:12:37,493 ERROR    sync_cash_register_to_sheet: cannot open sheet 1SCzSewJ9121xX4yvuGBDV14Wn5IcuqnQhv7v5QUfkmw: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000014112D77F20>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+2026-04-22 15:12:37,493 WARNING  Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000014112DC3770>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-04-22 15:12:37,495 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000014112DC3AA0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-04-22 15:12:37,495 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000014112DC3140>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-04-22 15:12:37,495 ERROR    sync_cash_deposite_to_sheet: cannot open worksheet in sheet 1SCzSewJ9121xX4yvuGBDV14Wn5IcuqnQhv7v5QUfkmw: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000014112DC3B00>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+2026-04-22 15:12:37,495 WARNING  Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000014112DC2060>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-04-22 15:12:37,495 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000014112DC1AC0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-04-22 15:12:37,495 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000014112DC1E80>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-04-22 15:12:37,495 ERROR    sync_cash_sheet_to_sheet: cannot open worksheet in sheet 1SCzSewJ9121xX4yvuGBDV14Wn5IcuqnQhv7v5QUfkmw: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000014112DC1940>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+2026-04-22 15:12:37,495 WARNING  Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000014112BB4A70>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-04-22 15:12:37,495 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000014112BB4740>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-04-22 15:12:37,495 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000014112BB44D0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-04-22 15:12:37,495 ERROR    sync_upi_sheet_to_sheet: cannot open worksheet in sheet 1SCzSewJ9121xX4yvuGBDV14Wn5IcuqnQhv7v5QUfkmw: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000014112BB4350>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+2026-04-22 15:12:37,495 WARNING  Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000014112DC3EF0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-04-22 15:12:37,495 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000014112DC1D60>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-04-22 15:12:37,501 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000014112DC1C10>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-04-22 15:12:37,501 ERROR    sync_bank_sheet_to_sheet: cannot open worksheet in sheet 1SCzSewJ9121xX4yvuGBDV14Wn5IcuqnQhv7v5QUfkmw: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000014112DC1F10>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+2026-04-22 15:58:24,314 INFO     Killed 0 pending application instances
+2026-04-23 08:27:14,998 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-04-23 08:27:14,998 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-04-23 08:27:14,998 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-04-23 08:27:14,998 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/users/
+2026-04-23 10:45:06,370 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/token/verify/
+2026-04-23 10:47:45,108 WARNING  Unauthorized: /api/token/verify/
+2026-04-23 11:23:50,296 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26133'}
+2026-04-23 11:23:50,298 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-23 11:23:50,302 INFO     InstLetterPDF grouped records: keys=['2026/133']
+2026-04-23 11:23:50,304 INFO     DEBUG rec_inst_pin value: '388260'
+2026-04-23 11:26:13,748 INFO     InstLetterStudent update payload_keys=['doc_rec_key', 'enrollment', 'enrollment_no_text', 'iv_degree_name', 'month_year', 'sr_no', 'student_name', 'study_mode', 'type_of_credential', 'verification_status']
+2026-04-23 11:26:26,045 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26133'}
+2026-04-23 11:26:26,048 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-23 11:26:26,053 INFO     InstLetterPDF grouped records: keys=['2026/133']
+2026-04-23 11:26:26,053 INFO     DEBUG rec_inst_pin value: '388260'
+Unauthorized: /api/users/
+2026-04-23 12:49:12,339 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-04-23 13:06:40,361 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-04-23 15:16:39,348 WARNING  Unauthorized: /api/users/
+2026-04-23 15:49:52,365 INFO     Killed 0 pending application instances
+2026-04-24 08:25:55,866 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-04-24 08:25:55,866 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-04-24 08:25:55,866 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-04-24 08:25:55,866 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/token/verify/
+2026-04-24 08:28:53,742 WARNING  Unauthorized: /api/token/verify/
+2026-04-24 09:59:27,466 INFO     Import mail requests completed via API: Found 366 rows; starting import
+Processed 200/366 rows
+Processed 366/366 rows
+Import complete. Created: 3, Updated: 363
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+Bad Request: /api/verification/49125/
+2026-04-24 10:24:14,246 WARNING  Bad Request: /api/verification/49125/
+Unauthorized: /api/users/
+2026-04-24 10:29:03,554 WARNING  Unauthorized: /api/users/
+2026-04-24 11:30:28,899 INFO     sync_cash_sheet_to_sheet: 2026-04-17\u21922026-04-17 appended=0 updated=0 total=1
+Unauthorized: /api/users/
+2026-04-24 12:31:45,853 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-04-24 12:33:11,348 WARNING  Unauthorized: /api/users/
+2026-04-24 13:04:48,982 INFO     sync_cash_deposite_to_sheet: 2026-04-17\u21922026-04-17 appended=0 updated=0 total=1
+2026-04-24 13:04:50,753 INFO     sync_cash_sheet_to_sheet: 2026-04-17\u21922026-04-17 appended=0 updated=1 total=1
+2026-04-24 13:04:50,753 INFO     sync_cash_register_to_sheet: 2026-04-17\u21922026-04-17 appended=2 skipped=10 total=6
+2026-04-24 13:06:02,367 INFO     sync_cash_deposite_to_sheet: 2026-04-17\u21922026-04-17 appended=0 updated=0 total=1
+2026-04-24 13:06:03,799 INFO     sync_cash_sheet_to_sheet: 2026-04-17\u21922026-04-17 appended=0 updated=0 total=1
+2026-04-24 13:06:03,799 INFO     sync_cash_register_to_sheet: 2026-04-17\u21922026-04-17 appended=0 skipped=12 total=6
+2026-04-24 13:06:53,868 INFO     sync_cash_deposite_to_sheet: 2026-04-21\u21922026-04-21 appended=1 updated=0 total=1
+2026-04-24 13:06:55,668 INFO     sync_cash_sheet_to_sheet: 2026-04-21\u21922026-04-21 appended=1 updated=0 total=1
+2026-04-24 13:06:55,668 INFO     sync_cash_register_to_sheet: 2026-04-21\u21922026-04-21 appended=3 skipped=0 total=3
+2026-04-24 13:06:57,458 INFO     sync_cash_deposite_to_sheet: 2026-04-21\u21922026-04-21 appended=0 updated=0 total=1
+2026-04-24 13:06:58,893 INFO     sync_cash_sheet_to_sheet: 2026-04-21\u21922026-04-21 appended=0 updated=0 total=1
+2026-04-24 13:07:00,699 INFO     sync_upi_sheet_to_sheet: 2026-04-21\u21922026-04-21 appended=1 updated=0 total=1
+2026-04-24 13:07:02,522 INFO     sync_bank_sheet_to_sheet: 2026-04-21\u21922026-04-21 appended=1 updated=0 total=1
+2026-04-24 13:07:09,492 INFO     sync_cash_deposite_to_sheet: 2026-04-22\u21922026-04-22 appended=1 updated=0 total=1
+2026-04-24 13:07:11,315 INFO     sync_cash_sheet_to_sheet: 2026-04-22\u21922026-04-22 appended=1 updated=0 total=1
+2026-04-24 13:07:11,316 INFO     sync_cash_register_to_sheet: 2026-04-22\u21922026-04-22 appended=6 skipped=0 total=6
+2026-04-24 13:07:13,046 INFO     sync_cash_deposite_to_sheet: 2026-04-22\u21922026-04-22 appended=0 updated=0 total=1
+2026-04-24 13:07:14,336 INFO     sync_cash_sheet_to_sheet: 2026-04-22\u21922026-04-22 appended=0 updated=0 total=1
+2026-04-24 13:07:16,132 INFO     sync_upi_sheet_to_sheet: 2026-04-22\u21922026-04-22 appended=1 updated=0 total=1
+2026-04-24 13:07:17,947 INFO     sync_bank_sheet_to_sheet: 2026-04-22\u21922026-04-22 appended=1 updated=0 total=1
+2026-04-24 13:07:36,052 INFO     sync_cash_deposite_to_sheet: 2026-04-23\u21922026-04-23 appended=0 updated=0 total=0
+2026-04-24 13:07:37,751 INFO     sync_cash_sheet_to_sheet: 2026-04-23\u21922026-04-23 appended=1 updated=0 total=1
+2026-04-24 13:07:37,751 INFO     sync_cash_register_to_sheet: 2026-04-23\u21922026-04-23 appended=11 skipped=0 total=8
+2026-04-24 13:07:39,497 INFO     sync_cash_deposite_to_sheet: 2026-04-23\u21922026-04-23 appended=0 updated=0 total=0
+2026-04-24 13:07:40,803 INFO     sync_cash_sheet_to_sheet: 2026-04-23\u21922026-04-23 appended=0 updated=0 total=1
+2026-04-24 13:07:42,578 INFO     sync_upi_sheet_to_sheet: 2026-04-23\u21922026-04-23 appended=1 updated=0 total=1
+2026-04-24 13:07:44,293 INFO     sync_bank_sheet_to_sheet: 2026-04-23\u21922026-04-23 appended=1 updated=0 total=1
+2026-04-24 13:07:56,345 INFO     sync_cash_deposite_to_sheet: 2026-04-24\u21922026-04-24 appended=0 updated=0 total=0
+2026-04-24 13:07:58,315 INFO     sync_cash_sheet_to_sheet: 2026-04-24\u21922026-04-24 appended=1 updated=0 total=1
+2026-04-24 13:07:58,315 INFO     sync_cash_register_to_sheet: 2026-04-24\u21922026-04-24 appended=11 skipped=0 total=7
+2026-04-24 13:08:00,079 INFO     sync_cash_deposite_to_sheet: 2026-04-24\u21922026-04-24 appended=0 updated=0 total=0
+2026-04-24 13:08:01,394 INFO     sync_cash_sheet_to_sheet: 2026-04-24\u21922026-04-24 appended=0 updated=0 total=1
+2026-04-24 13:08:03,222 INFO     sync_upi_sheet_to_sheet: 2026-04-24\u21922026-04-24 appended=1 updated=0 total=1
+2026-04-24 13:08:04,997 INFO     sync_bank_sheet_to_sheet: 2026-04-24\u21922026-04-24 appended=1 updated=0 total=1
+2026-04-24 14:41:07,898 INFO     Import mail requests completed via API: Found 366 rows; starting import
+Processed 200/366 rows
+Processed 366/366 rows
+Import complete. Created: 0, Updated: 366
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+Unauthorized: /api/users/
+2026-04-24 14:41:57,912 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-04-24 14:41:57,951 WARNING  Unauthorized: /api/users/
+2026-04-24 14:42:07,993 INFO     Import mail requests completed via API: Found 366 rows; starting import
+Processed 200/366 rows
+Processed 366/366 rows
+Import complete. Created: 0, Updated: 366
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-04-24 14:45:05,938 INFO     Updated tr_request_no for record 338 from 25003 to 25003
+2026-04-24 14:45:05,948 INFO     Updated tr_request_no for record 342 from 25007 to 25007
+2026-04-24 14:45:05,955 INFO     Updated tr_request_no for record 478 from 25011 to 25011
+2026-04-24 14:45:05,958 INFO     Updated tr_request_no for record 347 from 25012 to 25012
+2026-04-24 14:45:05,963 INFO     Updated tr_request_no for record 350 from 25015 to 25015
+2026-04-24 14:45:05,969 INFO     Updated tr_request_no for record 371 from 25019 to 25019
+2026-04-24 14:45:05,973 INFO     Updated tr_request_no for record 357 from 25022 to 25022
+2026-04-24 14:45:05,979 INFO     Updated tr_request_no for record 362 from 25027 to 25027
+2026-04-24 14:45:05,982 INFO     Updated tr_request_no for record 357 from 25028 to 25028
+2026-04-24 14:45:05,986 INFO     Updated tr_request_no for record 362 from 25030 to 25030
+2026-04-24 14:45:05,993 INFO     Updated tr_request_no for record 347 from 25034 to 25034
+2026-04-24 14:45:05,997 INFO     Updated tr_request_no for record 371 from 25036 to 25036
+2026-04-24 14:45:06,005 INFO     Updated tr_request_no for record 379 from 25044 to 25044
+2026-04-24 14:45:06,010 INFO     Updated tr_request_no for record 382 from 25047 to 25047
+2026-04-24 14:45:06,024 INFO     Updated tr_request_no for record 393 from 25058 to 25058
+2026-04-24 14:45:06,030 INFO     Updated tr_request_no for record 396 from 25061 to 25061
+2026-04-24 14:45:06,035 INFO     Updated tr_request_no for record 398 from 25063 to 25063
+2026-04-24 14:45:06,039 INFO     Updated tr_request_no for record 618 from 25065 to 25065
+2026-04-24 14:45:06,044 INFO     Updated tr_request_no for record 347 from 25068 to 25068
+2026-04-24 14:45:06,047 INFO     Updated tr_request_no for record 405 from 25070 to 25070
+2026-04-24 14:45:06,058 INFO     Updated tr_request_no for record 398 from 25080 to 25080
+2026-04-24 14:45:06,061 INFO     Updated tr_request_no for record 417 from 25082 to 25082
+2026-04-24 14:45:06,064 INFO     Updated tr_request_no for record 418 from 25083 to 25083
+2026-04-24 14:45:06,080 INFO     Updated tr_request_no for record 433 from 25098 to 25098
+2026-04-24 14:45:06,083 INFO     Updated tr_request_no for record 434 from 25099 to 25099
+2026-04-24 14:45:06,085 INFO     Updated tr_request_no for record 433 from 25100 to 25100
+2026-04-24 14:45:06,089 INFO     Updated tr_request_no for record 491 from 25103 to 25103
+2026-04-24 14:45:06,094 INFO     Updated tr_request_no for record 418 from 25106 to 25106
+2026-04-24 14:45:06,103 INFO     Updated tr_request_no for record 451 from 25116 to 25116
+2026-04-24 14:45:06,106 INFO     Updated tr_request_no for record 453 from 25118 to 25118
+2026-04-24 14:45:06,109 INFO     Updated tr_request_no for record 434 from 25119 to 25119
+2026-04-24 14:45:06,116 INFO     Updated tr_request_no for record 460 from 25125 to 25125
+2026-04-24 14:45:06,121 INFO     Updated tr_request_no for record 451 from 25129 to 25129
+2026-04-24 14:45:06,137 INFO     Updated tr_request_no for record 478 from 25143 to 25143
+2026-04-24 14:45:06,143 INFO     Updated tr_request_no for record 357 from 25148 to 25148
+2026-04-24 14:45:06,152 INFO     Updated tr_request_no for record 491 from 25156 to 25156
+2026-04-24 14:45:06,174 INFO     Updated tr_request_no for record 511 from 25176 to 25176
+2026-04-24 14:45:06,177 INFO     Updated tr_request_no for record 512 from 25177 to 25177
+2026-04-24 14:45:06,179 INFO     Updated tr_request_no for record 513 from 25178 to 25178
+2026-04-24 14:45:06,182 INFO     Updated tr_request_no for record 515 from 25180 to 25180
+2026-04-24 14:45:06,185 INFO     Updated tr_request_no for record 515 from 25181 to 25181
+2026-04-24 14:45:06,188 INFO     Updated tr_request_no for record 511 from 25182 to 25182
+2026-04-24 14:45:06,190 INFO     Updated tr_request_no for record 512 from 25183 to 25183
+2026-04-24 14:45:06,193 INFO     Updated tr_request_no for record 382 from 25184 to 25184
+2026-04-24 14:45:06,196 INFO     Updated tr_request_no for record 417 from 25186 to 25186
+2026-04-24 14:45:06,198 INFO     Updated tr_request_no for record 522 from 25187 to 25187
+2026-04-24 14:45:06,201 INFO     Updated tr_request_no for record 342 from 25188 to 25188
+2026-04-24 14:45:06,203 INFO     Updated tr_request_no for record 405 from 25189 to 25189
+2026-04-24 14:45:06,206 INFO     Updated tr_request_no for record 513 from 25191 to 25191
+2026-04-24 14:45:06,208 INFO     Updated tr_request_no for record 527 from 25192 to 25192
+2026-04-24 14:45:06,212 INFO     Updated tr_request_no for record 527 from 25194 to 25194
+2026-04-24 14:45:06,215 INFO     Updated tr_request_no for record 522 from 25195 to 25195
+2026-04-24 14:45:06,218 INFO     Updated tr_request_no for record 531 from 25196 to 25196
+2026-04-24 14:45:06,220 INFO     Updated tr_request_no for record 531 from 25197 to 25197
+2026-04-24 14:45:06,228 INFO     Updated tr_request_no for record 539 from 25204 to 25204
+2026-04-24 14:45:06,230 INFO     Updated tr_request_no for record 539 from 25205 to 25205
+2026-04-24 14:45:06,234 INFO     Updated tr_request_no for record 542 from 25207 to 25207
+2026-04-24 14:45:06,236 INFO     Updated tr_request_no for record 542 from 25208 to 25208
+2026-04-24 14:45:06,239 INFO     Updated tr_request_no for record 544 from 25209 to 25209
+2026-04-24 14:45:06,241 INFO     Updated tr_request_no for record 531 from 25210 to 25210
+2026-04-24 14:45:06,246 INFO     Updated tr_request_no for record 549 from 25214 to 25214
+2026-04-24 14:45:06,248 INFO     Updated tr_request_no for record 453 from 25215 to 25215
+2026-04-24 14:45:06,250 INFO     Updated tr_request_no for record 551 from 25216 to 25216
+2026-04-24 14:45:06,255 INFO     Updated tr_request_no for record 544 from 25219 to 25219
+2026-04-24 14:45:06,259 INFO     Updated tr_request_no for record 556 from 25221 to 25221
+2026-04-24 14:45:06,261 INFO     Updated tr_request_no for record 557 from 25222 to 25222
+2026-04-24 14:45:06,265 INFO     Updated tr_request_no for record 556 from 25224 to 25224
+2026-04-24 14:45:06,270 INFO     Updated tr_request_no for record 539 from 25227 to 25227
+2026-04-24 14:45:06,275 INFO     Updated tr_request_no for record 338 from 25230 to 25230
+2026-04-24 14:45:06,277 INFO     Updated tr_request_no for record 566 from 25231 to 25231
+2026-04-24 14:45:06,293 INFO     Updated tr_request_no for record 511 from 25244 to 25244
+2026-04-24 14:45:06,301 INFO     Updated tr_request_no for record 587 from 25252 to 25252
+2026-04-24 14:45:06,310 INFO     Updated tr_request_no for record 596 from 25261 to 25261
+2026-04-24 14:45:06,312 INFO     Updated tr_request_no for record 551 from 25262 to 25262
+2026-04-24 14:45:06,328 INFO     Updated tr_request_no for record 613 from 25278 to 25278
+2026-04-24 14:45:06,333 INFO     Updated tr_request_no for record 618 from 25283 to 25283
+2026-04-24 14:45:06,352 INFO     Updated tr_request_no for record 557 from 25301 to 25301
+2026-04-24 14:45:06,357 INFO     Updated tr_request_no for record 549 from 25305 to 25305
+2026-04-24 14:45:06,363 INFO     Updated tr_request_no for record 714 from 25309 to 25309
+2026-04-24 14:45:06,365 INFO     Updated tr_request_no for record 714 from 25310 to 25310
+2026-04-24 14:45:06,375 INFO     Updated tr_request_no for record 653 from 25318 to 25318
+2026-04-24 14:45:06,384 INFO     Updated tr_request_no for record 587 from 25327 to 25327
+2026-04-24 14:45:06,387 INFO     Updated tr_request_no for record 596 from 25328 to 25328
+2026-04-24 14:45:06,390 INFO     Updated tr_request_no for record 396 from 25329 to 25329
+2026-04-24 14:45:06,416 INFO     Updated tr_request_no for record 460 from 25356 to 25356
+2026-04-24 14:45:06,426 INFO     Updated tr_request_no for record 739 from 25365 to 25365
+2026-04-24 14:45:06,434 INFO     Updated tr_request_no for record 739 from 25370 to 25370
+2026-04-24 14:45:06,443 INFO     Updated tr_request_no for record 750 from 25377 to 25377
+2026-04-24 14:45:06,452 INFO     Updated tr_request_no for record 653 from 25385 to 25385
+2026-04-24 14:45:06,458 INFO     Updated tr_request_no for record 761 from 25389 to 25389
+2026-04-24 14:45:06,464 INFO     Updated tr_request_no for record 761 from 25393 to 25393
+2026-04-24 14:45:06,466 INFO     Updated tr_request_no for record 379 from 25394 to 25394
+2026-04-24 14:45:06,479 INFO     Updated tr_request_no for record 750 from 25406 to 25406
+2026-04-24 14:45:06,484 INFO     Updated tr_request_no for record 566 from 25410 to 25410
+2026-04-24 14:45:06,491 INFO     Updated tr_request_no for record 783 from 25415 to 25415
+2026-04-24 14:45:06,493 INFO     Updated tr_request_no for record 783 from 25416 to 25416
+2026-04-24 14:45:06,500 INFO     Updated tr_request_no for record 350 from 25422 to 25422
+2026-04-24 14:45:06,507 INFO     Updated tr_request_no for record 613 from 25426 to 25426
+2026-04-24 14:45:06,510 INFO     Updated tr_request_no for record 613 from 25428 to 25428
+2026-04-24 14:45:06,521 INFO     Updated tr_request_no for record 393 from 25438 to 25438
+2026-04-24 14:45:06,535 INFO     Updated tr_request_no for record 750 from 25451 to 25451
+Unauthorized: /api/users/
+2026-04-24 14:48:53,817 WARNING  Unauthorized: /api/users/
+2026-04-24 15:00:05,640 INFO     Updated tr_request_no for record 338 from 25003 to 25003
+2026-04-24 15:00:05,640 INFO     Updated tr_request_no for record 342 from 25007 to 25007
+2026-04-24 15:00:05,640 INFO     Updated tr_request_no for record 478 from 25011 to 25011
+2026-04-24 15:00:05,658 INFO     Updated tr_request_no for record 347 from 25012 to 25012
+2026-04-24 15:00:05,659 INFO     Updated tr_request_no for record 350 from 25015 to 25015
+2026-04-24 15:00:05,659 INFO     Updated tr_request_no for record 371 from 25019 to 25019
+2026-04-24 15:00:05,672 INFO     Updated tr_request_no for record 357 from 25022 to 25022
+2026-04-24 15:00:05,672 INFO     Updated tr_request_no for record 362 from 25027 to 25027
+2026-04-24 15:00:05,672 INFO     Updated tr_request_no for record 357 from 25028 to 25028
+2026-04-24 15:00:05,689 INFO     Updated tr_request_no for record 362 from 25030 to 25030
+2026-04-24 15:00:05,689 INFO     Updated tr_request_no for record 347 from 25034 to 25034
+2026-04-24 15:00:05,704 INFO     Updated tr_request_no for record 371 from 25036 to 25036
+2026-04-24 15:00:05,719 INFO     Updated tr_request_no for record 379 from 25044 to 25044
+2026-04-24 15:00:05,719 INFO     Updated tr_request_no for record 382 from 25047 to 25047
+2026-04-24 15:00:05,751 INFO     Updated tr_request_no for record 393 from 25058 to 25058
+2026-04-24 15:00:05,751 INFO     Updated tr_request_no for record 396 from 25061 to 25061
+2026-04-24 15:00:05,766 INFO     Updated tr_request_no for record 398 from 25063 to 25063
+2026-04-24 15:00:05,769 INFO     Updated tr_request_no for record 618 from 25065 to 25065
+2026-04-24 15:00:05,769 INFO     Updated tr_request_no for record 347 from 25068 to 25068
+2026-04-24 15:00:05,769 INFO     Updated tr_request_no for record 405 from 25070 to 25070
+2026-04-24 15:00:05,782 INFO     Updated tr_request_no for record 398 from 25080 to 25080
+2026-04-24 15:00:05,782 INFO     Updated tr_request_no for record 417 from 25082 to 25082
+2026-04-24 15:00:05,782 INFO     Updated tr_request_no for record 418 from 25083 to 25083
+2026-04-24 15:00:05,798 INFO     Updated tr_request_no for record 433 from 25098 to 25098
+2026-04-24 15:00:05,814 INFO     Updated tr_request_no for record 434 from 25099 to 25099
+2026-04-24 15:00:05,817 INFO     Updated tr_request_no for record 433 from 25100 to 25100
+2026-04-24 15:00:05,817 INFO     Updated tr_request_no for record 491 from 25103 to 25103
+2026-04-24 15:00:05,817 INFO     Updated tr_request_no for record 418 from 25106 to 25106
+2026-04-24 15:00:05,830 INFO     Updated tr_request_no for record 451 from 25116 to 25116
+2026-04-24 15:00:05,830 INFO     Updated tr_request_no for record 453 from 25118 to 25118
+2026-04-24 15:00:05,830 INFO     Updated tr_request_no for record 434 from 25119 to 25119
+2026-04-24 15:00:05,846 INFO     Updated tr_request_no for record 460 from 25125 to 25125
+2026-04-24 15:00:05,846 INFO     Updated tr_request_no for record 451 from 25129 to 25129
+2026-04-24 15:00:05,862 INFO     Updated tr_request_no for record 478 from 25143 to 25143
+2026-04-24 15:00:05,877 INFO     Updated tr_request_no for record 357 from 25148 to 25148
+2026-04-24 15:00:05,877 INFO     Updated tr_request_no for record 491 from 25156 to 25156
+2026-04-24 15:00:05,909 INFO     Updated tr_request_no for record 511 from 25176 to 25176
+2026-04-24 15:00:05,909 INFO     Updated tr_request_no for record 512 from 25177 to 25177
+2026-04-24 15:00:05,909 INFO     Updated tr_request_no for record 513 from 25178 to 25178
+2026-04-24 15:00:05,909 INFO     Updated tr_request_no for record 515 from 25180 to 25180
+2026-04-24 15:00:05,909 INFO     Updated tr_request_no for record 515 from 25181 to 25181
+2026-04-24 15:00:05,909 INFO     Updated tr_request_no for record 511 from 25182 to 25182
+2026-04-24 15:00:05,925 INFO     Updated tr_request_no for record 512 from 25183 to 25183
+2026-04-24 15:00:05,925 INFO     Updated tr_request_no for record 382 from 25184 to 25184
+2026-04-24 15:00:05,925 INFO     Updated tr_request_no for record 417 from 25186 to 25186
+2026-04-24 15:00:05,925 INFO     Updated tr_request_no for record 522 from 25187 to 25187
+2026-04-24 15:00:05,925 INFO     Updated tr_request_no for record 342 from 25188 to 25188
+2026-04-24 15:00:05,925 INFO     Updated tr_request_no for record 405 from 25189 to 25189
+2026-04-24 15:00:05,941 INFO     Updated tr_request_no for record 513 from 25191 to 25191
+2026-04-24 15:00:05,941 INFO     Updated tr_request_no for record 527 from 25192 to 25192
+2026-04-24 15:00:05,941 INFO     Updated tr_request_no for record 527 from 25194 to 25194
+2026-04-24 15:00:05,941 INFO     Updated tr_request_no for record 522 from 25195 to 25195
+2026-04-24 15:00:05,941 INFO     Updated tr_request_no for record 531 from 25196 to 25196
+2026-04-24 15:00:05,957 INFO     Updated tr_request_no for record 531 from 25197 to 25197
+2026-04-24 15:00:05,959 INFO     Updated tr_request_no for record 539 from 25204 to 25204
+2026-04-24 15:00:05,959 INFO     Updated tr_request_no for record 539 from 25205 to 25205
+2026-04-24 15:00:05,959 INFO     Updated tr_request_no for record 542 from 25207 to 25207
+2026-04-24 15:00:05,973 INFO     Updated tr_request_no for record 542 from 25208 to 25208
+2026-04-24 15:00:05,975 INFO     Updated tr_request_no for record 544 from 25209 to 25209
+2026-04-24 15:00:05,975 INFO     Updated tr_request_no for record 531 from 25210 to 25210
+2026-04-24 15:00:05,975 INFO     Updated tr_request_no for record 549 from 25214 to 25214
+2026-04-24 15:00:05,975 INFO     Updated tr_request_no for record 453 from 25215 to 25215
+2026-04-24 15:00:05,989 INFO     Updated tr_request_no for record 551 from 25216 to 25216
+2026-04-24 15:00:05,989 INFO     Updated tr_request_no for record 544 from 25219 to 25219
+2026-04-24 15:00:05,989 INFO     Updated tr_request_no for record 556 from 25221 to 25221
+2026-04-24 15:00:05,989 INFO     Updated tr_request_no for record 557 from 25222 to 25222
+2026-04-24 15:00:05,989 INFO     Updated tr_request_no for record 556 from 25224 to 25224
+2026-04-24 15:00:06,004 INFO     Updated tr_request_no for record 539 from 25227 to 25227
+2026-04-24 15:00:06,004 INFO     Updated tr_request_no for record 338 from 25230 to 25230
+2026-04-24 15:00:06,004 INFO     Updated tr_request_no for record 566 from 25231 to 25231
+2026-04-24 15:00:06,020 INFO     Updated tr_request_no for record 511 from 25244 to 25244
+2026-04-24 15:00:06,036 INFO     Updated tr_request_no for record 587 from 25252 to 25252
+2026-04-24 15:00:06,040 INFO     Updated tr_request_no for record 596 from 25261 to 25261
+2026-04-24 15:00:06,051 INFO     Updated tr_request_no for record 551 from 25262 to 25262
+2026-04-24 15:00:06,067 INFO     Updated tr_request_no for record 613 from 25278 to 25278
+2026-04-24 15:00:06,067 INFO     Updated tr_request_no for record 618 from 25283 to 25283
+2026-04-24 15:00:06,083 INFO     Updated tr_request_no for record 557 from 25301 to 25301
+2026-04-24 15:00:06,099 INFO     Updated tr_request_no for record 549 from 25305 to 25305
+2026-04-24 15:00:06,099 INFO     Updated tr_request_no for record 714 from 25309 to 25309
+2026-04-24 15:00:06,099 INFO     Updated tr_request_no for record 714 from 25310 to 25310
+2026-04-24 15:00:06,115 INFO     Updated tr_request_no for record 653 from 25318 to 25318
+2026-04-24 15:00:06,115 INFO     Updated tr_request_no for record 587 from 25327 to 25327
+2026-04-24 15:00:06,131 INFO     Updated tr_request_no for record 596 from 25328 to 25328
+2026-04-24 15:00:06,131 INFO     Updated tr_request_no for record 396 from 25329 to 25329
+2026-04-24 15:00:06,146 INFO     Updated tr_request_no for record 460 from 25356 to 25356
+2026-04-24 15:00:06,162 INFO     Updated tr_request_no for record 739 from 25365 to 25365
+2026-04-24 15:00:06,178 INFO     Updated tr_request_no for record 739 from 25370 to 25370
+2026-04-24 15:00:06,180 INFO     Updated tr_request_no for record 750 from 25377 to 25377
+2026-04-24 15:00:06,194 INFO     Updated tr_request_no for record 653 from 25385 to 25385
+2026-04-24 15:00:06,197 INFO     Updated tr_request_no for record 761 from 25389 to 25389
+2026-04-24 15:00:06,197 INFO     Updated tr_request_no for record 761 from 25393 to 25393
+2026-04-24 15:00:06,197 INFO     Updated tr_request_no for record 379 from 25394 to 25394
+2026-04-24 15:00:06,209 INFO     Updated tr_request_no for record 750 from 25406 to 25406
+2026-04-24 15:00:06,209 INFO     Updated tr_request_no for record 566 from 25410 to 25410
+2026-04-24 15:00:06,226 INFO     Updated tr_request_no for record 783 from 25415 to 25415
+2026-04-24 15:00:06,226 INFO     Updated tr_request_no for record 783 from 25416 to 25416
+2026-04-24 15:00:06,226 INFO     Updated tr_request_no for record 350 from 25422 to 25422
+2026-04-24 15:00:06,241 INFO     Updated tr_request_no for record 613 from 25426 to 25426
+2026-04-24 15:00:06,241 INFO     Updated tr_request_no for record 613 from 25428 to 25428
+2026-04-24 15:00:06,241 INFO     Updated tr_request_no for record 393 from 25438 to 25438
+2026-04-24 15:00:06,257 INFO     Updated tr_request_no for record 750 from 25451 to 25451
+2026-04-24 15:56:41,684 INFO     Killed 0 pending application instances
+2026-04-25 08:23:49,137 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-04-25 08:23:49,137 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-04-25 08:23:49,137 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-04-25 08:23:49,139 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/token/verify/
+2026-04-25 08:26:44,196 WARNING  Unauthorized: /api/token/verify/
+2026-04-25 08:31:10,790 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26134'}
+2026-04-25 08:31:10,792 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-25 08:31:10,798 INFO     InstLetterPDF grouped records: keys=['2026/134']
+2026-04-25 08:31:10,798 INFO     DEBUG rec_inst_pin value: '382028'
+2026-04-25 08:32:13,820 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26134'}
+2026-04-25 08:32:13,822 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-25 08:32:13,828 INFO     InstLetterPDF grouped records: keys=['2026/134']
+2026-04-25 08:32:13,828 INFO     DEBUG rec_inst_pin value: '382028'
+Unauthorized: /api/token/verify/
+2026-04-25 08:42:17,275 WARNING  Unauthorized: /api/token/verify/
+Unauthorized: /api/token/verify/
+2026-04-25 08:42:17,278 WARNING  Unauthorized: /api/token/verify/
+2026-04-25 08:42:30,421 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26134'}
+2026-04-25 08:42:30,423 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-25 08:42:30,433 INFO     InstLetterPDF grouped records: keys=['2026/134']
+2026-04-25 08:42:30,439 INFO     DEBUG rec_inst_pin value: '382028'
+2026-04-25 08:44:44,335 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26134'}
+2026-04-25 08:44:44,337 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-25 08:44:44,345 INFO     InstLetterPDF grouped records: keys=['2026/134']
+2026-04-25 08:44:44,345 INFO     DEBUG rec_inst_pin value: '382028'
+2026-04-25 08:52:46,568 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26134'}
+2026-04-25 08:52:46,570 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-25 08:52:46,579 INFO     InstLetterPDF grouped records: keys=['2026/134']
+2026-04-25 08:52:46,579 INFO     DEBUG rec_inst_pin value: '382028'
+2026-04-25 08:57:07,951 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26134'}
+2026-04-25 08:57:07,953 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-25 08:57:07,958 INFO     InstLetterPDF grouped records: keys=['2026/134']
+2026-04-25 08:57:07,958 INFO     DEBUG rec_inst_pin value: '382028'
+2026-04-25 08:57:24,529 INFO     Killed 0 pending application instances
+2026-04-25 08:57:49,071 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-04-25 08:57:49,073 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-04-25 08:57:49,073 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-04-25 08:57:49,073 INFO     Listening on TCP address 0.0.0.0:8001
+2026-04-25 08:59:19,531 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26134'}
+2026-04-25 08:59:19,531 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-25 08:59:19,548 INFO     InstLetterPDF grouped records: keys=['2026/134']
+2026-04-25 08:59:19,548 INFO     DEBUG rec_inst_pin value: '382028'
+Unauthorized: /api/token/verify/
+2026-04-25 08:59:30,880 WARNING  Unauthorized: /api/token/verify/
+2026-04-25 09:32:55,330 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26134'}
+2026-04-25 09:32:55,344 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-25 09:32:55,357 INFO     InstLetterPDF grouped records: keys=['2026/134']
+2026-04-25 09:32:55,358 INFO     DEBUG rec_inst_pin value: '382028'
+2026-04-25 09:33:14,731 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26133'}
+2026-04-25 09:33:14,733 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-25 09:33:14,739 INFO     InstLetterPDF grouped records: keys=['2026/133']
+2026-04-25 09:33:14,740 INFO     DEBUG rec_inst_pin value: '388260'
+2026-04-25 09:41:18,399 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26135'}
+2026-04-25 09:41:18,399 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-25 09:41:18,399 INFO     InstLetterPDF grouped records: keys=['2026/135']
+2026-04-25 09:41:18,399 INFO     DEBUG rec_inst_pin value: '380001'
+Unauthorized: /api/token/verify/
+2026-04-25 09:45:55,285 WARNING  Unauthorized: /api/token/verify/
+2026-04-25 09:47:36,130 INFO     sync_bank_sheet_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=1 total=14
+2026-04-25 09:47:48,210 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26135'}
+2026-04-25 09:47:48,213 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-25 09:47:48,215 INFO     InstLetterPDF grouped records: keys=['2026/135']
+2026-04-25 09:47:48,216 INFO     DEBUG rec_inst_pin value: '380001'
+2026-04-25 09:52:16,965 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26135'}
+2026-04-25 09:52:16,965 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-25 09:52:16,982 INFO     InstLetterPDF grouped records: keys=['2026/135']
+2026-04-25 09:52:16,982 INFO     DEBUG rec_inst_pin value: '380001'
+2026-04-25 09:57:59,214 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26135'}
+2026-04-25 09:57:59,214 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-04-25 09:57:59,232 INFO     InstLetterPDF grouped records: keys=['2026/135']
+2026-04-25 09:57:59,233 INFO     DEBUG rec_inst_pin value: '380001'

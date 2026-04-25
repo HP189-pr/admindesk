@@ -336,6 +336,14 @@ class InstLetterPDF(APIView):
                     parent=normal,
                     leftIndent=0.7 * inch
                 )
+                wrap_style = ParagraphStyle(
+                    'wrap_style',
+                    parent=styles['Normal'],
+                    fontSize=10,
+                    leading=12,
+                )
+                wrap_style.wordWrap = 'CJK'
+                wrap_style.splitLongWords = True
                 pdf_bytes = None
 
                 left_margin = 15 * mm
@@ -499,11 +507,24 @@ class InstLetterPDF(APIView):
                             enroll = s.get('enrollment_no') or s.get('enrollment') or s.get('enrollment_no_text') if isinstance(s, dict) else ""
                             branch = s.get('iv_degree_name') or s.get('branch') if isinstance(s, dict) else ""
                             cred = s.get('month_year') or s.get('type_of_credential') if isinstance(s, dict) else ""
-                            table_data.append([str(i+1), name, enroll, branch, cred])
+                            name_text = str(name).strip()
+                            if " " in name_text:
+                                name_para = Paragraph(name_text, wrap_style)
+                            else:
+                                forced = "<br/>".join([name_text[i:i+12] for i in range(0, len(name_text), 12)])
+                                name_para = Paragraph(forced, wrap_style)
+                            table_data.append([str(i+1), name_para, enroll, branch, cred])
                     else:
                         table_data.append(['', 'No student records found', '', '', ''])
 
-                    col_widths = [12*mm, 70*mm, 40*mm, 40*mm, 29*mm]
+                    available_width = page_width - left_margin - right_margin
+                    col_widths = [
+                        12 * mm,
+                        available_width * 0.35,
+                        available_width * 0.20,
+                        available_width * 0.20,
+                        available_width * 0.15,
+                    ]
                     tbl = Table(table_data, colWidths=col_widths, repeatRows=1)
                     tbl.setStyle(TableStyle([
                         ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
@@ -515,6 +536,10 @@ class InstLetterPDF(APIView):
                         ('ALIGN', (2,1), (2,-1), 'LEFT'),
                         ('LEFTPADDING', (1,1), (1,-1), 6),
                         ('RIGHTPADDING', (1,1), (1,-1), 6),
+                        ('VALIGN', (1,1), (1,-1), 'TOP'),
+                        ('WORDWRAP', (1,1), (1,-1), 'CJK'),
+                        ('TOPPADDING', (0,0), (-1,-1), 6),
+                        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
                     ]))
                     story.append(tbl)
                     story.append(Spacer(1, 3 * mm))
