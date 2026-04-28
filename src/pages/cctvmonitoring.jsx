@@ -24,7 +24,7 @@ import {
 const ACTIONS = ["CCTV Monitoring", "CCTV-Outward", "Copy Case Reporting"];
 const EXAM_SESSIONS = ["2026-1", "2026-2", "2027-1", "2027-2", "2028-1", "2028-2"];
 const DEFAULT_PLACES = ["Kadi", "15-LDRP", "15VSITR", "23", "12"];
-const SESSION_OPTIONS = ["A", "B", "C", "D", "E", "F", "G", "H"];
+const SESSION_OPTIONS = ["A", "B", "C", "D", "E", "F", "G", "H","I", "J", "K", "L", "M", "N", "O", "P"];
 const EMPTY_OUTWARD_FORM = {
   outward_date: "",
   cctv_record_no: "",

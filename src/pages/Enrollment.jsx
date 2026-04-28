@@ -50,6 +50,80 @@ const ENROLLMENT_FORM_LABEL_CLASS = "mb-1 block text-sm font-medium text-slate-8
 const ENROLLMENT_FORM_FIELD_CLASS = "w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-slate-800 shadow-sm transition focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-100";
 const ENROLLMENT_FORM_FIELD_ERROR_CLASS = "border-red-500 focus:border-red-500 focus:ring-red-100";
 
+const createEmptyEnrollmentFormData = () => ({
+  enrollment_no: '',
+  student_name: '',
+  institute_id: '',
+  batch: '',
+  admission_date: '',
+  subcourse_id: '',
+  maincourse_id: '',
+  temp_enroll_no: ''
+});
+
+const normalizeTextField = (value) => {
+  if (value === null || value === undefined) return '';
+  return String(value).trim();
+};
+
+const normalizeOptionalDate = (value) => {
+  const cleaned = normalizeTextField(value);
+  if (!cleaned) return '';
+  if (/^\d{4}-\d{2}-\d{2}/.test(cleaned)) return cleaned.slice(0, 10);
+  return dmyToISO(cleaned);
+};
+
+const buildEnrollmentPayload = (data = {}) => {
+  const payload = {
+    enrollment_no: normalizeTextField(data.enrollment_no) || null,
+    temp_enroll_no: normalizeTextField(data.temp_enroll_no) || null,
+    student_name: normalizeTextField(data.student_name),
+    institute_id: normalizeTextField(data.institute_id),
+    batch: normalizeTextField(data.batch),
+    subcourse_id: normalizeTextField(data.subcourse_id),
+    maincourse_id: normalizeTextField(data.maincourse_id),
+  };
+
+  const admissionDate = normalizeOptionalDate(data.admission_date);
+  if (admissionDate) {
+    payload.admission_date = admissionDate;
+  }
+
+  const enrollmentDate = normalizeOptionalDate(data.enrollment_date);
+  if (enrollmentDate) {
+    payload.enrollment_date = enrollmentDate;
+  }
+
+  return payload;
+};
+
+const getApiFieldErrors = (apiData) => {
+  if (!apiData || typeof apiData !== 'object' || Array.isArray(apiData)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(apiData)
+      .filter(([, value]) => Array.isArray(value) || typeof value === 'string')
+      .map(([key, value]) => [key, Array.isArray(value) ? value.join(' ') : value])
+  );
+};
+
+const getApiErrorMessage = (error, fallback = "Failed to save enrollment") => {
+  const apiData = error?.response?.data;
+  if (!apiData) return error?.message || fallback;
+  if (typeof apiData === 'string') return apiData;
+  if (apiData.detail) return apiData.detail;
+  if (apiData.non_field_errors?.length) return apiData.non_field_errors.join(' ');
+
+  const firstKey = Object.keys(apiData)[0];
+  if (!firstKey) return error?.message || fallback;
+  const firstVal = apiData[firstKey];
+  const fieldLabel = firstKey.replace(/_/g, ' ');
+  const fieldMessage = Array.isArray(firstVal) ? firstVal.join(' ') : String(firstVal);
+  return `${fieldLabel}: ${fieldMessage}`;
+};
+
   const buildCancelFormState = () => {
     return {
     enrollmentNoInput: '',
@@ -121,16 +195,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
 
   // Form State
   const [formState, setFormState] = useState({
-    data: {
-      enrollment_no: '',
-      student_name: '',
-      institute_id: '',
-      batch: '',
-      admission_date: '',
-      subcourse_id: '',
-      maincourse_id: '',
-      temp_enroll_no: ''
-    },
+    data: createEmptyEnrollmentFormData(),
     isEditing: false
   });
   const [instOptions, setInstOptions] = useState([]);
@@ -352,60 +417,29 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
     }
 
     try {
-      // Convert date fields to ISO before sending
-      const payload = { ...formState.data };
-      if (payload.admission_date) {
-        const iso = dmyToISO(payload.admission_date);
-        if (iso) {
-          payload.admission_date = iso;
-        } else {
-          delete payload.admission_date;
-        }
-      } else {
-        delete payload.admission_date;
-      }
-      if (payload.enrollment_date) {
-        const iso2 = dmyToISO(payload.enrollment_date);
-        if (iso2) {
-          payload.enrollment_date = iso2;
-        } else {
-          delete payload.enrollment_date;
-        }
-      } else {
-        delete payload.enrollment_date;
-      }
+      const payload = buildEnrollmentPayload(formState.data);
       if (formState.isEditing) {
         await updateEnrollment(formState.data.id, payload);
         toast.success("Enrollment updated successfully");
       } else {
         await createEnrollment(payload);
         toast.success("Enrollment created successfully");
+        setFormState({ data: createEmptyEnrollmentFormData(), isEditing: false });
       }
       setState(prev => ({ ...prev, validationErrors: {} }));
       loadEnrollments();
     } catch (error) {
       const apiData = error?.response?.data;
-      let message = error.message || "Failed to save enrollment";
-      if (apiData) {
-        if (typeof apiData === 'string') {
-          message = apiData;
-        } else if (apiData.detail) {
-          message = apiData.detail;
-        } else if (apiData.non_field_errors?.length) {
-          message = apiData.non_field_errors.join(' ');
-        } else {
-          const firstKey = Object.keys(apiData)[0];
-          if (firstKey) {
-            const firstVal = apiData[firstKey];
-            message = Array.isArray(firstVal) ? firstVal.join(' ') : String(firstVal);
-          }
-        }
+      const fieldErrors = getApiFieldErrors(apiData);
+      const message = getApiErrorMessage(error);
+      if (Object.keys(fieldErrors).length > 0) {
+        setState(prev => ({ ...prev, validationErrors: fieldErrors }));
       }
       console.error("Error saving enrollment:", {
         message,
         status: error?.response?.status,
         responseData: apiData,
-        payload: { ...formState.data }
+        payload: buildEnrollmentPayload(formState.data)
       });
       toast.error(message);
     }
@@ -1387,6 +1421,14 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
   const actions = ["➕", "🔍", "📄 Report", "📊 Excel Upload", CANCEL_ACTION];
 
   const handleTopbarSelect = (action) => {
+    if (action === "➕" && formState.isEditing) {
+      setFormState({ data: createEmptyEnrollmentFormData(), isEditing: false });
+      setState(prev => ({ ...prev, validationErrors: {} }));
+      setSelectedAction(action);
+      setPanelOpen(true);
+      return;
+    }
+
     if (selectedAction === action) {
       const nextOpen = !panelOpen;
       setPanelOpen(nextOpen);

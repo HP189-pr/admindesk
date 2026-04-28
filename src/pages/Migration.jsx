@@ -109,7 +109,7 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
       mg_status: record.mg_status || 'Issued',
       mg_cancelled: record.mg_cancelled || 'No',
       mg_remark: record.mg_remark || '',
-      book_no: record.book_no || '',
+      book_no: record.book_no ? String(record.book_no).replace(/\.0$/, '') : '',
       pay_rec_no: record.pay_rec_no || '',
       doc_remark: record.doc_remark || record.doc_rec_remark || '',
     }));
@@ -327,8 +327,8 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
       enrollment: isMigrationCancelled ? null : (form.enrollment || null),
       student_name: isMigrationCancelled ? '' : (form.student_name || null),
       institute: form.institute || null,
-      subcourse: form.subcourse || null,
-      maincourse: form.maincourse || null,
+      subcourse: (form.subcourse && !isNaN(Number(form.subcourse)) && String(form.subcourse).trim() !== '') ? Number(form.subcourse) : null,
+      maincourse: (form.maincourse && !isNaN(Number(form.maincourse)) && String(form.maincourse).trim() !== '') ? Number(form.maincourse) : null,
       mg_number: form.mg_number || null,
       mg_date: toDateInput(form.mg_date) || dmyToISO(form.mg_date) || null,
       exam_year: form.exam_year || null,
@@ -589,7 +589,14 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
               {list.length === 0 && !loading && (
                 <tr><td colSpan={9} className="py-6 text-center text-gray-500">No records</td></tr>
               )}
-              {list.map((row) => (
+              {[...list].sort((a, b) => {
+                const dateA = toDateInput(a.mg_date) || '';
+                const dateB = toDateInput(b.mg_date) || '';
+                if (dateA !== dateB) return dateB.localeCompare(dateA);
+                const numA = a.mg_number || '';
+                const numB = b.mg_number || '';
+                return numB.localeCompare(numA);
+              }).map((row) => (
                 <tr
                   key={row.id}
                   className="border-b hover:bg-gray-50 cursor-pointer"
@@ -604,7 +611,7 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
                   <td className="py-2 px-3 whitespace-nowrap">{row.mg_number || '-'}</td>
                   <td className="py-2 px-3">{row.enrollment || row.enrollment_no || '-'}</td>
                   <td className="py-2 px-3">{row.student_name || '-'}</td>
-                  <td className="py-2 px-3">{row.book_no || '-'}</td>
+                  <td className="py-2 px-3">{row.book_no ? String(row.book_no).replace(/\.0$/, '') : '-'}</td>
                   <td className="py-2 px-3 whitespace-nowrap">{row.institute_code || instCodeById[String(row.institute_id || row.institute || '')] || '-'}</td>
                   <td className="py-2 px-3">{row.mg_status || '-'}</td>
                   <td className="py-2 px-3">{row.pay_rec_no || '-'}</td>

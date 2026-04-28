@@ -44,6 +44,7 @@ ParagraphStyle = None  # type: ignore
 colors = None  # type: ignore
 qr = None  # type: ignore
 Drawing = None  # type: ignore
+stringWidth = None  # type: ignore
 
 
 def ensure_reportlab_available():
@@ -73,6 +74,7 @@ def ensure_reportlab_available():
         from reportlab.lib import colors as _colors  # type: ignore
         from reportlab.graphics.barcode import qr as _qr  # type: ignore
         from reportlab.graphics.shapes import Drawing as _Drawing  # type: ignore
+        from reportlab.pdfbase.pdfmetrics import stringWidth as _stringWidth  # type: ignore
     except Exception:
         REPORTLAB_AVAILABLE = False
         return False
@@ -98,6 +100,7 @@ def ensure_reportlab_available():
         'colors': _colors,
         'qr': _qr,
         'Drawing': _Drawing,
+        'stringWidth': _stringWidth,
     })
     REPORTLAB_AVAILABLE = True
     return True
@@ -344,7 +347,95 @@ class InstLetterPDF(APIView):
                 )
                 wrap_style.wordWrap = 'CJK'
                 wrap_style.splitLongWords = True
+                header_wrap_style = ParagraphStyle(
+                    'header_wrap_style',
+                    parent=wrap_style,
+                    fontName='Helvetica-Bold',
+                    alignment=1,
+                )
                 pdf_bytes = None
+
+                def _plain_cell(value):
+                    return str(value or '').strip()
+
+                def _smart_cell(value, col_index, style=wrap_style):
+                    text = escape(_plain_cell(value))
+
+                    if col_index == 1:
+                        word_wrap = 'LTR' if ' ' in _plain_cell(value) else 'CJK'
+                        return Paragraph(text, ParagraphStyle(
+                            'name_cell',
+                            parent=style,
+                            wordWrap=word_wrap,
+                            splitLongWords=True,
+                        ))
+
+                    if col_index == 3:
+                        return Paragraph(text, ParagraphStyle(
+                            'branch_cell',
+                            parent=style,
+                            wordWrap='LTR',
+                        ))
+
+                    if col_index in (2, 4):
+                        return Paragraph(text, ParagraphStyle(
+                            'nowrap_cell',
+                            parent=style,
+                            wordWrap='LTR',
+                        ))
+
+                    return Paragraph(text, style)
+
+                def _column_widths(rows, available_width):
+                    """
+                    Font-aware student table sizing:
+                    measure real text width, then expand/shrink high-value columns first.
+                    """
+                    font_name = "Helvetica"
+                    font_size = 10
+
+                    no_width = 12 * mm
+                    passing_width = 30 * mm
+
+                    name_min, name_max = 45 * mm, 110 * mm
+                    enroll_min, enroll_max = 40 * mm, 60 * mm
+                    branch_min, branch_max = 30 * mm, 90 * mm
+
+                    def measure(value):
+                        return stringWidth(_plain_cell(value), font_name, font_size) + 10
+
+                    name_width = max(measure(row[1]) if len(row) > 1 else 0 for row in rows)
+                    enroll_width = max(measure(row[2]) if len(row) > 2 else 0 for row in rows)
+                    branch_width = max(measure(row[3]) if len(row) > 3 else 0 for row in rows)
+
+                    name_width = max(name_min, min(name_max, name_width))
+                    enroll_width = max(enroll_min, min(enroll_max, enroll_width))
+                    branch_width = max(branch_min, min(branch_max, branch_width))
+
+                    used_width = no_width + name_width + enroll_width + branch_width + passing_width
+                    remaining = available_width - used_width
+
+                    if remaining > 0:
+                        name_room = max(0, name_max - name_width)
+                        name_extra = min(name_room, remaining * 0.75)
+                        name_width += name_extra
+                        remaining -= name_extra
+
+                        branch_room = max(0, branch_max - branch_width)
+                        branch_extra = min(branch_room, remaining)
+                        branch_width += branch_extra
+                    else:
+                        overflow = abs(remaining)
+
+                        reduce_branch = min(overflow * 0.7, branch_width - branch_min)
+                        branch_width -= reduce_branch
+                        overflow -= reduce_branch
+
+                        if overflow > 0:
+                            reduce_name = min(overflow, name_width - name_min)
+                            name_width -= reduce_name
+
+                    return [no_width, name_width, enroll_width, branch_width, passing_width]
 
                 left_margin = 15 * mm
                 right_margin = 10 * mm
@@ -492,7 +583,7 @@ class InstLetterPDF(APIView):
                     story.append(Spacer(1, 2 * mm))
 
                     # Student table
-                    table_data = []
+                    raw_table_data = []
                     credential_header = "Type of Credential"
                     for s in merged:
                         val = s.get('type_of_credential')
@@ -500,42 +591,44 @@ class InstLetterPDF(APIView):
                             credential_header = str(val).strip()
                             break
                     headers = ["No.", "Candidate Name", "Enrollment Number", "Branch", credential_header]
-                    table_data.append(headers)
+                    raw_table_data.append(headers)
                     if merged:
                         for i, s in enumerate(merged):
                             name = s.get('student_name') if isinstance(s, dict) else ""
                             enroll = s.get('enrollment_no') or s.get('enrollment') or s.get('enrollment_no_text') if isinstance(s, dict) else ""
                             branch = s.get('iv_degree_name') or s.get('branch') if isinstance(s, dict) else ""
                             cred = s.get('month_year') or s.get('type_of_credential') if isinstance(s, dict) else ""
-                            name_text = str(name).strip()
-                            if " " in name_text:
-                                name_para = Paragraph(name_text, wrap_style)
-                            else:
-                                forced = "<br/>".join([name_text[i:i+12] for i in range(0, len(name_text), 12)])
-                                name_para = Paragraph(forced, wrap_style)
-                            table_data.append([str(i+1), name_para, enroll, branch, cred])
+                            raw_table_data.append([str(i+1), name, enroll, branch, cred])
                     else:
-                        table_data.append(['', 'No student records found', '', '', ''])
+                        raw_table_data.append(['', 'No student records found', '', '', ''])
 
                     available_width = page_width - left_margin - right_margin
-                    col_widths = [
-                        12 * mm,
-                        available_width * 0.35,
-                        available_width * 0.20,
-                        available_width * 0.20,
-                        available_width * 0.15,
+                    col_widths = _column_widths(raw_table_data, available_width)
+                    table_data = [
+                        [
+                            _smart_cell(cell, col_index, header_wrap_style)
+                            for col_index, cell in enumerate(raw_table_data[0])
+                        ]
                     ]
+                    for row in raw_table_data[1:]:
+                        table_data.append([
+                            _smart_cell(row[0], 0),
+                            _smart_cell(row[1], 1),
+                            _smart_cell(row[2], 2),
+                            _smart_cell(row[3], 3),
+                            _smart_cell(row[4], 4),
+                        ])
                     tbl = Table(table_data, colWidths=col_widths, repeatRows=1)
                     tbl.setStyle(TableStyle([
                         ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
                         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#e8e8e8')),
                         ('ALIGN', (0,0), (-1,0), 'CENTER'),
-                        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+                        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
                         ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'), 
                         ('ALIGN', (0,1), (0,-1), 'CENTER'),
                         ('ALIGN', (2,1), (2,-1), 'LEFT'),
-                        ('LEFTPADDING', (1,1), (1,-1), 6),
-                        ('RIGHTPADDING', (1,1), (1,-1), 6),
+                        ('LEFTPADDING', (0,0), (-1,-1), 6),
+                        ('RIGHTPADDING', (0,0), (-1,-1), 6),
                         ('VALIGN', (1,1), (1,-1), 'TOP'),
                         ('WORDWRAP', (1,1), (1,-1), 'CJK'),
                         ('TOPPADDING', (0,0), (-1,-1), 6),
