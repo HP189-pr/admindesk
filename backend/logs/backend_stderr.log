@@ -55160,3 +55160,41 @@ Prune skipped (--no-prune). DB rows will not be deleted.
 2026-04-28 13:20:41,817 INFO     Updated tr_request_no for record 750 from 25451 to 25451
 Unauthorized: /api/users/
 2026-04-28 13:26:04,336 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-04-28 15:30:21,232 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-04-28 15:30:21,367 WARNING  Unauthorized: /api/users/
+2026-04-28 15:55:41,157 INFO     Killed 0 pending application instances
+2026-04-29 08:25:45,181 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-04-29 08:25:45,188 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-04-29 08:25:45,188 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-04-29 08:25:45,188 INFO     Listening on TCP address 0.0.0.0:8001
+2026-04-29 08:32:27,052 INFO     Import mail requests completed via API: Found 367 rows; starting import
+Processed 200/367 rows
+Processed 367/367 rows
+Import complete. Created: 0, Updated: 367
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+Unauthorized: /api/users/
+2026-04-29 10:33:56,405 WARNING  Unauthorized: /api/users/
+2026-04-29 11:03:30,729 INFO     sync_cash_deposite_to_sheet: 2026-04-25\u21922026-04-25 appended=1 updated=0 total=1
+2026-04-29 11:03:32,305 INFO     sync_cash_sheet_to_sheet: 2026-04-25\u21922026-04-25 appended=1 updated=0 total=1
+2026-04-29 11:03:32,305 INFO     sync_cash_register_to_sheet: 2026-04-25\u21922026-04-25 appended=12 skipped=0 total=10
+2026-04-29 11:03:33,878 INFO     sync_cash_deposite_to_sheet: 2026-04-25\u21922026-04-25 appended=0 updated=0 total=1
+2026-04-29 11:03:35,023 INFO     sync_cash_sheet_to_sheet: 2026-04-25\u21922026-04-25 appended=0 updated=0 total=1
+2026-04-29 11:03:36,592 INFO     sync_upi_sheet_to_sheet: 2026-04-25\u21922026-04-25 appended=1 updated=0 total=1
+2026-04-29 11:03:38,251 INFO     sync_bank_sheet_to_sheet: 2026-04-25\u21922026-04-25 appended=1 updated=0 total=1
+2026-04-29 11:03:47,658 INFO     sync_cash_deposite_to_sheet: 2026-04-27\u21922026-04-27 appended=0 updated=0 total=0
+2026-04-29 11:03:49,250 INFO     sync_cash_sheet_to_sheet: 2026-04-27\u21922026-04-27 appended=1 updated=0 total=1
+2026-04-29 11:03:49,250 INFO     sync_cash_register_to_sheet: 2026-04-27\u21922026-04-27 appended=5 skipped=0 total=4
+2026-04-29 11:03:50,791 INFO     sync_cash_deposite_to_sheet: 2026-04-27\u21922026-04-27 appended=0 updated=0 total=0
+2026-04-29 11:03:51,942 INFO     sync_cash_sheet_to_sheet: 2026-04-27\u21922026-04-27 appended=0 updated=0 total=1
+2026-04-29 11:03:53,570 INFO     sync_upi_sheet_to_sheet: 2026-04-27\u21922026-04-27 appended=1 updated=0 total=1
+2026-04-29 11:03:55,203 INFO     sync_bank_sheet_to_sheet: 2026-04-27\u21922026-04-27 appended=1 updated=0 total=1
+2026-04-29 11:04:20,983 INFO     sync_cash_deposite_to_sheet: 2026-04-28\u21922026-04-28 appended=1 updated=0 total=1
+2026-04-29 11:04:22,549 INFO     sync_cash_sheet_to_sheet: 2026-04-28\u21922026-04-28 appended=1 updated=0 total=1
+2026-04-29 11:04:22,549 INFO     sync_cash_register_to_sheet: 2026-04-28\u21922026-04-28 appended=5 skipped=0 total=4
+2026-04-29 11:04:24,110 INFO     sync_cash_deposite_to_sheet: 2026-04-28\u21922026-04-28 appended=0 updated=0 total=1
+2026-04-29 11:04:25,288 INFO     sync_cash_sheet_to_sheet: 2026-04-28\u21922026-04-28 appended=0 updated=0 total=1
+2026-04-29 11:04:26,506 INFO     sync_upi_sheet_to_sheet: 2026-04-28\u21922026-04-28 appended=0 updated=0 total=0
+2026-04-29 11:04:28,086 INFO     sync_bank_sheet_to_sheet: 2026-04-28\u21922026-04-28 appended=1 updated=0 total=1

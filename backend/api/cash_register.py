@@ -648,11 +648,12 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
         date_from = (request.data.get("date_from") or "").strip() or None
         date_to = (request.data.get("date_to") or "").strip() or None
         sync_target = str(request.data.get("sync_target") or "all").strip().lower()
-        all_dates = bool(request.data.get("all_dates"))
+        raw_all_dates = request.data.get("all_dates")
+        all_dates = raw_all_dates is True or str(raw_all_dates).strip().lower() in {"1", "true", "yes", "on"}
         if all_dates:
             fiscal_start, fiscal_end = _current_fiscal_year_range()
-            date_from = date_from or fiscal_start.isoformat()
-            date_to = date_to or fiscal_end.isoformat()
+            date_from = fiscal_start.isoformat()
+            date_to = fiscal_end.isoformat()
             all_dates = False
         try:
             result = {}

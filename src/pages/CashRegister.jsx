@@ -60,20 +60,32 @@ const RECEIPT_PREFIX_BY_MODE = {
 
 const fiscalYearCode = (dateStr) => {
   if (!dateStr) return '';
-  const dt = new Date(dateStr);
-  if (Number.isNaN(dt.getTime())) return '';
-  const year = dt.getMonth() >= 3 ? dt.getFullYear() : dt.getFullYear() - 1; // Apr=3 index
+  const [yearPart, monthPart] = String(dateStr).split('-');
+  const yearValue = Number(yearPart);
+  const monthValue = Number(monthPart);
+  if (!yearValue || !monthValue) return '';
+  const year = monthValue >= 4 ? yearValue : yearValue - 1;
   return String(year).slice(-2);
 };
 
 const fiscalYearRange = (dateStr) => {
-  const dt = dateStr ? new Date(dateStr) : new Date();
-  const safeDate = Number.isNaN(dt.getTime()) ? new Date() : dt;
-  const startYear = safeDate.getMonth() >= 3 ? safeDate.getFullYear() : safeDate.getFullYear() - 1;
+  const fallbackDate = new Date();
+  const [yearPart, monthPart] = String(dateStr || '').split('-');
+  const yearValue = Number(yearPart) || fallbackDate.getFullYear();
+  const monthValue = Number(monthPart) || fallbackDate.getMonth() + 1;
+  const startYear = monthValue >= 4 ? yearValue : yearValue - 1;
   return {
     start: `${startYear}-04-01`,
     end: `${startYear + 1}-03-31`,
   };
+};
+
+const localDateString = () => {
+  const dt = new Date();
+  const year = dt.getFullYear();
+  const month = String(dt.getMonth() + 1).padStart(2, '0');
+  const day = String(dt.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 const TOPBAR_ACTIONS = ['➕ Add', '🔍 Search', 'Statement', 'Cash Activities'];
@@ -156,7 +168,7 @@ const DEFAULT_RIGHTS = { can_view: true, can_create: true, can_edit: true, can_d
 
 const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbox }) => {
   const navigate = useNavigate();
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const today = useMemo(() => localDateString(), []);
   const formatReceiptDisplay = useCallback((full) => {
     if (!full) return '--';
     let value = String(full).trim();
@@ -753,6 +765,7 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
         sync_target: syncTarget,
       };
       if (allDates) {
+        payload.all_dates = true;
         payload.date_from = fiscalRange.start;
         payload.date_to = fiscalRange.end;
       } else if (filters.date) {
@@ -764,25 +777,38 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
       const cashSheet = result.cash_sheet || {};
       const upiSheet = result.upi_sheet || {};
       const bankSheet = result.bank_sheet || {};
-      if (!result.total && !cashDeposite.total && !cashSheet.total && !upiSheet.total && !bankSheet.total) {
+      const changedCount =
+        (result.appended || 0) + (result.updated || 0) + (result.deleted || 0)
+        + (cashDeposite.appended || 0) + (cashDeposite.updated || 0) + (cashDeposite.deleted || 0)
+        + (cashSheet.appended || 0) + (cashSheet.updated || 0) + (cashSheet.deleted || 0)
+        + (upiSheet.appended || 0) + (upiSheet.updated || 0) + (upiSheet.deleted || 0)
+        + (bankSheet.appended || 0) + (bankSheet.updated || 0) + (bankSheet.deleted || 0);
+      if (
+        !changedCount
+        && !result.total
+        && !cashDeposite.total
+        && !cashSheet.total
+        && !upiSheet.total
+        && !bankSheet.total
+      ) {
         setFlash('error', `No ${targetLabel} data found for ${scopeLabel}.`);
         return;
       }
       const messages = [];
       if (syncTarget === 'all' || syncTarget === 'cash_register') {
-        messages.push(`Cash Register appended: ${result.appended || 0}, updated: ${result.updated || 0}, skipped: ${result.skipped || 0}`);
+        messages.push(`Cash Register appended: ${result.appended || 0}, updated: ${result.updated || 0}, deleted: ${result.deleted || 0}, skipped: ${result.skipped || 0}`);
       }
       if (syncTarget === 'all' || syncTarget === 'cash_deposite') {
-        messages.push(`Cash-Deposite appended: ${cashDeposite.appended || 0}, updated: ${cashDeposite.updated || 0}, skipped: ${cashDeposite.skipped || 0}`);
+        messages.push(`Cash-Deposite appended: ${cashDeposite.appended || 0}, updated: ${cashDeposite.updated || 0}, deleted: ${cashDeposite.deleted || 0}, skipped: ${cashDeposite.skipped || 0}`);
       }
       if (syncTarget === 'all' || syncTarget === 'cash_sheet') {
-        messages.push(`CashSheet appended: ${cashSheet.appended || 0}, updated: ${cashSheet.updated || 0}, skipped: ${cashSheet.skipped || 0}`);
+        messages.push(`CashSheet appended: ${cashSheet.appended || 0}, updated: ${cashSheet.updated || 0}, deleted: ${cashSheet.deleted || 0}, skipped: ${cashSheet.skipped || 0}`);
       }
       if (syncTarget === 'all' || syncTarget === 'upi_sheet') {
-        messages.push(`UPISheet appended: ${upiSheet.appended || 0}, updated: ${upiSheet.updated || 0}, skipped: ${upiSheet.skipped || 0}`);
+        messages.push(`UPISheet appended: ${upiSheet.appended || 0}, updated: ${upiSheet.updated || 0}, deleted: ${upiSheet.deleted || 0}, skipped: ${upiSheet.skipped || 0}`);
       }
       if (syncTarget === 'all' || syncTarget === 'bank_sheet') {
-        messages.push(`BankSheet appended: ${bankSheet.appended || 0}, updated: ${bankSheet.updated || 0}, skipped: ${bankSheet.skipped || 0}`);
+        messages.push(`BankSheet appended: ${bankSheet.appended || 0}, updated: ${bankSheet.updated || 0}, deleted: ${bankSheet.deleted || 0}, skipped: ${bankSheet.skipped || 0}`);
       }
       setFlash('success', `Sheet sync done for ${scopeLabel}. ${messages.join('. ')}`);
     } catch (err) {

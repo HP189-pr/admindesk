@@ -1424,12 +1424,29 @@ def sync_cash_register_to_sheet(
 
     legacy_row_numbers = []
     duplicate_row_numbers = []
+    stale_row_numbers = []
     stale_legacy_row_numbers = []
     existing_row_numbers_by_item_key: Dict[str, int] = {}
     existing_row_values_by_item_key: Dict[str, list[str]] = {}
     legacy_row_numbers_by_signature: Dict[str, list[int]] = {}
     legacy_row_values_by_signature: Dict[str, list[str]] = {}
     id_backed_signatures: set[str] = set()
+    db_item_keys: set[str] = {
+        f"{receipt.id}:{item.id}"
+        for receipt in qs
+        for item in receipt.items.all()
+        if receipt.id and item.id
+    }
+
+    def _row_date_in_sync_scope(row: list) -> bool:
+        index = column_indexes["date"]
+        row_date = str(row[index]).strip() if len(row) > index and row[index] is not None else ""
+        if not row_date:
+            return False
+        if all_dates:
+            return True
+        return resolved_from <= row_date <= resolved_to
+
     for row_number, row in enumerate(existing_values[1:], start=2):  # skip header row
         if row:
             receipt_no = str(row[column_indexes["receipt_no_full"]]).strip() if len(row) > column_indexes["receipt_no_full"] else ""
@@ -1442,9 +1459,15 @@ def sync_cash_register_to_sheet(
                 if item_key in existing_row_numbers_by_item_key:
                     duplicate_row_numbers.append(row_number)
                     continue
+                if _row_date_in_sync_scope(row) and item_key not in db_item_keys:
+                    stale_row_numbers.append(row_number)
+                    continue
                 existing_row_numbers_by_item_key[item_key] = row_number
                 existing_row_values_by_item_key[item_key] = _pad_row(list(row))
                 id_backed_signatures.add(_sheet_row_key(row))
+                continue
+
+            if not _row_date_in_sync_scope(row):
                 continue
 
             signature = _sheet_row_key(row)
@@ -1457,16 +1480,11 @@ def sync_cash_register_to_sheet(
         stale_legacy_row_numbers.extend(legacy_row_numbers_by_signature.pop(signature, []))
         legacy_row_values_by_signature.pop(signature, None)
 
-    for row_number in reversed(sorted(set(legacy_row_numbers + duplicate_row_numbers))):
-        try:
-            worksheet.delete_rows(row_number)
-        except Exception as exc:
-            logger.error("sync_cash_register_to_sheet: failed to delete legacy row %s: %s", row_number, exc)
-
     rows_to_append = []
     row_updates = []
     updated = 0
     skipped = 0
+    deleted = 0
 
     for receipt in qs:
         full_no = str(receipt.receipt_no_full or "").strip()
@@ -1548,6 +1566,9 @@ def sync_cash_register_to_sheet(
         if not exported_any_item and not receipt_items:
             skipped += 1
 
+    for remaining_rows in legacy_row_numbers_by_signature.values():
+        stale_legacy_row_numbers.extend(remaining_rows)
+
     total_db = len(qs)
     for row_number, row_payload in row_updates:
         try:
@@ -1555,11 +1576,13 @@ def sync_cash_register_to_sheet(
         except Exception as exc:
             logger.error("sync_cash_register_to_sheet: failed to update row %s: %s", row_number, exc)
 
-    for row_number in reversed(sorted(set(stale_legacy_row_numbers))):
+    delete_row_numbers = set(legacy_row_numbers + duplicate_row_numbers + stale_row_numbers + stale_legacy_row_numbers)
+    for row_number in reversed(sorted(delete_row_numbers)):
         try:
             worksheet.delete_rows(row_number)
+            deleted += 1
         except Exception as exc:
-            logger.error("sync_cash_register_to_sheet: failed to delete stale legacy row %s: %s", row_number, exc)
+            logger.error("sync_cash_register_to_sheet: failed to delete stale row %s: %s", row_number, exc)
 
     if rows_to_append:
         try:
@@ -1580,12 +1603,13 @@ def sync_cash_register_to_sheet(
         sheet_id=sheet_id,
     )
     logger.info(
-        "sync_cash_register_to_sheet: %s→%s appended=%d skipped=%d total=%d",
-        resolved_from, resolved_to, appended, skipped, total_db,
+        "sync_cash_register_to_sheet: %s→%s appended=%d updated=%d deleted=%d skipped=%d total=%d",
+        resolved_from, resolved_to, appended, updated, deleted, skipped, total_db,
     )
     return {
         "appended": appended,
         "updated": updated,
+        "deleted": deleted,
         "skipped": skipped,
         "total": total_db,
         "cash_deposite": cash_deposite_result,
@@ -1642,9 +1666,13 @@ def sync_cash_deposite_to_sheet(
 
     existing_dates: Dict[str, int] = {}
     existing_rows_by_date: Dict[str, list[str]] = {}
+    duplicate_row_numbers = []
     for row_index, row in enumerate(existing_values[1:], start=2):
         if row and row[0]:
             date_key = str(row[0]).strip()
+            if date_key in existing_dates:
+                duplicate_row_numbers.append(row_index)
+                continue
             existing_dates[date_key] = row_index
             existing_rows_by_date[date_key] = [str(value).strip() for value in row[:len(CASH_DEPOSITE_SHEET_HEADERS)]]
 
@@ -1652,9 +1680,16 @@ def sync_cash_deposite_to_sheet(
     if not all_dates:
         cash_query = cash_query.filter(date__gte=resolved_from, date__lte=resolved_to)
     qs = list(cash_query.order_by("date"))
+    db_date_keys = {str(cash_day.date.isoformat()) for cash_day in qs if cash_day.date}
+    stale_row_numbers = [
+        row_number
+        for date_key, row_number in existing_dates.items()
+        if (all_dates or resolved_from <= date_key <= resolved_to) and date_key not in db_date_keys
+    ]
 
     appended = 0
     updated = 0
+    deleted = 0
 
     for cash_day in qs:
         qty_by_denom = {denom: 0 for denom in CASH_DEPOSITE_DENOMS}
@@ -1691,17 +1726,25 @@ def sync_cash_deposite_to_sheet(
                 exc,
             )
 
+    for row_number in reversed(sorted(set(stale_row_numbers + duplicate_row_numbers))):
+        try:
+            worksheet.delete_rows(row_number)
+            deleted += 1
+        except Exception as exc:
+            logger.error("sync_cash_deposite_to_sheet: failed to delete stale row %s: %s", row_number, exc)
+
     total_db = len(qs)
     skipped = max(total_db - appended - updated, 0)
     logger.info(
-        "sync_cash_deposite_to_sheet: %s→%s appended=%d updated=%d total=%d",
+        "sync_cash_deposite_to_sheet: %s→%s appended=%d updated=%d deleted=%d total=%d",
         resolved_from,
         resolved_to,
         appended,
         updated,
+        deleted,
         total_db,
     )
-    return {"appended": appended, "updated": updated, "skipped": skipped, "total": total_db}
+    return {"appended": appended, "updated": updated, "deleted": deleted, "skipped": skipped, "total": total_db}
 
 
 def _sync_payment_mode_sheet_to_sheet(
@@ -1787,9 +1830,13 @@ def _sync_payment_mode_sheet_to_sheet(
 
     existing_dates: Dict[str, int] = {}
     existing_rows_by_date: Dict[str, list[str]] = {}
+    duplicate_row_numbers = []
     for row_index, row in enumerate(existing_values[1:], start=2):
         if row and row[0]:
             date_key = str(row[0]).strip()
+            if date_key in existing_dates:
+                duplicate_row_numbers.append(row_index)
+                continue
             existing_dates[date_key] = row_index
             existing_rows_by_date[date_key] = [str(value).strip() for value in _pad_existing_row(row, sheet_width)]
 
@@ -1834,6 +1881,12 @@ def _sync_payment_mode_sheet_to_sheet(
 
     appended = 0
     updated = 0
+    deleted = 0
+    stale_row_numbers = [
+        row_number
+        for date_key, row_number in existing_dates.items()
+        if (all_dates or resolved_from <= date_key <= resolved_to) and date_key not in summary_by_date
+    ]
 
     for date_key in sorted(summary_by_date.keys()):
         summary = summary_by_date[date_key]
@@ -1865,18 +1918,26 @@ def _sync_payment_mode_sheet_to_sheet(
         except Exception as exc:
             logger.error("%s: failed to upsert row for %s: %s", log_label, date_key, exc)
 
+    for row_number in reversed(sorted(set(stale_row_numbers + duplicate_row_numbers))):
+        try:
+            worksheet.delete_rows(row_number)
+            deleted += 1
+        except Exception as exc:
+            logger.error("%s: failed to delete stale row %s: %s", log_label, row_number, exc)
+
     total_dates = len(summary_by_date)
     skipped = max(total_dates - appended - updated, 0)
     logger.info(
-        "%s: %s→%s appended=%d updated=%d total=%d",
+        "%s: %s→%s appended=%d updated=%d deleted=%d total=%d",
         log_label,
         resolved_from,
         resolved_to,
         appended,
         updated,
+        deleted,
         total_dates,
     )
-    return {"appended": appended, "updated": updated, "skipped": skipped, "total": total_dates}
+    return {"appended": appended, "updated": updated, "deleted": deleted, "skipped": skipped, "total": total_dates}
 
 
 def sync_cash_sheet_to_sheet(
