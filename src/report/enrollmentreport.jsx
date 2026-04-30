@@ -56,6 +56,24 @@ const normalizeSummaryRow = (item) => ({
   cancelled: Number(item?.cancelled || 0),
 });
 
+const pickEnrollmentInstituteId = (enrollment) =>
+  enrollment?.institute?.institute_id
+  || enrollment?.institute?.id
+  || enrollment?.institute_id
+  || "";
+
+const pickEnrollmentMaincourseId = (enrollment) =>
+  enrollment?.maincourse?.maincourse_id
+  || enrollment?.maincourse?.id
+  || enrollment?.maincourse_id
+  || "";
+
+const pickEnrollmentSubcourseId = (enrollment) =>
+  enrollment?.subcourse?.subcourse_id
+  || enrollment?.subcourse?.id
+  || enrollment?.subcourse_id
+  || "";
+
 const EnrollmentReport = ({ onBack }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -182,10 +200,10 @@ const EnrollmentReport = ({ onBack }) => {
         if (batchFilter && String(enrollment.batch) !== String(batchFilter)) return false;
 
         // Institute filter
-        if (instituteFilter && String(enrollment.institute?.id || enrollment.institute) !== String(instituteFilter)) return false;
+        if (instituteFilter && String(pickEnrollmentInstituteId(enrollment)) !== String(instituteFilter)) return false;
 
         // Course filter
-        if (courseFilter && String(enrollment.maincourse?.id || enrollment.maincourse) !== String(courseFilter)) return false;
+        if (courseFilter && String(pickEnrollmentMaincourseId(enrollment)) !== String(courseFilter)) return false;
 
         return true;
       });
@@ -230,13 +248,17 @@ const EnrollmentReport = ({ onBack }) => {
             ["Student List"],
             ["Total Students", students.length],
             [],
-            ["Enrollment No", "Student Name", "Batch", "Institute", "Course", "Status"],
+            ["Enrollment No", "Student Name", "Batch", "institute_id", "maincourse_id", "subcourse_id", "Institute", "Course", "Subcourse", "Status"],
             ...students.map((enrollment) => [
               enrollment.enrollment_no || "N/A",
               enrollment.student_name || "N/A",
               enrollment.batch || "N/A",
+              pickEnrollmentInstituteId(enrollment) || "N/A",
+              pickEnrollmentMaincourseId(enrollment) || "N/A",
+              pickEnrollmentSubcourseId(enrollment) || "N/A",
               enrollment.institute?.institute_code ? `${enrollment.institute.institute_code} - ${enrollment.institute.institute_name}` : "N/A",
               enrollment.maincourse?.course_code ? `${enrollment.maincourse.course_code} - ${enrollment.maincourse.course_name}` : "N/A",
+              enrollment.subcourse?.subcourse_name || enrollment.subcourse?.name || "N/A",
               enrollment.cancel ? "Cancelled" : "Active",
             ]),
           ];
