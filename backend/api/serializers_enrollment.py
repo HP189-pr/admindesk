@@ -144,22 +144,44 @@ class EnrollmentSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
 
-        def wrap(obj):
-            return {'id': obj.pk, 'name': str(obj)} if obj else None
-
         # Institute: include institute_code
         if instance.institute:
             data['institute'] = {
                 'id': instance.institute.pk,
+                'institute_id': instance.institute.pk,
                 'name': str(instance.institute),
-                'institute_code': instance.institute.institute_code
+                'institute_code': instance.institute.institute_code,
+                'institute_name': instance.institute.institute_name,
             }
+            data['institute_id'] = instance.institute.pk
         else:
             data['institute'] = None
+            data['institute_id'] = None
 
-        # Subcourse and maincourse: keep as before
-        for field in ('subcourse', 'maincourse'):
-            data[field] = wrap(getattr(instance, field))
+        if instance.maincourse:
+            data['maincourse'] = {
+                'id': instance.maincourse.pk,
+                'maincourse_id': instance.maincourse.maincourse_id,
+                'course_code': instance.maincourse.course_code,
+                'course_name': instance.maincourse.course_name,
+                'name': str(instance.maincourse),
+            }
+            data['maincourse_id'] = instance.maincourse.maincourse_id
+        else:
+            data['maincourse'] = None
+            data['maincourse_id'] = None
+
+        if instance.subcourse:
+            data['subcourse'] = {
+                'id': instance.subcourse.pk,
+                'subcourse_id': instance.subcourse.subcourse_id,
+                'subcourse_name': instance.subcourse.subcourse_name,
+                'name': str(instance.subcourse),
+            }
+            data['subcourse_id'] = instance.subcourse.subcourse_id
+        else:
+            data['subcourse'] = None
+            data['subcourse_id'] = None
 
         if instance.updated_by:
             data['updated_by'] = {

@@ -64,15 +64,38 @@ const pickEnrollmentInstituteId = (enrollment) =>
 
 const pickEnrollmentMaincourseId = (enrollment) =>
   enrollment?.maincourse?.maincourse_id
-  || enrollment?.maincourse?.id
   || enrollment?.maincourse_id
   || "";
 
 const pickEnrollmentSubcourseId = (enrollment) =>
   enrollment?.subcourse?.subcourse_id
-  || enrollment?.subcourse?.id
   || enrollment?.subcourse_id
   || "";
+
+const formatCodeName = (code, name) => {
+  const cleanCode = code ? String(code).trim() : "";
+  const cleanName = name ? String(name).trim() : "";
+  if (cleanCode && cleanName) return `${cleanCode} - ${cleanName}`;
+  return cleanName || cleanCode || "N/A";
+};
+
+const pickEnrollmentInstituteName = (enrollment) =>
+  formatCodeName(
+    enrollment?.institute?.institute_code,
+    enrollment?.institute?.institute_name || enrollment?.institute?.name
+  );
+
+const pickEnrollmentCourseName = (enrollment) =>
+  formatCodeName(
+    enrollment?.maincourse?.course_code || enrollment?.maincourse?.maincourse_id || enrollment?.maincourse_id,
+    enrollment?.maincourse?.course_name || enrollment?.maincourse?.name
+  );
+
+const pickEnrollmentSubcourseName = (enrollment) =>
+  formatCodeName(
+    enrollment?.subcourse?.subcourse_id || enrollment?.subcourse_id,
+    enrollment?.subcourse?.subcourse_name || enrollment?.subcourse?.name
+  );
 
 const EnrollmentReport = ({ onBack }) => {
   const [loading, setLoading] = useState(false);
@@ -256,9 +279,9 @@ const EnrollmentReport = ({ onBack }) => {
               pickEnrollmentInstituteId(enrollment) || "N/A",
               pickEnrollmentMaincourseId(enrollment) || "N/A",
               pickEnrollmentSubcourseId(enrollment) || "N/A",
-              enrollment.institute?.institute_code ? `${enrollment.institute.institute_code} - ${enrollment.institute.institute_name}` : "N/A",
-              enrollment.maincourse?.course_code ? `${enrollment.maincourse.course_code} - ${enrollment.maincourse.course_name}` : "N/A",
-              enrollment.subcourse?.subcourse_name || enrollment.subcourse?.name || "N/A",
+              pickEnrollmentInstituteName(enrollment),
+              pickEnrollmentCourseName(enrollment),
+              pickEnrollmentSubcourseName(enrollment),
               enrollment.cancel ? "Cancelled" : "Active",
             ]),
           ];

@@ -749,9 +749,9 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
     ...enr,
     admission_date: isoToDMY(enr.admission_date) || '',
     enrollment_date: isoToDMY(enr.enrollment_date) || '',
-    institute_id: enr.institute?.id || enr.institute?.institute_id || enr.institute_id || '',
-    maincourse_id: enr.maincourse?.id || enr.maincourse_id || '',
-    subcourse_id: enr.subcourse?.id || enr.subcourse_id || '',
+    institute_id: enr.institute?.institute_id || enr.institute_id || enr.institute?.id || '',
+    maincourse_id: enr.maincourse?.maincourse_id || enr.maincourse_id || '',
+    subcourse_id: enr.subcourse?.subcourse_id || enr.subcourse_id || '',
     temp_enroll_no: enr.temp_enroll_no || '',
   });
 
@@ -1003,7 +1003,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
             >
               <option value="">Select main course</option>
               {courseOptions.map((course) => {
-                const value = course.id ?? course.maincourse_id ?? '';
+                const value = course.maincourse_id ?? course.id ?? '';
                 const label = course.course_code
                   ? `${course.course_code}${course.course_name ? ` - ${course.course_name}` : ''}`
                   : (course.course_name || course.maincourse_id || value);
@@ -1028,7 +1028,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
             >
               <option value="">Select subcourse</option>
               {subcourseOptions.map((subcourse) => {
-                const value = subcourse.id ?? subcourse.subcourse_id ?? '';
+                const value = subcourse.subcourse_id ?? subcourse.id ?? '';
                 const label = subcourse.subcourse_name
                   ? `${subcourse.subcourse_name}${subcourse.subcourse_id ? ` (${subcourse.subcourse_id})` : ''}`
                   : (subcourse.subcourse_id || value);

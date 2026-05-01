@@ -55325,3 +55325,51 @@ Unauthorized: /api/token/verify/
 2026-04-30 12:52:45,122 WARNING  Unauthorized: /api/token/verify/
 Unauthorized: /api/users/
 2026-04-30 13:13:42,333 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/token/verify/
+2026-04-30 14:45:39,648 WARNING  Unauthorized: /api/token/verify/
+2026-04-30 15:18:37,855 INFO     sync_cash_deposite_to_sheet: 2026-04-29\u21922026-04-29 appended=1 updated=0 deleted=0 total=1
+2026-04-30 15:18:39,604 INFO     sync_cash_sheet_to_sheet: 2026-04-29\u21922026-04-29 appended=1 updated=0 deleted=0 total=1
+2026-04-30 15:18:39,605 INFO     sync_cash_register_to_sheet: 2026-04-29\u21922026-04-29 appended=14 updated=0 deleted=0 skipped=0 total=9
+2026-04-30 15:18:41,306 INFO     sync_cash_deposite_to_sheet: 2026-04-29\u21922026-04-29 appended=0 updated=0 deleted=0 total=1
+2026-04-30 15:18:42,566 INFO     sync_cash_sheet_to_sheet: 2026-04-29\u21922026-04-29 appended=0 updated=0 deleted=0 total=1
+2026-04-30 15:18:44,292 INFO     sync_upi_sheet_to_sheet: 2026-04-29\u21922026-04-29 appended=1 updated=0 deleted=0 total=1
+2026-04-30 15:18:46,002 INFO     sync_bank_sheet_to_sheet: 2026-04-29\u21922026-04-29 appended=1 updated=0 deleted=0 total=1
+2026-04-30 15:18:55,862 INFO     sync_cash_deposite_to_sheet: 2026-04-30\u21922026-04-30 appended=0 updated=0 deleted=0 total=0
+2026-04-30 15:18:57,509 INFO     sync_cash_sheet_to_sheet: 2026-04-30\u21922026-04-30 appended=1 updated=0 deleted=0 total=1
+2026-04-30 15:18:57,509 INFO     sync_cash_register_to_sheet: 2026-04-30\u21922026-04-30 appended=11 updated=0 deleted=0 skipped=0 total=7
+2026-04-30 15:18:59,157 INFO     sync_cash_deposite_to_sheet: 2026-04-30\u21922026-04-30 appended=0 updated=0 deleted=0 total=0
+2026-04-30 15:19:00,438 INFO     sync_cash_sheet_to_sheet: 2026-04-30\u21922026-04-30 appended=0 updated=0 deleted=0 total=1
+2026-04-30 15:19:02,116 INFO     sync_upi_sheet_to_sheet: 2026-04-30\u21922026-04-30 appended=1 updated=0 deleted=0 total=1
+2026-04-30 15:19:03,767 INFO     sync_bank_sheet_to_sheet: 2026-04-30\u21922026-04-30 appended=1 updated=0 deleted=0 total=1
+2026-04-30 15:51:04,450 INFO     Killed 0 pending application instances
+2026-05-01 08:25:26,097 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-05-01 08:25:26,097 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-05-01 08:25:26,097 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-05-01 08:25:26,097 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/token/verify/
+2026-05-01 09:15:57,950 WARNING  Unauthorized: /api/token/verify/
+2026-05-01 09:16:49,587 INFO     Import mail requests completed via API: Found 368 rows; starting import
+Processed 200/368 rows
+Processed 368/368 rows
+Import complete. Created: 1, Updated: 367
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-05-01 09:18:50,855 INFO     Import mail requests completed via API: Found 368 rows; starting import
+Processed 200/368 rows
+Processed 368/368 rows
+Import complete. Created: 0, Updated: 368
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+Unauthorized: /api/users/
+2026-05-01 11:16:34,891 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-05-01 11:16:34,944 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-05-01 13:34:08,474 WARNING  Unauthorized: /api/users/
+2026-05-01 14:08:22,802 INFO     Killed 1 pending application instances
+2026-05-01 14:08:24,666 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-05-01 14:08:24,666 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-05-01 14:08:24,666 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-05-01 14:08:24,666 INFO     Listening on TCP address 0.0.0.0:8001
+Not Found: /favicon.ico
+2026-05-01 14:25:34,753 WARNING  Not Found: /favicon.ico
