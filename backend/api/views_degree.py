@@ -416,7 +416,7 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
             .exclude(institute_name_dg='')
             .values('institute_name_dg')
             .annotate(total=Count('id'))
-            .order_by('-total')[:50]
+            .order_by(Lower('institute_name_dg'), 'institute_name_dg')[:50]
         )
 
         courses = list(

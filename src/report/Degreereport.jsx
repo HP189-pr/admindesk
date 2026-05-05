@@ -140,6 +140,14 @@ const DegreeReport = () => {
     const topConvocation = useMemo(() => report?.convocations?.[0], [report]);
     const topInstitution = useMemo(() => report?.institutions?.[0], [report]);
     const topCourse = useMemo(() => report?.courses?.[0], [report]);
+    const institutionSummaryRows = useMemo(() => {
+        const rows = Array.isArray(report?.institutions) ? report.institutions : [];
+        return [...rows].sort((a, b) => {
+            const left = String(a?.institute_name_dg || '').trim();
+            const right = String(b?.institute_name_dg || '').trim();
+            return left.localeCompare(right, undefined, { sensitivity: 'base' });
+        });
+    }, [report]);
 
     const handleInput = (event) => {
         const { name, value } = event.target;
@@ -283,7 +291,7 @@ const DegreeReport = () => {
                             { key: 'institute_name_dg', label: 'Institute' },
                             { key: 'total', label: 'Degree Count', render: (val) => (val || 0).toLocaleString() }
                         ]}
-                        rows={report.institutions || []}
+                        rows={institutionSummaryRows}
                         emptyLabel="No institutions match the current filters"
                     />
 

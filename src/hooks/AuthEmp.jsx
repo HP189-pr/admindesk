@@ -4,6 +4,8 @@ import axios from '../api/axiosInstance';
 import { useAuth } from './AuthContext';
 import { FaEdit } from 'react-icons/fa';
 
+const EMP_PROFILE_ENDPOINT = '/api/empprofile/';
+
 // Helpers for safe display and date handling
 const cleanValue = (v) => {
   if (v === null || v === undefined) return '';
@@ -47,7 +49,7 @@ export default function AuthEmp() {
   const load = async () => {
     setLoading(true); setError(null);
     try {
-      const r = await axios.get('/api/empprofile/');
+      const r = await axios.get(EMP_PROFILE_ENDPOINT);
       const data = r.data;
       if (Array.isArray(data)) {
         setProfiles(data);
@@ -72,7 +74,7 @@ export default function AuthEmp() {
   const openProfile = async (profile, editable) => {
     try {
       if (profile?.id) {
-        const resp = await axios.get(`/empprofile/${profile.id}/`);
+        const resp = await axios.get(`${EMP_PROFILE_ENDPOINT}${profile.id}/`);
         setEditing(resp.data);
       } else {
         setEditing(profile || {});
@@ -147,9 +149,9 @@ export default function AuthEmp() {
 
               try {
                 if (editing.id) {
-                  await axios.put(`/empprofile/${editing.id}/`, payload);
+                  await axios.put(`${EMP_PROFILE_ENDPOINT}${editing.id}/`, payload);
                 } else {
-                  await axios.post('/empprofile/', payload);
+                  await axios.post(EMP_PROFILE_ENDPOINT, payload);
                 }
                 setEditing(null);
                 setReadOnly(false);
@@ -509,7 +511,15 @@ export default function AuthEmp() {
                 onClick={() => { openProfile(p, false); }}
               >
                 <td className="py-2 px-3">{p.emp_id}</td>
-                <td className="py-2 px-3">{p.emp_name}</td>
+                <td className="py-2 px-3">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); openProfile(p, true); }}
+                    className="text-left font-medium text-blue-700 hover:text-blue-900 hover:underline"
+                  >
+                    {p.emp_name}
+                  </button>
+                </td>
                 <td className="py-2 px-3">{p.username || p.usercode}</td>
                 <td className="py-2 px-3">{p.status}</td>
                 <td className="py-2 px-3">{p.institute_id}</td>
