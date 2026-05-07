@@ -11,6 +11,7 @@ import { getMigrations } from '../services/migrationservice';
 const ACTIONS = ["➕", "✏️ Edit", "🔍", "📄 Report"];
 const LEGACY_MIGRATION_STATUSES = new Set(['RECEIVED']);
 const MIGRATION_LIST_LIMIT = 200;
+const MIGRATION_NUMBER_MODES = ['ERP', 'OLD'];
 
 const isCancelledMigrationRecord = (record = {}) => {
   const cancelled = String(record.mg_cancelled || '').trim().toLowerCase();
@@ -26,6 +27,10 @@ const pickMappedId = (value, primaryKey, fallbackKey = 'id') => {
 };
 
 const getTodayIso = () => new Date().toISOString().slice(0, 10);
+
+const getMigrationNumberMode = (record = {}) => (
+  String(record.book_no || '').trim() ? 'OLD' : 'ERP'
+);
 
 const createEmptyMigrationForm = (overrides = {}) => ({
   id: null,
@@ -59,6 +64,7 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
   const [error, setError] = useState(null);
   const [currentRow, setCurrentRow] = useState(null);
   const [instCodeById, setInstCodeById] = useState({});
+  const [migrationNumberMode, setMigrationNumberMode] = useState('ERP');
   const [form, setForm] = useState(() => createEmptyMigrationForm());
 
   const isMigrationCancelled = isCancelledMigrationRecord(form);
@@ -81,8 +87,9 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
-  const loadNextMigrationPreview = async () => {
-    const res = await fetch('/api/migration/next-number/', { headers: { ...authHeaders() } });
+  const loadNextMigrationPreview = async (mode = migrationNumberMode) => {
+    const params = new URLSearchParams({ mode });
+    const res = await fetch(`/api/migration/next-number/?${params.toString()}`, { headers: { ...authHeaders() } });
     if (!res.ok) {
       throw new Error(`Failed to load next migration number: ${res.status}`);
     }
@@ -92,6 +99,7 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
   const populateFormFromRecord = (record) => {
     if (!record) return;
 
+    setMigrationNumberMode(getMigrationNumberMode(record));
     setForm(createEmptyMigrationForm({
       id: record.id,
       doc_rec: record.doc_rec || record.doc_rec_id || '',
@@ -115,14 +123,14 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
     }));
   };
 
-  const resetForm = async (mode = selectedTopbarMenu) => {
+  const resetForm = async (mode = selectedTopbarMenu, numberMode = migrationNumberMode) => {
     if (mode === '✏️ Edit' && currentRow) {
       populateFormFromRecord(currentRow);
       return;
     }
 
     try {
-      const preview = await loadNextMigrationPreview();
+      const preview = await loadNextMigrationPreview(numberMode);
       setForm(createEmptyMigrationForm({
         doc_rec: preview?.doc_rec || '',
         doc_rec_key: preview?.doc_rec || '',
@@ -166,7 +174,8 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
 
     if (action === '➕') {
       setCurrentRow(null);
-      resetForm('➕');
+      setMigrationNumberMode('ERP');
+      resetForm('➕', 'ERP');
       return;
     }
 
@@ -321,7 +330,39 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
 
   const setF = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
+  const refreshMigrationNumberForMode = async (mode) => {
+    try {
+      const preview = await loadNextMigrationPreview(mode);
+      setForm((current) => ({
+        ...current,
+        doc_rec: preview?.doc_rec || current.doc_rec,
+        doc_rec_key: preview?.doc_rec || current.doc_rec_key,
+        mg_number: preview?.mg_number || current.mg_number,
+        mg_date: preview?.mg_date || current.mg_date || getTodayIso(),
+      }));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleMigrationNumberModeChange = (mode) => {
+    if (!MIGRATION_NUMBER_MODES.includes(mode) || mode === migrationNumberMode) {
+      return;
+    }
+    setMigrationNumberMode(mode);
+    if (mode === 'ERP') {
+      setForm((current) => ({ ...current, book_no: '' }));
+    }
+    refreshMigrationNumberForMode(mode);
+  };
+
   const save = async () => {
+    const normalizedBookNo = String(form.book_no || '').trim();
+    if (migrationNumberMode === 'OLD' && !normalizedBookNo) {
+      alert('Book No is required for OLD MG series.');
+      return;
+    }
+
     const payload = {
       doc_rec_key: form.doc_rec || form.doc_rec_key || undefined,
       enrollment: isMigrationCancelled ? null : (form.enrollment || null),
@@ -337,7 +378,7 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
       mg_status: isMigrationCancelled ? 'Cancelled' : (form.mg_status || 'Issued'),
       mg_cancelled: form.mg_cancelled || 'No',
       mg_remark: form.mg_remark || null,
-      book_no: form.book_no || null,
+      book_no: migrationNumberMode === 'ERP' ? null : normalizedBookNo,
       pay_rec_no: form.pay_rec_no || null,
       doc_remark: form.doc_remark || null,
     };
@@ -379,6 +420,36 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
 
         {panelOpen && (selectedTopbarMenu === '➕' || selectedTopbarMenu === '✏️ Edit') && (
           <div className="action-panel-body space-y-2" data-migration-form="true" onKeyDownCapture={handleFormKeyDown}>
+            <div className="flex items-end gap-3">
+              <div>
+                <label className="text-xs">MG Series</label>
+                <div className="relative mt-1 grid w-[172px] grid-cols-2 rounded-xl border border-slate-300 bg-slate-100 p-1 text-sm font-semibold shadow-inner">
+                  <span
+                    className={`absolute inset-y-1 w-[78px] rounded-lg bg-indigo-600 shadow transition-transform duration-200 ${
+                      migrationNumberMode === 'OLD' ? 'translate-x-[84px]' : 'translate-x-0'
+                    }`}
+                    aria-hidden="true"
+                  />
+                  <span className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 text-[11px] text-slate-400">
+                    &#8596;
+                  </span>
+                  {MIGRATION_NUMBER_MODES.map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      className={`relative z-20 rounded-lg px-3 py-2 transition-colors ${
+                        migrationNumberMode === mode ? 'text-white' : 'text-slate-700 hover:text-slate-950'
+                      }`}
+                      aria-pressed={migrationNumberMode === mode}
+                      onClick={() => handleMigrationNumberModeChange(mode)}
+                    >
+                      {mode}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             <div
               className="grid gap-2 items-end text-sm"
               style={{ gridTemplateColumns: '14ch 14ch 17ch 31ch minmax(8ch,1fr)' }}
@@ -448,7 +519,13 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
               </div>
               <div>
                 <label className="text-xs">Book No</label>
-                <input className="w-full border rounded-lg p-2" value={form.book_no} onChange={(e) => setF('book_no', e.target.value)} />
+                <input
+                  className="w-full border rounded-lg p-2 disabled:bg-gray-100"
+                  value={migrationNumberMode === 'ERP' ? '' : form.book_no}
+                  disabled={migrationNumberMode === 'ERP'}
+                  required={migrationNumberMode === 'OLD'}
+                  onChange={(e) => setF('book_no', e.target.value)}
+                />
               </div>
               <div>
                 <label className="text-xs">Pay Rec</label>
@@ -519,7 +596,8 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
                         }
                       } else {
                         setCurrentRow(null);
-                        await resetForm('➕');
+                        setMigrationNumberMode('ERP');
+                        await resetForm('➕', 'ERP');
                       }
                     } catch (e) {
                       alert(e.message || 'Failed');

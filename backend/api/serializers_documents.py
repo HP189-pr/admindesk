@@ -146,7 +146,8 @@ class MigrationRecordSerializer(serializers.ModelSerializer):
         if not validated.get('mg_date'):
             validated['mg_date'] = timezone.localdate()
         if not validated.get('mg_number'):
-            mg_number, doc_rec = generate_next_migration_identifiers(validated.get('mg_date'), lock=True)
+            mode = 'OLD' if str(validated.get('book_no') or '').strip() else 'ERP'
+            mg_number, doc_rec = generate_next_migration_identifiers(validated.get('mg_date'), mode=mode, lock=True)
             validated['mg_number'] = mg_number
             validated.setdefault('doc_rec', doc_rec)
 

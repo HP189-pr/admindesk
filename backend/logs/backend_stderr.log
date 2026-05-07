@@ -55967,3 +55967,192 @@ Unauthorized: /api/users/
 2026-05-05 12:47:45,401 WARNING  Unauthorized: /api/users/
 Unauthorized: /api/token/verify/
 2026-05-05 13:19:10,871 WARNING  Unauthorized: /api/token/verify/
+2026-05-05 14:20:44,211 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26144'}
+2026-05-05 14:20:44,214 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-05 14:20:44,218 INFO     InstLetterPDF grouped records: keys=['2026/144']
+2026-05-05 14:20:44,219 INFO     DEBUG rec_inst_pin value: '400607'
+2026-05-05 14:28:48,763 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26145'}
+2026-05-05 14:28:48,763 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-05 14:28:48,763 INFO     InstLetterPDF grouped records: keys=['2026/145']
+2026-05-05 14:28:48,763 INFO     DEBUG rec_inst_pin value: '201304'
+2026-05-05 14:40:26,241 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26146'}
+2026-05-05 14:40:26,244 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-05 14:40:26,251 INFO     InstLetterPDF grouped records: keys=['2026/146']
+2026-05-05 14:40:26,251 INFO     DEBUG rec_inst_pin value: '360006'
+Unauthorized: /api/users/
+2026-05-05 15:07:08,331 WARNING  Unauthorized: /api/users/
+2026-05-05 15:57:28,263 INFO     Killed 0 pending application instances
+2026-05-06 08:26:23,447 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-05-06 08:26:23,447 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-05-06 08:26:23,447 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-05-06 08:26:23,449 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/token/verify/
+2026-05-06 08:41:12,895 WARNING  Unauthorized: /api/token/verify/
+Not Found: /api/student-search/search/
+2026-05-06 09:44:04,002 WARNING  Not Found: /api/student-search/search/
+2026-05-06 09:46:55,521 INFO     Import mail requests completed via API: Found 374 rows; starting import
+Processed 200/374 rows
+Processed 374/374 rows
+Import complete. Created: 0, Updated: 374
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+Unauthorized: /api/token/verify/
+2026-05-06 09:54:41,548 WARNING  Unauthorized: /api/token/verify/
+2026-05-06 10:14:05,095 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26147'}
+2026-05-06 10:14:05,099 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-06 10:14:05,108 INFO     InstLetterPDF grouped records: keys=['2026/147']
+2026-05-06 10:14:05,119 INFO     DEBUG rec_inst_pin value: '389250'
+2026-05-06 10:24:46,436 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26148'}
+2026-05-06 10:24:46,440 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-06 10:24:46,444 INFO     InstLetterPDF grouped records: keys=['2026/148']
+2026-05-06 10:24:46,445 INFO     DEBUG rec_inst_pin value: '396001'
+Unauthorized: /api/users/
+2026-05-06 10:41:58,373 WARNING  Unauthorized: /api/users/
+2026-05-06 11:15:14,134 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26149'}
+2026-05-06 11:15:14,134 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-06 11:15:14,143 INFO     InstLetterPDF grouped records: keys=['2026/149']
+2026-05-06 11:15:14,143 INFO     DEBUG rec_inst_pin value: '360005'
+Unauthorized: /api/users/
+2026-05-06 12:47:17,337 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-05-06 13:12:03,361 WARNING  Unauthorized: /api/users/
+2026-05-06 14:01:30,944 INFO     Import mail requests completed via API: Found 374 rows; starting import
+Processed 200/374 rows
+Processed 374/374 rows
+Import complete. Created: 0, Updated: 374
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-05-06 14:01:40,523 INFO     Import mail requests completed via API: Found 374 rows; starting import
+Processed 200/374 rows
+Processed 374/374 rows
+Import complete. Created: 0, Updated: 374
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+Unauthorized: /api/users/
+2026-05-06 15:23:32,369 WARNING  Unauthorized: /api/users/
+2026-05-06 15:58:32,626 INFO     Killed 0 pending application instances
+2026-05-07 08:25:00,370 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-05-07 08:25:00,370 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-05-07 08:25:00,370 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-05-07 08:25:00,370 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/token/verify/
+2026-05-07 09:40:10,242 WARNING  Unauthorized: /api/token/verify/
+2026-05-07 09:44:42,271 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26150'}
+2026-05-07 09:44:42,275 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-07 09:44:42,280 INFO     InstLetterPDF grouped records: keys=['2026/150']
+2026-05-07 09:44:42,286 INFO     DEBUG rec_inst_pin value: '380009'
+Bad Request: /api/inst-verification-main/1475/
+2026-05-07 10:01:52,850 WARNING  Bad Request: /api/inst-verification-main/1475/
+Bad Request: /api/inst-verification-student/
+2026-05-07 10:03:56,648 WARNING  Bad Request: /api/inst-verification-student/
+Bad Request: /api/inst-verification-main/1475/
+2026-05-07 10:03:58,802 WARNING  Bad Request: /api/inst-verification-main/1475/
+Bad Request: /api/inst-verification-main/1475/
+2026-05-07 10:04:00,956 WARNING  Bad Request: /api/inst-verification-main/1475/
+2026-05-07 10:04:08,826 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26151'}
+2026-05-07 10:04:08,830 INFO     InstLetterPDF resolved 0 doc_rec_ids (iv_requested=True)
+Not Found: /api/inst-letter/generate-pdf/
+2026-05-07 10:04:08,837 WARNING  Not Found: /api/inst-letter/generate-pdf/
+2026-05-07 10:04:11,088 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26151'}
+2026-05-07 10:04:11,090 INFO     InstLetterPDF resolved 0 doc_rec_ids (iv_requested=True)
+Not Found: /api/inst-letter/generate-pdf/
+2026-05-07 10:04:11,093 WARNING  Not Found: /api/inst-letter/generate-pdf/
+2026-05-07 10:04:12,954 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26151'}
+2026-05-07 10:04:12,956 INFO     InstLetterPDF resolved 0 doc_rec_ids (iv_requested=True)
+Not Found: /api/inst-letter/generate-pdf/
+2026-05-07 10:04:12,962 WARNING  Not Found: /api/inst-letter/generate-pdf/
+2026-05-07 10:04:23,174 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26151'}
+2026-05-07 10:04:23,176 INFO     InstLetterPDF resolved 0 doc_rec_ids (iv_requested=True)
+Not Found: /api/inst-letter/generate-pdf/
+2026-05-07 10:04:23,181 WARNING  Not Found: /api/inst-letter/generate-pdf/
+2026-05-07 10:04:36,306 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26151'}
+2026-05-07 10:04:36,309 INFO     InstLetterPDF resolved 0 doc_rec_ids (iv_requested=True)
+Not Found: /api/inst-letter/generate-pdf/
+2026-05-07 10:04:36,312 WARNING  Not Found: /api/inst-letter/generate-pdf/
+2026-05-07 10:04:59,087 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26151'}
+2026-05-07 10:04:59,089 INFO     InstLetterPDF resolved 0 doc_rec_ids (iv_requested=True)
+Not Found: /api/inst-letter/generate-pdf/
+2026-05-07 10:04:59,093 WARNING  Not Found: /api/inst-letter/generate-pdf/
+2026-05-07 10:04:59,485 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26151'}
+2026-05-07 10:04:59,487 INFO     InstLetterPDF resolved 0 doc_rec_ids (iv_requested=True)
+Not Found: /api/inst-letter/generate-pdf/
+2026-05-07 10:04:59,490 WARNING  Not Found: /api/inst-letter/generate-pdf/
+2026-05-07 10:05:07,498 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26150'}
+2026-05-07 10:05:07,500 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-07 10:05:07,506 INFO     InstLetterPDF grouped records: keys=['2026/150']
+2026-05-07 10:05:07,506 INFO     DEBUG rec_inst_pin value: '380009'
+Bad Request: /api/inst-verification-student/
+2026-05-07 10:06:45,861 WARNING  Bad Request: /api/inst-verification-student/
+Bad Request: /api/inst-verification-main/1475/
+2026-05-07 10:06:47,172 WARNING  Bad Request: /api/inst-verification-main/1475/
+Bad Request: /api/inst-verification-main/1475/
+2026-05-07 10:06:48,463 WARNING  Bad Request: /api/inst-verification-main/1475/
+2026-05-07 10:06:54,079 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26151'}
+2026-05-07 10:06:54,081 INFO     InstLetterPDF resolved 0 doc_rec_ids (iv_requested=True)
+Not Found: /api/inst-letter/generate-pdf/
+2026-05-07 10:06:54,088 WARNING  Not Found: /api/inst-letter/generate-pdf/
+Unauthorized: /api/token/verify/
+2026-05-07 10:07:27,870 WARNING  Unauthorized: /api/token/verify/
+Bad Request: /api/inst-verification-main/1475/
+2026-05-07 10:07:32,707 WARNING  Bad Request: /api/inst-verification-main/1475/
+Bad Request: /api/inst-verification-main/1475/
+2026-05-07 10:07:34,604 WARNING  Bad Request: /api/inst-verification-main/1475/
+2026-05-07 10:08:56,216 INFO     InstLetterPDF called by=6 payload={'iv_record_no': '26150'}
+2026-05-07 10:08:56,218 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-07 10:08:56,223 INFO     InstLetterPDF grouped records: keys=['2026/150']
+2026-05-07 10:08:56,223 INFO     DEBUG rec_inst_pin value: '380009'
+Unauthorized: /api/token/verify/
+2026-05-07 10:10:13,915 WARNING  Unauthorized: /api/token/verify/
+2026-05-07 10:10:20,266 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26150'}
+2026-05-07 10:10:20,269 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-07 10:10:20,275 INFO     InstLetterPDF grouped records: keys=['2026/150']
+2026-05-07 10:10:20,276 INFO     DEBUG rec_inst_pin value: '380009'
+Unauthorized: /api/token/verify/
+2026-05-07 10:11:55,113 WARNING  Unauthorized: /api/token/verify/
+Unauthorized: /api/backlogin/
+2026-05-07 10:12:24,317 WARNING  Unauthorized: /api/backlogin/
+Unauthorized: /api/backlogin/
+2026-05-07 10:14:28,010 WARNING  Unauthorized: /api/backlogin/
+Unauthorized: /api/backlogin/
+2026-05-07 10:15:13,987 WARNING  Unauthorized: /api/backlogin/
+2026-05-07 10:19:04,337 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26151'}
+2026-05-07 10:19:04,340 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-07 10:19:04,346 INFO     InstLetterPDF grouped records: keys=['2026/151']
+2026-05-07 10:19:04,347 INFO     DEBUG rec_inst_pin value: '363001'
+Not Found: /api/student-search/search/
+2026-05-07 10:19:49,148 WARNING  Not Found: /api/student-search/search/
+2026-05-07 10:21:26,467 INFO     InstLetterPDF called by=3764 payload={'iv_record_no': '26151'}
+2026-05-07 10:21:26,469 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-07 10:21:26,475 INFO     InstLetterPDF grouped records: keys=['2026/151']
+2026-05-07 10:21:26,475 INFO     DEBUG rec_inst_pin value: '363001'
+Unauthorized: /api/users/
+2026-05-07 10:41:40,358 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/token/verify/
+2026-05-07 10:46:14,951 WARNING  Unauthorized: /api/token/verify/
+Unauthorized: /api/token/verify/
+2026-05-07 10:46:14,952 WARNING  Unauthorized: /api/token/verify/
+2026-05-07 10:49:39,320 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26152'}
+2026-05-07 10:49:39,323 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-07 10:49:39,339 INFO     InstLetterPDF grouped records: keys=['2026/152']
+2026-05-07 10:49:39,340 INFO     DEBUG rec_inst_pin value: ''
+2026-05-07 10:49:40,007 INFO     InstLetterPDF called by=3764 payload={'iv_record_no': '26152'}
+2026-05-07 10:49:40,011 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-07 10:49:40,023 INFO     InstLetterPDF grouped records: keys=['2026/152']
+2026-05-07 10:49:40,024 INFO     DEBUG rec_inst_pin value: ''
+Unauthorized: /api/backlogin/
+2026-05-07 10:50:32,359 WARNING  Unauthorized: /api/backlogin/
+Unauthorized: /api/backlogin/
+2026-05-07 10:50:56,654 WARNING  Unauthorized: /api/backlogin/
+Unauthorized: /api/backlogin/
+2026-05-07 10:51:16,675 WARNING  Unauthorized: /api/backlogin/
+Unauthorized: /api/users/
+2026-05-07 10:51:29,047 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-05-07 10:51:29,090 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/backlogin/
+2026-05-07 10:52:05,708 WARNING  Unauthorized: /api/backlogin/
+2026-05-07 10:54:01,356 INFO     InstLetterPDF called by=3764 payload={'iv_record_no': '26152'}
+2026-05-07 10:54:01,359 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-07 10:54:01,388 INFO     InstLetterPDF grouped records: keys=['2026/152']
+2026-05-07 10:54:01,389 INFO     DEBUG rec_inst_pin value: ''
+2026-05-07 10:56:26,079 INFO     Killed 1 pending application instances

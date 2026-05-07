@@ -2,6 +2,7 @@
 """Domain Verification & Related (Verification, InstVerification*, Migration, Provisional, Status enums)
 """
 from django.db import models
+from django.db.models.functions import Trim
 from django.contrib.postgres.search import SearchVectorField
 from django.utils import timezone
 import re
@@ -34,22 +35,29 @@ def generate_migration_doc_rec_id(mg_number):
         return None
 
 
-def generate_next_migration_identifiers(target_date=None, *, lock=False):
+def generate_next_migration_identifiers(target_date=None, *, mode='ERP', lock=False):
     try:
-        active_date = target_date or timezone.localdate()
+        active_date = timezone.localdate()
         year = int(getattr(active_date, 'year', timezone.localdate().year))
         year_prefix = f"{year}/"
+        normalized_mode = str(mode or 'ERP').strip().upper()
 
-        qs = MigrationRecord.objects.filter(mg_number__startswith=year_prefix)
+        qs = MigrationRecord.objects.filter(mg_number__startswith=year_prefix).annotate(
+            _book_no_trim=Trim('book_no')
+        )
+        if normalized_mode == 'OLD':
+            qs = qs.exclude(book_no__isnull=True).exclude(_book_no_trim='')
+        else:
+            qs = qs.filter(models.Q(book_no__isnull=True) | models.Q(_book_no_trim=''))
         if lock:
             qs = qs.select_for_update()
 
-        last_value = qs.order_by('-mg_number').values_list('mg_number', flat=True).first()
         last_no = 0
-        if last_value:
+        for last_value in qs.values_list('mg_number', flat=True):
             match = re.search(r'/(\d+)$', str(last_value).strip())
-            if match:
-                last_no = int(match.group(1))
+            if not match:
+                continue
+            last_no = max(last_no, int(match.group(1)))
 
         next_no = last_no + 1
         mg_number = f"{year}/{next_no:05d}"

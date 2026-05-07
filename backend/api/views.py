@@ -1331,11 +1331,15 @@ class MigrationRecordViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="next-number")
     def next_number(self, request):
         base_date = timezone.localdate()
-        mg_number, doc_rec = generate_next_migration_identifiers(base_date)
+        mode = (request.query_params.get('mode') or 'ERP').strip().upper()
+        if mode not in ('ERP', 'OLD'):
+            mode = 'ERP'
+        mg_number, doc_rec = generate_next_migration_identifiers(base_date, mode=mode)
         return Response({
             "mg_number": mg_number,
             "doc_rec": doc_rec,
             "mg_date": base_date.isoformat(),
+            "mode": mode,
         }, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["post"], url_path="update-service-only")
