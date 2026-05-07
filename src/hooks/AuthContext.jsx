@@ -25,6 +25,8 @@ const AuthContext = createContext({
 // Module-level sentinel: prevents concurrent token-refresh attempts that can cause
 // double-logout or redirect loops when multiple 401s arrive simultaneously.
 let _pendingRefresh = null;
+const INACTIVITY_TIMEOUT_MS = 20 * 60 * 1000;
+const LAST_ACTIVITY_KEY = "admindesk_last_activity_at";
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(() => {
@@ -67,6 +69,8 @@ export function AuthProvider({ children }) {
             const refreshed = await refreshToken();
             if (!refreshed) {
                 setLoading(false);
+            } else {
+                await fetchUserProfile();
             }
             return;
         }
@@ -156,6 +160,7 @@ export function AuthProvider({ children }) {
             if (data.access) {
                 localStorage.setItem("access_token", data.access);
                 localStorage.setItem("refresh_token", data.refresh);
+                localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
                 setToken(data.access);
                 await fetchUserProfile();
                 return { success: true };
@@ -323,6 +328,42 @@ export function AuthProvider({ children }) {
         setProfilePicture(DEFAULT_PROFILE_PIC);
         if (navigate) navigate("/login");
     };
+
+    useEffect(() => {
+        if (!token) return undefined;
+
+        const markActivity = () => {
+            localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
+        };
+
+        const logoutIfInactive = () => {
+            const lastActivity = Number(localStorage.getItem(LAST_ACTIVITY_KEY) || Date.now());
+            if (Date.now() - lastActivity >= INACTIVITY_TIMEOUT_MS) {
+                logout();
+                window.location.href = "/login";
+            }
+        };
+
+        if (!localStorage.getItem(LAST_ACTIVITY_KEY)) {
+            markActivity();
+        }
+
+        const activityEvents = ["click", "keydown", "mousemove", "scroll", "touchstart"];
+        activityEvents.forEach((eventName) => {
+            window.addEventListener(eventName, markActivity, { passive: true });
+        });
+        window.addEventListener("focus", logoutIfInactive);
+
+        const timer = window.setInterval(logoutIfInactive, 30 * 1000);
+
+        return () => {
+            activityEvents.forEach((eventName) => {
+                window.removeEventListener(eventName, markActivity);
+            });
+            window.removeEventListener("focus", logoutIfInactive);
+            window.clearInterval(timer);
+        };
+    }, [token]);
 
     return (
         <AuthContext.Provider

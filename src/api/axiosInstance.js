@@ -48,6 +48,66 @@ const API = axios.create({
   timeout: 10000,
 });
 
+let pendingTokenRefresh = null;
+
+const clearAuthAndRedirect = () => {
+  localStorage.clear();
+  window.location.href = '/login';
+};
+
+const refreshAccessToken = async () => {
+  if (pendingTokenRefresh) return pendingTokenRefresh;
+
+  const refresh = localStorage.getItem('refresh_token');
+  if (!refresh) {
+    clearAuthAndRedirect();
+    return null;
+  }
+
+  pendingTokenRefresh = axios
+    .post(`${apiBaseUrl}/api/token/refresh/`, { refresh }, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 10000,
+    })
+    .then((response) => {
+      const access = response.data?.access;
+      if (!access) throw new Error('No access token returned');
+      localStorage.setItem('access_token', access);
+      return access;
+    })
+    .catch((error) => {
+      console.warn('Token refresh failed — logging out', error.response?.data || error.message);
+      clearAuthAndRedirect();
+      return null;
+    })
+    .finally(() => {
+      pendingTokenRefresh = null;
+    });
+
+  return pendingTokenRefresh;
+};
+
+const handleUnauthorized = async (error, client, label = 'API') => {
+  const originalRequest = error.config;
+  const isUnauthorized = error.response?.status === 401;
+  const isRefreshRequest = originalRequest?.url?.includes('/api/token/refresh/');
+
+  if (!isUnauthorized || isRefreshRequest || originalRequest?._retry) {
+    return Promise.reject(error);
+  }
+
+  originalRequest._retry = true;
+  const access = await refreshAccessToken();
+  if (!access) {
+    return Promise.reject(error);
+  }
+
+  console.warn(`401 detected on ${label} — refreshed token and retried request`);
+  originalRequest.headers = originalRequest.headers || {};
+  originalRequest.headers.Authorization = `Bearer ${access}`;
+  return client(originalRequest);
+};
+
 // ✅ ALWAYS attach access_token
 API.interceptors.request.use(
   (config) => {
@@ -63,18 +123,10 @@ API.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ✅ OPTIONAL but recommended: auto logout on 401
+// Refresh once on 401 so active users are not logged out when the access token expires.
 API.interceptors.response.use(
   (response) => response,
-  (error) => {
-    // Skip redirect when the refresh endpoint itself returns 401 (avoids double-logout loop)
-    if (error.response?.status === 401 && !error.config?.url?.includes('/api/token/refresh/')) {
-      console.warn('401 detected — logging out');
-      localStorage.clear();
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
+  (error) => handleUnauthorized(error, API)
 );
 
 // LONG_API — identical to API but with a 2-minute timeout for bulk uploads and large reports
@@ -100,14 +152,7 @@ LONG_API.interceptors.request.use(
 
 LONG_API.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401 && !error.config?.url?.includes('/api/token/refresh/')) {
-      console.warn('401 detected on LONG_API — logging out');
-      localStorage.clear();
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
+  (error) => handleUnauthorized(error, LONG_API, 'LONG_API')
 );
 
 export default API;

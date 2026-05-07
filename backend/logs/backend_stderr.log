@@ -56160,3 +56160,51 @@ Unauthorized: /api/backlogin/
 2026-05-07 10:56:27,643 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
 2026-05-07 10:56:27,643 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
 2026-05-07 10:56:27,644 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/users/
+2026-05-07 11:43:07,163 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-05-07 12:52:30,684 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-05-07 12:52:30,759 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-05-07 12:56:38,267 WARNING  Unauthorized: /api/users/
+2026-05-07 13:13:30,052 INFO     InstLetterPDF called by=3764 payload={'iv_record_no': '26153'}
+2026-05-07 13:13:30,059 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-07 13:13:30,065 INFO     InstLetterPDF grouped records: keys=['2026/153']
+2026-05-07 13:13:30,075 INFO     DEBUG rec_inst_pin value: ''
+2026-05-07 13:13:49,480 INFO     InstLetterPDF called by=3764 payload={'iv_record_no': '26153'}
+2026-05-07 13:13:49,483 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-07 13:13:49,490 INFO     InstLetterPDF grouped records: keys=['2026/153']
+2026-05-07 13:13:49,490 INFO     DEBUG rec_inst_pin value: ''
+2026-05-07 13:13:56,708 INFO     InstLetterPDF called by=3764 payload={'iv_record_no': '26153'}
+2026-05-07 13:13:56,770 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-07 13:13:56,782 INFO     InstLetterPDF grouped records: keys=['2026/153']
+2026-05-07 13:13:56,783 INFO     DEBUG rec_inst_pin value: ''
+2026-05-07 13:14:07,706 INFO     InstLetterPDF called by=3764 payload={'iv_record_no': '26153'}
+2026-05-07 13:14:07,708 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-07 13:14:07,712 INFO     InstLetterPDF grouped records: keys=['2026/153']
+2026-05-07 13:14:07,712 INFO     DEBUG rec_inst_pin value: ''
+2026-05-07 13:14:11,470 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26153'}
+2026-05-07 13:14:11,472 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-07 13:14:11,476 INFO     InstLetterPDF grouped records: keys=['2026/153']
+2026-05-07 13:14:11,476 INFO     DEBUG rec_inst_pin value: ''
+2026-05-07 13:15:03,471 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26153'}
+2026-05-07 13:15:03,473 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-07 13:15:03,517 INFO     InstLetterPDF grouped records: keys=['2026/153']
+2026-05-07 13:15:03,518 INFO     DEBUG rec_inst_pin value: ''
+2026-05-07 13:19:02,003 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26153'}
+2026-05-07 13:19:02,005 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-07 13:19:02,056 INFO     InstLetterPDF grouped records: keys=['2026/153']
+2026-05-07 13:19:02,056 INFO     DEBUG rec_inst_pin value: ''
+Unauthorized: /api/users/
+2026-05-07 13:24:55,441 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-05-07 13:24:55,508 WARNING  Unauthorized: /api/users/
+2026-05-07 14:33:26,422 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26152'}
+2026-05-07 14:33:26,427 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-07 14:33:26,446 INFO     InstLetterPDF grouped records: keys=['2026/152']
+2026-05-07 14:33:26,450 INFO     DEBUG rec_inst_pin value: ''
+Unauthorized: /api/users/
+2026-05-07 15:07:10,529 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-05-07 15:07:10,598 WARNING  Unauthorized: /api/users/
