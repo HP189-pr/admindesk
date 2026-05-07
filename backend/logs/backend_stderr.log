@@ -56156,3 +56156,7 @@ Unauthorized: /api/backlogin/
 2026-05-07 10:54:01,388 INFO     InstLetterPDF grouped records: keys=['2026/152']
 2026-05-07 10:54:01,389 INFO     DEBUG rec_inst_pin value: ''
 2026-05-07 10:56:26,079 INFO     Killed 1 pending application instances
+2026-05-07 10:56:27,643 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-05-07 10:56:27,643 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-05-07 10:56:27,643 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-05-07 10:56:27,644 INFO     Listening on TCP address 0.0.0.0:8001
