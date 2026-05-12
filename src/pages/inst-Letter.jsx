@@ -141,6 +141,20 @@ const computeIvRecordNumber = (value) => {
 	return `${year.slice(-2)}${seq}`;
 };
 
+const ivRecordSortValue = (record) => {
+	const raw = record?.iv_record_no;
+	const digits = String(raw ?? "").replace(/\D/g, "");
+	const value = Number(digits);
+	return Number.isFinite(value) ? value : 0;
+};
+
+const sortRecordsByIvRecordDesc = (records = []) =>
+	[...records].sort((a, b) => {
+		const ivCompare = ivRecordSortValue(b) - ivRecordSortValue(a);
+		if (ivCompare !== 0) return ivCompare;
+		return (b?.id || 0) - (a?.id || 0);
+	});
+
 const deriveInstVeriNumberFromDocRec = (docRec) => {
 	const norm = String(docRec || "").toUpperCase();
 	const m = norm.match(/IV[_-]?(\d{2})[_-]?(\d+)/);
@@ -567,8 +581,7 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 					}
 				}
 				const records = await fetchInstLetterMains(searchParams);
-				records.sort((a, b) => (b?.id || 0) - (a?.id || 0));
-				setList(records);
+				setList(sortRecordsByIvRecordDesc(records));
 			} catch (err) {
 				console.error(err);
 				setList([]);
@@ -970,7 +983,7 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 		}
 		try {
 			const records = await fetchInstLetterMains(searchParams);
-			setSearchResults(records);
+			setSearchResults(sortRecordsByIvRecordDesc(records));
 			setHasSearchRun(true);
 			if (!records.length) {
 				setSearchError("No matching records found.");
