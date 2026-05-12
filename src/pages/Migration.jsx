@@ -76,6 +76,7 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
       : isEditMode
         ? 'Edit Panel'
         : 'Add Panel';
+  const isMigrationFormPanel = selectedTopbarMenu === ACTIONS[0] || selectedTopbarMenu === ACTIONS[1];
 
   const instituteCodeValue = useMemo(() => {
     const key = String(form.institute || '').trim();
@@ -356,6 +357,35 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
     refreshMigrationNumberForMode(mode);
   };
 
+  const migrationSeriesToggle = (
+    <div className="flex h-10 items-center gap-3">
+      <div className="relative grid h-10 w-[190px] grid-cols-2 rounded-xl border border-slate-300 bg-slate-100 p-1 text-sm font-semibold shadow-inner">
+        <span
+          className={`absolute inset-y-1 w-[88px] rounded-lg bg-indigo-600 shadow transition-transform duration-200 ${
+            migrationNumberMode === 'OLD' ? 'translate-x-[94px]' : 'translate-x-0'
+          }`}
+          aria-hidden="true"
+        />
+        <span className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 text-[11px] text-slate-400">
+          &#8596;
+        </span>
+        {MIGRATION_NUMBER_MODES.map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            className={`relative z-20 rounded-lg px-3 transition-colors ${
+              migrationNumberMode === mode ? 'text-white' : 'text-slate-700 hover:text-slate-950'
+            }`}
+            aria-pressed={migrationNumberMode === mode}
+            onClick={() => handleMigrationNumberModeChange(mode)}
+          >
+            {mode}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   const save = async () => {
     const normalizedBookNo = String(form.book_no || '').trim();
     if (migrationNumberMode === 'OLD' && !normalizedBookNo) {
@@ -414,42 +444,15 @@ const Migration = ({ onToggleSidebar, onToggleChatbox }) => {
 
       <div className="action-panel-shell">
         <div className="action-panel-header">
-          <div className="action-panel-title">{panelTitle}</div>
+          <div className="flex min-h-10 flex-wrap items-center gap-4">
+            <div className="action-panel-title">{panelTitle}</div>
+            {isMigrationFormPanel && migrationSeriesToggle}
+          </div>
           <PanelToggleButton open={panelOpen} onClick={() => setPanelOpen((open) => !open)} />
         </div>
 
-        {panelOpen && (selectedTopbarMenu === '➕' || selectedTopbarMenu === '✏️ Edit') && (
+        {panelOpen && isMigrationFormPanel && (
           <div className="action-panel-body space-y-2" data-migration-form="true" onKeyDownCapture={handleFormKeyDown}>
-            <div className="flex items-end gap-3">
-              <div>
-                <label className="text-xs">MG Series</label>
-                <div className="relative mt-1 grid w-[172px] grid-cols-2 rounded-xl border border-slate-300 bg-slate-100 p-1 text-sm font-semibold shadow-inner">
-                  <span
-                    className={`absolute inset-y-1 w-[78px] rounded-lg bg-indigo-600 shadow transition-transform duration-200 ${
-                      migrationNumberMode === 'OLD' ? 'translate-x-[84px]' : 'translate-x-0'
-                    }`}
-                    aria-hidden="true"
-                  />
-                  <span className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 text-[11px] text-slate-400">
-                    &#8596;
-                  </span>
-                  {MIGRATION_NUMBER_MODES.map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      className={`relative z-20 rounded-lg px-3 py-2 transition-colors ${
-                        migrationNumberMode === mode ? 'text-white' : 'text-slate-700 hover:text-slate-950'
-                      }`}
-                      aria-pressed={migrationNumberMode === mode}
-                      onClick={() => handleMigrationNumberModeChange(mode)}
-                    >
-                      {mode}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
             <div
               className="grid gap-2 items-end text-sm"
               style={{ gridTemplateColumns: '14ch 14ch 17ch 31ch minmax(8ch,1fr)' }}
