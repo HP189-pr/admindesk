@@ -41,16 +41,7 @@ class CCTVExam(models.Model):
 # ============================
 
 class CCTVCentreEntry(models.Model):
-    SESSION_CHOICES = (
-        ("A", "A"),
-        ("B", "B"),
-        ("C", "C"),
-        ("D", "D"),
-        ("E", "E"),
-        ("F", "F"),
-        ("G", "G"),
-        ("H", "H"),
-    )
+    SESSION_CHOICES = tuple((letter, letter) for letter in "ABCDEFGHIJKLMNOP")
 
     exam = models.ForeignKey(
         CCTVExam,

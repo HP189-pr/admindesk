@@ -161,6 +161,30 @@ CCTV_FIELD_ALIASES: Dict[str, tuple[str, ...]] = {
     ),
 }
 
+CCTV_SESSION_CHOICES = set("ABCDEFGHIJKLMNOP")
+CCTV_KNOWN_PLACE_COLUMNS = {
+    "kadi",
+    "15-ldrp",
+    "15 ldrp",
+    "15ldrp",
+    "15-vsitr",
+    "15 vsitr",
+    "15vsitr",
+    "23",
+    "12",
+}
+CCTV_PLACE_LABELS = {
+    "kadi": "Kadi",
+    "15-ldrp": "15-LDRP",
+    "15 ldrp": "15-LDRP",
+    "15ldrp": "15-LDRP",
+    "15-vsitr": "15VSITR",
+    "15 vsitr": "15VSITR",
+    "15vsitr": "15VSITR",
+    "23": "23",
+    "12": "12",
+}
+
 
 def _render_transcript_status(value: object) -> str:
     # When pushing status back to the sheet, prefer human readable labels.
@@ -1100,6 +1124,121 @@ def import_cctv_centres_from_sheet(
         txt = str(value).strip().lower()
         return txt in {"yes", "y", "true", "1", "on"}
 
+    def normalize_session(value: object) -> str:
+        text = str(value or "").strip().upper()
+        return text if text in CCTV_SESSION_CHOICES else ""
+
+    def normalize_place(value: object) -> str:
+        text = str(value or "").strip()
+        return CCTV_PLACE_LABELS.get(text.lower(), text)
+
+    def sync_dvds_for_centre(centre: CCTVCentreEntry, old_no_of_cd: int) -> None:
+        new_no_of_cd = centre.no_of_cd
+
+        if new_no_of_cd <= 0:
+            centre.start_number = None
+            centre.end_number = None
+            centre.start_label = None
+            centre.end_label = None
+            centre.cc_total = 0
+            centre.cc_start_label = None
+            centre.cc_end_label = None
+            centre.save(
+                update_fields=[
+                    "start_number",
+                    "end_number",
+                    "start_label",
+                    "end_label",
+                    "cc_total",
+                    "cc_start_label",
+                    "cc_end_label",
+                ]
+            )
+            CCTVDVD.objects.filter(centre=centre).delete()
+            return
+
+        if old_no_of_cd == new_no_of_cd and centre.start_number is not None:
+            return
+
+        if centre.start_number is None:
+            last = (
+                CCTVCentreEntry.objects.filter(
+                    session=centre.session,
+                    end_number__isnull=False,
+                )
+                .exclude(pk=centre.pk)
+                .aggregate(max_end=Max("end_number"))
+            )
+            last_number = last["max_end"] or 0
+            centre.start_number = last_number + 1
+            centre.start_label = f"{centre.session}-{centre.start_number}"
+
+        new_end = centre.start_number + new_no_of_cd - 1
+        centre.end_number = new_end
+        centre.end_label = f"{centre.session}-{new_end}"
+        centre.save(update_fields=["start_number", "end_number", "start_label", "end_label"])
+
+        existing_numbers = set(
+            CCTVDVD.objects.filter(centre=centre).values_list("number", flat=True)
+        )
+        for i in range(centre.start_number, new_end + 1):
+            if i not in existing_numbers:
+                CCTVDVD.objects.create(
+                    centre=centre,
+                    number=i,
+                    label=f"{centre.session}-{i}",
+                )
+
+        if new_no_of_cd < old_no_of_cd:
+            CCTVDVD.objects.filter(
+                centre=centre,
+                number__gt=new_end,
+                cc_number__isnull=True,
+            ).delete()
+
+    def upsert_centre(exam: CCTVExam, place: object, session: object, no_of_cd_raw: object) -> str:
+        place_str = normalize_place(place)
+        session_str = normalize_session(session)
+        no_of_cd = to_int(no_of_cd_raw)
+
+        if not (place_str and session_str and no_of_cd and no_of_cd > 0):
+            return "skipped"
+
+        centre = CCTVCentreEntry.objects.filter(
+            exam=exam,
+            place__iexact=place_str,
+            session__iexact=session_str,
+        ).first()
+
+        if centre:
+            if centre.place != place_str or centre.session != session_str or centre.no_of_cd != no_of_cd:
+                old_no_of_cd = centre.no_of_cd
+                centre.place = place_str
+                centre.session = session_str
+                centre.no_of_cd = no_of_cd
+                centre.save(update_fields=["place", "session", "no_of_cd"])
+                sync_dvds_for_centre(centre, old_no_of_cd)
+                return "updated"
+            sync_dvds_for_centre(centre, centre.no_of_cd)
+            return "unchanged"
+
+        centre = CCTVCentreEntry.objects.create(
+            exam=exam,
+            place=place_str,
+            session=session_str,
+            no_of_cd=no_of_cd,
+        )
+
+        if centre.start_number is not None and centre.end_number is not None:
+            for i in range(centre.start_number, centre.end_number + 1):
+                CCTVDVD.objects.get_or_create(
+                    centre=centre,
+                    number=i,
+                    defaults={"label": f"{session_str}-{i}"},
+                )
+
+        return "created"
+
     for raw in records:
         if limit and total >= limit:
             break
@@ -1108,16 +1247,9 @@ def import_cctv_centres_from_sheet(
         norm_row = {str(k).strip().lower(): v for k, v in (raw.items() if isinstance(raw, Mapping) else {})}
 
         subject_code = pick(norm_row, "subject_code", "subject code", "subject", "sub code")
-        place = pick(norm_row, "place", "centre", "center")
         session = pick(norm_row, "session")
-        no_of_cd_raw = pick(norm_row, "no_of_cd", "no of cd", "no of dvd", "no_of_dvd", "dvd", "cd")
 
-        if not (subject_code and place and session and no_of_cd_raw):
-            skipped += 1
-            continue
-
-        no_of_cd = to_int(no_of_cd_raw)
-        if not no_of_cd or no_of_cd <= 0:
+        if not (subject_code and session):
             skipped += 1
             continue
 
@@ -1129,35 +1261,28 @@ def import_cctv_centres_from_sheet(
             skipped += 1
             continue
 
-        place_str = str(place).strip()
-        session_str = str(session).strip()
+        place = pick(norm_row, "place", "centre", "center")
+        no_of_cd_raw = pick(norm_row, "no_of_cd", "no of cd", "no of dvd", "no_of_dvd", "dvd", "cd")
+        row_results = []
 
-        centre = CCTVCentreEntry.objects.filter(
-            exam=exam,
-            place__iexact=place_str,
-            session__iexact=session_str,
-        ).first()
+        if place and no_of_cd_raw:
+            row_results.append(upsert_centre(exam, place, session, no_of_cd_raw))
+        else:
+            for header, value in norm_row.items():
+                normalized_header = str(header or "").strip().lower()
+                if normalized_header not in CCTV_KNOWN_PLACE_COLUMNS:
+                    continue
+                if value is None or str(value).strip() == "":
+                    continue
+                row_results.append(upsert_centre(exam, header, session, value))
 
-        if centre:
-            updated += 1
+        if not row_results:
+            skipped += 1
             continue
 
-        centre = CCTVCentreEntry.objects.create(
-            exam=exam,
-            place=place_str,
-            session=session_str,
-            no_of_cd=no_of_cd,
-        )
-
-        if centre.start_number is not None and centre.end_number is not None:
-            for i in range(centre.start_number, centre.end_number + 1):
-                CCTVDVD.objects.create(
-                    centre=centre,
-                    number=i,
-                    label=f"{session_str}-{i}",
-                )
-
-        created += 1
+        created += row_results.count("created")
+        updated += row_results.count("updated") + row_results.count("unchanged")
+        skipped += row_results.count("skipped")
 
     return {
         "created": created,

@@ -442,9 +442,9 @@ const CCTVMonitoring = ({
       } else {
         setFlashMessage("success", "Sheet sync completed.");
       }
-      await fetchExams();
-      await fetchCentres();
-      await fetchDvds();
+      await fetchExams(examSession);
+      await fetchCentres(examSession);
+      await fetchDvds(examSession);
     } catch (err) {
       const msg = err?.response?.data?.detail || err.message || "Failed to sync from sheet.";
       setFlashMessage("error", msg);
