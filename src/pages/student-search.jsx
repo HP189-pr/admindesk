@@ -240,7 +240,6 @@ export default function StudentSearch() {
                 value={enrollmentNo}
                 onChange={(e) => setEnrollmentNo(e.target.value.toUpperCase())}
                 placeholder="Enter Enrollment Number (e.g., 19PHARMD01021)"
-                disabled={loading}
               />
               {searched && (
                 <button
@@ -252,7 +251,9 @@ export default function StudentSearch() {
                 </button>
               )}
             </div>
-            <p className="text-sm text-gray-500">Search runs automatically after you stop typing.</p>
+            <p className="text-sm text-gray-500">
+              {loading ? "Searching..." : "Search runs automatically as you type."}
+            </p>
           </div>
         </div>
 

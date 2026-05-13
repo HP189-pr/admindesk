@@ -13,7 +13,9 @@ import re, logging
 from xml.sax.saxutils import escape
 from django.db.models.functions import Lower
 from .domain_letter import InstLetterMain, InstLetterStudent
-from .models import Enrollment, MainBranch, SubBranch, Institute
+from .models import Enrollment, MainBranch, SubBranch, Institute, DocRec
+from .domain_documents import ApplyFor, PayBy
+from django.utils.dateparse import parse_date
 from collections import OrderedDict
 from .serializers_Letter import InstLetterMainSerializer, InstLetterStudentSerializer
 from .search_utils import apply_fts_search
@@ -729,6 +731,31 @@ class InstLetterMainViewSet(viewsets.ModelViewSet):
     serializer_class = InstLetterMainSerializer
     permission_classes = [IsAuthenticated]
 
+    def _ensure_manual_doc_rec(self, request):
+        data = getattr(request, "data", {}) or {}
+        doc_rec_id = (data.get("doc_rec_key") or data.get("doc_rec") or "").strip()
+        if not doc_rec_id:
+            return None
+        doc_rec_date = None
+        raw_date = data.get("doc_rec_date")
+        if raw_date:
+            try:
+                doc_rec_date = parse_date(str(raw_date))
+            except Exception:
+                doc_rec_date = None
+        defaults = {
+            "apply_for": ApplyFor.INST_VERIFICATION,
+            "pay_by": PayBy.NA,
+            "pay_amount": 0,
+        }
+        if doc_rec_date:
+            defaults["doc_rec_date"] = doc_rec_date
+        doc_rec, created = DocRec.objects.get_or_create(doc_rec_id=doc_rec_id, defaults=defaults)
+        if not created and doc_rec_date and not doc_rec.doc_rec_date:
+            doc_rec.doc_rec_date = doc_rec_date
+            doc_rec.save(update_fields=["doc_rec_date", "updatedat"])
+        return doc_rec
+
     def get_queryset(self):
         qs = super().get_queryset()
         params = getattr(self.request, 'query_params', {})
@@ -773,6 +800,7 @@ class InstLetterMainViewSet(viewsets.ModelViewSet):
         return qs
 
     def create(self, request, *args, **kwargs):
+        self._ensure_manual_doc_rec(request)
         inst_no = (request.data.get("inst_veri_number") or "").strip()
         iv_record_raw = request.data.get("iv_record_no")
         iv_record_no = None
@@ -794,6 +822,14 @@ class InstLetterMainViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        self._ensure_manual_doc_rec(request)
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        self._ensure_manual_doc_rec(request)
+        return super().partial_update(request, *args, **kwargs)
 
     @action(detail=False, methods=["get"], url_path="search-rec-inst")
     def search_rec_inst(self, request):

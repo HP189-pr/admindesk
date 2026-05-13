@@ -804,6 +804,8 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 			try {
 				const detail = await fetchInstLetterMainDetail(record.id);
 				setMForm(formatMainRecord(detail));
+				setDocRecIsPreview(false);
+				autoInstVerSourceRef.current = detail.doc_rec?.doc_rec_id || detail.doc_rec || "";
 				await loadStudents(detail.doc_rec?.doc_rec_id || detail.doc_rec || "");
 				resetStudentForm();
 				setSelectedAction("✏️ Edit");
@@ -827,7 +829,8 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 		setSavingMain(true);
 		try {
 			let docRecId = mform.doc_rec?.trim() || "";
-			if (!docRecId || docRecIsPreview) {
+			const isEditingMain = Boolean(mform.id);
+			if (!docRecId || (!isEditingMain && docRecIsPreview)) {
 				const nextId = docRecId || nextDocRecId?.trim() || "";
 				docRecId = await ensureDocRec(
 					nextId ? { ...mform, doc_rec: nextId } : mform,
@@ -884,6 +887,7 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 			}
 			const data = await saveInstLetterMain(payload, { id: existingId, apiBase });
 			setMForm(formatMainRecord(data));
+			setDocRecIsPreview(false);
 			setStatus("Main record saved successfully.");
 			loadList(q);
 		} catch (err) {

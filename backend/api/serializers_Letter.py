@@ -2,12 +2,48 @@
 from rest_framework import serializers
 from .models import InstLetterMain, InstLetterStudent
 from .models import DocRec
+from .domain_documents import ApplyFor, PayBy
+from django.db import IntegrityError
+
+
+class ManualDocRecSlugField(serializers.SlugRelatedField):
+    """Resolve DocRec by public id, creating a manual IV receipt when missing."""
+
+    def to_internal_value(self, data):
+        key = str(data or "").strip()
+        if not key:
+            self.fail("does_not_exist", slug_name=self.slug_field, value=data)
+        try:
+            return super().to_internal_value(key)
+        except serializers.ValidationError:
+            doc_rec_date = None
+            try:
+                from django.utils.dateparse import parse_date
+                raw_date = (getattr(self.parent, "initial_data", {}) or {}).get("doc_rec_date")
+                doc_rec_date = parse_date(str(raw_date)) if raw_date else None
+            except Exception:
+                doc_rec_date = None
+            defaults = {
+                "apply_for": ApplyFor.INST_VERIFICATION,
+                "pay_by": PayBy.NA,
+                "pay_amount": 0,
+            }
+            if doc_rec_date:
+                defaults["doc_rec_date"] = doc_rec_date
+            try:
+                doc_rec, _ = DocRec.objects.get_or_create(doc_rec_id=key, defaults=defaults)
+                return doc_rec
+            except IntegrityError:
+                doc_rec = DocRec.objects.filter(doc_rec_id=key).first()
+                if doc_rec:
+                    return doc_rec
+                raise
 
 class InstLetterMainSerializer(serializers.ModelSerializer):
     doc_rec_id = serializers.PrimaryKeyRelatedField(
         queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False
     )
-    doc_rec_key = serializers.SlugRelatedField(
+    doc_rec_key = ManualDocRecSlugField(
         slug_field='doc_rec_id', queryset=DocRec.objects.all(), source='doc_rec', write_only=True, required=False
     )
     doc_rec = serializers.CharField(source='doc_rec.doc_rec_id', read_only=True)
@@ -49,7 +85,7 @@ class InstLetterMainSerializer(serializers.ModelSerializer):
 class InstLetterStudentSerializer(serializers.ModelSerializer):
     # 🔥 Do NOT accept *_id fields from input
 
-    doc_rec_key = serializers.SlugRelatedField(
+    doc_rec_key = ManualDocRecSlugField(
         slug_field='doc_rec_id',
         queryset=DocRec.objects.all(),
         source='doc_rec',
