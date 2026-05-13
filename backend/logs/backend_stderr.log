@@ -57063,3 +57063,16 @@ Bad Request: /api/inst-verification-main/
 2026-05-13 12:10:32,640 WARNING  Bad Request: /api/inst-verification-main/
 Bad Request: /api/inst-verification-main/
 2026-05-13 12:10:50,806 WARNING  Bad Request: /api/inst-verification-main/
+Bad Request: /api/inst-verification-main/
+2026-05-13 12:11:10,611 WARNING  Bad Request: /api/inst-verification-main/
+2026-05-13 12:12:12,105 INFO     Import mail requests completed via API: Found 375 rows; starting import
+Processed 200/375 rows
+Processed 375/375 rows
+Import complete. Created: 0, Updated: 375
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+Bad Request: /api/inst-verification-main/
+2026-05-13 12:12:46,457 WARNING  Bad Request: /api/inst-verification-main/
+Bad Request: /api/inst-verification-main/
+2026-05-13 12:14:45,036 WARNING  Bad Request: /api/inst-verification-main/
+2026-05-13 13:13:53,536 INFO     Killed 0 pending application instances
