@@ -123,6 +123,19 @@ VALID_STATUSES = {
     GoogleFormSubmission.MAIL_STATUS_CANCEL,
 }
 
+DOCUMENT_TYPE_TOKENS = (
+    "transcript",
+    "degree",
+    "marksheet",
+    "mark sheet",
+    "moi",
+)
+
+
+def _is_document_type_value(value: Any) -> bool:
+    text = str(value or "").strip().lower()
+    return any(token in text for token in DOCUMENT_TYPE_TOKENS)
+
 
 class Command(BaseCommand):
     help = "Import mail request submissions from Google Sheets into GoogleFormSubmission."
@@ -469,6 +482,17 @@ class Command(BaseCommand):
                     return text
             return ""
 
+        def pick_document_type() -> str:
+            alias_value = pick("send_doc_type")
+            if _is_document_type_value(alias_value):
+                return alias_value
+            for value in row.values():
+                if _is_document_type_value(value):
+                    return str(value).strip()
+            return ""
+
+        send_doc_type = pick_document_type()
+
         mail_status = pick("mail_status").lower()
         if mail_status not in VALID_STATUSES:
             mail_status = GoogleFormSubmission.MAIL_STATUS_PENDING
@@ -480,7 +504,7 @@ class Command(BaseCommand):
             "rec_institute_name": pick("rec_institute_name"),
             "rec_official_mail": pick("rec_official_mail"),
             "rec_ref_id": pick("rec_ref_id"),
-            "send_doc_type": pick("send_doc_type"),
+            "send_doc_type": send_doc_type,
             "form_submit_mail": pick("form_submit_mail"),
             "remark": pick("remark"),
             "mail_status": mail_status,

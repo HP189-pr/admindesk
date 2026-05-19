@@ -34,6 +34,36 @@ const RIGHTS_FALLBACK = { can_view: false, can_create: false, can_edit: false, c
 const RIGHTS_DEFAULT = { can_view: true, can_create: false, can_edit: true, can_delete: false };
 const AUTO_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 
+const normalizeTranscriptMailStatus = (value) => {
+  if (!value || String(value).trim() === '') return 'progress';
+  const txt = String(value).trim().toLowerCase();
+  if (['yes', 'done', 'sent'].includes(txt)) return 'done';
+  if (txt === 'pending') return 'pending';
+  if (['cancel', 'cancelled', 'canceled'].includes(txt)) return 'cancel';
+  if (['progress', 'in progress', 'in-progress', 'processing'].includes(txt)) return 'progress';
+  return 'progress';
+};
+
+const EMPTY_EDIT_FORM = {
+  mail_status: 'pending',
+  transcript_remark: '',
+  email: '',
+  submit_mail: '',
+  pdf_generate: '',
+  institute_name: '',
+  request_ref_no: '',
+};
+
+const buildEditForm = (row = {}) => ({
+  mail_status: normalizeTranscriptMailStatus(row.mail_status),
+  transcript_remark: row.transcript_remark || '',
+  email: row.email || '',
+  submit_mail: row.submit_mail || '',
+  pdf_generate: row.pdf_generate || '',
+  institute_name: row.institute_name || '',
+  request_ref_no: row.request_ref_no || '',
+});
+
 const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   const [statusFilter, setStatusFilter] = useState('');
   const [instituteFilter, setInstituteFilter] = useState('');
@@ -48,7 +78,7 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   const [flash, setFlash] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [activeRow, setActiveRow] = useState(null);
-  const [editForm, setEditForm] = useState({ mail_status: 'pending', transcript_remark: '', email: '', submit_mail: '', pdf_generate: '', institute_name: '', request_ref_no: '' });
+  const [editForm, setEditForm] = useState(EMPTY_EDIT_FORM);
   const activeRowRef = useRef(null);
   const [updatingId, setUpdatingId] = useState(null);
   const [bulkStatus, setBulkStatus] = useState('');
@@ -234,28 +264,11 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
 
   useEffect(() => {
     if (!activeRow) {
-      setEditForm({ mail_status: 'pending', transcript_remark: '', email: '' });
+      setEditForm(EMPTY_EDIT_FORM);
       return;
     }
     activeRowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    const normalizeMailStatus = (value) => {
-      if (!value || String(value).trim() === '') return 'progress';
-      const txt = String(value).trim().toLowerCase();
-      if (['yes', 'done', 'sent'].includes(txt)) return 'done';
-      if (txt === 'pending') return 'pending';
-      if (['progress', 'in progress', 'in-progress', 'processing'].includes(txt)) return 'progress';
-      return 'progress';
-    };
-
-    setEditForm({
-      mail_status: normalizeMailStatus(activeRow.mail_status),
-      transcript_remark: activeRow.transcript_remark || '',
-      email: activeRow.email || '',
-      submit_mail: activeRow.submit_mail || '',
-      pdf_generate: activeRow.pdf_generate || '',
-      institute_name: activeRow.institute_name || '',
-      request_ref_no: activeRow.request_ref_no || '',
-    });
+    setEditForm(buildEditForm(activeRow));
   }, [activeRow]);
 
   const toggleSelect = (id) => {
@@ -276,20 +289,7 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   const handleRowSelect = useCallback((row) => {
     if (!row) return;
     setActiveRow(row);
-    const normalizeMailStatus = (value) => {
-      if (!value || String(value).trim() === '') return 'progress';
-      const txt = String(value).trim().toLowerCase();
-      if (['yes', 'done', 'sent'].includes(txt)) return 'done';
-      if (txt === 'pending') return 'pending';
-      if (['progress', 'in progress', 'in-progress', 'processing'].includes(txt)) return 'progress';
-      return 'progress';
-    };
-
-    setEditForm({
-      mail_status: normalizeMailStatus(row.mail_status),
-      transcript_remark: row.transcript_remark || '',
-      email: row.email || '',
-    });
+    setEditForm(buildEditForm(row));
     setSelectedAction(ACTIONS[2]);
     setPanelOpen(true);
   }, []);
@@ -325,16 +325,7 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
     }
     
     const payload = {};
-    const normalizeMailStatus = (value) => {
-      if (!value || String(value).trim() === '') return 'progress';
-      const txt = String(value).trim().toLowerCase();
-      if (['yes', 'done', 'sent'].includes(txt)) return 'done';
-      if (txt === 'pending') return 'pending';
-      if (['progress', 'in progress', 'in-progress', 'processing'].includes(txt)) return 'progress';
-      return 'progress';
-    };
-
-    const originalStatus = normalizeMailStatus(row.mail_status);
+    const originalStatus = normalizeTranscriptMailStatus(row.mail_status);
     const nextStatus = form.mail_status ?? originalStatus ?? 'pending';
     const nextRemark = form.transcript_remark ?? row.transcript_remark ?? '';
     if (nextStatus !== originalStatus) payload.mail_status = nextStatus;
@@ -366,11 +357,7 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
       setRows((prev) => prev.map((item) => (item.id === rowId ? updated : item)));
       if (rowId === activeRow?.id) {
         setActiveRow(updated);
-        setEditForm({
-          mail_status: normalizeMailStatus(updated.mail_status),
-          transcript_remark: updated.transcript_remark || '',
-          email: updated.email || '',
-        });
+        setEditForm(buildEditForm(updated));
       }
       setFlashMessage('success', 'Transcript request updated.');
     } catch (err) {
@@ -745,119 +732,139 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-12 gap-4 items-start">
-                      <div className="col-span-12 md:col-span-3">
-                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Requested Date</div>
-                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm">{formatDateOnly(activeRow.requested_at)}</div>
-                      </div>
-
-                      <div className="col-span-12 md:col-span-2">
-                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">TR No</div>
-                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm text-center font-mono">
-                          {(() => {
-                            const t = String(activeRow.tr_request_no ?? activeRow.request_ref_no ?? 'N/A');
-                            if (t === 'N/A') return t;
-                            return t.length > 8 ? t.slice(0, 8) + '…' : t;
-                          })()}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-[205px_190px_180px_minmax(280px,1fr)_150px_130px] gap-3 items-end">
+                      <div>
+                        <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Requested Date</label>
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 min-h-[42px] flex items-center">
+                          {formatDateOnly(activeRow.requested_at)}
                         </div>
                       </div>
 
-                      <div className="col-span-12 md:col-span-3">
-                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Enrollment</div>
-                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm">{activeRow.enrollment_no || 'N/A'}</div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">TR No</label>
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 min-h-[42px] flex items-center justify-end font-mono">
+                          {activeRow.tr_request_no ?? 'N/A'}
+                        </div>
                       </div>
 
-                      <div className="col-span-12 md:col-span-4">
-                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Student Name</div>
-                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm">{activeRow.student_name || ''}</div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Enrollment</label>
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 min-h-[42px] flex items-center">
+                          {activeRow.enrollment_no || 'N/A'}
+                        </div>
                       </div>
-                      
+
+                      <div>
+                        <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Student Name</label>
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 min-h-[42px] flex items-center">
+                          {activeRow.student_name || 'N/A'}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Mail Status</label>
+                        <select
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm min-h-[42px]"
+                          value={editForm.mail_status}
+                          onChange={(e) => setEditForm((s) => ({ ...s, mail_status: e.target.value }))}
+                          disabled={!rights.can_edit}
+                        >
+                          {STATUS_OPTIONS.filter((opt) => opt.value).map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">PDF Generated</label>
+                        <select
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm min-h-[42px]"
+                          value={editForm.pdf_generate || ''}
+                          onChange={(e) => setEditForm((s) => ({ ...s, pdf_generate: e.target.value }))}
+                          disabled={!rights.can_edit}
+                        >
+                          <option value="">No</option>
+                          <option value="No">No</option>
+                          <option value="Yes">Yes</option>
+                          <option value="Cancel">Cancel</option>
+                        </select>
+                      </div>
                     </div>
 
-                    <div className="mt-3">
-                      <div className="grid grid-cols-12 gap-3 items-end">
-                        <div className="col-span-12 md:col-span-2">
-                          <label className="block text-xs font-medium text-gray-500 mb-1">Mail Status</label>
-                          <select
-                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                            value={editForm.mail_status}
-                            onChange={(e) => setEditForm((s) => ({ ...s, mail_status: e.target.value }))}
-                          >
-                            {STATUS_OPTIONS.map((opt) => (
-                              <option key={opt.value} value={opt.value || ''}>
-                                {opt.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="col-span-12 md:col-span-2">
-                          <label className="block text-xs font-medium text-gray-500 mb-1">Submit Mail</label>
-                          <input
-                            type="text"
-                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                            value={editForm.submit_mail}
-                            onChange={(e) => setEditForm((s) => ({ ...s, submit_mail: e.target.value }))}
-                            placeholder="Submit mail"
-                          />
-                        </div>
-
-                        <div className="col-span-12 md:col-span-2">
-                          <label className="block text-xs font-medium text-gray-500 mb-1">PDF Generated</label>
-                          <select
-                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                            value={editForm.pdf_generate}
-                            onChange={(e) => setEditForm((s) => ({ ...s, pdf_generate: e.target.value }))}
-                          >
-                            <option value="">No</option>
-                            <option value="Yes">Yes</option>
-                          </select>
-                        </div>
-
-                        <div className="col-span-12 md:col-span-3">
-                          <label className="block text-xs font-medium text-gray-500 mb-1">Institute</label>
-                          <input
-                            type="text"
-                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                            value={editForm.institute_name}
-                            onChange={(e) => setEditForm((s) => ({ ...s, institute_name: e.target.value }))}
-                            placeholder="Institute"
-                          />
-                        </div>
-
-                        <div className="col-span-12 md:col-span-2">
-                          <label className="block text-xs font-medium text-gray-500 mb-1">Reference</label>
-                          <input
-                            type="text"
-                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                            value={editForm.request_ref_no}
-                            onChange={(e) => setEditForm((s) => ({ ...s, request_ref_no: e.target.value }))}
-                            placeholder="Ref #"
-                          />
-                        </div>
-
-                        <div className="col-span-12 md:col-span-1 flex md:justify-end">
-                          <button
-                            onClick={() => applyUpdate(activeRow.id)}
-                            className="save-button-compact w-full"
-                            disabled={!rights.can_edit || updatingId === activeRow.id}
-                          >
-                            {updatingId === activeRow.id ? 'Saving...' : 'Save'}
-                          </button>
-                        </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_minmax(300px,1.45fr)_240px_minmax(260px,1fr)_auto_auto] gap-3 items-end">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Submit Mail</label>
+                        <input
+                          type="email"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm min-h-[42px]"
+                          value={editForm.submit_mail}
+                          onChange={(e) => setEditForm((s) => ({ ...s, submit_mail: e.target.value }))}
+                          placeholder="Submit mail"
+                          disabled={!rights.can_edit}
+                        />
                       </div>
 
-                      <div className="flex items-center justify-between mt-3 text-xs text-gray-500">
-                        <span>Last updated: {formatDateTime(activeRow.updated_at || activeRow.modified_at)}</span>
-                        {rights.can_delete && (
-                          <button
-                            onClick={() => handleDelete(activeRow.id)}
-                            className="px-3 py-2 rounded bg-red-600 text-white text-sm"
-                          >
-                            Delete
-                          </button>
-                        )}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Institute</label>
+                        <input
+                          type="text"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm min-h-[42px]"
+                          value={editForm.institute_name}
+                          onChange={(e) => setEditForm((s) => ({ ...s, institute_name: e.target.value }))}
+                          placeholder="Institute"
+                          disabled={!rights.can_edit}
+                        />
                       </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Reference</label>
+                        <input
+                          type="text"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm min-h-[42px]"
+                          value={editForm.request_ref_no}
+                          onChange={(e) => setEditForm((s) => ({ ...s, request_ref_no: e.target.value }))}
+                          placeholder="Ref #"
+                          disabled={!rights.can_edit}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Transcript Remark</label>
+                        <input
+                          type="text"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm min-h-[42px]"
+                          value={editForm.transcript_remark}
+                          onChange={(e) => setEditForm((s) => ({ ...s, transcript_remark: e.target.value }))}
+                          placeholder="Remark"
+                          disabled={!rights.can_edit}
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2 xl:col-span-1">
+                        <button
+                          onClick={() => applyUpdate(activeRow.id)}
+                          className="save-button-compact w-full min-h-[38px]"
+                          disabled={!rights.can_edit || updatingId === activeRow.id}
+                        >
+                          {updatingId === activeRow.id ? 'Saving...' : 'Save'}
+                        </button>
+                      </div>
+
+                      <div className="sm:col-span-2 xl:col-span-1">
+                        <button
+                          onClick={() => handleDelete(activeRow.id)}
+                          className="w-full min-h-[38px] px-4 py-2 rounded-full bg-red-600 text-white text-sm font-semibold shadow-sm hover:bg-red-700 disabled:bg-red-300"
+                          disabled={!rights.can_delete || updatingId === activeRow.id}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-gray-500">
+                      Last updated: {formatDateTime(activeRow.updated_at || activeRow.modified_at)}
                     </div>
                   </>
                 ) : (

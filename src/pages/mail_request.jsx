@@ -34,6 +34,64 @@ const normalizeComparableValue = (value) => (value ?? '').toString().trim();
 const rowMatchesPayload = (row, payload = {}) =>
   Object.entries(payload).every(([key, value]) => normalizeComparableValue(row?.[key]) === normalizeComparableValue(value));
 
+const DOCUMENT_TYPE_TOKENS = ['transcript', 'degree', 'marksheet', 'mark sheet', 'moi'];
+
+const normalizeLookupText = (value) => (value ?? '').toString().trim().toLowerCase().replace(/\s+/g, ' ');
+
+const isDocumentTypeValue = (value) => {
+  const text = normalizeLookupText(value);
+  return DOCUMENT_TYPE_TOKENS.some((token) => text.includes(token));
+};
+
+const getRawRowValue = (row, aliases = [], fallbackIndex) => {
+  const rawRow = row?.raw_row;
+  if (!rawRow || typeof rawRow !== 'object') return '';
+
+  const entries = Object.entries(rawRow);
+  const normalizedAliases = aliases.map(normalizeLookupText);
+  const aliasMatch = entries.find(([key]) =>
+    normalizedAliases.some((alias) => normalizeLookupText(key) === alias)
+  );
+  if (aliasMatch && aliasMatch[1] !== undefined && aliasMatch[1] !== null) {
+    return String(aliasMatch[1]).trim();
+  }
+
+  if (Number.isInteger(fallbackIndex) && entries[fallbackIndex]?.[1] !== undefined && entries[fallbackIndex]?.[1] !== null) {
+    return String(entries[fallbackIndex][1]).trim();
+  }
+
+  return '';
+};
+
+const getMailRefId = (row) =>
+  row?.rec_ref_id ||
+  getRawRowValue(row, ['Ref ID', 'Reference Id', 'Student ID / Application No', 'Student ID', 'Application No'], 5);
+
+const getMailDocumentType = (row) => {
+  if (isDocumentTypeValue(row?.send_doc_type)) return row.send_doc_type;
+
+  const aliasValue = getRawRowValue(
+    row,
+    [
+      'Document Type',
+      'send_doc_type',
+      'Document',
+      'Select documents for mail attachment ( Marksheet and Degree)',
+      'Select documents for mail attachment (Marksheet and Degree)',
+      'Select documents for mail attachment',
+      'Documents for mail attachment',
+    ],
+    undefined
+  );
+  if (isDocumentTypeValue(aliasValue)) return aliasValue;
+
+  const rawEntries = row?.raw_row && typeof row.raw_row === 'object' ? Object.values(row.raw_row) : [];
+  const scannedValue = rawEntries.find(isDocumentTypeValue);
+  if (scannedValue !== undefined && scannedValue !== null) return String(scannedValue).trim();
+
+  return '';
+};
+
 const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   const [statusFilter, setStatusFilter] = useState('pending');
   const [searchTerm, setSearchTerm] = useState('');
@@ -596,53 +654,56 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
               <div className="p-4 space-y-4 text-sm text-gray-700">
                 {activeRow ? (
                   <div className="space-y-3">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-[145px_190px_minmax(260px,1fr)_180px_minmax(220px,1fr)] gap-3">
                       <div>
                         <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Submitted At</label>
-                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 min-h-[42px] flex items-center">
                           {formatDate(activeRow.submitted_at)}
                         </div>
                       </div>
                       <div>
                         <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Enrollment No</label>
-                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 min-h-[42px] flex items-center">
                           {activeRow.enrollment_no || 'N/A'}
                         </div>
                       </div>
                       <div>
                         <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Student Name</label>
-                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 min-h-[42px] flex items-center">
                           {activeRow.student_name || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Ref ID</label>
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 min-h-[42px] flex items-center break-all">
+                          {getMailRefId(activeRow) || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Document Type</label>
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 min-h-[42px] flex items-center break-words">
+                          {getMailDocumentType(activeRow) || 'N/A'}
                         </div>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_minmax(260px,1.35fr)_220px_minmax(260px,1fr)_auto] gap-3 items-end">
                       <div>
                         <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Official Mail</label>
-                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 break-all">
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 min-h-[42px] flex items-center break-all">
                           {activeRow.rec_official_mail || 'N/A'}
                         </div>
                       </div>
                       <div>
                         <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Institute</label>
-                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
+                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 min-h-[42px] flex items-center">
                           {activeRow.rec_institute_name || 'N/A'}
                         </div>
                       </div>
                       <div>
-                        <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Document Type</label>
-                        <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
-                          {activeRow.send_doc_type || 'N/A'}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-[200px_minmax(260px,1fr)_auto] gap-3 items-end">
-                      <div>
                         <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Status</label>
                         <select
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm min-h-[42px]"
                           value={editForm.mail_status}
                           onChange={(e) => setEditForm((prev) => ({ ...prev, mail_status: e.target.value }))}
                           disabled={!rights.can_edit}
@@ -659,7 +720,7 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                         <label className="block text-xs uppercase tracking-wide text-gray-500 mb-1">Remark</label>
                         <input
                           type="text"
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm min-h-[42px]"
                           value={editForm.remark}
                           onChange={(e) => setEditForm((prev) => ({ ...prev, remark: e.target.value }))}
                           disabled={!rights.can_edit}
@@ -667,10 +728,10 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                         />
                       </div>
 
-                      <div className="md:justify-self-end">
+                      <div className="sm:col-span-2 xl:col-span-1 xl:justify-self-end">
                         <button
                           onClick={() => activeRow && applyUpdate(activeRow.id, editForm)}
-                          className="save-button"
+                          className="save-button w-full xl:w-auto"
                           disabled={!rights.can_edit || updatingId === activeRow.id}
                         >
                           {updatingId === activeRow?.id ? 'Saving...' : 'Save Changes'}
@@ -816,8 +877,8 @@ const MailRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                         <td className="px-3 py-2 text-gray-800">{row.student_name || 'N/A'}</td>
                         <td className="px-3 py-2 text-gray-800">{row.rec_institute_name || 'N/A'}</td>
                         <td className="px-3 py-2 break-all text-gray-700">{row.rec_official_mail || 'N/A'}</td>
-                        <td className="px-3 py-2 text-gray-800">{row.rec_ref_id || 'N/A'}</td>
-                        <td className="px-3 py-2 text-gray-800">{row.send_doc_type || 'N/A'}</td>
+                        <td className="px-3 py-2 text-gray-800">{getMailRefId(row) || 'N/A'}</td>
+                        <td className="px-3 py-2 text-gray-800">{getMailDocumentType(row) || 'N/A'}</td>
                         <td className="px-3 py-2">
                           <select
                             className="border border-gray-300 rounded px-2 py-1 text-sm"
