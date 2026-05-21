@@ -18,7 +18,7 @@ import {
 
 const ACTIONS = ["➕", "✏️ Edit", "🔍", "📄 Report"];
 const IV_STATUS_OPTIONS = ["", "Pending", "Done", "Correction", "Post", "Mail"];
-const DOC_TYPE_OPTIONS = ["Marksheet", "Degree", "Transcript", "MOI"];
+const DOC_TYPE_OPTIONS = ["Marksheet", "Degree", "Transcript", "MOI", "Provisional"];
 const REC_BY_OPTIONS = ["", "Mail", "Post"];
 const STUDY_MODE_OPTIONS = ["Regular", "Part Time"];
 const DOCREC_APPLY_FOR = "IV";
