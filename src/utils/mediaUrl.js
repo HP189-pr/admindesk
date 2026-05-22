@@ -6,6 +6,9 @@ const isAbsoluteUrl = (value) => /^https?:\/\//i.test(value);
 export const normalizeMediaUrl = (value) => {
   if (!value) return value;
 
+  value = String(value).trim().replace(/\\/g, "/");
+  if (!value) return value;
+
   if (isAbsoluteUrl(value) || value.startsWith("data:")) {
     if (value.startsWith("data:")) return value;
     try {
@@ -26,7 +29,15 @@ export const normalizeMediaUrl = (value) => {
     return `${API_BASE_URL}${value}`;
   }
 
+  if (value.startsWith("/profilepic/")) {
+    return value;
+  }
+
   if (value.startsWith("/profile_pictures/")) {
+    return `${API_BASE_URL}/media${value}`;
+  }
+
+  if (/^\/(profilepics|uploads|user_photos)\//i.test(value)) {
     return `${API_BASE_URL}/media${value}`;
   }
 
@@ -36,6 +47,14 @@ export const normalizeMediaUrl = (value) => {
 
   if (value.startsWith("profile_pictures/")) {
     return `${API_BASE_URL}/media/${value}`;
+  }
+
+  if (/^(profilepics|uploads|user_photos)\//i.test(value)) {
+    return `${API_BASE_URL}/media/${value}`;
+  }
+
+  if (/^[^/]+\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(value)) {
+    return `${API_BASE_URL}/media/profile_pictures/${value}`;
   }
 
   return value;

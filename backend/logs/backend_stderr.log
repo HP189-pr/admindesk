@@ -59939,3 +59939,7 @@ Processed 384/384 rows
 Import complete. Created: 0, Updated: 384
 Prune skipped (--no-prune). DB rows will not be deleted.
 
+Unauthorized: /api/token/verify/
+2026-05-22 13:07:48,968 WARNING  Unauthorized: /api/token/verify/
+Unauthorized: /api/token/refresh/
+2026-05-22 13:07:49,117 WARNING  Unauthorized: /api/token/refresh/

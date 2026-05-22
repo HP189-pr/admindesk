@@ -7,6 +7,8 @@ import { normalizeMediaUrl, resolveProfilePicture } from "../utils/mediaUrl";
 const ProfileUpdate = ({ setWorkArea }) => {
     const { user, fetchUserProfile } = useAuth();  // fetchUserProfile to refresh after update
     const [imgBroken, setImgBroken] = useState(false);
+    const [statusMessage, setStatusMessage] = useState("");
+    const [statusType, setStatusType] = useState("");
 
     const [profile, setProfile] = useState({
         username: "",
@@ -49,6 +51,8 @@ const ProfileUpdate = ({ setWorkArea }) => {
         const file = e.target.files[0];
         setProfile((prev) => ({ ...prev, profile_picture_file: file }));
         setImgBroken(false);
+        setStatusMessage("");
+        setStatusType("");
     };
 
     const getInitials = () => {
@@ -96,13 +100,22 @@ const ProfileUpdate = ({ setWorkArea }) => {
                 timeout: 30000,
             });
 
-            alert("Profile updated successfully!");
+            setStatusType("success");
+            setStatusMessage("Profile updated successfully.");
             await fetchUserProfile();  // Refresh profile data after update
             if (typeof setWorkArea === "function") {
                 setWorkArea(null);
             }
         } catch (error) {
             console.error("❌ Error updating profile:", error.response?.data || error.message);
+            const details = error.response?.data;
+            const message =
+                details?.detail ||
+                details?.message ||
+                (typeof details === "string" ? details : "") ||
+                "Profile update failed. Please check the details and try again.";
+            setStatusType("error");
+            setStatusMessage(message);
         }
     };
 
@@ -120,6 +133,18 @@ const ProfileUpdate = ({ setWorkArea }) => {
                 <h2 className="text-2xl font-bold text-center text-gray-800">
                     Update Profile
                 </h2>
+
+                {statusMessage && (
+                    <div
+                        className={`rounded-lg border px-4 py-3 text-sm ${
+                            statusType === "success"
+                                ? "border-green-200 bg-green-50 text-green-700"
+                                : "border-red-200 bg-red-50 text-red-700"
+                        }`}
+                    >
+                        {statusMessage}
+                    </div>
+                )}
 
                 <div className="flex flex-col items-center space-y-4">
                     <div className="relative">

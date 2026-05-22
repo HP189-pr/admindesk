@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/AuthContext';
 import API from '../api/axiosInstance';
-import { DEFAULT_PROFILE_PIC, normalizeMediaUrl } from '../utils/mediaUrl';
+import { DEFAULT_PROFILE_PIC, resolveProfilePicture } from '../utils/mediaUrl';
 
 // Styled Sidebar with static modules, adapted to labels used in this app
 const staticModules = [
@@ -68,12 +68,17 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem, selectedMenuItem
   const [isAdminPanelFlow, setIsAdminPanelFlow] = useState(false);
   const [navModules, setNavModules] = useState([]);
   const [navLoading, setNavLoading] = useState(false);
+  const [profilePicBroken, setProfilePicBroken] = useState(false);
 
   useEffect(() => {
     if (user) {
-      setProfilePic(normalizeMediaUrl(profilePicture) || DEFAULT_PROFILE_PIC);
+      const contextPicture =
+        profilePicture && profilePicture !== DEFAULT_PROFILE_PIC ? profilePicture : null;
+      setProfilePic(resolveProfilePicture({ ...user, profile_picture: contextPicture || user.profile_picture }));
+      setProfilePicBroken(false);
     } else {
       setProfilePic(DEFAULT_PROFILE_PIC);
+      setProfilePicBroken(false);
     }
   }, [user, profilePicture]);
 
@@ -210,6 +215,7 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem, selectedMenuItem
 
     const normalizedSelected = String(selectedMenuItem || '').toLowerCase();
     if (normalizedSelected.includes('dash')) return;
+    if (normalizedSelected.includes('profile') || normalizedSelected.includes('admin panel')) return;
     const hasSelectedVisible = displayModules.some((mod) =>
       (mod.menu || []).some((menuName) => String(menuName || '').toLowerCase() === normalizedSelected)
     );
@@ -232,6 +238,14 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem, selectedMenuItem
   const handleLogout = () => {
     logout(navigate);
     setProfilePic(DEFAULT_PROFILE_PIC);
+    setProfilePicBroken(false);
+  };
+
+  const getInitials = () => {
+    const name = `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || user?.username || 'User';
+    const words = String(name).trim().split(/\s+/).filter(Boolean);
+    if (words.length >= 2) return `${words[0][0] || ''}${words[words.length - 1][0] || ''}`.toUpperCase();
+    return (words[0] || 'U').slice(0, 2).toUpperCase();
   };
 
   const handleSecurePageAccess = async (menuItem) => {
@@ -263,13 +277,19 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem, selectedMenuItem
         setPassword('');
       }
     } else {
-      const ok = await verifyPassword(password);
-      if (ok) {
-        setShowPasswordModal(false);
-        setPassword('');
-        setSelectedMenuItem(securePage);
-      } else {
-        setPasswordError('Incorrect password');
+      try {
+        const ok = await verifyPassword(password);
+        if (ok) {
+          setShowPasswordModal(false);
+          setPassword('');
+          setActiveMenu(securePage);
+          setSelectedMenuItem(securePage);
+        } else {
+          setPasswordError('Incorrect password');
+          setPassword('');
+        }
+      } catch (error) {
+        setPasswordError('Unable to verify password. Please try again.');
         setPassword('');
       }
     }
@@ -292,11 +312,18 @@ const Sidebar = ({ isOpen, setSidebarOpen, setSelectedMenuItem, selectedMenuItem
     >
       {/* Profile Section */}
       <div className="flex items-center pt-4">
-        <img
-          src={profilePic}
-          alt="Profile"
-          className="w-14 h-14 rounded-full object-cover border-2 border-white"
-        />
+        {!profilePicBroken ? (
+          <img
+            src={profilePic}
+            alt="Profile"
+            className="w-14 h-14 rounded-full object-cover border-2 border-white"
+            onError={() => setProfilePicBroken(true)}
+          />
+        ) : (
+          <div className="w-14 h-14 rounded-full border-2 border-white bg-gray-600 text-white flex items-center justify-center text-sm font-bold">
+            {getInitials()}
+          </div>
+        )}
 
         {isOpen && (
           <div className="ml-4 flex items-center">
