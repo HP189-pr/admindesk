@@ -59905,3 +59905,37 @@ Unauthorized: /api/token/verify/
 2026-05-21 15:14:21,786 WARNING  Unauthorized: /api/token/verify/
 Unauthorized: /api/token/verify/
 2026-05-21 15:14:21,884 WARNING  Unauthorized: /api/token/verify/
+2026-05-21 15:26:52,431 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26173'}
+2026-05-21 15:26:52,436 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-21 15:26:52,446 INFO     InstLetterPDF grouped records: keys=['2026/173']
+2026-05-21 15:26:52,459 INFO     DEBUG rec_inst_pin value: '500081'
+2026-05-21 15:31:12,525 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26174'}
+2026-05-21 15:31:12,527 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-21 15:31:12,534 INFO     InstLetterPDF grouped records: keys=['2026/174']
+2026-05-21 15:31:12,535 INFO     DEBUG rec_inst_pin value: '110033'
+Unauthorized: /api/users/
+2026-05-21 15:40:29,795 WARNING  Unauthorized: /api/users/
+2026-05-21 15:46:07,417 INFO     sync_cash_deposite_to_sheet: 2026-04-01\u21922027-03-31 appended=2 updated=0 deleted=0 total=38
+2026-05-21 15:46:10,591 INFO     sync_cash_sheet_to_sheet: 2026-04-01\u21922027-03-31 appended=3 updated=0 deleted=0 total=41
+2026-05-21 15:46:10,593 INFO     sync_cash_register_to_sheet: 2026-04-01\u21922027-03-31 appended=14 updated=0 deleted=0 skipped=368 total=270
+2026-05-21 15:46:12,613 INFO     sync_cash_deposite_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=0 deleted=0 total=38
+2026-05-21 15:46:13,988 INFO     sync_cash_sheet_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=0 deleted=0 total=41
+2026-05-21 15:46:16,870 INFO     sync_upi_sheet_to_sheet: 2026-04-01\u21922027-03-31 appended=3 updated=0 deleted=0 total=30
+2026-05-21 15:46:18,188 INFO     sync_bank_sheet_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=0 deleted=0 total=26
+2026-05-21 15:52:19,576 INFO     Killed 0 pending application instances
+2026-05-22 08:35:37,568 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-05-22 08:35:37,568 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-05-22 08:35:37,568 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-05-22 08:35:37,568 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/token/verify/
+2026-05-22 08:43:32,737 WARNING  Unauthorized: /api/token/verify/
+Unauthorized: /api/token/verify/
+2026-05-22 09:21:45,362 WARNING  Unauthorized: /api/token/verify/
+Unauthorized: /api/token/verify/
+2026-05-22 09:21:45,658 WARNING  Unauthorized: /api/token/verify/
+2026-05-22 09:29:25,823 INFO     Import mail requests completed via API: Found 384 rows; starting import
+Processed 200/384 rows
+Processed 384/384 rows
+Import complete. Created: 0, Updated: 384
+Prune skipped (--no-prune). DB rows will not be deleted.
+

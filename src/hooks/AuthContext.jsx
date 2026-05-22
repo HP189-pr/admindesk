@@ -25,7 +25,7 @@ const AuthContext = createContext({
 // Module-level sentinel: prevents concurrent token-refresh attempts that can cause
 // double-logout or redirect loops when multiple 401s arrive simultaneously.
 let _pendingRefresh = null;
-const INACTIVITY_TIMEOUT_MS = 20 * 60 * 1000;
+const INACTIVITY_TIMEOUT_MS = 60 * 60 * 1000;
 const LAST_ACTIVITY_KEY = "admindesk_last_activity_at";
 
 export function AuthProvider({ children }) {
@@ -332,20 +332,42 @@ export function AuthProvider({ children }) {
     useEffect(() => {
         if (!token) return undefined;
 
+        let timeoutId;
+        let lastActivityWrite = 0;
+
+        const scheduleInactiveCheck = (delay = INACTIVITY_TIMEOUT_MS) => {
+            window.clearTimeout(timeoutId);
+            timeoutId = window.setTimeout(
+                logoutIfInactive,
+                Math.max(1000, delay)
+            );
+        };
+
         const markActivity = () => {
-            localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
+            const now = Date.now();
+            if (now - lastActivityWrite < 1000) return;
+            lastActivityWrite = now;
+            localStorage.setItem(LAST_ACTIVITY_KEY, String(now));
+            scheduleInactiveCheck();
         };
 
         const logoutIfInactive = () => {
             const lastActivity = Number(localStorage.getItem(LAST_ACTIVITY_KEY) || Date.now());
-            if (Date.now() - lastActivity >= INACTIVITY_TIMEOUT_MS) {
+            const inactiveFor = Date.now() - lastActivity;
+
+            if (inactiveFor >= INACTIVITY_TIMEOUT_MS) {
                 logout();
                 window.location.href = "/login";
+                return;
             }
+
+            scheduleInactiveCheck(INACTIVITY_TIMEOUT_MS - inactiveFor);
         };
 
         if (!localStorage.getItem(LAST_ACTIVITY_KEY)) {
             markActivity();
+        } else {
+            logoutIfInactive();
         }
 
         const activityEvents = ["click", "keydown", "mousemove", "scroll", "touchstart"];
@@ -353,15 +375,15 @@ export function AuthProvider({ children }) {
             window.addEventListener(eventName, markActivity, { passive: true });
         });
         window.addEventListener("focus", logoutIfInactive);
-
-        const timer = window.setInterval(logoutIfInactive, 30 * 1000);
+        window.addEventListener("visibilitychange", logoutIfInactive);
 
         return () => {
             activityEvents.forEach((eventName) => {
                 window.removeEventListener(eventName, markActivity);
             });
             window.removeEventListener("focus", logoutIfInactive);
-            window.clearInterval(timer);
+            window.removeEventListener("visibilitychange", logoutIfInactive);
+            window.clearTimeout(timeoutId);
         };
     }, [token]);
 
