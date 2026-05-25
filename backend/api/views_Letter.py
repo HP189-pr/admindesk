@@ -472,7 +472,7 @@ class InstLetterPDF(APIView):
                             rep_main = m
                             break
                     if not rep_main:
-                        rep_main = {'inst_veri_number': gk, 'rec_inst_name': '', 'doc_types': '', 'inst_ref_no': '', 'rec_by': '', 'inst_veri_date': ''}
+                        rep_main = {'inst_veri_number': gk, 'rec_inst_sfx_name': '', 'rec_inst_name': '', 'doc_types': '', 'inst_ref_no': '', 'rec_by': '', 'inst_veri_date': ''}
 
                     # merge students with dedupe
                     merged = []
@@ -504,6 +504,10 @@ class InstLetterPDF(APIView):
                     # --- Address block ---
                     story.append(Spacer(1, -2 * mm))
                     address_lines = []
+                    # rec_inst_sfx_name above rec_inst_name
+                    rec_inst_sfx_name = str(rep_main.get('rec_inst_sfx_name') or '').strip()
+                    if rec_inst_sfx_name:
+                        address_lines.append(f"<b>{rec_inst_sfx_name}</b>")
                     # rec_inst_name (bold)
                     rec_inst_name = str(rep_main.get('rec_inst_name') or '').strip()
                     if rec_inst_name:

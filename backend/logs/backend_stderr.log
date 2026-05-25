@@ -59943,3 +59943,54 @@ Unauthorized: /api/token/verify/
 2026-05-22 13:07:48,968 WARNING  Unauthorized: /api/token/verify/
 Unauthorized: /api/token/refresh/
 2026-05-22 13:07:49,117 WARNING  Unauthorized: /api/token/refresh/
+2026-05-22 15:57:36,435 INFO     Killed 0 pending application instances
+2026-05-23 08:28:53,379 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-05-23 08:28:53,379 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-05-23 08:28:53,379 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-05-23 08:28:53,381 INFO     Listening on TCP address 0.0.0.0:8001
+2026-05-23 13:53:48,032 INFO     Killed 0 pending application instances
+2026-05-25 08:26:42,443 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-05-25 08:26:42,443 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-05-25 08:26:42,443 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-05-25 08:26:42,443 INFO     Listening on TCP address 0.0.0.0:8001
+2026-05-25 10:23:27,069 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26175'}
+2026-05-25 10:23:27,073 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-25 10:23:27,078 INFO     InstLetterPDF grouped records: keys=['2026/175']
+2026-05-25 10:23:27,078 INFO     DEBUG rec_inst_pin value: '382765'
+2026-05-25 10:35:13,807 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26175'}
+2026-05-25 10:35:13,807 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-25 10:35:13,807 INFO     InstLetterPDF grouped records: keys=['2026/175']
+2026-05-25 10:35:13,821 INFO     DEBUG rec_inst_pin value: '382765'
+Unauthorized: /api/token/verify/
+2026-05-25 11:17:10,342 WARNING  Unauthorized: /api/token/verify/
+2026-05-25 11:23:18,908 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26175'}
+2026-05-25 11:23:18,908 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-25 11:23:18,923 INFO     InstLetterPDF grouped records: keys=['2026/175']
+2026-05-25 11:23:18,923 INFO     DEBUG rec_inst_pin value: '382765'
+2026-05-25 11:23:36,476 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26175'}
+2026-05-25 11:23:36,476 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-25 11:23:36,491 INFO     InstLetterPDF grouped records: keys=['2026/175']
+2026-05-25 11:23:36,491 INFO     DEBUG rec_inst_pin value: '382765'
+2026-05-25 11:23:47,762 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26175'}
+2026-05-25 11:23:47,762 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-25 11:23:47,762 INFO     InstLetterPDF grouped records: keys=['2026/175']
+2026-05-25 11:23:47,762 INFO     DEBUG rec_inst_pin value: '382765'
+2026-05-25 11:24:20,611 INFO     Killed 0 pending application instances
+2026-05-25 11:24:22,434 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-05-25 11:24:22,434 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-05-25 11:24:22,434 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-05-25 11:24:22,434 INFO     Listening on TCP address 0.0.0.0:8001
+2026-05-25 11:24:35,023 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26175'}
+2026-05-25 11:24:35,024 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-25 11:24:35,024 INFO     InstLetterPDF grouped records: keys=['2026/175']
+2026-05-25 11:24:35,024 INFO     DEBUG rec_inst_pin value: '382765'
+2026-05-25 11:25:46,456 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26175'}
+2026-05-25 11:25:46,456 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-25 11:25:46,456 INFO     InstLetterPDF grouped records: keys=['2026/175']
+2026-05-25 11:25:46,456 INFO     DEBUG rec_inst_pin value: '382765'
+2026-05-25 11:26:03,857 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26175'}
+2026-05-25 11:26:03,857 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-05-25 11:26:03,873 INFO     InstLetterPDF grouped records: keys=['2026/175']
+2026-05-25 11:26:03,873 INFO     DEBUG rec_inst_pin value: '382765'
+Not Found: /api/student-search/search/
+2026-05-25 11:31:31,971 WARNING  Not Found: /api/student-search/search/

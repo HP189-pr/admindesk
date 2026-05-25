@@ -341,9 +341,11 @@ const InstVerReport = ({
                 </div>
 
                 <div className="recipient" style={{ lineHeight: 1.6 }}>
+                  {rec?.rec_inst_sfx_name && (
+                    <div style={{ fontSize: "11pt", fontWeight: "bold" }}>{rec.rec_inst_sfx_name}</div>
+                  )}
                   {rec?.rec_inst_name && <div style={{ fontSize: "11pt" }}>{rec.rec_inst_name}</div>}
                   <div className="lines">
-                    {rec?.rec_inst_sfx_name && <div>{rec.rec_inst_sfx_name}</div>}
                     {rec?.rec_inst_address_1 && <div>{rec.rec_inst_address_1}</div>}
                     {(rec?.rec_inst_address_2 || rec?.rec_inst_location || rec?.rec_inst_city || recPin) && (
                       <div>
