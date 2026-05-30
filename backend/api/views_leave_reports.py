@@ -263,6 +263,7 @@ class AllEmployeesBalanceView(APIView):
                 "emp_designation": emp.get("designation", ""),
                 "actual_joining": emp.get("actual_joining", ""),
                 "left_date": emp.get("left_date") or "Cont",
+                "status": emp.get("status", "Active"),
                 "leave_types": lt_list
             })
         return Response({

@@ -309,6 +309,7 @@ class LeaveEngine:
                 "leave_group": getattr(emp, "leave_group", ""),
                 "actual_joining": getattr(emp, "actual_joining", ""),
                 "left_date": getattr(emp, "left_date", "") or "Cont",
+                "status": getattr(emp, "status", "Active") or "Active",
                 "periods": []
             }
 

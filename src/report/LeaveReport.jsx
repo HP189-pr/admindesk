@@ -27,6 +27,17 @@ const formatLeavingDate = (value) => {
   return fmtDate(value) || value;
 };
 
+const hasLeavingDate = (value) => {
+  if (!value) return false;
+  const normalized = String(value).trim().toLowerCase();
+  return normalized !== '' && normalized !== 'cont' && normalized !== 'null';
+};
+
+const isLeftEmployee = (row) => {
+  const status = String(row.status || 'Active').trim().toLowerCase();
+  return hasLeavingDate(row.raw_left_date || row.left_date) || (status !== '' && status !== 'active');
+};
+
 const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
   const { user: authUser } = useAuth() || {};
   const currentUser = user || authUser;
@@ -39,6 +50,7 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [nameFilter, setNameFilter] = useState('');
+  const [employeeStatusFilter, setEmployeeStatusFilter] = useState('all');
 
   useEffect(() => {
     (async () => {
@@ -197,7 +209,9 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
       emp_designation: emp.emp_designation,
       leave_group: emp.leave_group,
       actual_joining: emp.actual_joining,
+      raw_left_date: emp.left_date,
       left_date: formatLeavingDate(emp.left_date),
+      status: emp.status || 'Active',
       start_sl: g('SL', 'starting'),
       start_el: g('EL', 'starting'),
       alloc_cl: g('CL', 'allocated'),
@@ -255,8 +269,13 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
         (r.emp_name || '').toLowerCase().includes(nameLower)
       );
     }
+    if (employeeStatusFilter === 'active') {
+      filtered = filtered.filter((r) => !isLeftEmployee(r));
+    } else if (employeeStatusFilter === 'left') {
+      filtered = filtered.filter((r) => isLeftEmployee(r));
+    }
     return filtered;
-  }, [period, rows, nameFilter]);
+  }, [period, rows, nameFilter, employeeStatusFilter]);
 
   const sorted = useMemo(() => {
     const sortValue = (row) => {
@@ -299,6 +318,22 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
           </div>
 
           <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end lg:justify-end">
+            <div className="min-w-[150px]">
+              <label className={CONTROL_LABEL_CLASS}>
+                <span>Status</span>
+              </label>
+              <select
+                value={employeeStatusFilter}
+                onChange={(e) => setEmployeeStatusFilter(e.target.value)}
+                className={CONTROL_INPUT_CLASS}
+                disabled={loading}
+              >
+                <option value="all">All</option>
+                <option value="active">Active</option>
+                <option value="left">Left Employee</option>
+              </select>
+            </div>
+
             <div className="min-w-[180px]">
               <label className={CONTROL_LABEL_CLASS}>
                 <CalendarRange size={14} />
