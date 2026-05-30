@@ -78,6 +78,28 @@ def _round_output(val: Decimal, code: str):
     return float(half)
 
 
+def _parse_date_value(value) -> Optional[date]:
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str):
+        for fmt in ("%Y-%m-%d", "%d-%m-%Y"):
+            try:
+                return datetime.strptime(value, fmt).date()
+            except Exception:
+                pass
+    return None
+
+
+def _add_one_year(value: date) -> date:
+    try:
+        return value.replace(year=value.year + 1)
+    except ValueError:
+        # Feb 29 joins become eligible on Feb 28 in the following year.
+        return value.replace(year=value.year + 1, day=28)
+
+
 @dataclass
 class PeriodWindow:
     id: int
@@ -254,21 +276,10 @@ class LeaveEngine:
                 if v:
                     join_date = v
                     break
-            # ensure join_date is a date object (some records may store strings)
-            if isinstance(join_date, str):
-                try:
-                    join_date = datetime.strptime(join_date, "%Y-%m-%d").date()
-                except Exception:
-                    try:
-                        join_date = datetime.strptime(join_date, "%d-%m-%Y").date()
-                    except Exception:
-                        join_date = None
-            calc_date = leave_calculation_date or getattr(emp, "leave_calculation_date", None) or first_period_start
-            if isinstance(calc_date, str):
-                try:
-                    calc_date = datetime.strptime(calc_date, "%Y-%m-%d").date()
-                except Exception:
-                    calc_date = first_period_start
+            # ensure dates are date objects (some records may store strings)
+            join_date = _parse_date_value(join_date)
+            calc_date = _parse_date_value(getattr(emp, "leave_calculation_date", None))
+            waiting_base_date = calc_date or join_date
 
             # initial balances from profile + joining year allocations
             balances = {
@@ -321,20 +332,25 @@ class LeaveEngine:
                         alloc_value = DEC0
                         reason = "not_active"
                     else:
-                        # waiting period rules: no EL/SL in first year after join
-                        if join_date and code in ("EL", "SL"):
-                            join_plus_year = join_date.replace(year=join_date.year + 1) if not (join_date.month == 2 and join_date.day == 29) else join_date.replace(year=join_date.year + 1, day=28)
-                            if join_plus_year > p.start:
+                        # EL/SL starts after 1 year from the employee's leave calculation
+                        # start date when present, otherwise from joining date.
+                        if waiting_base_date and code in ("EL", "SL"):
+                            eligible_start = _add_one_year(waiting_base_date)
+                            if eligible_start > eff_end:
                                 applied = False
                                 alloc_value = DEC0
                                 reason = "waiting_period_EL_SL"
-                        # prorate if joined/left inside period
+                            elif eligible_start > eff_start:
+                                eff_start = eligible_start
+                                reason = "waiting_period_prorated"
+
+                        # prorate if joined/left/waiting-period eligibility cuts the period
                         if applied:
                             period_days = Decimal((p.end - p.start).days + 1)
                             active_days = Decimal((eff_end - eff_start).days + 1)
                             if active_days < period_days:
                                 alloc_value = _to_decimal(original_alloc) * (active_days / period_days)
-                                reason = "prorated"
+                                reason = reason or "prorated"
                             else:
                                 alloc_value = _to_decimal(original_alloc)
 
