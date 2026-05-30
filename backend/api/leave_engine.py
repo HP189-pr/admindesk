@@ -23,6 +23,7 @@ from .domain_emp import EmpProfile, LeaveAllocation, LeaveEntry, LeavePeriod, Le
 from .domain_core import Holiday
 
 DEC0 = Decimal("0")
+MAIN_LEAVE_CODES = {"EL", "CL", "SL", "VAC", "DL", "LWP", "ML", "PL"}
 
 
 def _emp_short_order():
@@ -68,8 +69,18 @@ def _day_value_for(lt: Optional[LeaveType]) -> Decimal:
 def _group_code(lt: Optional[LeaveType]) -> Optional[str]:
     if lt is None:
         return None
+    main_type = getattr(lt, "main_type", None) or getattr(lt, "parent_leave", None)
+    if main_type:
+        return str(main_type).strip().upper()
     code = getattr(lt, "leave_code", None)
-    return str(code).upper() if code else None
+    if not code:
+        return None
+    code = str(code).strip().upper()
+    if code.startswith("H"):
+        half_base = code[1:].rstrip("0123456789")
+        if half_base in MAIN_LEAVE_CODES:
+            return half_base
+    return code
 
 
 def _round_output(val: Decimal, code: str):
@@ -147,9 +158,14 @@ class LeaveEngine:
     def load_entries(self, employee_ids: Optional[Sequence[str]] = None) -> QuerySet:
         qs = LeaveEntry.objects.select_related("leave_type").filter(status__iexact=LeaveEntry.STATUS_APPROVED)
         if self.tracked:
+            tracked_codes = [c.upper() for c in self.tracked]
+            half_code_filter = Q()
+            for code in tracked_codes:
+                half_code_filter |= Q(leave_type__leave_code__istartswith=f"H{code}")
             qs = qs.filter(
-                Q(leave_type__leave_code__in=[c.upper() for c in self.tracked]) |
-                Q(leave_type__main_type__in=[c.upper() for c in self.tracked])
+                Q(leave_type__leave_code__in=tracked_codes) |
+                Q(leave_type__main_type__in=tracked_codes) |
+                half_code_filter
             )
         if employee_ids:
             qs = qs.filter(emp_id__in=list(employee_ids))
