@@ -257,9 +257,12 @@ class AllEmployeesBalanceView(APIView):
                 })
             employees_out.append({
                 "emp_id": emp.get("emp_id"),
-                    "leave_group": emp.get("leave_group", ""),
+                "leave_group": emp.get("leave_group", ""),
                 "emp_short": emp.get("emp_short"),
                 "emp_name": emp.get("emp_name"),
+                "emp_designation": emp.get("designation", ""),
+                "actual_joining": emp.get("actual_joining", ""),
+                "left_date": emp.get("left_date") or "Cont",
                 "leave_types": lt_list
             })
         return Response({

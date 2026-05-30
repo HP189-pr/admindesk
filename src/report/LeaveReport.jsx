@@ -22,6 +22,11 @@ const sanitizeFilenamePart = (value) =>
     .replace(/_+/g, '_')
     .replace(/^_+|_+$/g, '') || 'Report';
 
+const formatLeavingDate = (value) => {
+  if (!value || String(value).toLowerCase() === 'cont') return 'Cont';
+  return fmtDate(value) || value;
+};
+
 const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
   const { user: authUser } = useAuth() || {};
   const currentUser = user || authUser;
@@ -192,7 +197,7 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
       emp_designation: emp.emp_designation,
       leave_group: emp.leave_group,
       actual_joining: emp.actual_joining,
-      left_date: emp.left_date || 'Cont',
+      left_date: formatLeavingDate(emp.left_date),
       start_sl: g('SL', 'starting'),
       start_el: g('EL', 'starting'),
       alloc_cl: g('CL', 'allocated'),
@@ -254,10 +259,17 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
   }, [period, rows, nameFilter]);
 
   const sorted = useMemo(() => {
+    const sortValue = (row) => {
+      const raw = row.emp_short || row.emp_id || '';
+      const digits = String(raw).replace(/\D/g, '');
+      if (!digits) return Number.MAX_SAFE_INTEGER;
+      const parsed = Number(digits);
+      return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
+    };
     return [...filteredRows].sort((a, b) => {
-      const nA = Number(String(a.emp_short || a.emp_id || '').replace(/\D/g, '')) || 0;
-      const nB = Number(String(b.emp_short || b.emp_id || '').replace(/\D/g, '')) || 0;
-      return nA - nB;
+      const sortDiff = sortValue(a) - sortValue(b);
+      if (sortDiff !== 0) return sortDiff;
+      return String(a.emp_name || '').localeCompare(String(b.emp_name || ''));
     });
   }, [filteredRows]);
 

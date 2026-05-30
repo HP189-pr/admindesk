@@ -45,6 +45,14 @@ const DARK_TEXT_CODES = new Set([
 const DAY_NUMBERS = Array.from({ length: 31 }, (_, idx) => idx + 1);
 const getEmptySummary = () => ({ main: {}, breakdown: {}, by_code: {} });
 
+const employeeSortValue = (employee) => {
+  const raw = employee?.emp_short ?? employee?.emp_id ?? '';
+  const digits = String(raw).replace(/\D/g, '');
+  if (!digits) return Number.MAX_SAFE_INTEGER;
+  const parsed = Number(digits);
+  return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
+};
+
 const isWeekend = (dateObj) => {
   const day = dateObj.getDay();
   return day === 0; // Sunday only
@@ -189,9 +197,14 @@ const LeaveCalendar = ({ user }) => {
 
   // Filtered profiles by name
   const filteredProfiles = useMemo(() => {
-    if (!nameFilter) return profiles;
+    const sortedProfiles = [...profiles].sort((a, b) => {
+      const sortDiff = employeeSortValue(a) - employeeSortValue(b);
+      if (sortDiff !== 0) return sortDiff;
+      return String(a.emp_name || '').localeCompare(String(b.emp_name || ''));
+    });
+    if (!nameFilter) return sortedProfiles;
     const nameLower = nameFilter.toLowerCase();
-    return profiles.filter((p) => (p.emp_name || '').toLowerCase().includes(nameLower));
+    return sortedProfiles.filter((p) => (p.emp_name || '').toLowerCase().includes(nameLower));
   }, [profiles, nameFilter]);
 
   const loadCalendar = useCallback(
@@ -287,7 +300,7 @@ const LeaveCalendar = ({ user }) => {
               <option value="" className="text-slate-900">Select Employee</option>
               {filteredProfiles.map((p) => (
                 <option key={p.id} value={p.emp_id} className="text-slate-900">
-                  {p.emp_id} — {p.emp_name}
+                  {p.emp_short || p.emp_id} — {p.emp_name}
                 </option>
               ))}
             </select>

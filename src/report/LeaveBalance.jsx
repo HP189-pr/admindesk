@@ -7,6 +7,14 @@ import { printElement } from '../utils/print';
 import { normalize, fmtDate, roundLeave } from './utils';
 import { fetchLeaveReport, fetchMyLeaveBalance } from '../services/empLeaveService';
 
+const employeeSortValue = (employee) => {
+  const raw = employee?.emp_short ?? employee?.emp_id ?? '';
+  const digits = String(raw).replace(/\D/g, '');
+  if (!digits) return Number.MAX_SAFE_INTEGER;
+  const parsed = Number(digits);
+  return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
+};
+
 const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPeriod: setControlledPeriod }) => {
   const { user: authUser } = useAuth() || {};
   const currentUser = user || authUser;
@@ -206,7 +214,11 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
       const nameLower = nameFilter.toLowerCase();
       filtered = filtered.filter((emp) => (emp.emp_name || '').toLowerCase().includes(nameLower));
     }
-    return filtered;
+    return [...filtered].sort((a, b) => {
+      const sortDiff = employeeSortValue(a) - employeeSortValue(b);
+      if (sortDiff !== 0) return sortDiff;
+      return String(a.emp_name || '').localeCompare(String(b.emp_name || ''));
+    });
   }, [employeesArr, leaveGroupFilter, nameFilter]);
 
   if (!hasMgmt) {

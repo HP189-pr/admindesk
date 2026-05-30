@@ -61604,3 +61604,18 @@ Prune skipped (--no-prune). DB rows will not be deleted.
 2026-05-30 08:19:56,232 INFO     Listening on TCP address 0.0.0.0:8001
 Unauthorized: /api/users/
 2026-05-30 10:24:44,873 WARNING  Unauthorized: /api/users/
+2026-05-30 10:55:48,563 INFO     Killed 0 pending application instances
+2026-05-30 10:56:12,240 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-05-30 10:56:12,240 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-05-30 10:56:12,243 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-05-30 10:56:12,245 INFO     Listening on TCP address 0.0.0.0:8001
+2026-05-30 11:38:52,990 INFO     Killed 0 pending application instances
+2026-05-30 11:38:54,981 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-05-30 11:38:54,981 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-05-30 11:38:54,981 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-05-30 11:38:54,981 INFO     Listening on TCP address 0.0.0.0:8001
+2026-05-30 11:39:18,165 INFO     Killed 0 pending application instances
+2026-05-30 11:39:19,182 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-05-30 11:39:19,182 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-05-30 11:39:19,182 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-05-30 11:39:19,182 INFO     Listening on TCP address 0.0.0.0:8001

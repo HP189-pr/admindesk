@@ -242,6 +242,10 @@ class LeaveBalanceReportView(APIView):
                 employees_out.append({
                     "emp_id": emp.get("emp_id"),
                     "emp_name": emp.get("emp_name"),
+                    "emp_short": emp.get("emp_short"),
+                    "emp_designation": emp.get("designation", ""),
+                    "actual_joining": emp.get("actual_joining", ""),
+                    "left_date": emp.get("left_date") or "Cont",
                     "opening_balance": rec.get("starting", {}).get(leave_code, 0),
                     "allocated_in_period": rec.get("allocation", {}).get(leave_code, 0),
                     "used_in_period": rec.get("used", {}).get(leave_code, 0),
@@ -261,6 +265,9 @@ class LeaveBalanceReportView(APIView):
                     "emp_id": emp.get("emp_id"),
                     "emp_short": emp.get("emp_short"),
                     "emp_name": emp.get("emp_name"),
+                    "emp_designation": emp.get("designation", ""),
+                    "actual_joining": emp.get("actual_joining", ""),
+                    "left_date": emp.get("left_date") or "Cont",
                     "leave_types": lt_list
                 })
 

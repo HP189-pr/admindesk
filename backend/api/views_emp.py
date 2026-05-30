@@ -4,6 +4,7 @@ from rest_framework import viewsets, permissions, generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.db.models import Q
+from django.db.models import Case, IntegerField, Value, When
 from django.utils import timezone
 from datetime import date
 
@@ -434,15 +435,32 @@ class LeaveReportView(APIView):
 # EmpProfile ViewSet
 # ---------------------------
 class EmpProfileViewSet(viewsets.ModelViewSet):
-    queryset = EmpProfile.objects.all()
+    queryset = EmpProfile.objects.all().order_by(
+        Case(
+            When(emp_short__isnull=True, then=Value(1)),
+            default=Value(0),
+            output_field=IntegerField(),
+        ),
+        "emp_short",
+        "emp_id",
+    )
     serializer_class = EmpProfileSerializer
     permission_classes = [IsOwnerOrHR]
 
     def get_queryset(self):
         user = self.request.user
+        order_by_emp_short = (
+            Case(
+                When(emp_short__isnull=True, then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField(),
+            ),
+            "emp_short",
+            "emp_id",
+        )
         if user.is_staff or user.is_superuser or IsLeaveManager().has_permission(self.request, self):
-            return EmpProfile.objects.all()
+            return EmpProfile.objects.all().order_by(*order_by_emp_short)
         return _profiles_matching_identifiers(
             EmpProfile.objects.all(),
             _user_identifiers(user)
-        )
+        ).order_by(*order_by_emp_short)

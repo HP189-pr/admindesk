@@ -16,13 +16,25 @@ from decimal import Decimal, ROUND_HALF_UP
 from typing import Dict, List, Optional, Sequence, Tuple, Any
 from collections import defaultdict
 
-from django.db.models import QuerySet
-from django.db.models import Q
+from django.db.models import Case, IntegerField, QuerySet, Value
+from django.db.models import Q, When
 
 from .domain_emp import EmpProfile, LeaveAllocation, LeaveEntry, LeavePeriod, LeaveType
 from .domain_core import Holiday
 
 DEC0 = Decimal("0")
+
+
+def _emp_short_order():
+    return (
+        Case(
+            When(emp_short__isnull=True, then=Value(1)),
+            default=Value(0),
+            output_field=IntegerField(),
+        ),
+        "emp_short",
+        "emp_id",
+    )
 
 
 def _to_decimal(v) -> Decimal:
@@ -264,7 +276,7 @@ class LeaveEngine:
         emps_qs = EmpProfile.objects.all()
         if employee_ids:
             emps_qs = emps_qs.filter(emp_id__in=list(employee_ids))
-        emps = list(emps_qs)
+        emps = list(emps_qs.order_by(*_emp_short_order()))
 
         result_emps = []
         first_period_start = periods[0].start
