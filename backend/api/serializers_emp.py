@@ -119,7 +119,6 @@ class LeaveEntrySerializer(serializers.ModelSerializer):
         model = LeaveEntry
         fields = "__all__"
         read_only_fields = (
-            "leave_report_no",
             "total_days",
             "emp_name",
             "leave_type_name",

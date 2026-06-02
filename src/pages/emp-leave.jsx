@@ -21,13 +21,20 @@ const normalize = (data) => {
   return [];
 };
 
-const computeDays = (start, end) => {
+const computeCalendarDays = (start, end) => {
   const startDate = parseDMY(start);
   const endDate = parseDMY(end);
   if (!startDate || !endDate) return '';
   const msPerDay = 24 * 60 * 60 * 1000;
   const diff = Math.round((endDate.getTime() - startDate.getTime()) / msPerDay) + 1;
   return diff > 0 ? diff : 0;
+};
+
+const computeDays = (start, end, sandwichLeave = '') => {
+  if (sandwichLeave === 'yes') {
+    return computeCalendarDays(start, end);
+  }
+  return computeCalendarDays(start, end);
 };
 
 // Removed duplicate local definition of parseDMY. Using imported version from '../report/utils'.
@@ -112,8 +119,8 @@ function EmpLeavePage() {
     const { name, value } = e.target;
     setForm(f => {
       const n = { ...f, [name]: value };
-      if (name === 'start_date' || name === 'end_date') {
-        n.total_days = computeDays(n.start_date, n.end_date);
+      if (name === 'start_date' || name === 'end_date' || name === 'sandwich_leave') {
+        n.total_days = computeDays(n.start_date, n.end_date, n.sandwich_leave);
       }
       return n;
     });
@@ -149,7 +156,7 @@ function EmpLeavePage() {
     setLoading(true);
     try {
       const payload = {
-        leave_report_no: form.report_no || null,
+        leave_report_no: form.report_no.trim() || undefined,
         emp: form.emp_id || null,
         leave_type: form.leave_type || null,
         start_date: toISO(form.start_date),

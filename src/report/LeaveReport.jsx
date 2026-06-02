@@ -33,9 +33,13 @@ const hasLeavingDate = (value) => {
   return normalized !== '' && normalized !== 'cont' && normalized !== 'null';
 };
 
+const isActiveStatus = (value) => {
+  const normalized = String(value || '').trim().toLowerCase();
+  return normalized === '' || normalized === 'active' || normalized === 'cont';
+};
+
 const isLeftEmployee = (row) => {
-  const status = String(row.status || 'Active').trim().toLowerCase();
-  return hasLeavingDate(row.raw_left_date || row.left_date) || (status !== '' && status !== 'active');
+  return hasLeavingDate(row.raw_left_date || row.left_date) || !isActiveStatus(row.status);
 };
 
 const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
@@ -123,8 +127,10 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
   }, [defaultPeriod, selectedPeriod]);
 
   const handlePrintClick = () => {
-    const printable = document.querySelector('#leave-report-print');
-    if (printable) printElement(printable);
+    const printable = document.querySelector('#leave-report-print-pdf');
+    if (printable) {
+      printElement(printable, { orientation: 'portrait', pageSize: 'A4', marginMm: 6 });
+    }
   };
 
   const handleExcelExport = () => {
@@ -522,6 +528,82 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
             </div>
           </>
         )}
+      </div>
+
+      <div
+        id="leave-report-print-pdf"
+        className="print-area leave-report-print-view fixed -left-[10000px] top-0 bg-white"
+        aria-hidden="true"
+      >
+        <div className="leave-report-print-title">{periodYearDisplay}</div>
+        <div className="leave-report-print-period">{periodLabel}</div>
+
+        <table className="leave-report-print-table">
+          <thead>
+            <tr>
+              <th rowSpan={2}>Emp ID</th>
+              <th rowSpan={2} className="name-col">Emp Name</th>
+              <th colSpan={2}>Balance: Start (Allocated)</th>
+              <th colSpan={4}>Leave Allocation</th>
+              <th colSpan={8}>Used Leave</th>
+              <th colSpan={4}>Balance (End)</th>
+            </tr>
+            <tr>
+              <th>SL</th>
+              <th>EL</th>
+              <th>CL</th>
+              <th>SL</th>
+              <th>EL</th>
+              <th>VC</th>
+              <th>CL</th>
+              <th>SL</th>
+              <th>EL</th>
+              <th>VC</th>
+              <th>DL</th>
+              <th>LWP</th>
+              <th>ML</th>
+              <th>PL</th>
+              <th>CL</th>
+              <th>SL</th>
+              <th>EL</th>
+              <th>VC</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.length === 0 ? (
+              <tr>
+                <td colSpan={20} className="text-center">
+                  No report data available
+                </td>
+              </tr>
+            ) : (
+              sorted.map((r, idx) => (
+                <tr key={idx}>
+                  <td>{r.emp_short || r.emp_id}</td>
+                  <td className="name-col">{r.emp_name}</td>
+                  <td>{roundLeave(r.start_sl, 'SL')}</td>
+                  <td>{roundLeave(r.start_el, 'EL')}</td>
+                  <td>{roundLeave(r.alloc_cl, 'CL')}</td>
+                  <td>{roundLeave(r.alloc_sl, 'SL')}</td>
+                  <td>{roundLeave(r.alloc_el, 'EL')}</td>
+                  <td>{roundLeave(r.alloc_vac, 'VC')}</td>
+                  <td>{roundLeave(r.used_cl, 'CL')}</td>
+                  <td>{roundLeave(r.used_sl, 'SL')}</td>
+                  <td>{roundLeave(r.used_el, 'EL')}</td>
+                  <td>{roundLeave(r.used_vac, 'VC')}</td>
+                  <td>{roundLeave(r.used_dl, 'DL')}</td>
+                  <td>{roundLeave(r.used_lwp, 'LWP')}</td>
+                  <td>{roundLeave(r.used_ml, 'ML')}</td>
+                  <td>{roundLeave(r.used_pl, 'PL')}</td>
+                  <td>{roundLeave(r.end_cl, 'CL')}</td>
+                  <td>{roundLeave(r.end_sl, 'SL')}</td>
+                  <td>{roundLeave(r.end_el, 'EL')}</td>
+                  <td>{roundLeave(r.end_vac, 'VC')}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

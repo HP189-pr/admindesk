@@ -192,6 +192,8 @@ class LeaveEngine:
         lt_obj = getattr(entry, "leave_type", None)
         group = _group_code(lt_obj) or leave_code
         dv = _day_value_for(lt_obj)
+        saved_total_days = _to_decimal(getattr(entry, "total_days", None))
+        entry_sand = getattr(entry, "sandwich_leave", None)
 
         res: Dict[int, Dict[str, Decimal]] = {}
         for p in periods:
@@ -204,11 +206,18 @@ class LeaveEngine:
             if overlap_start > overlap_end:
                 continue
 
-            # resolve sandwich
-            entry_sand = getattr(entry, "sandwich_leave", None)
             if entry_sand is True:
                 days_decimal = Decimal((overlap_end - overlap_start).days + 1)
+                amount = days_decimal * dv
+            elif saved_total_days > DEC0:
+                if overlap_start == entry.start_date and overlap_end == entry.end_date:
+                    amount = saved_total_days
+                else:
+                    entry_days = Decimal((entry.end_date - entry.start_date).days + 1)
+                    overlap_days = Decimal((overlap_end - overlap_start).days + 1)
+                    amount = saved_total_days * (overlap_days / entry_days)
             else:
+                # Fallback for older rows without total_days.
                 cur = overlap_start
                 working = 0
                 while cur <= overlap_end:
@@ -217,7 +226,7 @@ class LeaveEngine:
                     cur = cur + timedelta(days=1)
                 days_decimal = Decimal(working)
 
-            amount = days_decimal * dv
+                amount = days_decimal * dv
             bucket = res.setdefault(p.id, {})
             bucket[group] = bucket.get(group, DEC0) + amount
 
@@ -298,16 +307,29 @@ class LeaveEngine:
         first_period_start = periods[0].start
 
         for emp in emps:
-            join_date = None
-            for attr in ("actual_joining", "department_joining", "joining_date"):
-                v = getattr(emp, attr, None)
-                if v:
-                    join_date = v
-                    break
-            # ensure dates are date objects (some records may store strings)
-            join_date = _parse_date_value(join_date)
-            calc_date = _parse_date_value(getattr(emp, "leave_calculation_date", None))
-            waiting_base_date = calc_date or join_date
+            actual_join_date = _parse_date_value(getattr(emp, "actual_joining", None))
+            department_join_date = _parse_date_value(getattr(emp, "department_joining", None))
+            leave_calc_date = _parse_date_value(getattr(emp, "leave_calculation_date", None))
+            left_date = _parse_date_value(getattr(emp, "left_date", None))
+
+            # Employee visibility starts from department joining when present,
+            # but never before leave calculation starts.
+            join_date = department_join_date or actual_join_date
+            if join_date and leave_calc_date:
+                effective_employee_start = max(join_date, leave_calc_date)
+            elif join_date:
+                effective_employee_start = join_date
+            else:
+                effective_employee_start = leave_calc_date
+
+            # SL/EL/VAC eligibility is based only on actual joining.
+            eligibility_date = _add_one_year(actual_join_date) if actual_join_date else None
+
+            allow_opening_balance = True
+            if actual_join_date and leave_calc_date:
+                allow_opening_balance = (leave_calc_date - actual_join_date).days >= 365
+            elif actual_join_date:
+                allow_opening_balance = (first_period_start - actual_join_date).days >= 365
 
             # initial balances from profile + joining year allocations
             balances = {
@@ -316,6 +338,10 @@ class LeaveEngine:
                 "SL": _to_decimal(getattr(emp, "sl_balance", DEC0)) + _to_decimal(getattr(emp, "joining_year_allocation_sl", DEC0)),
                 "VAC": _to_decimal(getattr(emp, "vacation_balance", DEC0)) + _to_decimal(getattr(emp, "joining_year_allocation_vac", DEC0)),
             }
+            if not allow_opening_balance:
+                balances["EL"] = DEC0
+                balances["SL"] = DEC0
+                balances["VAC"] = DEC0
 
             emp_payload = {
                 "emp_id": emp.emp_id,
@@ -332,6 +358,12 @@ class LeaveEngine:
             # IMPORTANT: include ALL periods (reports are historical)
             relevant_periods = periods
             for idx, p in enumerate(relevant_periods):
+                if effective_employee_start and effective_employee_start > p.end:
+                    continue
+
+                if left_date and left_date < p.start:
+                    continue
+
                 start_snap = {}
                 alloc_snap = {}
                 used_snap = {}
@@ -349,10 +381,9 @@ class LeaveEngine:
 
                     # employee active window in period
                     eff_start = p.start
-                    if join_date and join_date > eff_start:
-                        eff_start = join_date
+                    if effective_employee_start and effective_employee_start > eff_start:
+                        eff_start = effective_employee_start
                     eff_end = p.end
-                    left_date = getattr(emp, "left_date", None)
                     if left_date and left_date < eff_end:
                         eff_end = left_date
 
@@ -361,16 +392,15 @@ class LeaveEngine:
                         alloc_value = DEC0
                         reason = "not_active"
                     else:
-                        # EL/SL starts after 1 year from the employee's leave calculation
-                        # start date when present, otherwise from joining date.
-                        if waiting_base_date and code in ("EL", "SL"):
-                            eligible_start = _add_one_year(waiting_base_date)
-                            if eligible_start > eff_end:
+                        # CL is always allowed while active. SL/EL/VAC start
+                        # only after 1 year of service from actual joining.
+                        if eligibility_date and code in ("EL", "SL", "VAC"):
+                            if eligibility_date > eff_end:
                                 applied = False
                                 alloc_value = DEC0
-                                reason = "waiting_period_EL_SL"
-                            elif eligible_start > eff_start:
-                                eff_start = eligible_start
+                                reason = "waiting_period"
+                            elif eligibility_date > eff_start:
+                                eff_start = eligibility_date
                                 reason = "waiting_period_prorated"
 
                         # prorate if joined/left/waiting-period eligibility cuts the period

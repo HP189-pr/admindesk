@@ -3,6 +3,7 @@ from django.db import models
 from django.utils import timezone
 from datetime import timedelta
 from decimal import Decimal
+import re
 
 # -----------------------------------------------------------
 # IMPORT HOLIDAY FROM EXISTING MODULE
@@ -164,24 +165,44 @@ class LeaveEntry(models.Model):
     # ----------------------------------------------
     # SAVE
     # ----------------------------------------------
+    def _report_year_prefix(self):
+        if not self.start_date:
+            return str(timezone.now().year)[-2:]
+
+        period = (
+            LeavePeriod.objects
+            .filter(start_date__lte=self.start_date, end_date__gte=self.start_date)
+            .order_by("start_date", "id")
+            .first()
+        )
+        year = period.start_date.year if period else self.start_date.year
+        return str(year)[-2:]
+
+    def _next_report_no(self):
+        prefix = self._report_year_prefix()
+        last_num = 0
+
+        existing = LeaveEntry.objects.filter(leave_report_no__startswith=prefix).values_list(
+            "leave_report_no",
+            flat=True,
+        )
+        pattern = re.compile(rf"^{re.escape(prefix)}_?(\d+)")
+        for report_no in existing:
+            match = pattern.match(str(report_no or "").strip())
+            if not match:
+                continue
+            try:
+                last_num = max(last_num, int(match.group(1)))
+            except ValueError:
+                continue
+
+        return f"{prefix}{last_num + 1:04d}"
+
     def save(self, *args, **kwargs):
 
+        self.leave_report_no = str(self.leave_report_no or "").strip()
         if not self.leave_report_no:
-            year = self.start_date.year
-            prefix = str(year)[-2:]
-            last = (
-                LeaveEntry.objects.filter(leave_report_no__startswith=prefix + "_")
-                .order_by("-leave_report_no")
-                .first()
-            )
-            last_num = 0
-            if last:
-                try:
-                    last_num = int(last.leave_report_no.split("_")[-1])
-                except:
-                    last_num = 0
-
-            self.leave_report_no = f"{prefix}_{last_num + 1:04d}"
+            self.leave_report_no = self._next_report_no()
 
         # TOTAL DAYS
         if self.start_date and self.end_date:

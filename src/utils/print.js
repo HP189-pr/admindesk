@@ -197,6 +197,61 @@ export const printElement = (element, options = {}) => {
         min-width: 40mm !important;
       }
 
+      /* Leave report has its own compact portrait print view. */
+      #${PRINT_HOST_ID} .leave-report-print-view {
+        position: static !important;
+        left: auto !important;
+        top: auto !important;
+        display: block !important;
+        width: 100% !important;
+        max-width: ${innerWidthMm}mm !important;
+        color: #000 !important;
+        font-family: Arial, sans-serif !important;
+      }
+
+      #${PRINT_HOST_ID} .leave-report-print-title {
+        margin: 0 !important;
+        text-align: center !important;
+        color: #555 !important;
+        font-size: 8mm !important;
+        line-height: 1.05 !important;
+        font-weight: 700 !important;
+      }
+
+      #${PRINT_HOST_ID} .leave-report-print-period {
+        margin: 1mm 0 4mm !important;
+        text-align: center !important;
+        color: #1f4e79 !important;
+        font-size: 3mm !important;
+        line-height: 1.2 !important;
+      }
+
+      #${PRINT_HOST_ID} .leave-report-print-table {
+        table-layout: fixed !important;
+        width: 100% !important;
+        font-size: 2.1mm !important;
+        line-height: 1.05 !important;
+      }
+
+      #${PRINT_HOST_ID} .leave-report-print-table th,
+      #${PRINT_HOST_ID} .leave-report-print-table td {
+        padding: 1.1mm 0.7mm !important;
+        text-align: center !important;
+        vertical-align: middle !important;
+        word-break: normal !important;
+        overflow-wrap: normal !important;
+        white-space: normal !important;
+        border: 0.2mm solid #d9d9d9 !important;
+      }
+
+      #${PRINT_HOST_ID} .leave-report-print-table .name-col {
+        width: 35mm !important;
+        min-width: 35mm !important;
+        max-width: 35mm !important;
+        text-align: left !important;
+        overflow-wrap: anywhere !important;
+      }
+
       .no-print,
       .print-hide {
         display: none !important;
