@@ -541,7 +541,7 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
         <table className="leave-report-print-table">
           <thead>
             <tr>
-              <th rowSpan={2}>Emp ID</th>
+              <th rowSpan={2}>Sr.No</th>
               <th rowSpan={2} className="name-col">Emp Name</th>
               <th colSpan={2}>Balance: Start (Allocated)</th>
               <th colSpan={4}>Leave Allocation</th>
@@ -578,15 +578,15 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
               </tr>
             ) : (
               sorted.map((r, idx) => (
-                <tr key={idx}>
-                  <td>{r.emp_short || r.emp_id}</td>
+                <tr key={idx} className={idx % 2 === 0 ? 'print-row-white' : 'print-row-gray'} >
+                  <td>{String(idx + 1).padStart(2, '0')}</td>
                   <td className="name-col">{r.emp_name}</td>
-                  <td>{roundLeave(r.start_sl, 'SL')}</td>
-                  <td>{roundLeave(r.start_el, 'EL')}</td>
-                  <td>{roundLeave(r.alloc_cl, 'CL')}</td>
-                  <td>{roundLeave(r.alloc_sl, 'SL')}</td>
-                  <td>{roundLeave(r.alloc_el, 'EL')}</td>
-                  <td>{roundLeave(r.alloc_vac, 'VC')}</td>
+                  <td className="balance-start-cell"> {roundLeave(r.start_sl, 'SL')} </td>
+                  <td className="balance-start-cell"> {roundLeave(r.start_el, 'EL')} </td>
+                  <td className="allocation-cell"> {roundLeave(r.alloc_cl, 'CL')} </td>
+                  <td className="allocation-cell"> {roundLeave(r.alloc_sl, 'SL')} </td> 
+                  <td className="allocation-cell"> {roundLeave(r.alloc_el, 'EL')} </td> 
+                  <td className="allocation-cell"> {roundLeave(r.alloc_vac, 'VC')} </td>
                   <td>{roundLeave(r.used_cl, 'CL')}</td>
                   <td>{roundLeave(r.used_sl, 'SL')}</td>
                   <td>{roundLeave(r.used_el, 'EL')}</td>
@@ -595,10 +595,10 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
                   <td>{roundLeave(r.used_lwp, 'LWP')}</td>
                   <td>{roundLeave(r.used_ml, 'ML')}</td>
                   <td>{roundLeave(r.used_pl, 'PL')}</td>
-                  <td>{roundLeave(r.end_cl, 'CL')}</td>
-                  <td>{roundLeave(r.end_sl, 'SL')}</td>
-                  <td>{roundLeave(r.end_el, 'EL')}</td>
-                  <td>{roundLeave(r.end_vac, 'VC')}</td>
+                  <td className="balance-end-cell"> {roundLeave(r.end_cl, 'CL')} </td>
+                  <td className="balance-end-cell"> {roundLeave(r.end_sl, 'SL')} </td> 
+                  <td className="balance-end-cell"> {roundLeave(r.end_el, 'EL')} </td> 
+                  <td className="balance-end-cell"> {roundLeave(r.end_vac, 'VC')} </td>
                 </tr>
               ))
             )}

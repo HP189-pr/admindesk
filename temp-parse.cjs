@@ -1,0 +1,1 @@
+const fs=require("fs"); const src=fs.readFileSync("src/utils/print.js","utf8"); try { new Function(src); console.log("OK"); } catch(e) { console.error(e.toString()); if (e.loc) console.error("line",e.loc.line,"col",e.loc.column); process.exit(1);}

@@ -193,7 +193,6 @@ class LeaveEngine:
         group = _group_code(lt_obj) or leave_code
         dv = _day_value_for(lt_obj)
         saved_total_days = _to_decimal(getattr(entry, "total_days", None))
-        entry_sand = getattr(entry, "sandwich_leave", None)
 
         res: Dict[int, Dict[str, Decimal]] = {}
         for p in periods:
@@ -206,10 +205,7 @@ class LeaveEngine:
             if overlap_start > overlap_end:
                 continue
 
-            if entry_sand is True:
-                days_decimal = Decimal((overlap_end - overlap_start).days + 1)
-                amount = days_decimal * dv
-            elif saved_total_days > DEC0:
+            if saved_total_days > DEC0:
                 if overlap_start == entry.start_date and overlap_end == entry.end_date:
                     amount = saved_total_days
                 else:
@@ -218,13 +214,17 @@ class LeaveEngine:
                     amount = saved_total_days * (overlap_days / entry_days)
             else:
                 # Fallback for older rows without total_days.
-                cur = overlap_start
-                working = 0
-                while cur <= overlap_end:
-                    if cur.weekday() != 6 and cur not in holidays_set:
-                        working += 1
-                    cur = cur + timedelta(days=1)
-                days_decimal = Decimal(working)
+                entry_sand = getattr(entry, "sandwich_leave", None)
+                if entry_sand is True:
+                    days_decimal = Decimal((overlap_end - overlap_start).days + 1)
+                else:
+                    cur = overlap_start
+                    working = 0
+                    while cur <= overlap_end:
+                        if cur.weekday() != 6 and cur not in holidays_set:
+                            working += 1
+                        cur = cur + timedelta(days=1)
+                    days_decimal = Decimal(working)
 
                 amount = days_decimal * dv
             bucket = res.setdefault(p.id, {})
@@ -331,13 +331,17 @@ class LeaveEngine:
             elif actual_join_date:
                 allow_opening_balance = (first_period_start - actual_join_date).days >= 365
 
-            # initial balances from profile + joining year allocations
+            # initial balances from profile; joining-year allocations are treated as a
+            # one-time credit in the first active period rather than a permanent opening balance.
             balances = {
-                "EL": _to_decimal(getattr(emp, "el_balance", DEC0)) + _to_decimal(getattr(emp, "joining_year_allocation_el", DEC0)),
-                "CL": _to_decimal(getattr(emp, "cl_balance", DEC0)) + _to_decimal(getattr(emp, "joining_year_allocation_cl", DEC0)),
-                "SL": _to_decimal(getattr(emp, "sl_balance", DEC0)) + _to_decimal(getattr(emp, "joining_year_allocation_sl", DEC0)),
-                "VAC": _to_decimal(getattr(emp, "vacation_balance", DEC0)) + _to_decimal(getattr(emp, "joining_year_allocation_vac", DEC0)),
+                "EL": _to_decimal(getattr(emp, "el_balance", DEC0)),
+                "CL": _to_decimal(getattr(emp, "cl_balance", DEC0)),
+                "SL": _to_decimal(getattr(emp, "sl_balance", DEC0)),
+                "VAC": _to_decimal(getattr(emp, "vacation_balance", DEC0)),
             }
+            joining_year_allocation_cl = _to_decimal(getattr(emp, "joining_year_allocation_cl", DEC0))
+            joining_year_allocation_applied = False
+
             if not allow_opening_balance:
                 balances["EL"] = DEC0
                 balances["SL"] = DEC0
@@ -387,6 +391,7 @@ class LeaveEngine:
                     if left_date and left_date < eff_end:
                         eff_end = left_date
 
+                    period_active = eff_end >= eff_start
                     if eff_end < eff_start:
                         applied = False
                         alloc_value = DEC0
@@ -413,9 +418,14 @@ class LeaveEngine:
                             else:
                                 alloc_value = _to_decimal(original_alloc)
 
+                    extra_joining_year_allocation = DEC0
+                    if code == "CL" and period_active and not joining_year_allocation_applied and joining_year_allocation_cl != DEC0 and applied:
+                        extra_joining_year_allocation = joining_year_allocation_cl
+                        alloc_value = _to_decimal(alloc_value) + extra_joining_year_allocation
+
                     alloc_snap[code] = alloc_value
                     allocation_meta = {
-                        "original_allocation": float(_to_decimal(original_alloc)),
+                        "original_allocation": float(_to_decimal(original_alloc) + extra_joining_year_allocation),
                         "effective_allocation": float(_to_decimal(alloc_value)),
                         "applied": applied,
                         "reason": reason,
@@ -441,6 +451,9 @@ class LeaveEngine:
                     alloc_snap[code] = _round_output(alloc_snap[code], code)
                     used_snap[code] = _round_output(used_snap[code], code)
                     end_snap[code] = _round_output(ending, code)
+
+                if period_active and not joining_year_allocation_applied:
+                    joining_year_allocation_applied = True
 
                 emp_payload["periods"].append({
                     "period_id": p.id,

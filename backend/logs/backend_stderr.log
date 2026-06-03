@@ -62092,3 +62092,56 @@ Bad Request: /api/leaveentry/
 2026-06-02 11:51:31,580 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
 2026-06-02 11:51:31,580 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
 2026-06-02 11:51:31,580 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/users/
+2026-06-02 12:49:33,832 WARNING  Unauthorized: /api/users/
+Bad Request: /api/leaveentry/
+2026-06-02 12:57:26,926 WARNING  Bad Request: /api/leaveentry/
+Bad Request: /api/verify-admin-panel-password/
+2026-06-02 13:00:53,538 WARNING  Bad Request: /api/verify-admin-panel-password/
+Bad Request: /api/leaveentry/
+2026-06-02 13:14:20,827 WARNING  Bad Request: /api/leaveentry/
+Bad Request: /api/leaveentry/
+2026-06-02 13:14:25,215 WARNING  Bad Request: /api/leaveentry/
+Bad Request: /api/verify-admin-panel-password/
+2026-06-02 14:11:32,957 WARNING  Bad Request: /api/verify-admin-panel-password/
+2026-06-02 14:32:01,914 INFO     Killed 0 pending application instances
+2026-06-02 14:32:04,458 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-06-02 14:32:04,458 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-06-02 14:32:04,458 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-06-02 14:32:04,458 INFO     Listening on TCP address 0.0.0.0:8001
+2026-06-02 14:34:10,474 INFO     Killed 0 pending application instances
+2026-06-02 14:34:11,818 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-06-02 14:34:11,818 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-06-02 14:34:11,818 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-06-02 14:34:11,818 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/token/verify/
+2026-06-02 14:41:39,064 WARNING  Unauthorized: /api/token/verify/
+Unauthorized: /api/users/
+2026-06-02 14:49:42,689 WARNING  Unauthorized: /api/users/
+Bad Request: /api/leaveentry/
+2026-06-02 14:58:14,923 WARNING  Bad Request: /api/leaveentry/
+Bad Request: /api/leaveentry/
+2026-06-02 14:59:32,623 WARNING  Bad Request: /api/leaveentry/
+2026-06-02 15:53:20,746 INFO     Killed 0 pending application instances
+2026-06-03 08:34:47,661 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-06-03 08:34:47,661 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-06-03 08:34:47,663 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-06-03 08:34:47,663 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/token/verify/
+2026-06-03 09:05:24,465 WARNING  Unauthorized: /api/token/verify/
+Bad Request: /api/verify-admin-panel-password/
+2026-06-03 09:13:31,248 WARNING  Bad Request: /api/verify-admin-panel-password/
+Unauthorized: /api/token/verify/
+2026-06-03 09:48:48,064 WARNING  Unauthorized: /api/token/verify/
+Unauthorized: /api/users/
+2026-06-03 10:51:40,369 WARNING  Unauthorized: /api/users/
+2026-06-03 10:58:17,720 INFO     Killed 0 pending application instances
+2026-06-03 10:58:19,809 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-06-03 10:58:19,809 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-06-03 10:58:19,809 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-06-03 10:58:19,809 INFO     Listening on TCP address 0.0.0.0:8001
+2026-06-03 12:42:25,280 INFO     Killed 1 pending application instances
+2026-06-03 12:42:27,199 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-06-03 12:42:27,199 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-06-03 12:42:27,199 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-06-03 12:42:27,199 INFO     Listening on TCP address 0.0.0.0:8001
