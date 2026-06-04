@@ -117,6 +117,7 @@ const CashReport = ({ onBack }) => {
   const [outward, setOutward] = useState([]);
   const [outwardSingle, setOutwardSingle] = useState([]);
   const [outwardSingleLoading, setOutwardSingleLoading] = useState(false);
+  const [depositDayTotal, setDepositDayTotal] = useState(false);
   const [denoms, setDenoms] = useState({});
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
@@ -168,7 +169,7 @@ const CashReport = ({ onBack }) => {
 
     setOutwardSingleLoading(true);
     try {
-      const data = await fetchCashOutward({ date_from: safeFrom, date_to: safeTo, txn_type: txnType });
+      const data = await fetchCashOutward({ date_from: safeFrom, date_to: safeTo, txn_type: txnType, limit: 1000 });
       const rows = Array.isArray(data) ? data : (data?.results || []);
       setOutwardSingle(rows.map((row) => ({
         ...row,
@@ -312,7 +313,7 @@ const CashReport = ({ onBack }) => {
   };
 
   const handleExportPdf = () => {
-    const doc = new jsPDF('l', 'mm', 'a4');
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     doc.setFontSize(14);
     doc.text('Cash On Hand Report', 14, 12);
     doc.setFontSize(10);
@@ -323,8 +324,81 @@ const CashReport = ({ onBack }) => {
       body: exportRows,
       styles: { fontSize: 8 },
       headStyles: { fillColor: [79, 70, 229] },
+      margin: { left: 10, right: 10 },
     });
     doc.save(`cash_on_hand_${dateFrom || today}_to_${dateTo || today}.pdf`);
+  };
+
+  const depositRows = useMemo(() => {
+    const rows = outwardSingle.filter((row) => row.txn_type === 'DEPOSIT');
+    if (!depositDayTotal) {
+      return rows;
+    }
+
+    const grouped = {};
+    rows.forEach((row) => {
+      const dt = normalizeDateValue(row?.date);
+      if (!dt) return;
+      if (!grouped[dt]) {
+        grouped[dt] = {
+          date: dt,
+          cashDates: new Set(),
+          amount: 0,
+          refNos: [],
+          notes: [],
+          count: 0,
+        };
+      }
+      grouped[dt].amount += Number(row.amount || 0);
+      grouped[dt].count += 1;
+      if (row.cash_date) grouped[dt].cashDates.add(normalizeDateValue(row.cash_date));
+      if (row.ref_no) grouped[dt].refNos.push(row.ref_no);
+      const note = row.note || row.remark;
+      if (note) grouped[dt].notes.push(note);
+    });
+
+    return Object.values(grouped).map((group) => ({
+      date: group.date,
+      cash_date: Array.from(group.cashDates).sort().join(', '),
+      txn_type: 'DEPOSIT',
+      amount: Number(group.amount).toFixed(2),
+      ref_no: group.count > 1 ? `${group.count} deposits` : (group.refNos[0] || '--'),
+      note: group.count > 1 ? '--' : (group.notes[0] || '--'),
+    }));
+  }, [outwardSingle, depositDayTotal]);
+
+  const depositExportColumns = ['Deposit Date', 'Cash Date', 'Reference', 'Note', 'Amount'];
+  const depositExportRows = depositRows.map((row) => ([
+    formatDateDisplay(row.date),
+    formatDateDisplay(row.cash_date),
+    row.ref_no || '--',
+    row.note || '--',
+    Number(row.amount || 0).toFixed(2),
+  ]));
+
+  const handleExportDepositExcel = () => {
+    const data = [depositExportColumns, ...depositExportRows];
+    const worksheet = XLSX.utils.aoa_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Deposits');
+    XLSX.writeFile(workbook, `deposit_records_${outwardDateFrom || today}_to_${outwardDateTo || today}.xlsx`);
+  };
+
+  const handleExportDepositPdf = () => {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    doc.setFontSize(14);
+    doc.text('Deposit Records', 14, 12);
+    doc.setFontSize(10);
+    doc.text(`From: ${formatDateDisplay(outwardDateFrom)}   To: ${formatDateDisplay(outwardDateTo)}   Day Total: ${depositDayTotal ? 'Yes' : 'No'}`, 14, 18);
+    autoTable(doc, {
+      startY: 24,
+      head: [depositExportColumns],
+      body: depositExportRows,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [79, 70, 229] },
+      margin: { left: 10, right: 10 },
+    });
+    doc.save(`deposit_records_${outwardDateFrom || today}_to_${outwardDateTo || today}.pdf`);
   };
 
   const physicalCash = useMemo(() => {
@@ -379,13 +453,41 @@ const CashReport = ({ onBack }) => {
     const selectedDay = normalizeDateValue(dateTo || today) || today;
     const reportDate = selectedTab === 'cash_on_hand' ? safeTo : selectedDay;
 
-    const [r, outwardRows, feeAgg, recRange] = await Promise.all([
+      // For fetching outward records, extend the date range to catch backdated deposits
+      // We need to fetch deposits created up to 90 days after the cash_date
+      const extendedTo = new Date(new Date(safeTo).getTime() + 90 * 24 * 60 * 60 * 1000);
+      const extendedToStr = `${extendedTo.getFullYear()}-${String(extendedTo.getMonth() + 1).padStart(2, '0')}-${String(extendedTo.getDate()).padStart(2, '0')}`;
+
+      // Fetch outward records - both by date and by cash_date for deposits
+    const [r, outwardRowsByDate, allDeposits, feeAgg, recRange] = await Promise.all([
       fetchCashOnHandReport({ date: reportDate }),
-      fetchCashOutward({ date_from: safeFrom, date_to: safeTo }),
+      fetchCashOutward({ date_from: safeFrom, date_to: extendedToStr, limit: 1000 }),
+      fetchCashOutward({ txn_type: 'DEPOSIT', limit: 1000 }),  // Fetch all deposits globally, filter on frontend
       fetchFeesAggregate({ date_from: safeFrom, date_to: safeTo, report_by: 'Daily', payment_mode: 'CASH' }),
       fetchRecRange({ date_from: safeFrom, date_to: safeTo, report_by: 'Daily', payment_mode: 'CASH' }),
     ]);
     setReport(r);
+
+    // Merge outward rows: combine date-filtered records with cash_date-filtered deposits
+    const outwardByDateResults = Array.isArray(outwardRowsByDate) ? outwardRowsByDate : (Array.isArray(outwardRowsByDate?.results) ? outwardRowsByDate.results : []);
+    const allDepositsResults = Array.isArray(allDeposits) ? allDeposits : (Array.isArray(allDeposits?.results) ? allDeposits.results : []);
+    
+    // Filter global deposits to only include those within cash_date range
+    const filteredDeposits = allDepositsResults.filter(row => {
+      if (row.txn_type !== 'DEPOSIT') return false;
+      const cashDate = normalizeDateValue(row?.cash_date) || normalizeDateValue(row?.date);
+      return cashDate >= safeFrom && cashDate <= safeTo;
+    });
+
+    // Merge both lists, avoiding duplicates using id as key
+    const mergedMap = {};
+    [...outwardByDateResults, ...filteredDeposits].forEach(row => {
+      const key = `${row.id}`;
+      if (!mergedMap[key]) {
+        mergedMap[key] = row;
+      }
+    });
+    const outwardRows = Object.values(mergedMap);
 
     // If the report is closed and has denomination data, set denoms from it
     if (r && r.closed && Array.isArray(r.items)) {
@@ -420,17 +522,22 @@ const CashReport = ({ onBack }) => {
 
     normalizedOutward.forEach((row) => {
       const dt = normalizeDateValue(row?.date);
-      if (!dt || dt < safeFrom || dt > safeTo) {
-        return;
-      }
+      const cashDateKey = normalizeDateValue(row?.cash_date) || dt;
 
       if (row.txn_type === 'DEPOSIT') {
-        depositMap[dt] = (depositMap[dt] || 0) + (Number(row.amount) || 0);
-        if (!depositRefMap[dt]) depositRefMap[dt] = [];
-        depositRefMap[dt].push(buildDepositImpactLabel(row));
-      }
-
-      if (row.txn_type === 'EXPENSE') {
+        // For deposits, check if cash_date is in range
+        if (!cashDateKey || cashDateKey < safeFrom || cashDateKey > safeTo) {
+          return;
+        }
+        // Map to cash_date (business date) for running balance
+        depositMap[cashDateKey] = (depositMap[cashDateKey] || 0) + (Number(row.amount) || 0);
+        if (!depositRefMap[cashDateKey]) depositRefMap[cashDateKey] = [];
+        depositRefMap[cashDateKey].push(buildDepositImpactLabel(row));
+      } else if (row.txn_type === 'EXPENSE') {
+        // For expenses, use the actual expense date
+        if (!dt || dt < safeFrom || dt > safeTo) {
+          return;
+        }
         expenseMap[dt] = (expenseMap[dt] || 0) + (Number(row.amount) || 0);
         if (!expenseRefMap[dt]) expenseRefMap[dt] = [];
         if (row.ref_no) {
@@ -502,6 +609,22 @@ const CashReport = ({ onBack }) => {
       dateMap[dt].expense = expenseMap[dt] || 0;
       dateMap[dt].depositRef = depositRefMap[dt] || [];
       dateMap[dt].expenseRef = expenseRefMap[dt] || [];
+    });
+
+    // Ensure entries exist for all deposit dates (including backdated deposits with cash_date)
+    Object.keys(depositMap).forEach((dt) => {
+      if (!dateMap[dt]) {
+        dateMap[dt] = {
+          date: dt,
+          totalFees: 0,
+          deposit: depositMap[dt],
+          expense: 0,
+          depositRef: depositRefMap[dt] || [],
+          expenseRef: [],
+          recFrom: '--',
+          recTo: '--',
+        };
+      }
     });
 
     const sortedDates = Object.keys(dateMap)
@@ -1078,6 +1201,35 @@ const CashReport = ({ onBack }) => {
                         onChange={e => setOutwardDateTo(e.target.value)}
                       />
                     </div>
+                    <div className="flex flex-wrap items-center gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-2">
+                      <button
+                        type="button"
+                        onClick={handleExportDepositExcel}
+                        className={EXPORT_EXCEL_BUTTON_CLASS}
+                        aria-label="Export Deposit Excel"
+                        title="Export Deposit Excel"
+                      >
+                        <FaFileExcel size={20} color="#1D6F42" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleExportDepositPdf}
+                        className={EXPORT_PDF_BUTTON_CLASS}
+                        aria-label="Export Deposit PDF"
+                        title="Export Deposit PDF"
+                      >
+                        <FaFilePdf size={20} color="#D32F2F" />
+                      </button>
+                      <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={depositDayTotal}
+                          onChange={(e) => setDepositDayTotal(e.target.checked)}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                        />
+                        Day Total
+                      </label>
+                    </div>
                   </div>
                 </div>
                 {outwardSingleLoading ? (
@@ -1091,39 +1243,41 @@ const CashReport = ({ onBack }) => {
                         <th className="text-left px-2 py-1">Ref</th>
                         <th className="text-left px-2 py-1">Note</th>
                         <th className="text-right px-2 py-1">Amount</th>
-                        <th className="text-center px-2 py-1">Actions</th>
+                        {!depositDayTotal && <th className="text-center px-2 py-1">Actions</th>}
                       </tr>
                     </thead>
                     <tbody>
-                      {outwardSingle.filter(o => o.txn_type === 'DEPOSIT').length === 0 ? (
+                      {depositRows.length === 0 ? (
                         <tr>
-                          <td colSpan="6" className="text-center text-gray-400 py-3">No records found</td>
+                          <td colSpan={depositDayTotal ? 5 : 6} className="text-center text-gray-400 py-3">No records found</td>
                         </tr>
-                      ) : outwardSingle.filter(o => o.txn_type === 'DEPOSIT').map(o => (
-                        <tr key={o.id} className={`border-b ${editingOutward?.id === o.id ? 'bg-yellow-50' : 'hover:bg-gray-50'}`}>
+                      ) : depositRows.map((o, index) => (
+                        <tr key={o.id || `${o.date}-${index}`} className={`border-b ${editingOutward?.id === o.id ? 'bg-yellow-50' : 'hover:bg-gray-50'}`}>
                           <td className="px-2 py-2">{formatDateDisplay(o.date)}</td>
                           <td className="px-2 py-2">{formatDateDisplay(o.cash_date || o.date)}</td>
                           <td className="px-2 py-2">{o.ref_no || '--'}</td>
                           <td className="px-2 py-2">{o.note || o.remark || '--'}</td>
                           <td className="px-2 py-2 text-right font-semibold">₹ {o.amount}</td>
-                          <td className="px-2 py-2 text-center">
-                            <div className="flex justify-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleEditOutward(o)}
-                                className="rounded border border-blue-300 px-2 py-1 text-xs text-blue-600 hover:bg-blue-50"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteOutward(o)}
-                                className="rounded border border-red-300 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </td>
+                          {!depositDayTotal && (
+                            <td className="px-2 py-2 text-center">
+                              <div className="flex justify-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditOutward(o)}
+                                  className="rounded border border-blue-300 px-2 py-1 text-xs text-blue-600 hover:bg-blue-50"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteOutward(o)}
+                                  className="rounded border border-red-300 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
