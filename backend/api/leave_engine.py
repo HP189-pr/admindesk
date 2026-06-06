@@ -123,6 +123,13 @@ def _add_one_year(value: date) -> date:
         return value.replace(year=value.year + 1, day=28)
 
 
+def _entitlement_code_for_leave_group(leave_group) -> str:
+    normalized = str(leave_group or "").strip().upper()
+    if normalized in ("VAC", "VACATION"):
+        return "VAC"
+    return "EL"
+
+
 @dataclass
 class PeriodWindow:
     id: int
@@ -307,6 +314,10 @@ class LeaveEngine:
         first_period_start = periods[0].start
 
         for emp in emps:
+            leave_group = getattr(emp, "leave_group", "")
+            entitlement_code = _entitlement_code_for_leave_group(leave_group)
+            other_entitlement_code = "EL" if entitlement_code == "VAC" else "VAC"
+
             actual_join_date = _parse_date_value(getattr(emp, "actual_joining", None))
             department_join_date = _parse_date_value(getattr(emp, "department_joining", None))
             leave_calc_date = _parse_date_value(getattr(emp, "leave_calculation_date", None))
@@ -339,8 +350,19 @@ class LeaveEngine:
                 "SL": _to_decimal(getattr(emp, "sl_balance", DEC0)),
                 "VAC": _to_decimal(getattr(emp, "vacation_balance", DEC0)),
             }
-            joining_year_allocation_cl = _to_decimal(getattr(emp, "joining_year_allocation_cl", DEC0))
-            joining_year_allocation_applied = False
+            joining_year_allocations = {
+                "EL": _to_decimal(getattr(emp, "joining_year_allocation_el", DEC0)),
+                "CL": _to_decimal(getattr(emp, "joining_year_allocation_cl", DEC0)),
+                "SL": _to_decimal(getattr(emp, "joining_year_allocation_sl", DEC0)),
+                "VAC": _to_decimal(getattr(emp, "joining_year_allocation_vac", DEC0)),
+            }
+            balances[entitlement_code] = balances.get("EL", DEC0) + balances.get("VAC", DEC0)
+            balances[other_entitlement_code] = DEC0
+            joining_year_allocations[entitlement_code] = (
+                joining_year_allocations.get("EL", DEC0) + joining_year_allocations.get("VAC", DEC0)
+            )
+            joining_year_allocations[other_entitlement_code] = DEC0
+            joining_year_allocation_applied = {code: False for code in joining_year_allocations}
 
             if not allow_opening_balance:
                 balances["EL"] = DEC0
@@ -352,7 +374,7 @@ class LeaveEngine:
                 "emp_name": getattr(emp, "emp_name", ""),
                 "emp_short": getattr(emp, "emp_short", emp.emp_id),
                 "designation": getattr(emp, "emp_designation", ""),
-                "leave_group": getattr(emp, "leave_group", ""),
+                "leave_group": leave_group,
                 "actual_joining": getattr(emp, "actual_joining", ""),
                 "left_date": getattr(emp, "left_date", "") or "Cont",
                 "status": getattr(emp, "status", "Active") or "Active",
@@ -374,8 +396,11 @@ class LeaveEngine:
                 end_snap = {}
                 meta_alloc = {}
 
-                base_alloc = global_allocs.get(p.id, {c: DEC0 for c in self.tracked})
-                emp_spec = employee_allocs.get((str(emp.emp_id), p.id), {c: DEC0 for c in self.tracked})
+                base_alloc = dict(global_allocs.get(p.id, {c: DEC0 for c in self.tracked}))
+                emp_spec = dict(employee_allocs.get((str(emp.emp_id), p.id), {c: DEC0 for c in self.tracked}))
+                for alloc_bucket in (base_alloc, emp_spec):
+                    alloc_bucket[entitlement_code] = alloc_bucket.get("EL", DEC0) + alloc_bucket.get("VAC", DEC0)
+                    alloc_bucket[other_entitlement_code] = DEC0
 
                 for code in self.tracked:
                     original_alloc = base_alloc.get(code, DEC0) + emp_spec.get(code, DEC0)
@@ -419,8 +444,14 @@ class LeaveEngine:
                                 alloc_value = _to_decimal(original_alloc)
 
                     extra_joining_year_allocation = DEC0
-                    if code == "CL" and period_active and not joining_year_allocation_applied and joining_year_allocation_cl != DEC0 and applied:
-                        extra_joining_year_allocation = joining_year_allocation_cl
+                    joining_year_allocation = joining_year_allocations.get(code, DEC0)
+                    if (
+                        period_active
+                        and not joining_year_allocation_applied.get(code, False)
+                        and joining_year_allocation != DEC0
+                        and applied
+                    ):
+                        extra_joining_year_allocation = joining_year_allocation
                         alloc_value = _to_decimal(alloc_value) + extra_joining_year_allocation
 
                     alloc_snap[code] = alloc_value
@@ -432,7 +463,15 @@ class LeaveEngine:
                     }
                     meta_alloc[code] = allocation_meta
 
-                    used_val = used_days.get((emp.emp_id, p.id, code), DEC0)
+                    if code == entitlement_code:
+                        used_val = (
+                            used_days.get((emp.emp_id, p.id, "EL"), DEC0)
+                            + used_days.get((emp.emp_id, p.id, "VAC"), DEC0)
+                        )
+                    elif code == other_entitlement_code:
+                        used_val = DEC0
+                    else:
+                        used_val = used_days.get((emp.emp_id, p.id, code), DEC0)
                     used_snap[code] = used_val
 
                     opening = balances.get(code, DEC0)
@@ -452,8 +491,10 @@ class LeaveEngine:
                     used_snap[code] = _round_output(used_snap[code], code)
                     end_snap[code] = _round_output(ending, code)
 
-                if period_active and not joining_year_allocation_applied:
-                    joining_year_allocation_applied = True
+                if period_active:
+                    for code in joining_year_allocation_applied:
+                        if meta_alloc.get(code, {}).get("applied"):
+                            joining_year_allocation_applied[code] = True
 
                 emp_payload["periods"].append({
                     "period_id": p.id,
