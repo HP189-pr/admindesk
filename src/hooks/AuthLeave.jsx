@@ -153,14 +153,17 @@ export default function AuthLeave() {
   /* ========================= CREATE / UPDATE / DELETE ========================= */
 
   async function createAllocation(payload) {
+    // If emp_id is empty, treat allocation as applying to ALL employees
+    const resolvedApplyTo = payload.emp_id ? (payload.apply_to || 'PARTICULAR') : 'ALL';
+
     const body = {
       leave_code: payload.leave_code,
       period: payload.period_id,
       allocated: Number(payload.allocated) || 0,
       allocated_start_date: payload.allocated_start_date || null,
       allocated_end_date: payload.allocated_end_date || null,
-      apply_to: payload.apply_to,
-      emp_id: payload.apply_to === 'ALL' ? null : payload.emp_id,
+      apply_to: resolvedApplyTo,
+      emp_id: resolvedApplyTo === 'ALL' ? null : payload.emp_id,
     };
     await axios.post(`${API}/leave-allocations/`, body);
   }
@@ -197,7 +200,8 @@ export default function AuthLeave() {
       setEditingAllocId(null);
       await loadAllocations(selectedPeriod);
     } catch (err) {
-      alert('Save failed');
+      const msg = err?.response?.data?.detail || err?.response?.data || err?.message || 'Save failed';
+      alert(typeof msg === 'string' ? msg : JSON.stringify(msg));
     } finally {
       setLoading(false);
     }

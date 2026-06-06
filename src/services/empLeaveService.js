@@ -66,13 +66,16 @@ export async function createLeaveAllocation(payload) {
   body.leave_code = payload.leave_code;
   body.period = payload.period_id || payload.period;
 
-  // Apply_to handling
-  if (payload.apply_to === "ALL") {
+  // Apply_to handling: if emp_id is empty, treat as ALL
+  if (!payload.emp_id) {
+    body.apply_to = "ALL";
+    body.emp_id = null;
+  } else if (payload.apply_to === "ALL") {
     body.apply_to = "ALL";
     body.emp_id = null;
   } else {
     body.apply_to = "PARTICULAR";
-    if (payload.emp_id) body.emp_id = payload.emp_id;
+    body.emp_id = payload.emp_id;
   }
 
   // Allocation numbers

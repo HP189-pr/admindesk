@@ -168,9 +168,8 @@ class LeaveAllocationListView(generics.ListCreateAPIView):
         if not lt:
             return Response({"detail": "LeaveType not found"}, status=404)
 
-        if apply_to == "PARTICULAR":
-            if not emp_id:
-                return Response({"detail": "emp_id required for PARTICULAR allocation"}, status=400)
+        # If apply_to is PARTICULAR but emp_id is missing, treat as ALL
+        if apply_to == "PARTICULAR" and emp_id:
             prof = EmpProfile.objects.filter(emp_id=str(emp_id)).first()
             if not prof:
                 return Response({"detail": "Employee not found"}, status=404)
