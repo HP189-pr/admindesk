@@ -170,12 +170,12 @@ class EmployeeDateRangeView(APIView):
                 overlap_start = max(pstart, start)
                 overlap_end = min(pend, end)
                 active_days = (overlap_end - overlap_start).days + 1
-                for code in ("CL","SL","EL","VAC"):
+                for code in ("CL","SL","EL","VAC","DL","LWP","ML","PL"):
                     alloc_val = Decimal(str(p.get("allocation", {}).get(code, 0)))
                     prorated = (alloc_val * Decimal(active_days) / Decimal(period_days)) if period_days>0 else Decimal("0")
-                    allocated[code] += prorated
-                    opening[code] = opening.get(code,0) + Decimal(str(p.get("starting", {}).get(code, 0)))
-                    used[code] = used.get(code,0) + Decimal(str(p.get("used", {}).get(code, 0)))
+                    allocated[code] = allocated.get(code, Decimal("0")) + prorated
+                    opening[code] = opening.get(code, Decimal("0")) + Decimal(str(p.get("starting", {}).get(code, 0)))
+                    used[code] = used.get(code, Decimal("0")) + Decimal(str(p.get("used", {}).get(code, 0)))
 
         closing = {}
         for code in ("CL","SL","EL","VAC"):
@@ -247,7 +247,7 @@ class AllEmployeesBalanceView(APIView):
             if not rec:
                 continue
             lt_list = []
-            for code in ("CL","SL","EL","VAC"):
+            for code in ("CL","SL","EL","VAC","DL","LWP","ML","PL"):
                 lt_list.append({
                     "code": code,
                     "starting": rec.get("starting", {}).get(code, 0),
