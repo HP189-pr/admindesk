@@ -1,4 +1,4 @@
-﻿// src/report/LeaveReport.jsx
+﻿﻿// src/report/LeaveReport.jsx
 // LeaveReport.jsx (Report tab)
 import React, { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
@@ -204,10 +204,39 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
   const convertFromBalance = (emp) => {
     const types = Array.isArray(emp.leave_types) ? emp.leave_types : [];
     const byCode = types.reduce((acc, t) => {
-      acc[t.code] = t;
+      const code = String(t.code || '').trim().toUpperCase();
+      acc[code] = t;
       return acc;
     }, {});
-    const g = (code, key) => byCode[code]?.[key] ?? 0;
+    
+    const g = (code, key) => {
+      if (code === 'DL') {
+        return (byCode['DL']?.[key] || 0) + (byCode['DUTY']?.[key] || 0) + (byCode['DUTY LEAVE']?.[key] || 0);
+      }
+      if (code === 'VAC') {
+        return (byCode['VAC']?.[key] || 0) + (byCode['VC']?.[key] || 0) + (byCode['VACATION']?.[key] || 0);
+      }
+      if (code === 'LWP') {
+        return (byCode['LWP']?.[key] || 0) + (byCode['LEAVE WITHOUT PAY']?.[key] || 0);
+      }
+      if (code === 'ML') {
+        return (byCode['ML']?.[key] || 0) + (byCode['MATERNITY LEAVE']?.[key] || 0);
+      }
+      if (code === 'PL') {
+        return (byCode['PL']?.[key] || 0) + (byCode['PATERNITY LEAVE']?.[key] || 0);
+      }
+      if (code === 'CL') {
+        return (byCode['CL']?.[key] || 0) + (byCode['CASUAL LEAVE']?.[key] || 0);
+      }
+      if (code === 'SL') {
+        return (byCode['SL']?.[key] || 0) + (byCode['SICK LEAVE']?.[key] || 0);
+      }
+      if (code === 'EL') {
+        return (byCode['EL']?.[key] || 0) + (byCode['EARNED LEAVE']?.[key] || 0);
+      }
+      return byCode[code]?.[key] ?? 0;
+    };
+    
     return {
       emp_short: emp.emp_short || emp.emp_id,
       emp_id: emp.emp_id,
