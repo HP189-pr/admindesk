@@ -449,7 +449,7 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
     return counts;
   }, [rows]);
 
-  // sort rows for display by numeric `tr_request_no` (higher = newer),
+  // sort rows for display by pending status first, then by numeric `tr_request_no` (higher = newer),
   // then fallback to requested_at desc.
   const sortedRows = useMemo(() => {
     const copy = Array.isArray(rows) ? [...rows] : [];
@@ -463,7 +463,19 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
       return Number.isFinite(m) ? m : NaN;
     };
 
+    const isPending = (val) => {
+      const text = String(val || '').trim().toLowerCase();
+      return text === 'pending' || text === 'pending approval';
+    };
+
     copy.sort((a, b) => {
+      // 1. Pending first
+      const aPending = isPending(a?.mail_status);
+      const bPending = isPending(b?.mail_status);
+      if (aPending && !bPending) return -1;
+      if (!aPending && bPending) return 1;
+
+      // 2. Higher tr_request_no first
       const aNo = parseNumeric(a?.tr_request_no ?? a?.request_ref_no);
       const bNo = parseNumeric(b?.tr_request_no ?? b?.request_ref_no);
       const aHas = Number.isFinite(aNo);
