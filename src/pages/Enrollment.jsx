@@ -1,5 +1,5 @@
 ﻿// src/pages/Enrollment.jsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { isoToDMY, dmyToISO } from "../utils/date";
 import { FaEdit, FaTrash } from "react-icons/fa";
 import { useNavigate } from 'react-router-dom';
@@ -204,6 +204,8 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
   const [statusFilter, setStatusFilter] = useState('active');
   const [activeTab, setActiveTab] = useState('list');
   const [cancelRecords, setCancelRecords] = useState([]);
+  const [cancelSearch, setCancelSearch] = useState('');
+  const [cancelBatchFilter, setCancelBatchFilter] = useState('');
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelForm, setCancelForm] = useState(() => buildCancelFormState());
   const [cancelEntryMode, setCancelEntryMode] = useState('single');
@@ -229,6 +231,27 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
         setRights({ can_view: true, can_create: true, can_edit: true, can_delete: true });
       });
   }, []);
+
+  const filteredCancelRecords = useMemo(() => {
+    let records = cancelRecords;
+    if (cancelSearch.trim()) {
+      const q = cancelSearch.toLowerCase();
+      records = records.filter(r => 
+        (r.enrollment_no && r.enrollment_no.toLowerCase().includes(q)) || 
+        (r.student_name && r.student_name.toLowerCase().includes(q)) ||
+        (r.outward_no && String(r.outward_no).toLowerCase().includes(q)) ||
+        (r.inward_no && String(r.inward_no).toLowerCase().includes(q))
+      );
+    }
+    if (cancelBatchFilter) {
+      records = records.filter(r => 
+        String(r.batch || '') === String(cancelBatchFilter) || 
+        String(r.enrollment?.batch || '') === String(cancelBatchFilter) ||
+        (r.enrollment_no && r.enrollment_no.includes(cancelBatchFilter))
+      );
+    }
+    return records;
+  }, [cancelRecords, cancelSearch, cancelBatchFilter]);
 
   useEffect(() => {
     (async () => {
@@ -291,7 +314,29 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
         const rows = Array.isArray(data)
           ? data
           : data?.results || data?.items || [];
-        setCancelRecords(rows);
+        
+        const sortedRows = [...rows].sort((a, b) => {
+          const parseDate = (d) => {
+             if (!d) return 0;
+             const s = String(d).trim();
+             if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(s)) {
+                 return new Date(s).getTime() || 0;
+             }
+             const m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})/);
+             if (m) {
+                 return new Date(`${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`).getTime() || 0;
+             }
+             return new Date(s).getTime() || 0;
+          };
+          const dateA = parseDate(a.outward_date);
+          const dateB = parseDate(b.outward_date);
+          if (dateA !== dateB) return dateB - dateA;
+          
+          const enrA = String(a.enrollment_no || '');
+          const enrB = String(b.enrollment_no || '');
+          return enrA.localeCompare(enrB);
+        });
+        setCancelRecords(sortedRows);
       } catch (error) {
         console.error("Cancellation fetch error:", error);
         toast.error(error.message || "Failed to load cancellation records");
@@ -881,12 +926,12 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
               </tr>
             </thead>
             <tbody>
-              {cancelRecords.length === 0 ? (
+              {filteredCancelRecords.length === 0 ? (
                 <tr>
                   <td className="border p-4 text-center" colSpan={8}>No cancellation records</td>
                 </tr>
               ) : (
-                cancelRecords.map(record => (
+                filteredCancelRecords.map(record => (
                   <tr key={record.id}>
                     <td className="border p-2">{record.enrollment_no}</td>
                     <td className="border p-2">{record.student_name}</td>
@@ -1429,6 +1474,12 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
       return;
     }
 
+    if (action === CANCEL_ACTION) {
+      setActiveTab('cancel');
+    } else if (action === "➕" || action === "🔍") {
+      setActiveTab('list');
+    }
+
     if (selectedAction === action) {
       const nextOpen = !panelOpen;
       setPanelOpen(nextOpen);
@@ -1527,6 +1578,27 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
                   <option value="active">Active Only</option>
                   <option value="cancelled">Cancelled Only</option>
                   <option value="all">All Records</option>
+                </select>
+              </>
+            )}
+
+            {activeTab === 'cancel' && (
+              <>
+                <SearchField
+                  className="min-w-[280px] flex-1 max-w-[520px]"
+                  placeholder="Search by Enrollment No, Name, Inward/Outward..."
+                  value={cancelSearch}
+                  onChange={(e) => setCancelSearch(e.target.value)}
+                />
+                <select
+                  value={cancelBatchFilter}
+                  onChange={(e) => setCancelBatchFilter(e.target.value)}
+                  className="border rounded px-4 py-2 min-w-[150px]"
+                >
+                  <option value="">All Batches</option>
+                  {BATCH_OPTIONS.map((batch) => (
+                    <option key={batch} value={batch}>{batch}</option>
+                  ))}
                 </select>
               </>
             )}
