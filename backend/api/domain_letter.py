@@ -97,7 +97,7 @@ class InstLetterStudent(models.Model):
     # Removed institute, sub_course, and main_course fields as requested
     type_of_credential = models.CharField(max_length=50, null=True, blank=True, db_column='type_of_credential')
     month_year = models.CharField(max_length=20, null=True, blank=True, db_column='month_year')
-    verification_status = models.CharField(max_length=100, null=True, blank=True, db_column='verification_status')
+    verification_status = models.CharField(max_length=255, null=True, blank=True, db_column='verification_status')
     iv_degree_name = models.CharField(max_length=255, null=True, blank=True, db_column='iv_degree_name')
     study_mode = models.CharField(max_length=20, null=True, blank=True, db_column='study_mode')
     class Meta:
