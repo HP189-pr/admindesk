@@ -1492,7 +1492,7 @@ const InstitutionalLetter = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggl
 						</div>
 						<div className="md:col-span-5">
 							<label className="label">Status</label>
-							<input className="input" value={sform.verification_status} onChange={(e) => setSForm((prev) => ({ ...prev, verification_status: e.target.value }))} />
+							<input className="input" maxLength={500} value={sform.verification_status} onChange={(e) => setSForm((prev) => ({ ...prev, verification_status: e.target.value }))} />
 						</div>
 					</div>
 
