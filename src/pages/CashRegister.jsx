@@ -30,6 +30,8 @@ const MODE_CARD_STYLES = {
 
 };
 
+const RECEIPT_SUFFIX_REGEX = /(\d{6})$/;
+
 const BANK_PREFIX_OPTIONS = [
   { value: '1471', label: '1471 (Account 1)' },
   { value: '138', label: '138 (Account 2)' },
