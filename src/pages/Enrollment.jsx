@@ -1,7 +1,11 @@
 ﻿// src/pages/Enrollment.jsx
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { isoToDMY, dmyToISO } from "../utils/date";
 import { FaEdit, FaTrash } from "react-icons/fa";
+import { FaFileExcel, FaFilePdf } from "react-icons/fa6";
 import { useNavigate } from 'react-router-dom';
 import PanelToggleButton from "../components/PanelToggleButton";
 import PageTopbar from "../components/PageTopbar";
@@ -35,7 +39,7 @@ const TAB_OPTIONS = [
 
 const CANCEL_STATUS_OPTIONS = [
   { value: "CANCELLED", label: "Cancelled" },
-  { value: "REVOKED", label: "Revoked" },
+  { value: "ACTIVE", label: "Active" },
 ];
 
 const CANCEL_ENTRY_MODE_OPTIONS = [
@@ -49,6 +53,62 @@ const ENROLLMENT_FORM_PANEL_CLASS = "rounded-2xl border border-slate-200 bg-slat
 const ENROLLMENT_FORM_LABEL_CLASS = "mb-1 block text-sm font-medium text-slate-800";
 const ENROLLMENT_FORM_FIELD_CLASS = "w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-slate-800 shadow-sm transition focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-100";
 const ENROLLMENT_FORM_FIELD_ERROR_CLASS = "border-red-500 focus:border-red-500 focus:ring-red-100";
+const EXPORT_EXCEL_BUTTON_CLASS = "inline-flex h-10 w-10 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 shadow transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50";
+const EXPORT_PDF_BUTTON_CLASS = "inline-flex h-10 w-10 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 shadow transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50";
+
+const getCancelRecordEnrollmentNo = (record = {}) =>
+  String(record.enrollment_no || record.enrollment?.enrollment_no || "").trim();
+
+const getCancelRecordDirectBatch = (record = {}) =>
+  record.admission_batch
+  || record.enrollment_batch
+  || record.batch
+  || record.enrollment?.admission_batch
+  || record.enrollment?.enrollment_batch
+  || record.enrollment?.batch
+  || "";
+
+const getCancelRecordBatch = (record = {}) => {
+  const directBatch = getCancelRecordDirectBatch(record);
+  if (directBatch) return String(directBatch);
+
+  const enrollmentNo = getCancelRecordEnrollmentNo(record);
+  const yearPrefix = enrollmentNo.match(/^(\d{2})/);
+  if (!yearPrefix) return "";
+
+  const year = Number(yearPrefix[1]);
+  if (Number.isNaN(year)) return "";
+  return String(year >= 50 ? 1900 + year : 2000 + year);
+};
+
+const buildCancelExportRows = (records = []) => records.map((record, index) => ({
+  "Sr No": index + 1,
+  "Enrollment No": record.enrollment_no || "",
+  "Student Name": record.student_name || "",
+  "Batch": getCancelRecordBatch(record) || "",
+  "Inward No": record.inward_no || "",
+  "Inward Date": isoToDMY(record.inward_date) || "",
+  "Outward No": record.outward_no || "",
+  "Outward Date": isoToDMY(record.outward_date) || "",
+  "Remark": record.can_remark || "",
+  "Status": record.status || "",
+}));
+
+const pickEnrollmentCurrentStatus = (record = {}) => {
+  if (record.status) return record.status;
+  if (typeof record.cancel === "boolean") return record.cancel ? "Cancelled" : "Active";
+  return "";
+};
+
+const hydrateCancelRowFromEnrollment = (row, record) => ({
+  ...row,
+  enrollmentId: record.id,
+  studentName: record.student_name || "",
+  enrollmentNoInput: String(record.enrollment_no ?? ""),
+  currentStatus: pickEnrollmentCurrentStatus(record),
+  loadingEnrollment: false,
+  error: "",
+});
 
 const createEmptyEnrollmentFormData = () => ({
   enrollment_no: '',
@@ -146,6 +206,7 @@ const buildMultipleCancelRowState = () => ({
   enrollmentNoInput: '',
   enrollmentId: null,
   studentName: '',
+  currentStatus: '',
   status: CANCEL_STATUS_OPTIONS[0].value,
   loadingEnrollment: false,
   error: '',
@@ -157,14 +218,15 @@ const buildMultipleCancelFormState = () => ({
   outward_no: '',
   outward_date: '',
   can_remark: '',
-  rows: [buildMultipleCancelRowState()],
+  draftRow: buildMultipleCancelRowState(),
+  rows: [],
   isSubmitting: false,
   error: '',
 });
 
 const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar, onToggleChatbox }) => {
   const navigate = useNavigate();
-  const { auth } = useAuth();
+  const { user } = useAuth();
   const [state, setState] = useState({
     enrollments: [],
     filteredEnrollments: [],
@@ -208,7 +270,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
   const [cancelBatchFilter, setCancelBatchFilter] = useState('');
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelForm, setCancelForm] = useState(() => buildCancelFormState());
-  const [cancelEntryMode, setCancelEntryMode] = useState('single');
+  const [cancelEntryMode, setCancelEntryMode] = useState('multiple');
   const [multipleCancelForm, setMultipleCancelForm] = useState(() => buildMultipleCancelFormState());
   useEffect(() => {
     API.get("/api/my-navigation/")
@@ -245,13 +307,78 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
     }
     if (cancelBatchFilter) {
       records = records.filter(r => 
-        String(r.batch || '') === String(cancelBatchFilter) || 
-        String(r.enrollment?.batch || '') === String(cancelBatchFilter) ||
-        (r.enrollment_no && r.enrollment_no.includes(cancelBatchFilter))
+        getCancelRecordBatch(r) === String(cancelBatchFilter)
       );
     }
     return records;
   }, [cancelRecords, cancelSearch, cancelBatchFilter]);
+
+  const exportCancelAdmissionExcel = () => {
+    if (!filteredCancelRecords.length) {
+      toast.info("No cancellation records to export");
+      return;
+    }
+
+    const exportRows = buildCancelExportRows(filteredCancelRecords);
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
+    worksheet["!cols"] = [
+      { wch: 8 },
+      { wch: 18 },
+      { wch: 34 },
+      { wch: 10 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 28 },
+      { wch: 14 },
+    ];
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Cancel Admission");
+    const batchPart = cancelBatchFilter ? `batch_${cancelBatchFilter}` : "all_batches";
+    XLSX.writeFile(workbook, `cancel_admission_${batchPart}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
+  const exportCancelAdmissionPDF = () => {
+    if (!filteredCancelRecords.length) {
+      toast.info("No cancellation records to export");
+      return;
+    }
+
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const title = "Cancel Admission Report";
+    const batchLabel = cancelBatchFilter || "All";
+    doc.setFontSize(14);
+    doc.text(title, 14, 12);
+    doc.setFontSize(10);
+    doc.text(`Batch: ${batchLabel}`, 14, 18);
+    doc.text(`Total Records: ${filteredCancelRecords.length}`, 14, 23);
+
+    autoTable(doc, {
+      startY: 28,
+      head: [["Enrollment No", "Student Name", "Batch", "Inward No", "Inward Date", "Outward No", "Outward Date", "Remark", "Status"]],
+      body: filteredCancelRecords.map((record) => [
+        record.enrollment_no || "-",
+        record.student_name || "-",
+        getCancelRecordBatch(record) || "-",
+        record.inward_no || "-",
+        isoToDMY(record.inward_date) || "-",
+        record.outward_no || "-",
+        isoToDMY(record.outward_date) || "-",
+        record.can_remark || "-",
+        record.status || "-",
+      ]),
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [79, 70, 229] },
+      columnStyles: {
+        1: { cellWidth: 52 },
+        7: { cellWidth: 38 },
+      },
+    });
+
+    const batchPart = cancelBatchFilter ? `batch_${cancelBatchFilter}` : "all_batches";
+    doc.save(`cancel_admission_${batchPart}_${new Date().toISOString().slice(0, 10)}.pdf`);
+  };
 
   useEffect(() => {
     (async () => {
@@ -336,7 +463,47 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
           const enrB = String(b.enrollment_no || '');
           return enrA.localeCompare(enrB);
         });
-        setCancelRecords(sortedRows);
+
+        const missingBatchEnrollmentNos = [
+          ...new Set(
+            sortedRows
+              .filter((row) => !getCancelRecordDirectBatch(row))
+              .map(getCancelRecordEnrollmentNo)
+              .filter(Boolean)
+              .map((enrollmentNo) => enrollmentNo.toLowerCase())
+          ),
+        ];
+
+        const batchByEnrollmentNo = {};
+        await Promise.all(
+          missingBatchEnrollmentNos.map(async (normalizedEnrollmentNo) => {
+            try {
+              const enrollment = await resolveEnrollment(normalizedEnrollmentNo);
+              if (enrollment?.batch) {
+                batchByEnrollmentNo[normalizedEnrollmentNo] = String(enrollment.batch);
+              }
+            } catch (error) {
+              console.warn("Failed to resolve cancellation enrollment batch:", normalizedEnrollmentNo, error);
+            }
+          })
+        );
+
+        const hydratedRows = sortedRows.map((row) => {
+          const directBatch = getCancelRecordDirectBatch(row);
+          const normalizedEnrollmentNo = getCancelRecordEnrollmentNo(row).toLowerCase();
+          const admissionBatch = directBatch || batchByEnrollmentNo[normalizedEnrollmentNo];
+          if (!admissionBatch) return row;
+
+          return {
+            ...row,
+            admission_batch: String(admissionBatch),
+            enrollment: row.enrollment && typeof row.enrollment === 'object'
+              ? { ...row.enrollment, batch: String(admissionBatch) }
+              : row.enrollment,
+          };
+        });
+
+        setCancelRecords(hydratedRows);
       } catch (error) {
         console.error("Cancellation fetch error:", error);
         toast.error(error.message || "Failed to load cancellation records");
@@ -517,49 +684,112 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
     setMultipleCancelForm(prev => ({ ...prev, [field]: value, error: '' }));
   };
 
-  const handleMultipleRowChange = (rowId, field, value) => {
+  const handleMultipleRowChange = (field, value) => {
     setMultipleCancelForm(prev => ({
       ...prev,
       error: '',
-      rows: prev.rows.map((row) => {
-        if (row.rowId !== rowId) return row;
-
-        if (field === 'enrollmentNoInput') {
-          return {
-            ...row,
-            enrollmentNoInput: value,
-            enrollmentId: null,
-            studentName: '',
-            error: '',
-          };
+      draftRow: field === 'enrollmentNoInput'
+        ? {
+          ...prev.draftRow,
+          enrollmentNoInput: value,
+          enrollmentId: null,
+          studentName: '',
+          currentStatus: '',
+          error: '',
         }
-
-        return {
-          ...row,
+        : {
+          ...prev.draftRow,
           [field]: value,
-          error: field === 'status' ? '' : row.error,
-        };
-      }),
+          error: field === 'status' ? '' : prev.draftRow.error,
+        },
     }));
   };
 
-  const addMultipleCancelRow = () => {
+  const updateEnrollmentAdmissionStatus = async (enrollmentId, status) => {
+    await API.patch(`/api/enrollments/${enrollmentId}/`, {
+      cancel: status === 'CANCELLED',
+    });
+  };
+
+  const buildCancellationAuditPayload = () => ({
+    ...(user?.id || user?.username ? { updated_by: user?.id || user?.username } : {}),
+    updated_at: new Date().toISOString(),
+  });
+
+  const addMultipleCancelRow = async () => {
+    const draft = multipleCancelForm.draftRow;
+    const enrollmentNo = String(draft.enrollmentNoInput || '').trim();
+    if (!enrollmentNo) {
+      setMultipleCancelForm(prev => ({
+        ...prev,
+        draftRow: { ...prev.draftRow, error: 'Enter enrollment number.' },
+      }));
+      return;
+    }
+
+    let rowToAdd = draft;
+    if (!rowToAdd.enrollmentId) {
+      try {
+        setMultipleCancelForm(prev => ({
+          ...prev,
+          draftRow: { ...prev.draftRow, loadingEnrollment: true, error: '' },
+        }));
+        const record = await resolveEnrollment(enrollmentNo);
+        if (!record) throw new Error('Enrollment not found (exact match)');
+        rowToAdd = hydrateCancelRowFromEnrollment(rowToAdd, record);
+      } catch (error) {
+        setMultipleCancelForm(prev => ({
+          ...prev,
+          draftRow: {
+            ...prev.draftRow,
+            loadingEnrollment: false,
+            enrollmentId: null,
+            studentName: '',
+            error: error.message || 'Enrollment not found',
+          },
+        }));
+        return;
+      }
+    }
+
+    const normalizedEnrollment = String(rowToAdd.enrollmentNoInput || '').trim().toLowerCase();
+    const duplicate = multipleCancelForm.rows.some((row) =>
+      String(row.enrollmentNoInput || '').trim().toLowerCase() === normalizedEnrollment
+    );
+
+    if (duplicate) {
+      setMultipleCancelForm(prev => ({
+        ...prev,
+        draftRow: { ...prev.draftRow, loadingEnrollment: false, error: 'This enrollment is already added.' },
+      }));
+      return;
+    }
+
     setMultipleCancelForm(prev => ({
       ...prev,
-      rows: [...prev.rows, buildMultipleCancelRowState()],
+      rows: [
+        ...prev.rows,
+        {
+          ...rowToAdd,
+          rowId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          loadingEnrollment: false,
+          error: '',
+        },
+      ],
+      draftRow: {
+        ...buildMultipleCancelRowState(),
+        status: rowToAdd.status,
+      },
       error: '',
     }));
   };
 
   const removeMultipleCancelRow = (rowId) => {
-    setMultipleCancelForm(prev => {
-      if (prev.rows.length <= 1) return prev;
-      return {
-        ...prev,
-        rows: prev.rows.filter((row) => row.rowId !== rowId),
-        error: '',
-      };
-    });
+    setMultipleCancelForm(prev => ({
+      ...prev,
+      rows: prev.rows.filter((row) => row.rowId !== rowId),
+      error: '',
+    }));
   };
 
   const extractApiErrorMessage = (error, fallbackMessage) => {
@@ -603,9 +833,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
 
       setCancelForm(prev => ({
         ...prev,
-        enrollmentId: record.id,
-        studentName: record.student_name || '',
-        enrollmentNoInput: String(record.enrollment_no ?? ''),
+        ...hydrateCancelRowFromEnrollment(prev, record),
         loadingEnrollment: false,
       }));
     } catch (error) {
@@ -619,18 +847,13 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
     }
   };
 
-  const fetchEnrollmentForMultipleRow = async (rowId, overrideEnrollmentNo) => {
-    const currentRow = multipleCancelForm.rows.find((row) => row.rowId === rowId);
-    const enrollmentNo = String(overrideEnrollmentNo ?? currentRow?.enrollmentNoInput ?? '').trim();
+  const fetchEnrollmentForMultipleRow = async (overrideEnrollmentNo) => {
+    const enrollmentNo = String(overrideEnrollmentNo ?? multipleCancelForm.draftRow?.enrollmentNoInput ?? '').trim();
 
     if (!enrollmentNo) {
       setMultipleCancelForm(prev => ({
         ...prev,
-        rows: prev.rows.map((row) => (
-          row.rowId === rowId
-            ? { ...row, enrollmentId: null, studentName: '', error: 'Enter enrollment number to fetch details.' }
-            : row
-        )),
+        draftRow: { ...prev.draftRow, enrollmentId: null, studentName: '', error: 'Enter enrollment number to fetch details.' },
       }));
       return;
     }
@@ -638,11 +861,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
     setMultipleCancelForm(prev => ({
       ...prev,
       error: '',
-      rows: prev.rows.map((row) => (
-        row.rowId === rowId
-          ? { ...row, loadingEnrollment: true, error: '' }
-          : row
-      )),
+      draftRow: { ...prev.draftRow, loadingEnrollment: true, error: '' },
     }));
 
     try {
@@ -653,33 +872,19 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
 
       setMultipleCancelForm(prev => ({
         ...prev,
-        rows: prev.rows.map((row) => (
-          row.rowId === rowId
-            ? {
-              ...row,
-              enrollmentId: record.id,
-              studentName: record.student_name || '',
-              enrollmentNoInput: String(record.enrollment_no ?? ''),
-              loadingEnrollment: false,
-              error: '',
-            }
-            : row
-        )),
+        draftRow: hydrateCancelRowFromEnrollment(prev.draftRow, record),
       }));
     } catch (error) {
       setMultipleCancelForm(prev => ({
         ...prev,
-        rows: prev.rows.map((row) => (
-          row.rowId === rowId
-            ? {
-              ...row,
-              loadingEnrollment: false,
-              enrollmentId: null,
-              studentName: '',
-              error: error.message || 'Enrollment not found',
-            }
-            : row
-        )),
+        draftRow: {
+          ...prev.draftRow,
+            loadingEnrollment: false,
+            enrollmentId: null,
+            studentName: '',
+            currentStatus: '',
+            error: error.message || 'Enrollment not found',
+        },
       }));
     }
   };
@@ -711,8 +916,10 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
         outward_date: cancelForm.outward_date || null,
         can_remark: cancelForm.can_remark || null,
         status: cancelForm.status,
+        ...buildCancellationAuditPayload(),
       };
       await createAdmissionCancellation(payload);
+      await updateEnrollmentAdmissionStatus(cancelForm.enrollmentId, cancelForm.status);
       toast.success("Admission cancellation saved");
       setCancelForm(buildCancelFormState());
       loadCancellationRecords();
@@ -733,7 +940,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
     if (filledRows.length === 0) {
       setMultipleCancelForm(prev => ({
         ...prev,
-        error: 'Enter at least one enrollment number.',
+        error: 'Add at least one record before saving.',
       }));
       return;
     }
@@ -762,10 +969,12 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
         outward_date: multipleCancelForm.outward_date || null,
         can_remark: multipleCancelForm.can_remark || null,
         status: row.status,
+        ...buildCancellationAuditPayload(),
       };
 
       try {
         await createAdmissionCancellation(payload);
+        await updateEnrollmentAdmissionStatus(row.enrollmentId, row.status);
         successCount += 1;
       } catch (error) {
         failures.push(`${row.enrollmentNoInput}: ${extractApiErrorMessage(error, 'Failed to save cancellation')}`);
@@ -897,16 +1106,44 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
   const renderCancellationView = () => (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Cancel Admission</h2>
-        <button
-          className="refresh-icon-button"
-          onClick={loadCancellationRecords}
-          disabled={cancelLoading}
-          title={cancelLoading ? 'Refreshing' : 'Refresh'}
-          aria-label={cancelLoading ? 'Refreshing' : 'Refresh'}
-        >
-          <span className={`refresh-symbol ${cancelLoading ? 'animate-spin' : ''}`} aria-hidden="true">↻</span>
-        </button>
+        <div>
+          <h2 className="text-lg font-semibold">Cancel Admission</h2>
+          <p className="text-sm text-slate-500">
+            Showing {filteredCancelRecords.length} record{filteredCancelRecords.length === 1 ? "" : "s"}
+            {cancelBatchFilter ? ` for batch ${cancelBatchFilter}` : ""}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className={EXPORT_EXCEL_BUTTON_CLASS}
+            onClick={exportCancelAdmissionExcel}
+            disabled={cancelLoading || filteredCancelRecords.length === 0}
+            title="Export Excel"
+            aria-label="Export Excel"
+          >
+            <FaFileExcel size={19} color="#1D6F42" />
+          </button>
+          <button
+            type="button"
+            className={EXPORT_PDF_BUTTON_CLASS}
+            onClick={exportCancelAdmissionPDF}
+            disabled={cancelLoading || filteredCancelRecords.length === 0}
+            title="Export PDF"
+            aria-label="Export PDF"
+          >
+            <FaFilePdf size={19} color="#B91C1C" />
+          </button>
+          <button
+            className="refresh-icon-button"
+            onClick={loadCancellationRecords}
+            disabled={cancelLoading}
+            title={cancelLoading ? 'Refreshing' : 'Refresh'}
+            aria-label={cancelLoading ? 'Refreshing' : 'Refresh'}
+          >
+            <span className={`refresh-symbol ${cancelLoading ? 'animate-spin' : ''}`} aria-hidden="true">↻</span>
+          </button>
+        </div>
       </div>
       {cancelLoading ? (
         <div className="text-center py-4">Loading cancellations...</div>
@@ -917,6 +1154,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
               <tr className="bg-gray-100">
                 <th className="border p-2 text-left">Enrollment No</th>
                 <th className="border p-2 text-left">Student Name</th>
+                <th className="border p-2 text-left">Batch</th>
                 <th className="border p-2 text-left">Inward No</th>
                 <th className="border p-2 text-left">Inward Date</th>
                 <th className="border p-2 text-left">Outward No</th>
@@ -928,13 +1166,14 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
             <tbody>
               {filteredCancelRecords.length === 0 ? (
                 <tr>
-                  <td className="border p-4 text-center" colSpan={8}>No cancellation records</td>
+                  <td className="border p-4 text-center" colSpan={9}>No cancellation records</td>
                 </tr>
               ) : (
                 filteredCancelRecords.map(record => (
                   <tr key={record.id}>
                     <td className="border p-2">{record.enrollment_no}</td>
                     <td className="border p-2">{record.student_name}</td>
+                    <td className="border p-2">{getCancelRecordBatch(record) || '-'}</td>
                     <td className="border p-2">{record.inward_no || '-'}</td>
                     <td className="border p-2">{isoToDMY(record.inward_date) || '-'}</td>
                     <td className="border p-2">{record.outward_no || '-'}</td>
@@ -1136,6 +1375,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
 
   const renderCancelAdmissionForm = () => {
     const isSingleMode = cancelEntryMode === 'single';
+    const draftRow = multipleCancelForm.draftRow || buildMultipleCancelRowState();
 
     return (
       <div className="space-y-4">
@@ -1160,25 +1400,22 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
             <div className="grid grid-cols-12 gap-4 items-end">
               <div className="col-span-12 md:col-span-5">
                 <label className="block mb-1">Enrollment Number *</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={cancelForm.enrollmentNoInput}
-                    onChange={(e) =>
-                      handleCancelFormChange('enrollmentNoInput', e.target.value)
+                <input
+                  type="text"
+                  value={cancelForm.enrollmentNoInput}
+                  onChange={(e) =>
+                    handleCancelFormChange('enrollmentNoInput', e.target.value)
+                  }
+                  onBlur={() => fetchEnrollmentForCancellation()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      fetchEnrollmentForCancellation();
                     }
-                    className="border rounded px-3 py-2 w-[220px]"
-                    placeholder="Type enrollment number"
-                  />
-                  <button
-                    type="button"
-                    className="px-4 py-2 bg-indigo-600 text-white rounded"
-                    onClick={() => fetchEnrollmentForCancellation()}
-                    disabled={cancelForm.loadingEnrollment}
-                  >
-                    {cancelForm.loadingEnrollment ? 'Fetching...' : 'Fetch'}
-                  </button>
-                </div>
+                  }}
+                  className="border rounded px-3 py-2 w-full"
+                  placeholder={cancelForm.loadingEnrollment ? "Fetching..." : "Type enrollment number"}
+                />
               </div>
 
               <div className="col-span-12 md:col-span-7">
@@ -1348,84 +1585,129 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
               </div>
             </div>
 
-            <div className="space-y-3">
-              {multipleCancelForm.rows.map((row, index) => (
-                <div key={row.rowId} className="rounded-xl border border-slate-200 p-3 bg-slate-50">
-                  <div className="text-sm font-semibold text-slate-700 mb-2">Record {index + 1}</div>
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-                    <div className="md:col-span-4">
-                      <label className="block mb-1">Enrollment Number *</label>
-                      <input
-                        type="text"
-                        value={row.enrollmentNoInput}
-                        onChange={(e) => handleMultipleRowChange(row.rowId, 'enrollmentNoInput', e.target.value)}
-                        onBlur={() => fetchEnrollmentForMultipleRow(row.rowId)}
-                        className="border rounded px-3 py-2 w-full"
-                        placeholder="Auto fetch on blur"
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <button
-                        type="button"
-                        className="w-full px-3 py-2 bg-indigo-600 text-white rounded"
-                        onClick={() => fetchEnrollmentForMultipleRow(row.rowId)}
-                        disabled={row.loadingEnrollment}
-                      >
-                        {row.loadingEnrollment ? 'Fetching...' : 'Fetch'}
-                      </button>
-                    </div>
-
-                    <div className="md:col-span-4">
-                      <label className="block mb-1">Student Name</label>
-                      <input
-                        type="text"
-                        value={row.studentName}
-                        readOnly
-                        className="border rounded px-3 py-2 w-full bg-gray-100"
-                        placeholder="Auto after fetch"
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="block mb-1">Status</label>
-                      <select
-                        value={row.status}
-                        onChange={(e) => handleMultipleRowChange(row.rowId, 'status', e.target.value)}
-                        className="border rounded px-3 py-2 w-full"
-                      >
-                        {CANCEL_STATUS_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="md:col-span-12 flex justify-end">
-                      <button
-                        type="button"
-                        className="px-3 py-2 border rounded text-sm disabled:opacity-50"
-                        onClick={() => removeMultipleCancelRow(row.rowId)}
-                        disabled={multipleCancelForm.rows.length <= 1 || multipleCancelForm.isSubmitting}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                  {row.error && <p className="text-sm text-red-600 mt-2">{row.error}</p>}
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                <div className="md:col-span-4">
+                  <label className="block mb-1">Enrollment Number *</label>
+                  <input
+                    type="text"
+                    value={draftRow.enrollmentNoInput}
+                    onChange={(e) => handleMultipleRowChange('enrollmentNoInput', e.target.value)}
+                    onBlur={() => fetchEnrollmentForMultipleRow()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        fetchEnrollmentForMultipleRow();
+                      }
+                    }}
+                    className="border rounded px-3 py-2 w-full"
+                    placeholder={draftRow.loadingEnrollment ? "Fetching..." : "Auto fetch on blur"}
+                    disabled={multipleCancelForm.isSubmitting}
+                  />
                 </div>
-              ))}
+
+                <div className="md:col-span-5">
+                  <label className="block mb-1">Student Name</label>
+                  <input
+                    type="text"
+                    value={draftRow.studentName}
+                    readOnly
+                    className="border rounded px-3 py-2 w-full bg-white"
+                    placeholder="Auto after fetch"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block mb-1">Status</label>
+                  <select
+                    value={draftRow.status}
+                    onChange={(e) => handleMultipleRowChange('status', e.target.value)}
+                    className="border rounded px-3 py-2 w-full"
+                    disabled={multipleCancelForm.isSubmitting}
+                  >
+                    {CANCEL_STATUS_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="md:col-span-1 flex justify-end">
+                  <button
+                    type="button"
+                    className="h-10 w-10 rounded-lg bg-emerald-600 text-xl font-semibold text-white shadow disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={addMultipleCancelRow}
+                    disabled={multipleCancelForm.isSubmitting || draftRow.loadingEnrollment}
+                    title="Add record"
+                    aria-label="Add record"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {draftRow.error && <p className="text-sm text-red-600 mt-2">{draftRow.error}</p>}
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <button
-                type="button"
-                className="px-4 py-2 bg-slate-700 text-white rounded"
-                onClick={addMultipleCancelRow}
-                disabled={multipleCancelForm.isSubmitting}
-              >
-                Add New Record
-              </button>
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full border-collapse bg-white text-sm">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border p-2 text-left w-16">No.</th>
+                    <th className="border p-2 text-left">Enrollment No.</th>
+                    <th className="border p-2 text-left">Student Name</th>
+                    <th className="border p-2 text-left w-44">Status</th>
+                    <th className="border p-2 text-left w-24">Remove</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {multipleCancelForm.rows.length === 0 ? (
+                    <tr>
+                      <td className="border p-4 text-center text-slate-500" colSpan={5}>No records added</td>
+                    </tr>
+                  ) : (
+                    multipleCancelForm.rows.map((row, index) => (
+                      <tr key={row.rowId}>
+                        <td className="border p-2">{index + 1}</td>
+                        <td className="border p-2 font-semibold">{row.enrollmentNoInput}</td>
+                        <td className="border p-2">{row.studentName}</td>
+                        <td className="border p-2">
+                          <select
+                            value={row.status}
+                            onChange={(e) => {
+                              const nextStatus = e.target.value;
+                              setMultipleCancelForm(prev => ({
+                                ...prev,
+                                rows: prev.rows.map((item) => (
+                                  item.rowId === row.rowId ? { ...item, status: nextStatus } : item
+                                )),
+                              }));
+                            }}
+                            className="border rounded px-2 py-1.5 w-full"
+                            disabled={multipleCancelForm.isSubmitting}
+                          >
+                            {CANCEL_STATUS_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="border p-2">
+                          <button
+                            type="button"
+                            className="px-3 py-1.5 border rounded text-sm text-red-600 disabled:opacity-50"
+                            onClick={() => removeMultipleCancelRow(row.rowId)}
+                            disabled={multipleCancelForm.isSubmitting}
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
 
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <div className="flex gap-2">
                 <button
                   type="button"

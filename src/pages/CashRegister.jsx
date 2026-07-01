@@ -27,9 +27,8 @@ const MODE_CARD_STYLES = {
   CASH: 'border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100',
   UPI: 'border-lime-200 bg-lime-50 text-lime-800 hover:bg-lime-100',
   BANK: 'border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100',
-};
 
-const RECEIPT_SUFFIX_REGEX = /(\d{6})$/;
+};
 
 const BANK_PREFIX_OPTIONS = [
   { value: '1471', label: '1471 (Account 1)' },

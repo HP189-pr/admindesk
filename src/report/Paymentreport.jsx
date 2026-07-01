@@ -126,67 +126,59 @@ const compareReceiptSequence = (leftValue, rightValue) => {
   return left.raw.localeCompare(right.raw);
 };
 
+// Build receipt-wise rows but include per-fee-code columns
 const buildReceiptWiseRows = (flatRows) => {
-  const grouped = {};
+  const receipts = {};
+  const codesSet = new Set();
 
   (Array.isArray(flatRows) ? flatRows : []).forEach((row) => {
     if (!row || row.is_cancelled) return;
 
     const receiptNo = String(row.receipt_no_full || '').trim();
     const groupKey = receiptNo || `__${row.receipt_id || row.id}`;
-    if (!grouped[groupKey]) {
-      grouped[groupKey] = {
+    if (!receipts[groupKey]) {
+      receipts[groupKey] = {
         PERIOD: row.date,
         RECEIPT_NO: receiptNo,
         PAYMENT_MODE: String(row.payment_mode || '').toUpperCase(),
         TOTAL: 0,
-        feeMap: {},
+        // dynamic fee columns filled below
       };
     }
 
     const amount = Number(row.amount || 0);
-    grouped[groupKey].TOTAL += amount;
+    receipts[groupKey].TOTAL += amount;
 
     const feeCode = String(row.fee_type_code || '').trim();
     if (!feeCode) return;
 
-    if (!grouped[groupKey].feeMap[feeCode]) {
-      grouped[groupKey].feeMap[feeCode] = {
-        code: feeCode,
-        name: String(row.fee_type_name || '').trim(),
-        amount: 0,
-      };
-    }
-    grouped[groupKey].feeMap[feeCode].amount += amount;
+    codesSet.add(feeCode);
+    receipts[groupKey][feeCode] = (Number(receipts[groupKey][feeCode]) || 0) + amount;
   });
 
-  return Object.values(grouped)
-    .map((row) => {
-      const feeEntries = Object.values(row.feeMap).sort((left, right) => left.code.localeCompare(right.code));
-      let feeDetails = '--';
+  let codes = Array.from(codesSet);
+  // place preferred codes first in the specified order, then append any remaining codes sorted
+  const pref = Array.isArray(PREFERRED_FEE_ORDER) ? PREFERRED_FEE_ORDER : [];
+  const prefPart = pref.filter((c) => codes.includes(c));
+  const restPart = codes.filter((c) => !prefPart.includes(c)).sort();
+  codes = [...prefPart, ...restPart];
 
-      if (feeEntries.length === 1) {
-        const fee = feeEntries[0];
-        feeDetails = fee.name ? `${fee.code} - ${fee.name}` : fee.code;
-      } else if (feeEntries.length > 1) {
-        feeDetails = feeEntries
-          .map((fee) => `${fee.code}=${Number(fee.amount || 0).toFixed(2)}`)
-          .join(', ');
-      }
-
-      return {
-        PERIOD: row.PERIOD,
-        RECEIPT_NO: row.RECEIPT_NO,
-        PAYMENT_MODE: row.PAYMENT_MODE,
-        FEE_DETAILS: feeDetails,
-        TOTAL: row.TOTAL,
-      };
-    })
-    .sort((left, right) => {
-      const receiptCompare = compareReceiptSequence(left.RECEIPT_NO, right.RECEIPT_NO);
-      if (receiptCompare !== 0) return receiptCompare;
-      return String(left.PERIOD || '').localeCompare(String(right.PERIOD || ''));
+  const rows = Object.values(receipts).map((r) => {
+    // ensure all codes exist on the row (0 if missing)
+    const normalized = { ...r };
+    codes.forEach((c) => {
+      normalized[c] = Number(normalized[c] || 0);
     });
+    return normalized;
+  });
+
+  rows.sort((left, right) => {
+    const receiptCompare = compareReceiptSequence(left.RECEIPT_NO, right.RECEIPT_NO);
+    if (receiptCompare !== 0) return receiptCompare;
+    return String(left.PERIOD || '').localeCompare(String(right.PERIOD || ''));
+  });
+
+  return { rows, codes };
 };
 
 const parseDateParts = (value) => {
@@ -309,6 +301,11 @@ const formatReportAmount = (value) =>
     maximumFractionDigits: 2,
   });
 
+// Preferred fee column order to match exported spreadsheet expectations
+const PREFERRED_FEE_ORDER = [
+  'APP_GNR','CORRECTION','DEGREE','EXAM_FEES','EXAM_FORM','EXAME_LATE','KYA','MIGRA','MIGRA_FORM','OTH_EXTENTION_FEES','OTHER_FEES','PHD_EXT','PHD_FORM','PHD_TUTION','PROV_DEGREE_FEES','REASSESSMENT','RECHECK','STU_VER_FEES','THESIS','UNI_DEV_FEES'
+];
+
 const formatPdfHeading = (label) => {
   const text = String(label || '').trim();
   if (!text) return '';
@@ -374,9 +371,10 @@ const PaymentReport = ({ onBack }) => {
       if (!rowDate || rowDate < safeDateFrom || rowDate > safeDateTo) {
         return false;
       }
-      return Number(row?.TOTAL || 0) !== 0 || String(row?.FEE_DETAILS || '').trim() !== '--';
+      const hasAmount = Number(row?.TOTAL || 0) !== 0 || (Array.isArray(feeCodes) && feeCodes.some((c) => Number(row?.[c] || 0) !== 0));
+      return hasAmount;
     }),
-    [receiptRows, safeDateFrom, safeDateTo]
+    [receiptRows, safeDateFrom, safeDateTo, feeCodes]
   );
 
   const visibleScreenRows = useMemo(
@@ -412,9 +410,10 @@ const PaymentReport = ({ onBack }) => {
           ? receiptData
           : (Array.isArray(receiptData?.results) ? receiptData.results : []);
 
-        setReceiptRows(buildReceiptWiseRows(flatRows));
+        const built = buildReceiptWiseRows(flatRows);
+        setReceiptRows(built.rows || []);
+        setFeeCodes(built.codes || []);
         setRows([]);
-        setFeeCodes([]);
         return;
       }
 
@@ -529,24 +528,55 @@ const PaymentReport = ({ onBack }) => {
     if (receiptWise) {
       if (!visibleReceiptRows.length) return;
 
-      const headers = ['DATE', 'RECEIPT NO', 'PAYMENT MODE', 'FEE DETAILS', 'TOTAL'];
-      const dataRows = visibleReceiptRows.map((row) => ([
-        formatPeriodLabel(row.PERIOD),
-        formatReceiptDisplay(row.RECEIPT_NO),
-        row.PAYMENT_MODE,
-        row.FEE_DETAILS,
-        Number(row.TOTAL || 0),
-      ]));
+      const headers = ['DATE', 'RECEIPT NO', 'PAYMENT MODE', ...feeCodes, 'TOTAL'];
 
-      const totalsRow = [
+      // group by date and build rows with daily subtotal rows
+      const grouped = visibleReceiptRows.reduce((acc, r) => {
+        const d = r.PERIOD || '';
+        acc[d] = acc[d] || [];
+        acc[d].push(r);
+        return acc;
+      }, {});
+
+      const dates = Object.keys(grouped).sort();
+      const dataRows = [];
+      dates.forEach((d) => {
+        const receipts = grouped[d];
+        receipts.forEach((r) => {
+          dataRows.push([
+            formatPeriodLabel(r.PERIOD),
+            formatReceiptDisplay(r.RECEIPT_NO),
+            r.PAYMENT_MODE,
+            ...feeCodes.map((c) => Number(r[c] || 0)),
+            Number(r.TOTAL || 0),
+          ]);
+        });
+
+        // daily subtotal
+        const dailyTotals = receipts.reduce((acc, rr) => {
+          acc.TOTAL += Number(rr.TOTAL || 0);
+          feeCodes.forEach((c) => { acc[c] = (acc[c] || 0) + Number(rr[c] || 0); });
+          return acc;
+        }, { TOTAL: 0 });
+
+        dataRows.push([
+          'DAILY TOTAL',
+          `${receipts.length} receipt(s)`,
+          '-',
+          ...feeCodes.map((c) => Number(dailyTotals[c] || 0)),
+          Number(dailyTotals.TOTAL || 0),
+        ]);
+      });
+
+      const grandTotals = [
         'TOTAL',
         `${visibleReceiptRows.length} receipt(s)`,
         '-',
-        '-',
-        visibleReceiptRows.reduce((sum, row) => sum + (Number(row.TOTAL) || 0), 0),
+        ...feeCodes.map((c) => visibleReceiptRows.reduce((s, r) => s + (Number(r[c]) || 0), 0)),
+        visibleReceiptRows.reduce((s, r) => s + (Number(r.TOTAL) || 0), 0),
       ];
 
-      const worksheet = XLSX.utils.aoa_to_sheet([headers, ...dataRows, totalsRow]);
+      const worksheet = XLSX.utils.aoa_to_sheet([headers, ...dataRows, grandTotals]);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'ReceiptStatement');
       XLSX.writeFile(workbook, `payment_statement_receipt_wise_${dateFrom}_to_${dateTo}.xlsx`);
@@ -599,49 +629,82 @@ const PaymentReport = ({ onBack }) => {
   const handlePdfExport = () => {
     if (receiptWise) {
       if (!visibleReceiptRows.length) return;
+        const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+        const statementTitle = PAYMENT_MODE_TITLES[paymentMode] || 'All Payment Mode Statement';
+        const periodLabel = `${formatDateSlash(dateFrom)} to ${formatDateSlash(dateTo)}`;
 
-      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-      const statementTitle = PAYMENT_MODE_TITLES[paymentMode] || 'All Payment Mode Statement';
-      const periodLabel = `${formatDateSlash(dateFrom)} to ${formatDateSlash(dateTo)}`;
-      const body = visibleReceiptRows.map((row) => ([
-        formatPeriodLabel(row.PERIOD),
-        formatReceiptDisplay(row.RECEIPT_NO),
-        row.PAYMENT_MODE,
-        row.FEE_DETAILS,
-        formatReportAmount(row.TOTAL),
-      ]));
+        doc.setFontSize(12);
+        doc.text(`${statementTitle} - Receipt Wise`, 14, 10);
+        doc.setFontSize(9);
+        doc.text(`Period: ${periodLabel}`, 14, 16);
 
-      doc.setFontSize(12);
-      doc.text(`${statementTitle} - Receipt Wise`, 14, 10);
-      doc.setFontSize(9);
-      doc.text(`Period: ${periodLabel}`, 14, 16);
+        // Build table head and body with feeCodes columns
+        const head = [['DATE', 'RECEIPT NO', 'PAYMENT MODE', ...feeCodes, 'TOTAL']];
 
-      autoTable(doc, {
-        head: [['DATE', 'RECEIPT NO', 'PAYMENT MODE', 'FEE DETAILS', 'TOTAL']],
-        body,
-        startY: 22,
-        theme: 'grid',
-        styles: { fontSize: 8, cellPadding: 1.8, overflow: 'linebreak', valign: 'middle' },
-        headStyles: { fillColor: [100, 116, 139], textColor: [255, 255, 255], halign: 'center' },
-        columnStyles: {
-          0: { cellWidth: 24, halign: 'left' },
-          1: { cellWidth: 34, halign: 'left' },
-          2: { cellWidth: 22, halign: 'center' },
-          3: { cellWidth: 160, halign: 'left' },
-          4: { cellWidth: 22, halign: 'right' },
-        },
-        foot: [[
+        const grouped = visibleReceiptRows.reduce((acc, r) => {
+          const d = r.PERIOD || '';
+          acc[d] = acc[d] || [];
+          acc[d].push(r);
+          return acc;
+        }, {});
+        const dates = Object.keys(grouped).sort();
+
+        const body = [];
+        dates.forEach((d) => {
+          const receipts = grouped[d];
+          receipts.forEach((r) => {
+            body.push([
+              formatPeriodLabel(r.PERIOD),
+              formatReceiptDisplay(r.RECEIPT_NO),
+              r.PAYMENT_MODE,
+              ...feeCodes.map((c) => formatReportAmount(r[c])),
+              formatReportAmount(r.TOTAL),
+            ]);
+          });
+
+          // daily subtotal
+          const dailyTotals = receipts.reduce((acc, rr) => {
+            acc.TOTAL += Number(rr.TOTAL || 0);
+            feeCodes.forEach((c) => { acc[c] = (acc[c] || 0) + Number(rr[c] || 0); });
+            return acc;
+          }, { TOTAL: 0 });
+
+          body.push([
+            'DAILY TOTAL',
+            `${receipts.length} receipt(s)`,
+            '-',
+            ...feeCodes.map((c) => formatReportAmount(dailyTotals[c] || 0)),
+            formatReportAmount(dailyTotals.TOTAL || 0),
+          ]);
+        });
+
+        // grand totals
+        const grandTotals = [
           'TOTAL',
           `${visibleReceiptRows.length} receipt(s)`,
-          '',
-          '',
-          formatReportAmount(visibleReceiptRows.reduce((sum, row) => sum + (Number(row.TOTAL) || 0), 0)),
-        ]],
-        footStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' },
-      });
+          '-',
+          ...feeCodes.map((c) => formatReportAmount(visibleReceiptRows.reduce((s, r) => s + (Number(r[c]) || 0), 0))),
+          formatReportAmount(visibleReceiptRows.reduce((s, r) => s + (Number(r.TOTAL) || 0), 0)),
+        ];
 
-      doc.save(`Payment_Report_Receipt_Wise_${dateFrom}_to_${dateTo}.pdf`);
-      return;
+        autoTable(doc, {
+          head,
+          body,
+          startY: 22,
+          theme: 'grid',
+          styles: { fontSize: 8, cellPadding: 1.8, overflow: 'linebreak', valign: 'middle' },
+          headStyles: { fillColor: [100, 116, 139], textColor: [255, 255, 255], halign: 'center' },
+          foot: [grandTotals],
+          footStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' },
+          columnStyles: {
+            0: { cellWidth: 24, halign: 'left' },
+            1: { cellWidth: 34, halign: 'left' },
+            2: { cellWidth: 22, halign: 'center' },
+          },
+        });
+
+        doc.save(`Payment_Report_Receipt_Wise_${dateFrom}_to_${dateTo}.pdf`);
+        return;
     }
 
     if (!reportRows.length) return;
@@ -946,40 +1009,74 @@ const PaymentReport = ({ onBack }) => {
                   <th className="border px-3 py-2 text-center">DATE</th>
                   <th className="border px-3 py-2 text-center">RECEIPT NO</th>
                   <th className="border px-3 py-2 text-center">PAYMENT MODE</th>
-                  <th className="border px-3 py-2 text-center">FEE DETAILS</th>
+                  {feeCodes.map((c) => (
+                    <th key={c} className="border px-3 py-2 text-center text-xs">{c}</th>
+                  ))}
                   <th className="border px-3 py-2 text-center">TOTAL</th>
                 </tr>
               </thead>
               <tbody>
-                {visibleReceiptRows.map((row, index) => (
-                  <tr key={`${row.RECEIPT_NO || row.PERIOD}-${index}`} className="even:bg-slate-50 hover:bg-slate-100">
-                    <td className="border px-3 py-2 text-center font-semibold">
-                      {formatPeriodLabel(row.PERIOD)}
-                    </td>
-                    <td className="border px-3 py-2 font-mono text-center text-[12px] font-semibold text-slate-900">
-                      {formatReceiptDisplay(row.RECEIPT_NO)}
-                    </td>
-                    <td className="border px-3 py-2 text-center font-semibold">
-                      {row.PAYMENT_MODE}
-                    </td>
-                    <td className="border px-3 py-2 text-left text-[12px] leading-relaxed text-slate-700">
-                      {row.FEE_DETAILS}
-                    </td>
-                    <td className="border bg-blue-50 px-3 py-2 text-right font-semibold text-slate-900">
-                      Rs. {Number(row.TOTAL || 0).toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
+                {(() => {
+                  const grouped = visibleReceiptRows.reduce((acc, r) => {
+                    const d = r.PERIOD || '';
+                    acc[d] = acc[d] || [];
+                    acc[d].push(r);
+                    return acc;
+                  }, {});
+                  const dates = Object.keys(grouped).sort();
+                  const bodyRows = [];
 
-                <tr className="bg-slate-800 text-white font-bold">
-                  <td className="border px-3 py-2">TOTAL</td>
-                  <td className="border px-3 py-2 text-center">{visibleReceiptRows.length} receipt(s)</td>
-                  <td className="border px-3 py-2 text-center">-</td>
-                  <td className="border px-3 py-2 text-center">-</td>
-                  <td className="border px-3 py-2 text-right">
-                    {formatReportAmount(visibleReceiptRows.reduce((sum, row) => sum + (Number(row.TOTAL) || 0), 0))}
-                  </td>
-                </tr>
+                  dates.forEach((d) => {
+                    const receipts = grouped[d];
+                    receipts.forEach((row, idx) => {
+                      bodyRows.push(
+                        <tr key={`${row.RECEIPT_NO || row.PERIOD}-${idx}`} className="even:bg-slate-50 hover:bg-slate-100">
+                          <td className="border px-3 py-2 text-center font-semibold">{formatPeriodLabel(row.PERIOD)}</td>
+                          <td className="border px-3 py-2 font-mono text-center text-[12px] font-semibold text-slate-900">{formatReceiptDisplay(row.RECEIPT_NO)}</td>
+                          <td className="border px-3 py-2 text-center font-semibold">{row.PAYMENT_MODE}</td>
+                          {feeCodes.map((c) => (
+                            <td key={`${row.RECEIPT_NO}-${c}`} className="border px-3 py-2 text-right">{formatReportAmount(row[c])}</td>
+                          ))}
+                          <td className="border bg-blue-50 px-3 py-2 text-right font-semibold text-slate-900">Rs. {Number(row.TOTAL || 0).toFixed(2)}</td>
+                        </tr>
+                      );
+                    });
+
+                    // daily subtotal row
+                    const dailyTotals = receipts.reduce((acc, r) => {
+                      acc.TOTAL += Number(r.TOTAL || 0);
+                      feeCodes.forEach((c) => { acc[c] = (acc[c] || 0) + Number(r[c] || 0); });
+                      return acc;
+                    }, { TOTAL: 0 });
+
+                    bodyRows.push(
+                      <tr key={`${d}-subtotal`} className="bg-slate-200 font-semibold">
+                        <td className="border px-3 py-2">DAILY TOTAL</td>
+                        <td className="border px-3 py-2 text-center">{receipts.length} receipt(s)</td>
+                        <td className="border px-3 py-2 text-center">-</td>
+                        {feeCodes.map((c) => (
+                          <td key={`${d}-sum-${c}`} className="border px-3 py-2 text-right">{formatReportAmount(dailyTotals[c] || 0)}</td>
+                        ))}
+                        <td className="border px-3 py-2 text-right">{formatReportAmount(dailyTotals.TOTAL)}</td>
+                      </tr>
+                    );
+                  });
+
+                  // grand total across visibleReceiptRows
+                  bodyRows.push(
+                    <tr key="grand-total" className="bg-slate-800 text-white font-bold">
+                      <td className="border px-3 py-2">TOTAL</td>
+                      <td className="border px-3 py-2 text-center">{visibleReceiptRows.length} receipt(s)</td>
+                      <td className="border px-3 py-2 text-center">-</td>
+                      {feeCodes.map((c) => (
+                        <td key={`grand-${c}`} className="border px-3 py-2 text-right">{formatReportAmount(visibleReceiptRows.reduce((s, r) => s + (Number(r[c]) || 0), 0))}</td>
+                      ))}
+                      <td className="border px-3 py-2 text-right">{formatReportAmount(visibleReceiptRows.reduce((s, r) => s + (Number(r.TOTAL) || 0), 0))}</td>
+                    </tr>
+                  );
+
+                  return bodyRows;
+                })()}
               </tbody>
             </table>
           )
