@@ -195,6 +195,7 @@ class EnrollmentSerializer(serializers.ModelSerializer):
 
 class AdmissionCancelSerializer(serializers.ModelSerializer):
     enrollment_no = serializers.CharField(source='enrollment.enrollment_no', read_only=True)
+    enrollment = EnrollmentSerializer(read_only=True)
 
     class Meta:
         model = AdmissionCancel

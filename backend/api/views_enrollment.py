@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 from django.db import models
-from django.db.models import Case, CharField, Count, Q, Value, When
+from django.db.models import Case, CharField, Count, F, Q, Value, When
 from django.db.models.functions import Lower, Replace, Coalesce
 from django.http import HttpResponse
 from rest_framework import viewsets, status
@@ -327,25 +327,23 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
 
 
 class AdmissionCancelViewSet(viewsets.ModelViewSet):
-    queryset = AdmissionCancel.objects.select_related('enrollment').order_by('-created_at', '-id')
+    queryset = AdmissionCancel.objects.select_related('enrollment').filter(
+        status=AdmissionCancel.STATUS_CANCELLED
+    ).order_by(F('outward_date').desc(nulls_last=True), '-id')
     serializer_class = AdmissionCancelSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None  # Return all records without pagination
 
     def get_queryset(self):
         qs = super().get_queryset()
         search = self.request.query_params.get('search', '').strip()
-        status_filter = self.request.query_params.get('status', '').strip().upper()
 
         if search:
             qs = qs.filter(
                 Q(enrollment__enrollment_no__icontains=search) |
                 Q(student_name__icontains=search) |
-                Q(inward_no__icontains=search) |
-                Q(outward_no__icontains=search)
+                Q(inward_no__icontains=search)
             )
-
-        if status_filter in {AdmissionCancel.STATUS_CANCELLED, AdmissionCancel.STATUS_REVOKED}:
-            qs = qs.filter(status=status_filter)
 
         return qs
 
