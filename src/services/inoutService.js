@@ -135,9 +135,19 @@ export const getNextOutwardNumber = async (type = 'Gen') => {
 
 export const searchInstitutes = async (search = '') => {
   try {
-    const response = await axiosInstance.get('/api/institutes/', { params: { search, page_size: 20 } });
+    const response = await axiosInstance.get('/api/institutes/', { params: { search, page_size: 10 } });
     return response.data;
   } catch (error) {
+    throw error;
+  }
+};
+
+export const searchReceivers = async (search = '') => {
+  try {
+    const response = await axiosInstance.get('/api/inward-register/search-receivers/', { params: { search } });
+    return response.data;
+  } catch (error) {
+    console.error('Error searching receiver names:', error);
     throw error;
   }
 };

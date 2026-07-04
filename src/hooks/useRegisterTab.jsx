@@ -1,10 +1,11 @@
 ﻿// src/hooks/useRegisterTab.jsx
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toDateInput } from '../utils/date';
 import {
   getInstituteCourses,
   getSubCoursesByMain,
   searchInstitutes,
+  searchReceivers,
 } from '../services/inoutService';
 
 const normalizeResults = (data) => (Array.isArray(data) ? data : (data?.results || []));
@@ -36,9 +37,11 @@ const useRegisterTab = ({
   const [extra, setExtra] = useState({});
   const [editing, setEditing] = useState(null);
   const [institutes, setInstitutes] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
   const [instCourses, setInstCourses] = useState([]);
   const [subBranches, setSubBranches] = useState([]);
   const [loading, setLoading] = useState(false);
+  const searchTimer = useRef({ institute: null, receiver: null });
 
   const loadData = async (nextFilters = filters, errorMessage = 'Failed to load data') => {
     setLoading(true);
@@ -96,14 +99,45 @@ const useRegisterTab = ({
   const applyFilters = () => loadData(filters, 'Failed to filter data');
 
   const fetchInstituteSearch = (value) => {
-    if (!value || value.length < 2) {
+    if (!value || value.length < 3) {
       setInstitutes([]);
       return;
     }
 
     searchInstitutes(value)
-      .then((response) => setInstitutes(normalizeResults(response)))
+      .then((response) => setInstitutes(normalizeResults(response).slice(0, 10)))
       .catch(() => {});
+  };
+
+  const fetchReceiverSearch = (value) => {
+    if (!value || value.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+
+    searchReceivers(value)
+      .then((response) => setSuggestions(Array.isArray(response) ? response.slice(0, 10) : []))
+      .catch(() => {});
+  };
+
+  const debouncedInstituteSearch = (value) => {
+    if (searchTimer.current.institute) {
+      clearTimeout(searchTimer.current.institute);
+    }
+
+    searchTimer.current.institute = setTimeout(() => {
+      fetchInstituteSearch(value);
+    }, 300);
+  };
+
+  const debouncedReceiverSearch = (value) => {
+    if (searchTimer.current.receiver) {
+      clearTimeout(searchTimer.current.receiver);
+    }
+
+    searchTimer.current.receiver = setTimeout(() => {
+      fetchReceiverSearch(value);
+    }, 300);
   };
 
   const handleCollegeChange = (value) => {
@@ -114,7 +148,7 @@ const useRegisterTab = ({
     }));
     setInstCourses([]);
     setSubBranches([]);
-    fetchInstituteSearch(value);
+    debouncedInstituteSearch(value);
   };
 
   const handleMainCourseChange = (courseId) => {
@@ -260,14 +294,21 @@ const useRegisterTab = ({
   };
 
   const getFieldListProps = (fieldKey) => {
-    if (fieldKey !== 'college') {
-      return {};
+    if (fieldKey === 'college') {
+      return {
+        listId,
+        listOptions: institutes,
+      };
     }
 
-    return {
-      listId,
-      listOptions: institutes,
-    };
+    if (fieldKey === externalPartyFieldKey) {
+      return {
+        listId: `${listId}-receiver`,
+        listOptions: suggestions.map((item) => ({ value: item })),
+      };
+    }
+
+    return {};
   };
 
   const resetFormState = () => {
@@ -277,6 +318,7 @@ const useRegisterTab = ({
     setInstCourses([]);
     setSubBranches([]);
     setInstitutes([]);
+    setSuggestions([]);
   };
 
   const handleTypeChange = (value) => {
@@ -290,6 +332,7 @@ const useRegisterTab = ({
     setInstCourses([]);
     setSubBranches([]);
     setInstitutes([]);
+    setSuggestions([]);
 
     if (!editing) {
       fetchNextNumber(value);
@@ -302,6 +345,7 @@ const useRegisterTab = ({
       [directionFieldKey]: value,
       [sourceFieldKey]: value === 'External' ? (extra[externalPartyFieldKey] || '') : (extra.college || ''),
     }));
+    setSuggestions([]);
   };
 
   const handleFieldChange = (fieldKey, value) => {
@@ -346,6 +390,7 @@ const useRegisterTab = ({
 
     if (fieldKey === externalPartyFieldKey) {
       setForm((prev) => ({ ...prev, [sourceFieldKey]: value }));
+      debouncedReceiverSearch(value);
     }
 
     if (fieldKey === 'subject') {
@@ -433,9 +478,11 @@ const useRegisterTab = ({
     setSubBranches([]);
 
     if (nextExtra.college) {
-      searchInstitutes(nextExtra.college)
-        .then((response) => setInstitutes(normalizeResults(response)))
-        .catch(() => {});
+      fetchInstituteSearch(nextExtra.college);
+    }
+
+    if (nextExtra[externalPartyFieldKey]) {
+      fetchReceiverSearch(nextExtra[externalPartyFieldKey]);
     }
   };
 

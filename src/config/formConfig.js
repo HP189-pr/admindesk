@@ -152,10 +152,10 @@ export const FIELD_DEFS = {
   },
   receiver: {
     label: 'To (Receiver)',
-    type: 'text',
+    type: 'autocomplete',
     source: 'extra',
     key: 'receiver',
-    placeholder: 'Enter receiver name',
+    placeholder: 'Type to search receiver...',
   },
   college: {
     label: 'College Name',
@@ -253,10 +253,10 @@ export const INWARD_FIELD_DEFS = {
   },
   sender: {
     label: 'From (Sender)',
-    type: 'text',
+    type: 'autocomplete',
     source: 'extra',
     key: 'sender',
-    placeholder: 'Enter sender name',
+    placeholder: 'Type to search receiver...',
   },
   college: {
     label: 'College Name',

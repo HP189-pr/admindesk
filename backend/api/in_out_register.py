@@ -4,7 +4,7 @@ Inward/Outward Register Management System
 Single file containing Models, Serializers, Views, and URL patterns
 """
 from django.db import models
-from django.db.models import Max
+from django.db.models import Max, Q
 from rest_framework import serializers, viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -85,6 +85,31 @@ class OutwardRegister(models.Model):
     
     def __str__(self):
         return f"{self.outward_no} - {self.outward_to}"
+
+
+def _get_external_party_suggestions(search):
+    search_value = (search or '').strip()
+    if len(search_value) < 3:
+        return []
+
+    names = []
+    inward_queryset = InwardRegister.objects.filter(
+        inward_from__icontains=search_value
+    ).order_by('-created_at').values_list('inward_from', flat=True).distinct()[:10]
+
+    outward_queryset = OutwardRegister.objects.filter(
+        outward_to__icontains=search_value
+    ).order_by('-created_at').values_list('outward_to', flat=True).distinct()[:10]
+
+    for candidate in list(inward_queryset) + list(outward_queryset):
+        if not candidate:
+            continue
+        if candidate not in names:
+            names.append(candidate)
+        if len(names) >= 10:
+            break
+
+    return names
 
 
 # ==================== AUTO NUMBER GENERATOR ====================
@@ -246,6 +271,12 @@ class InwardRegisterViewSet(viewsets.ModelViewSet):
         
         return queryset
     
+    @action(detail=False, methods=['get'], url_path='search-receivers')
+    def search_receivers(self, request):
+        search = request.query_params.get('search', '')
+        results = _get_external_party_suggestions(search)
+        return Response(results)
+    
     @action(detail=False, methods=['get'], url_path='next-number')
     def next_number(self, request):
         """Get last and next inward number for given type"""
@@ -317,6 +348,12 @@ class OutwardRegisterViewSet(viewsets.ModelViewSet):
         
         return queryset
     
+    @action(detail=False, methods=['get'], url_path='search-receivers')
+    def search_receivers(self, request):
+        search = request.query_params.get('search', '')
+        results = _get_external_party_suggestions(search)
+        return Response(results)
+    
     @action(detail=False, methods=['get'], url_path='next-number')
     def next_number(self, request):
         """Get last and next outward number for given type"""
@@ -382,4 +419,10 @@ IN_OUT_REGISTER_URLS = [
         'patch': 'partial_update',
         'delete': 'destroy'
     }), name='outward-register-detail'),
+    path("inward-register/search-receivers/", InwardRegisterViewSet.as_view({
+        'get': 'search_receivers'
+    }), name='inward-register-search-receivers'),
+    path("outward-register/search-receivers/", OutwardRegisterViewSet.as_view({
+        'get': 'search_receivers'
+    }), name='outward-register-search-receivers'),
 ]

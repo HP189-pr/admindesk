@@ -141,11 +141,8 @@ class InstituteViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         search = (self.request.query_params.get('search') or '').strip()
         if search:
-            qs = qs.filter(
-                Q(institute_code__icontains=search) |
-                Q(institute_name__icontains=search)
-            )
-        return qs.order_by(Lower('institute_code'), Lower('institute_name'), 'institute_id')
+            qs = qs.filter(institute_name__icontains=search)
+        return qs.order_by(Lower('institute_name'), 'institute_id')
 
 
 class InstituteCourseOfferingViewSet(viewsets.ModelViewSet):
