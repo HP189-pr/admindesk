@@ -173,10 +173,10 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
     setLoading(false);
   };
 
-  const opening = balanceData?.opening || { CL: 0, SL: 0, EL: 0, VAC: 0 };
-  const allocated = balanceData?.allocated || { CL: 0, SL: 0, EL: 0, VAC: 0 };
-  const used = balanceData?.used || { CL: 0, SL: 0, EL: 0, VAC: 0, DL: 0, LWP: 0, ML: 0, PL: 0 };
-  const closing = balanceData?.closing || { CL: 0, SL: 0, EL: 0, VAC: 0 };
+  const opening = balanceData?.opening || { CL: 0, SL: 0, EL: 0, VAC: 0, SPL: 0 };
+  const allocated = balanceData?.allocated || { CL: 0, SL: 0, EL: 0, VAC: 0, SPL: 0 };
+  const used = balanceData?.used || { CL: 0, SL: 0, EL: 0, VAC: 0, DL: 0, LWP: 0, ML: 0, PL: 0, SPL: 0 };
+  const closing = balanceData?.closing || { CL: 0, SL: 0, EL: 0, VAC: 0, SPL: 0 };
   const employeeSummaryLeaveCodes = React.useMemo(() => {
     const codes = new Set([
       ...Object.keys(opening || {}),
@@ -184,7 +184,7 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
       ...Object.keys(used || {}),
       ...Object.keys(closing || {}),
     ]);
-    const order = ['CL', 'SL', 'EL', 'VAC', 'DL', 'LWP', 'ML', 'PL'];
+    const order = ['CL', 'SL', 'EL', 'VAC', 'DL', 'LWP', 'ML', 'PL', 'SPL'];
     return Array.from(codes)
       .filter(Boolean)
       .sort((a, b) => {
@@ -198,6 +198,15 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
   }, [opening, allocated, used, closing]);
   const yearsArr = Array.isArray(balanceData?.years) ? balanceData.years : [];
   const employeesArr = Array.isArray(balanceData?.employees) ? balanceData.employees : [];
+  const certificateRangeCodes = React.useMemo(() => {
+    const lg = balanceData?.leave_group || balanceData?.emp_leave_group || balanceData?.emp?.leave_group;
+    const base = lg?.toLowerCase() === 'el'
+      ? ['CL', 'SL', 'EL']
+      : lg?.toLowerCase() === 'vc'
+        ? ['CL', 'SL', 'VAC']
+        : ['CL', 'SL', 'EL', 'VAC'];
+    return [...base, 'SPL'];
+  }, [balanceData?.leave_group, balanceData?.emp_leave_group, balanceData?.emp]);
 
   const filteredEmployees = useMemo(() => {
     let filtered = employeesArr;
@@ -449,22 +458,18 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
                 </tr>
               </thead>
               <tbody>
-                {(() => {
-                  const lg = balanceData?.leave_group || balanceData?.emp_leave_group || balanceData?.emp?.leave_group;
-                  const codes = lg?.toLowerCase() === 'el' ? ['CL', 'SL', 'EL'] : lg?.toLowerCase() === 'vc' ? ['CL', 'SL', 'VAC'] : ['CL', 'SL', 'EL', 'VAC'];
-                  return codes.map((code) => (
-                    <tr key={code} className="border-b hover:bg-gray-50">
-                      <td className="p-2 border font-semibold">{code}</td>
-                      <td className="p-2 border text-right">
-                        {roundLeave(opening[code] ?? 0, code)}{' '}
-                        {allocated[code] ? <span className="text-xs text-gray-600">({roundLeave(allocated[code], code)})</span> : null}
-                      </td>
-                      <td className="p-2 border text-right">{roundLeave(allocated[code] ?? 0, code)}</td>
-                      <td className="p-2 border text-right">{roundLeave(used[code] ?? 0, code)}</td>
-                      <td className="p-2 border text-right font-semibold">{roundLeave(closing[code] ?? 0, code)}</td>
-                    </tr>
-                  ));
-                })()}
+                {certificateRangeCodes.map((code) => (
+                  <tr key={code} className="border-b hover:bg-gray-50">
+                    <td className="p-2 border font-semibold">{code}</td>
+                    <td className="p-2 border text-right">
+                      {roundLeave(opening[code] ?? 0, code)}{' '}
+                      {allocated[code] ? <span className="text-xs text-gray-600">({roundLeave(allocated[code], code)})</span> : null}
+                    </td>
+                    <td className="p-2 border text-right">{roundLeave(allocated[code] ?? 0, code)}</td>
+                    <td className="p-2 border text-right">{roundLeave(used[code] ?? 0, code)}</td>
+                    <td className="p-2 border text-right font-semibold">{roundLeave(closing[code] ?? 0, code)}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -514,7 +519,7 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
             </table>
           </div>
 
-          {(['DL', 'LWP', 'ML', 'PL'].some((code) => (used[code] || 0) !== 0)) && (
+          {(['DL', 'LWP', 'ML', 'PL', 'SPL'].some((code) => (used[code] || 0) !== 0)) && (
             <div className="overflow-auto mb-4">
               <table className="min-w-full text-sm border-collapse">
                 <thead>
@@ -524,7 +529,7 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
                   </tr>
                 </thead>
                 <tbody>
-                  {['DL', 'LWP', 'ML', 'PL'].map((code) => (
+                  {['DL', 'LWP', 'ML', 'PL', 'SPL'].map((code) => (
                     <tr key={code} className="border-b hover:bg-gray-50">
                       <td className="p-2 border font-semibold">{code}</td>
                       <td className="p-2 border text-right">{roundLeave(used[code] ?? 0, code)}</td>
@@ -570,7 +575,7 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
                 {yearsArr.flatMap((year, yearIdx) => {
                   const yearLabel = year.period?.name || `Year ${yearIdx + 1}`;
                   const periodLabel = `${year.period?.start || ''} to ${year.period?.end || ''}`;
-                  return ['CL', 'SL', 'EL', 'VAC'].map((code, rowIdx) => (
+                  return ['CL', 'SL', 'EL', 'VAC', 'SPL'].map((code, rowIdx) => (
                     <tr key={`${yearIdx}-${code}`} className="border-b hover:bg-gray-50">
                       <td className="p-2 border text-sm" style={{ verticalAlign: 'top' }}>
                         {rowIdx === 0 ? yearLabel : ''}
@@ -643,6 +648,7 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
                 <tr className="bg-gray-50 text-center text-xs">
                   <th className="p-2 border bg-blue-50">SL</th>
                   <th className="p-2 border bg-blue-50">EL</th>
+                  <th className="p-2 border bg-blue-50">SPL</th>
                   <th className="p-2 border bg-green-50">CL</th>
                   <th className="p-2 border bg-green-50">SL</th>
                   <th className="p-2 border bg-green-50">EL</th>
@@ -655,10 +661,12 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
                   <th className="p-2 border bg-orange-50">LWP</th>
                   <th className="p-2 border bg-orange-50">ML</th>
                   <th className="p-2 border bg-orange-50">PL</th>
+                  <th className="p-2 border bg-orange-50">SPL</th>
                   <th className="p-2 border bg-purple-50">CL</th>
                   <th className="p-2 border bg-purple-50">SL</th>
                   <th className="p-2 border bg-purple-50">EL</th>
                   <th className="p-2 border bg-purple-50">VAC</th>
+                  <th className="p-2 border bg-purple-50">SPL</th>
                 </tr>
               </thead>
               <tbody>
@@ -679,6 +687,7 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
                       <td className="p-2 border">{emp.emp_name}</td>
                       <td className="p-2 border text-right">{roundLeave(safe('SL', 'starting') || safe('SL', 'start') || 0, 'SL')}</td>
                       <td className="p-2 border text-right">{roundLeave(safe('EL', 'starting') || safe('EL', 'start') || 0, 'EL')}</td>
+                      <td className="p-2 border text-right">{roundLeave(safe('SPL', 'starting') || safe('SPL', 'start') || 0, 'SPL')}</td>
                       <td className="p-2 border text-right">{roundLeave(safe('CL', 'allocated'), 'CL')}</td>
                       <td className="p-2 border text-right">{roundLeave(safe('SL', 'allocated'), 'SL')}</td>
                       <td className="p-2 border text-right">{roundLeave(safe('EL', 'allocated'), 'EL')}</td>
@@ -691,10 +700,12 @@ const LeaveBalance = ({ user, selectedPeriod: controlledPeriod, setSelectedPerio
                       <td className="p-2 border text-right">{roundLeave(safe('LWP', 'used') || 0, 'CL')}</td>
                       <td className="p-2 border text-right">{roundLeave(safe('ML', 'used') || 0, 'CL')}</td>
                       <td className="p-2 border text-right">{roundLeave(safe('PL', 'used') || 0, 'CL')}</td>
+                      <td className="p-2 border text-right">{roundLeave(safe('SPL', 'used') || 0, 'SPL')}</td>
                       <td className="p-2 border text-right font-semibold">{roundLeave(safe('CL', 'balance'), 'CL')}</td>
                       <td className="p-2 border text-right font-semibold">{roundLeave(safe('SL', 'balance'), 'SL')}</td>
                       <td className="p-2 border text-right font-semibold">{roundLeave(safe('EL', 'balance'), 'EL')}</td>
                       <td className="p-2 border text-right font-semibold">{roundLeave(safe('VAC', 'balance'), 'VAC')}</td>
+                      <td className="p-2 border text-right font-semibold">{roundLeave(safe('SPL', 'balance'), 'SPL')}</td>
                     </tr>
                   );
                 })}

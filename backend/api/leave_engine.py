@@ -23,7 +23,7 @@ from .domain_emp import EmpProfile, LeaveAllocation, LeaveEntry, LeavePeriod, Le
 from .domain_core import Holiday
 
 DEC0 = Decimal("0")
-MAIN_LEAVE_CODES = {"EL", "CL", "SL", "VAC", "DL", "LWP", "ML", "PL"}
+MAIN_LEAVE_CODES = {"EL", "CL", "SL", "VAC", "DL", "LWP", "ML", "PL", "SPL"}
 
 
 def _emp_short_order():
@@ -143,7 +143,7 @@ class PeriodWindow:
 
 
 class LeaveEngine:
-    def __init__(self, tracked: Sequence[str] = ("EL", "CL", "SL", "VAC", "DL", "LWP", "ML", "PL")):
+    def __init__(self, tracked: Sequence[str] = ("EL", "CL", "SL", "VAC", "DL", "LWP", "ML", "PL", "SPL")):
         self.tracked = tuple(x.upper() for x in tracked)
 
     # -------------------------

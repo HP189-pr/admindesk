@@ -157,6 +157,7 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
       'Used LWP': roundLeave(row.used_lwp, 'LWP'),
       'Used ML': roundLeave(row.used_ml, 'ML'),
       'Used PL': roundLeave(row.used_pl, 'PL'),
+      'Used SPL': roundLeave(row.used_spl, 'SPL'),
       'Balance End CL': roundLeave(row.end_cl, 'CL'),
       'Balance End SL': roundLeave(row.end_sl, 'SL'),
       'Balance End EL': roundLeave(row.end_el, 'EL'),
@@ -177,6 +178,7 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
       { wch: 12 },
       { wch: 12 },
       { wch: 12 },
+      { wch: 10 },
       { wch: 10 },
       { wch: 10 },
       { wch: 10 },
@@ -261,6 +263,7 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
       used_lwp: g('LWP', 'used'),
       used_ml: g('ML', 'used'),
       used_pl: g('PL', 'used'),
+      used_spl: g('SPL', 'used'),
       end_cl: g('CL', 'balance'),
       end_sl: g('SL', 'balance'),
       end_el: g('EL', 'balance'),
@@ -493,6 +496,7 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
                     <th className="p-2 border font-semibold bg-orange-50">LWP</th>
                     <th className="p-2 border font-semibold bg-orange-50">ML</th>
                     <th className="p-2 border font-semibold bg-orange-50">PL</th>
+                    <th className="p-2 border font-semibold bg-orange-50">SPL</th>
                     <th className="p-2 border font-semibold bg-purple-50">CL</th>
                     <th className="p-2 border font-semibold bg-purple-50">SL</th>
                     <th className="p-2 border font-semibold bg-purple-50">EL</th>
@@ -510,7 +514,7 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
                     <>
                       {/* Check if all allocation and used leave columns are zero for all rows */}
                       {sorted.every(r =>
-                        [r.alloc_cl, r.alloc_sl, r.alloc_el, r.alloc_vac, r.used_cl, r.used_sl, r.used_el, r.used_vac, r.used_dl, r.used_lwp, r.used_ml, r.used_pl].every(v => !v || Number(v) === 0)
+                        [r.alloc_cl, r.alloc_sl, r.alloc_el, r.alloc_vac, r.used_cl, r.used_sl, r.used_el, r.used_vac, r.used_dl, r.used_lwp, r.used_ml, r.used_pl, r.used_spl].every(v => !v || Number(v) === 0)
                       ) && (
                         <tr>
                           <td colSpan={24} className="text-center p-2 text-yellow-700 bg-yellow-100">
@@ -544,6 +548,7 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
                           <td className="p-2 border text-right">{roundLeave(r.used_lwp, 'LWP')}</td>
                           <td className="p-2 border text-right">{roundLeave(r.used_ml, 'ML')}</td>
                           <td className="p-2 border text-right">{roundLeave(r.used_pl, 'PL')}</td>
+                          <td className="p-2 border text-right">{roundLeave(r.used_spl, 'SPL')}</td>
                           <td className="p-2 border text-right">{roundLeave(r.end_cl, 'CL')}</td>
                           <td className="p-2 border text-right">{roundLeave(r.end_sl, 'SL')}</td>
                           <td className="p-2 border text-right">{roundLeave(r.end_el, 'EL')}</td>
@@ -574,7 +579,7 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
               <th rowSpan={2} className="name-col">Emp Name</th>
               <th colSpan={2}>Balance: Start (Allocated)</th>
               <th colSpan={4}>Leave Allocation</th>
-              <th colSpan={8}>Used Leave</th>
+              <th colSpan={9}>Used Leave</th>
               <th colSpan={4}>Balance (End)</th>
             </tr>
             <tr>
@@ -592,6 +597,7 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
               <th>LWP</th>
               <th>ML</th>
               <th>PL</th>
+              <th>SPL</th>
               <th>CL</th>
               <th>SL</th>
               <th>EL</th>
@@ -624,6 +630,7 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
                   <td>{roundLeave(r.used_lwp, 'LWP')}</td>
                   <td>{roundLeave(r.used_ml, 'ML')}</td>
                   <td>{roundLeave(r.used_pl, 'PL')}</td>
+                  <td>{roundLeave(r.used_spl, 'SPL')}</td>
                   <td className="balance-end-cell"> {roundLeave(r.end_cl, 'CL')} </td>
                   <td className="balance-end-cell"> {roundLeave(r.end_sl, 'SL')} </td> 
                   <td className="balance-end-cell"> {roundLeave(r.end_el, 'EL')} </td> 

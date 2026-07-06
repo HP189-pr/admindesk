@@ -48,6 +48,7 @@ class LeaveReportView(APIView):
                         "used_lwp": p["used"].get("LWP", 0),
                         "used_ml": p["used"].get("ML", 0),
                         "used_pl": p["used"].get("PL", 0),
+                        "used_spl": p["used"].get("SPL", 0),
                         "end_cl": p["ending"].get("CL", 0),
                         "end_sl": p["ending"].get("SL", 0),
                         "end_el": p["ending"].get("EL", 0),
@@ -158,7 +159,7 @@ class EmployeeDateRangeView(APIView):
         # We'll produce opening/allocated/used/closing by aggregating periods that overlap the window
         opening = {"CL":0,"SL":0,"EL":0,"VAC":0}
         allocated = {"CL":0,"SL":0,"EL":0,"VAC":0}
-        used = {"CL":0,"SL":0,"EL":0,"VAC":0,"DL":0,"LWP":0,"ML":0,"PL":0}
+        used = {"CL":0,"SL":0,"EL":0,"VAC":0,"DL":0,"LWP":0,"ML":0,"PL":0,"SPL":0}
 
         # For custom range, consider periods overlapping range and scale allocation proportionally if needed
         for p in emp.get("periods", []):
@@ -170,7 +171,7 @@ class EmployeeDateRangeView(APIView):
                 overlap_start = max(pstart, start)
                 overlap_end = min(pend, end)
                 active_days = (overlap_end - overlap_start).days + 1
-                for code in ("CL","SL","EL","VAC","DL","LWP","ML","PL"):
+                for code in ("CL","SL","EL","VAC","DL","LWP","ML","PL","SPL"):
                     alloc_val = Decimal(str(p.get("allocation", {}).get(code, 0)))
                     prorated = (alloc_val * Decimal(active_days) / Decimal(period_days)) if period_days>0 else Decimal("0")
                     allocated[code] = allocated.get(code, Decimal("0")) + prorated
@@ -247,7 +248,7 @@ class AllEmployeesBalanceView(APIView):
             if not rec:
                 continue
             lt_list = []
-            for code in ("CL","SL","EL","VAC","DL","LWP","ML","PL"):
+            for code in ("CL","SL","EL","VAC","DL","LWP","ML","PL","SPL"):
                 lt_list.append({
                     "code": code,
                     "starting": rec.get("starting", {}).get(code, 0),
