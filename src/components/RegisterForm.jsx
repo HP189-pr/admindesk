@@ -4,7 +4,7 @@ import React from 'react';
 import FormField from './FormField';
 
 const getRowGridClass = (count) => {
-  switch (Math.min(Math.max(count, 1), 4)) {
+  switch (Math.min(Math.max(count, 1), 5)) {
     case 1:
       return 'grid grid-cols-1 gap-4';
     case 2:
@@ -12,6 +12,9 @@ const getRowGridClass = (count) => {
     case 3:
       return 'grid grid-cols-1 gap-4 md:grid-cols-3';
     default:
+      if (count >= 5) {
+        return 'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5';
+      }
       return 'grid grid-cols-1 gap-4 md:grid-cols-4';
   }
 };

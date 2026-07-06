@@ -14,7 +14,7 @@ class Migration(migrations.Migration):
             name='InwardRegister',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('in_common_ref', models.CharField(db_index=True, editable=False, max_length=30, unique=True)),
+                ('in_common_ref', models.CharField(db_index=True, max_length=30, unique=True)),
                 ('inward_no', models.CharField(db_index=True, editable=False, max_length=30, unique=True)),
                 ('inward_date', models.DateField()),
                 ('inward_type', models.CharField(choices=[('GEN', 'General'), ('ENR', 'Enrollment'), ('CAN', 'Cancellation'), ('TRN', 'Transfer'), ('EXAM', 'Examination'), ('APPT', 'Appointment'), ('FEE', 'Fees')], db_index=True, max_length=20)),
@@ -37,7 +37,7 @@ class Migration(migrations.Migration):
             name='OutwardRegister',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('out_common_ref', models.CharField(db_index=True, editable=False, max_length=30, unique=True)),
+                ('out_common_ref', models.CharField(db_index=True, max_length=30, unique=True)),
                 ('outward_no', models.CharField(db_index=True, editable=False, max_length=30, unique=True)),
                 ('outward_date', models.DateField()),
                 ('outward_type', models.CharField(choices=[('GEN', 'General'), ('ENR', 'Enrollment'), ('CAN', 'Cancellation'), ('TRN', 'Transfer'), ('EXAM', 'Examination'), ('APPT', 'Appointment'), ('FEE', 'Fees')], db_index=True, max_length=20)),

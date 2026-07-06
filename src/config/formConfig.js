@@ -1,14 +1,14 @@
-﻿// src/config/formConfig.js
+// src/config/formConfig.js
 export const FORM_CONFIG = {
   GEN: {
     External: [
-      ['date', 'type', 'send_type', 'place'],
+      ['date', 'common_ref', 'type', 'send_type', 'place'],
       ['receiver'],
       ['subject'],
       ['remark'],
     ],
     Internal: [
-      ['date', 'type', 'send_type', 'place'],
+      ['date', 'common_ref', 'type', 'send_type', 'place'],
       ['college'],
       ['subject'],
       ['remark'],
@@ -16,13 +16,13 @@ export const FORM_CONFIG = {
   },
   EXAM: {
     External: [
-      ['date', 'type', 'send_type', 'place'],
+      ['date', 'common_ref', 'type', 'send_type', 'place'],
       ['receiver'],
       ['subject'],
       ['remark'],
     ],
     Internal: [
-      ['date', 'type', 'send_type', 'place'],
+      ['date', 'common_ref', 'type', 'send_type', 'place'],
       ['college', 'main_course', 'sub_course'],
       ['subject'],
       ['remark'],
@@ -30,13 +30,13 @@ export const FORM_CONFIG = {
   },
   APPT: {
     External: [
-      ['date', 'type', 'send_type', 'place'],
+      ['date', 'common_ref', 'type', 'send_type', 'place'],
       ['receiver'],
       ['subject'],
       ['remark'],
     ],
     Internal: [
-      ['date', 'type', 'send_type', 'place'],
+      ['date', 'common_ref', 'type', 'send_type', 'place'],
       ['college'],
       ['subject'],
       ['remark'],
@@ -44,13 +44,13 @@ export const FORM_CONFIG = {
   },
   FEE: {
     External: [
-      ['date', 'type', 'send_type', 'place'],
+      ['date', 'common_ref', 'type', 'send_type', 'place'],
       ['receiver'],
       ['subject'],
       ['remark'],
     ],
     Internal: [
-      ['date', 'type', 'send_type', 'place'],
+      ['date', 'common_ref', 'type', 'send_type', 'place'],
       ['college'],
       ['subject'],
       ['remark'],
@@ -58,21 +58,21 @@ export const FORM_CONFIG = {
   },
   ENR: {
     default: [
-      ['date', 'type', 'college'],
+      ['date', 'common_ref', 'type', 'college'],
       ['main_course', 'sub_course', 'students'],
       ['remark'],
     ],
   },
   CAN: {
     default: [
-      ['date', 'type', 'college'],
+      ['date', 'common_ref', 'type', 'college'],
       ['inward_ref', 'enrollment_nos'],
       ['remark'],
     ],
   },
   TRN: {
     default: [
-      ['date', 'type', 'college'],
+      ['date', 'common_ref', 'type', 'college'],
       ['inward_ref', 'enrollment_nos'],
       ['remark'],
     ],
@@ -82,13 +82,13 @@ export const FORM_CONFIG = {
 export const INWARD_FORM_CONFIG = {
   GEN: {
     External: [
-      ['date', 'type', 'rec_type', 'place'],
+      ['date', 'common_ref', 'type', 'rec_type', 'place'],
       ['sender'],
       ['subject'],
       ['remark'],
     ],
     Internal: [
-      ['date', 'type', 'rec_type', 'place'],
+      ['date', 'common_ref', 'type', 'rec_type', 'place'],
       ['college'],
       ['subject'],
       ['remark'],
@@ -96,13 +96,13 @@ export const INWARD_FORM_CONFIG = {
   },
   EXAM: {
     External: [
-      ['date', 'type', 'rec_type', 'place'],
+      ['date', 'common_ref', 'type', 'rec_type', 'place'],
       ['sender'],
       ['subject'],
       ['remark'],
     ],
     Internal: [
-      ['date', 'type', 'rec_type', 'place'],
+      ['date', 'common_ref', 'type', 'rec_type', 'place'],
       ['college', 'main_course', 'sub_course'],
       ['subject'],
       ['remark'],
@@ -110,13 +110,13 @@ export const INWARD_FORM_CONFIG = {
   },
   APPT: {
     External: [
-      ['date', 'type', 'rec_type', 'place'],
+      ['date', 'common_ref', 'type', 'rec_type', 'place'],
       ['sender'],
       ['subject'],
       ['remark'],
     ],
     Internal: [
-      ['date', 'type', 'rec_type', 'place'],
+      ['date', 'common_ref', 'type', 'rec_type', 'place'],
       ['college'],
       ['subject'],
       ['remark'],
@@ -124,13 +124,13 @@ export const INWARD_FORM_CONFIG = {
   },
   FEE: {
     External: [
-      ['date', 'type', 'rec_type', 'place'],
+      ['date', 'common_ref', 'type', 'rec_type', 'place'],
       ['sender'],
       ['subject'],
       ['remark'],
     ],
     Internal: [
-      ['date', 'type', 'rec_type', 'place'],
+      ['date', 'common_ref', 'type', 'rec_type', 'place'],
       ['college'],
       ['subject'],
       ['remark'],
@@ -138,21 +138,21 @@ export const INWARD_FORM_CONFIG = {
   },
   ENR: {
     default: [
-      ['date', 'type', 'college'],
+      ['date', 'common_ref', 'type', 'college'],
       ['main_course', 'sub_course', 'students'],
       ['remark'],
     ],
   },
   CAN: {
     default: [
-      ['date', 'type', 'college'],
+      ['date', 'common_ref', 'type', 'college'],
       ['inward_ref', 'enrollment_nos'],
       ['remark'],
     ],
   },
   TRN: {
     default: [
-      ['date', 'type', 'college'],
+      ['date', 'common_ref', 'type', 'college'],
       ['inward_ref', 'enrollment_nos'],
       ['remark'],
     ],
@@ -160,6 +160,13 @@ export const INWARD_FORM_CONFIG = {
 };
 
 export const FIELD_DEFS = {
+  common_ref: {
+    label: 'Common No',
+    type: 'text',
+    source: 'form',
+    key: 'out_common_ref',
+    placeholder: 'Auto or manual',
+  },
   date: {
     label: 'Date',
     type: 'date',
@@ -261,6 +268,13 @@ export const FIELD_DEFS = {
 };
 
 export const INWARD_FIELD_DEFS = {
+  common_ref: {
+    label: 'Common No',
+    type: 'text',
+    source: 'form',
+    key: 'in_common_ref',
+    placeholder: 'Auto or manual',
+  },
   date: {
     label: 'Date',
     type: 'date',
@@ -360,3 +374,4 @@ export const INWARD_FIELD_DEFS = {
     placeholder: 'One per line',
   },
 };
+

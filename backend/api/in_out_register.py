@@ -46,7 +46,7 @@ class InwardRegister(models.Model):
         ('External', 'External'),
     ]
     
-    in_common_ref = models.CharField(max_length=30, unique=True, editable=False, db_index=True)
+    in_common_ref = models.CharField(max_length=30, unique=True, db_index=True)
     inward_no = models.CharField(max_length=30, unique=True, editable=False, db_index=True)
     inward_date = models.DateField()
     inward_type = models.CharField(max_length=20, choices=TYPE_CHOICES, db_index=True)
@@ -77,7 +77,7 @@ class OutwardRegister(models.Model):
         ('External', 'External'),
     ]
     
-    out_common_ref = models.CharField(max_length=30, unique=True, editable=False, db_index=True)
+    out_common_ref = models.CharField(max_length=30, unique=True, db_index=True)
     outward_no = models.CharField(max_length=30, unique=True, editable=False, db_index=True)
     outward_date = models.DateField()
     outward_type = models.CharField(max_length=20, choices=TYPE_CHOICES, db_index=True)
@@ -246,18 +246,25 @@ class InwardRegisterSerializer(serializers.ModelSerializer):
             'inward_from', 'rec_type', 'details', 'remark', 'extra_data',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['in_common_ref', 'inward_no', 'created_at', 'updated_at']
+        read_only_fields = ['inward_no', 'created_at', 'updated_at']
         extra_kwargs = {
+            'in_common_ref': {'required': False, 'allow_blank': True},
             'rec_type': {'required': False, 'allow_blank': True, 'default': ''},
         }
     
     def create(self, validated_data):
         """Override create to auto-generate inward reference numbers."""
         inward_type = validated_data.get('inward_type')
-        validated_data['in_common_ref'] = generate_in_common_ref(inward_type)
+        common_ref = (validated_data.get('in_common_ref') or '').strip()
+        validated_data['in_common_ref'] = common_ref or generate_in_common_ref(inward_type)
         validated_data['inward_no'] = generate_inward_no(inward_type)
         
         return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        if validated_data.get('in_common_ref') == '':
+            validated_data.pop('in_common_ref')
+        return super().update(instance, validated_data)
     
     def validate_inward_type(self, value):
         """Validate inward_type is in allowed choices"""
@@ -286,18 +293,25 @@ class OutwardRegisterSerializer(serializers.ModelSerializer):
             'outward_to', 'send_type', 'details', 'remark', 'extra_data',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['out_common_ref', 'outward_no', 'created_at', 'updated_at']
+        read_only_fields = ['outward_no', 'created_at', 'updated_at']
         extra_kwargs = {
+            'out_common_ref': {'required': False, 'allow_blank': True},
             'send_type': {'required': False, 'allow_blank': True, 'default': ''},
         }
     
     def create(self, validated_data):
         """Override create to auto-generate outward reference numbers."""
         outward_type = validated_data.get('outward_type')
-        validated_data['out_common_ref'] = generate_out_common_ref(outward_type)
+        common_ref = (validated_data.get('out_common_ref') or '').strip()
+        validated_data['out_common_ref'] = common_ref or generate_out_common_ref(outward_type)
         validated_data['outward_no'] = generate_outward_no(outward_type)
         
         return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        if validated_data.get('out_common_ref') == '':
+            validated_data.pop('out_common_ref')
+        return super().update(instance, validated_data)
     
     def validate_outward_type(self, value):
         """Validate outward_type is in allowed choices"""

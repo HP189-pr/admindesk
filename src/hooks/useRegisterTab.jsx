@@ -12,6 +12,7 @@ const normalizeResults = (data) => (Array.isArray(data) ? data : (data?.results 
 
 const useRegisterTab = ({
   allMainCourses,
+  commonRefFieldKey,
   directionChoices,
   directionFieldKey,
   directionOptionsKey,
@@ -32,7 +33,12 @@ const useRegisterTab = ({
 }) => {
   const [data, setData] = useState([]);
   const [filters, setFilters] = useState({ search: '', type: '', date_from: '', date_to: '' });
-  const [nextNumber, setNextNumber] = useState({ last_no: null, next_no: null });
+  const [nextNumber, setNextNumber] = useState({
+    last_common_ref: null,
+    next_common_ref: null,
+    last_no: null,
+    next_no: null,
+  });
   const [form, setForm] = useState(initialForm);
   const [extra, setExtra] = useState({});
   const [editing, setEditing] = useState(null);
@@ -59,6 +65,22 @@ const useRegisterTab = ({
     try {
       const response = await services.getNextNumber(type);
       setNextNumber(response);
+      if (commonRefFieldKey && !editing) {
+        setForm((prev) => {
+          const currentValue = prev[commonRefFieldKey] || '';
+          const previousAutoValue = nextNumber.next_common_ref || '';
+          const nextAutoValue = response.next_common_ref || '';
+
+          if (currentValue && currentValue !== previousAutoValue) {
+            return prev;
+          }
+
+          return {
+            ...prev,
+            [commonRefFieldKey]: nextAutoValue,
+          };
+        });
+      }
     } catch (error) {
       console.error(`Error fetching next ${modeLabel.toLowerCase()} number:`, error);
     }
@@ -466,6 +488,7 @@ const useRegisterTab = ({
     }
 
     setForm({
+      ...(commonRefFieldKey ? { [commonRefFieldKey]: record[commonRefFieldKey] || '' } : {}),
       [fieldDefs.date.key]: record[fieldDefs.date.key],
       [typeFieldKey]: record[typeFieldKey],
       [sourceFieldKey]: record[sourceFieldKey],
