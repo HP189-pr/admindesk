@@ -478,7 +478,7 @@ const LeaveReport = ({ user, defaultPeriod = '', onPeriodChange }) => {
                     <th rowSpan={2} className="p-2 border font-semibold print-hide">Leaving Date</th>
                     <th colSpan={2} className="p-2 border text-center font-semibold bg-blue-50">Balance: Start (Allocated)</th>
                     <th colSpan={4} className="p-2 border text-center font-semibold bg-green-50">Leave Allocation</th>
-                    <th colSpan={8} className="p-2 border text-center font-semibold bg-orange-50">Used Leave</th>
+                    <th colSpan={9} className="p-2 border text-center font-semibold bg-orange-50">Used Leave</th>
                     <th colSpan={4} className="p-2 border text-center font-semibold bg-purple-50">Balance (End)</th>
                   </tr>
                   <tr className="bg-yellow-50">

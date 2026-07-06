@@ -1,5 +1,6 @@
-﻿# backend/api/views.py
+# backend/api/views.py
 """File: backend/api/views.py
+
 Primary API view layer (TRANSITIONAL after beginning modular split).
 
 Phase 2 Modularization Progress:
@@ -24,6 +25,10 @@ from django.utils import timezone
 from django.db import models, IntegrityError
 from django.db.models import Q, Value, F
 from django.db.models.functions import Replace, Lower
+
+# Backward compatibility: re-export from views_auth to make LoginView available
+# for the new /api/backlogin/ route.
+from .views_auth import LoginView
 
 # Domain models used by several analysis views
 from .domain_enrollment import Enrollment, StudentProfile

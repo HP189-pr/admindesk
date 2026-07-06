@@ -73,13 +73,24 @@ def _group_code(lt: Optional[LeaveType]) -> Optional[str]:
     if main_type:
         return str(main_type).strip().upper()
     code = getattr(lt, "leave_code", None)
-    if not code:
-        return None
-    code = str(code).strip().upper()
-    if code.startswith("H"):
+    name = getattr(lt, "leave_name", None)
+    if code:
+        code = str(code).strip().upper()
+    else:
+        code = None
+    if code and code.startswith("H"):
         half_base = code[1:].rstrip("0123456789")
         if half_base in MAIN_LEAVE_CODES:
             return half_base
+    special_code_aliases = {"OTHER/SPECIAL", "OTHERSPECIAL", "SPECIAL", "OTHER SPECIAL"}
+    if code in special_code_aliases:
+        return "SPL"
+    if code and code in MAIN_LEAVE_CODES:
+        return code
+    if name:
+        name_norm = str(name).strip().upper()
+        if "SPECIAL" in name_norm:
+            return "SPL"
     return code
 
 
@@ -169,11 +180,17 @@ class LeaveEngine:
             half_code_filter = Q()
             for code in tracked_codes:
                 half_code_filter |= Q(leave_type__leave_code__istartswith=f"H{code}")
-            qs = qs.filter(
+            base_filter = (
                 Q(leave_type__leave_code__in=tracked_codes) |
                 Q(leave_type__main_type__in=tracked_codes) |
                 half_code_filter
             )
+            if "SPL" in tracked_codes:
+                base_filter |= (
+                    Q(leave_type__leave_code__in=["OTHER/SPECIAL", "SPECIAL", "OTHER SPECIAL"]) |
+                    Q(leave_type__leave_name__icontains="SPECIAL")
+                )
+            qs = qs.filter(base_filter)
         if employee_ids:
             qs = qs.filter(emp_id__in=list(employee_ids))
         return qs
@@ -475,13 +492,18 @@ class LeaveEngine:
                     used_snap[code] = used_val
 
                     opening = balances.get(code, DEC0)
+                    if code == "SPL":
+                        opening = DEC0
+                        alloc_value = DEC0
+                        alloc_snap[code] = DEC0
+
                     # optionally first_period_adds_allocation can be toggled; default False
                     start_snapshot = opening
                     ending = (opening + alloc_value) - used_val
 
                     # clamp negative not default; keep negative to reflect overuse unless desired
-                    # CL reset rule
-                    if code == "CL":
+                    # CL/SPL reset rule: SPL is period-only usage, not a carried balance.
+                    if code in ("CL", "SPL"):
                         balances[code] = DEC0
                     else:
                         balances[code] = ending
@@ -489,7 +511,7 @@ class LeaveEngine:
                     start_snap[code] = _round_output(start_snapshot, code)
                     alloc_snap[code] = _round_output(alloc_snap[code], code)
                     used_snap[code] = _round_output(used_snap[code], code)
-                    end_snap[code] = _round_output(ending, code)
+                    end_snap[code] = 0 if code == "SPL" else _round_output(ending, code)
 
                 if period_active:
                     for code in joining_year_allocation_applied:
