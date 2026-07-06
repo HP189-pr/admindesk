@@ -44,7 +44,8 @@ const RegisterTable = ({
               <tr key={row.id} className="bg-white transition-colors hover:bg-blue-50">
                 {columns.map((column) => {
                   const value = column.render ? column.render(row) : row[column.key];
-                  const cellClassName = `${CELL_CLASS}${column.key === 'inward_no' || column.key === 'outward_no' ? ' font-semibold text-slate-800' : ''}`;
+                  const isNumberColumn = ['in_common_ref', 'out_common_ref', 'inward_no', 'outward_no'].includes(column.key);
+                  const cellClassName = `${CELL_CLASS}${isNumberColumn ? ' font-semibold text-slate-800' : ''}`;
 
                   return (
                     <td key={column.key} className={cellClassName}>

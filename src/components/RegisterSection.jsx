@@ -66,10 +66,21 @@ const RegisterSection = ({
             </h2>
             <p className="mt-1 text-sm text-slate-500">{formDescription}</p>
           </div>
-          {!editing && nextNumber.next_no && (
-            <div className="flex flex-wrap gap-2 text-sm">
-              {nextNumber.last_no && <span className={LAST_BADGE_CLASS}>Last: {nextNumber.last_no}</span>}
-              <span className={NEXT_BADGE_CLASS}>Next: {nextNumber.next_no}</span>
+          {!editing && (nextNumber.next_no || nextNumber.next_common_ref) && (
+            <div className="flex flex-wrap justify-end gap-2 text-sm">
+              {nextNumber.last_common_ref && (
+                <span className={LAST_BADGE_CLASS}>Last Common: {nextNumber.last_common_ref}</span>
+              )}
+              {nextNumber.last_no && <span className={LAST_BADGE_CLASS}>Last No: {nextNumber.last_no}</span>}
+              {nextNumber.next_common_ref && (
+                <span className={NEXT_BADGE_CLASS}>Next Common: {nextNumber.next_common_ref}</span>
+              )}
+              {nextNumber.next_no && <span className={NEXT_BADGE_CLASS}>Next No: {nextNumber.next_no}</span>}
+              {nextNumber.series_group && (
+                <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
+                  Series: {nextNumber.series_group}
+                </span>
+              )}
             </div>
           )}
         </div>

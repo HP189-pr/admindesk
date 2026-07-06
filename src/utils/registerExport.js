@@ -16,6 +16,7 @@ const getReferenceValue = (record, referenceKeys) => {
 };
 
 export const exportRegisterExcel = ({
+  commonRefKey,
   data,
   dateKey,
   directionKey,
@@ -31,6 +32,7 @@ export const exportRegisterExcel = ({
   typeKey,
 }) => {
   const rows = data.map((record) => ({
+    'Common Ref': commonRefKey ? record[commonRefKey] : '',
     [numberKey === 'inward_no' ? 'Inward No' : 'Outward No']: record[numberKey],
     Date: record[dateKey],
     Type: record[typeKey],
@@ -57,6 +59,7 @@ export const exportRegisterExcel = ({
 };
 
 export const exportRegisterPDF = ({
+  commonRefKey,
   data,
   dateKey,
   filename,
@@ -71,8 +74,9 @@ export const exportRegisterPDF = ({
   document.text(title, 14, 15);
   autoTable(document, {
     startY: 20,
-    head: [[numberKey === 'inward_no' ? 'Inward No' : 'Outward No', 'Date', 'Type', partyLabel, 'Details']],
+    head: [['Common Ref', numberKey === 'inward_no' ? 'Inward No' : 'Outward No', 'Date', 'Type', partyLabel, 'Details']],
     body: data.map((record) => [
+      commonRefKey ? record[commonRefKey] : '',
       record[numberKey],
       record[dateKey],
       record[typeKey],

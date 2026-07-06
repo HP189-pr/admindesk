@@ -59,7 +59,7 @@ export const deleteInwardRegister = async (id) => {
   }
 };
 
-export const getNextInwardNumber = async (type = 'Gen') => {
+export const getNextInwardNumber = async (type = 'GEN') => {
   try {
     const response = await axiosInstance.get(`/api/inward-register/next-number/`, { params: { type } });
     return response.data;
@@ -121,7 +121,7 @@ export const deleteOutwardRegister = async (id) => {
   }
 };
 
-export const getNextOutwardNumber = async (type = 'Gen') => {
+export const getNextOutwardNumber = async (type = 'GEN') => {
   try {
     const response = await axiosInstance.get(`/api/outward-register/next-number/`, { params: { type } });
     return response.data;

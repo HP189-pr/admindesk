@@ -30,11 +30,13 @@ import {
 } from '../utils/registerExport';
 
 const TYPE_CHOICES = [
-  { value: 'Gen', label: 'General' },
-  { value: 'Exam', label: 'Examination' },
-  { value: 'Enr', label: 'Enrollment' },
-  { value: 'Can', label: 'Cancellation' },
-  { value: 'Doc', label: 'Document' },
+  { value: 'GEN', label: 'General' },
+  { value: 'ENR', label: 'Enrollment' },
+  { value: 'CAN', label: 'Cancellation' },
+  { value: 'TRN', label: 'Transfer' },
+  { value: 'EXAM', label: 'Examination' },
+  { value: 'APPT', label: 'Appointment' },
+  { value: 'FEE', label: 'Fees' },
 ];
 
 const REC_TYPE_CHOICES = [
@@ -47,8 +49,8 @@ const SEND_TYPE_CHOICES = [
   { value: 'External', label: 'External' },
 ];
 
-const INWARD_TYPES_WITH_REC_TYPE = ['Gen', 'Exam', 'Doc'];
-const OUTWARD_TYPES_WITH_SEND_TYPE = ['Gen', 'Exam', 'Doc'];
+const INWARD_TYPES_WITH_REC_TYPE = ['GEN', 'EXAM', 'APPT', 'FEE'];
+const OUTWARD_TYPES_WITH_SEND_TYPE = ['GEN', 'EXAM', 'APPT', 'FEE'];
 
 const INWARD_EXTRA_FIELD_KEYS = [
   'place',
@@ -76,7 +78,7 @@ const OUTWARD_EXTRA_FIELD_KEYS = [
 
 const INITIAL_INWARD_FORM = {
   inward_date: '',
-  inward_type: 'Gen',
+  inward_type: 'GEN',
   inward_from: '',
   rec_type: 'Internal',
   details: '',
@@ -85,7 +87,7 @@ const INITIAL_INWARD_FORM = {
 
 const INITIAL_OUTWARD_FORM = {
   outward_date: '',
-  outward_type: 'Gen',
+  outward_type: 'GEN',
   outward_to: '',
   send_type: 'Internal',
   details: '',
@@ -93,6 +95,7 @@ const INITIAL_OUTWARD_FORM = {
 };
 
 const INWARD_TABLE_COLUMNS = [
+  { key: 'in_common_ref', label: 'Common Ref' },
   { key: 'inward_no', label: 'Inward No' },
   { key: 'inward_date', label: 'Date' },
   { key: 'inward_type', label: 'Type' },
@@ -102,6 +105,7 @@ const INWARD_TABLE_COLUMNS = [
 ];
 
 const OUTWARD_TABLE_COLUMNS = [
+  { key: 'out_common_ref', label: 'Common Ref' },
   { key: 'outward_no', label: 'Outward No' },
   { key: 'outward_date', label: 'Date' },
   { key: 'outward_type', label: 'Type' },
@@ -219,6 +223,7 @@ const InOutRegister = () => {
           extraPartyKey: 'sender',
           extraPartyLabel: 'Sender',
           filename: 'Inward_Register.xlsx',
+          commonRefKey: 'in_common_ref',
           numberKey: 'inward_no',
           partyKey: 'inward_from',
           partyLabel: 'From',
@@ -230,6 +235,7 @@ const InOutRegister = () => {
           data: inward.data,
           dateKey: 'inward_date',
           filename: 'Inward_Register.pdf',
+          commonRefKey: 'in_common_ref',
           numberKey: 'inward_no',
           partyKey: 'inward_from',
           partyLabel: 'From',
@@ -273,6 +279,7 @@ const InOutRegister = () => {
           extraPartyKey: 'receiver',
           extraPartyLabel: 'Receiver Name',
           filename: 'Outward_Register.xlsx',
+          commonRefKey: 'out_common_ref',
           numberKey: 'outward_no',
           partyKey: 'outward_to',
           partyLabel: 'To',
@@ -284,6 +291,7 @@ const InOutRegister = () => {
           data: outward.data,
           dateKey: 'outward_date',
           filename: 'Outward_Register.pdf',
+          commonRefKey: 'out_common_ref',
           numberKey: 'outward_no',
           partyKey: 'outward_to',
           partyLabel: 'To',

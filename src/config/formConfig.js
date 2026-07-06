@@ -1,6 +1,6 @@
 ﻿// src/config/formConfig.js
 export const FORM_CONFIG = {
-  Gen: {
+  GEN: {
     External: [
       ['date', 'type', 'send_type', 'place'],
       ['receiver'],
@@ -14,7 +14,7 @@ export const FORM_CONFIG = {
       ['remark'],
     ],
   },
-  Exam: {
+  EXAM: {
     External: [
       ['date', 'type', 'send_type', 'place'],
       ['receiver'],
@@ -28,7 +28,7 @@ export const FORM_CONFIG = {
       ['remark'],
     ],
   },
-  Doc: {
+  APPT: {
     External: [
       ['date', 'type', 'send_type', 'place'],
       ['receiver'],
@@ -42,14 +42,35 @@ export const FORM_CONFIG = {
       ['remark'],
     ],
   },
-  Enr: {
+  FEE: {
+    External: [
+      ['date', 'type', 'send_type', 'place'],
+      ['receiver'],
+      ['subject'],
+      ['remark'],
+    ],
+    Internal: [
+      ['date', 'type', 'send_type', 'place'],
+      ['college'],
+      ['subject'],
+      ['remark'],
+    ],
+  },
+  ENR: {
     default: [
       ['date', 'type', 'college'],
       ['main_course', 'sub_course', 'students'],
       ['remark'],
     ],
   },
-  Can: {
+  CAN: {
+    default: [
+      ['date', 'type', 'college'],
+      ['inward_ref', 'enrollment_nos'],
+      ['remark'],
+    ],
+  },
+  TRN: {
     default: [
       ['date', 'type', 'college'],
       ['inward_ref', 'enrollment_nos'],
@@ -59,7 +80,7 @@ export const FORM_CONFIG = {
 };
 
 export const INWARD_FORM_CONFIG = {
-  Gen: {
+  GEN: {
     External: [
       ['date', 'type', 'rec_type', 'place'],
       ['sender'],
@@ -73,7 +94,7 @@ export const INWARD_FORM_CONFIG = {
       ['remark'],
     ],
   },
-  Exam: {
+  EXAM: {
     External: [
       ['date', 'type', 'rec_type', 'place'],
       ['sender'],
@@ -87,7 +108,7 @@ export const INWARD_FORM_CONFIG = {
       ['remark'],
     ],
   },
-  Doc: {
+  APPT: {
     External: [
       ['date', 'type', 'rec_type', 'place'],
       ['sender'],
@@ -101,14 +122,35 @@ export const INWARD_FORM_CONFIG = {
       ['remark'],
     ],
   },
-  Enr: {
+  FEE: {
+    External: [
+      ['date', 'type', 'rec_type', 'place'],
+      ['sender'],
+      ['subject'],
+      ['remark'],
+    ],
+    Internal: [
+      ['date', 'type', 'rec_type', 'place'],
+      ['college'],
+      ['subject'],
+      ['remark'],
+    ],
+  },
+  ENR: {
     default: [
       ['date', 'type', 'college'],
       ['main_course', 'sub_course', 'students'],
       ['remark'],
     ],
   },
-  Can: {
+  CAN: {
+    default: [
+      ['date', 'type', 'college'],
+      ['inward_ref', 'enrollment_nos'],
+      ['remark'],
+    ],
+  },
+  TRN: {
     default: [
       ['date', 'type', 'college'],
       ['inward_ref', 'enrollment_nos'],
