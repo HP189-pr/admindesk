@@ -59,7 +59,7 @@ export const FORM_CONFIG = {
   ENR: {
     default: [
       ['common_ref', 'file_no', 'date', 'type'],
-      ['college'],
+      ['college', 'place'],
       ['main_course', 'sub_course', 'students'],
       ['remark'],
     ],
@@ -67,7 +67,7 @@ export const FORM_CONFIG = {
   CAN: {
     default: [
       ['common_ref', 'file_no', 'date', 'type'],
-      ['college'],
+      ['college', 'place'],
       ['inward_ref', 'enrollment_nos'],
       ['remark'],
     ],
@@ -75,8 +75,26 @@ export const FORM_CONFIG = {
   TRN: {
     default: [
       ['common_ref', 'file_no', 'date', 'type'],
-      ['college'],
+      ['college', 'place'],
       ['inward_ref', 'enrollment_nos'],
+      ['remark'],
+    ],
+  },
+  ERP: {
+    default: [
+      ['common_ref', 'file_no', 'date', 'type'],
+      ['college', 'place'],
+      ['main_course', 'sub_course', 'students'],
+      ['subject'],
+      ['remark'],
+    ],
+  },
+  OTH: {
+    default: [
+      ['common_ref', 'file_no', 'date', 'type'],
+      ['college', 'place'],
+      ['main_course', 'sub_course', 'students'],
+      ['subject'],
       ['remark'],
     ],
   },
@@ -143,7 +161,7 @@ export const INWARD_FORM_CONFIG = {
   ENR: {
     default: [
       ['common_ref', 'file_no', 'date', 'type'],
-      ['college'],
+      ['college', 'place'],
       ['main_course', 'sub_course', 'students'],
       ['remark'],
     ],
@@ -151,7 +169,7 @@ export const INWARD_FORM_CONFIG = {
   CAN: {
     default: [
       ['common_ref', 'file_no', 'date', 'type'],
-      ['college'],
+      ['college', 'place'],
       ['inward_ref', 'enrollment_nos'],
       ['remark'],
     ],
@@ -159,8 +177,26 @@ export const INWARD_FORM_CONFIG = {
   TRN: {
     default: [
       ['common_ref', 'file_no', 'date', 'type'],
-      ['college'],
+      ['college', 'place'],
       ['inward_ref', 'enrollment_nos'],
+      ['remark'],
+    ],
+  },
+  ERP: {
+    default: [
+      ['common_ref', 'file_no', 'date', 'type'],
+      ['college', 'place'],
+      ['main_course', 'sub_course', 'students'],
+      ['subject'],
+      ['remark'],
+    ],
+  },
+  OTH: {
+    default: [
+      ['common_ref', 'file_no', 'date', 'type'],
+      ['college', 'place'],
+      ['main_course', 'sub_course', 'students'],
+      ['subject'],
       ['remark'],
     ],
   },

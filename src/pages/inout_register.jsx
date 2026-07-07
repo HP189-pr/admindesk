@@ -34,6 +34,8 @@ const TYPE_CHOICES = [
   { value: 'ENR', label: 'Enrollment', group: 'Student' },
   { value: 'CAN', label: 'Cancellation', group: 'Student' },
   { value: 'TRN', label: 'Transfer', group: 'Student' },
+  { value: 'ERP', label: 'ERP Updation', group: 'Student' },
+  { value: 'OTH', label: 'Other', group: 'Student' },
   { value: 'EXAM', label: 'Examination', group: 'Examination' },
   { value: 'APPT', label: 'Appointment', group: 'Appointment' },
   { value: 'FEE', label: 'Fees', group: 'Fees' },

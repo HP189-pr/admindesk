@@ -70,12 +70,29 @@ export const exportRegisterPDF = ({
   title,
   typeKey,
 }) => {
-  const document = new jsPDF();
+  const document = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const generatedAt = new Date().toLocaleString();
+  const registerNoLabel = numberKey === 'inward_no' ? 'Inward No' : 'Outward No';
+  const pageWidth = document.internal.pageSize.getWidth();
+  const pageHeight = document.internal.pageSize.getHeight();
 
-  document.text(title, 14, 15);
+  document.setFillColor(15, 76, 129);
+  document.rect(8, 8, pageWidth - 16, 15, 'F');
+  document.setTextColor(255, 255, 255);
+  document.setFont('helvetica', 'bold');
+  document.setFontSize(13);
+  document.text(title, 12, 17.5);
+  document.setFont('helvetica', 'normal');
+  document.setFontSize(7);
+  document.text(`Generated: ${generatedAt}`, pageWidth - 12, 17.5, { align: 'right' });
+  document.setTextColor(45, 55, 72);
+
   autoTable(document, {
-    startY: 20,
-    head: [['Common Ref', numberKey === 'inward_no' ? 'Inward No' : 'Outward No', 'File No.', 'Place', 'Date', 'Type', partyLabel, 'Details']],
+    startY: 28,
+    margin: { top: 28, right: 8, bottom: 12, left: 8 },
+    tableWidth: 'auto',
+    theme: 'grid',
+    head: [['Common Ref', registerNoLabel, 'File No.', 'Place', 'Date', 'Type', partyLabel, 'Details']],
     body: data.map((record) => [
       commonRefKey ? record[commonRefKey] : '',
       record[numberKey],
@@ -86,6 +103,43 @@ export const exportRegisterPDF = ({
       record[partyKey],
       getRegisterDetail(record),
     ]),
+    styles: {
+      font: 'helvetica',
+      fontSize: 5.8,
+      cellPadding: { top: 1, right: 1, bottom: 1, left: 1 },
+      overflow: 'linebreak',
+      lineColor: [226, 232, 240],
+      lineWidth: 0.1,
+      textColor: [45, 55, 72],
+      valign: 'middle',
+    },
+    headStyles: {
+      fillColor: [31, 111, 170],
+      textColor: [255, 255, 255],
+      fontSize: 6.4,
+      fontStyle: 'bold',
+      halign: 'left',
+      minCellHeight: 6,
+    },
+    alternateRowStyles: {
+      fillColor: [248, 250, 252],
+    },
+    columnStyles: {
+      0: { cellWidth: 37 },
+      1: { cellWidth: 37 },
+      2: { cellWidth: 16 },
+      3: { cellWidth: 22 },
+      4: { cellWidth: 18 },
+      5: { cellWidth: 11, halign: 'center' },
+      6: { cellWidth: 62 },
+      7: { cellWidth: 'auto' },
+    },
+    didDrawPage: () => {
+      const pageNumber = document.internal.getCurrentPageInfo().pageNumber;
+      document.setFontSize(7);
+      document.setTextColor(100, 116, 139);
+      document.text(`Page ${pageNumber}`, pageWidth - 8, pageHeight - 5, { align: 'right' });
+    },
   });
   document.save(filename);
 };

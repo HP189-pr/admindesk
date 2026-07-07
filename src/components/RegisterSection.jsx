@@ -42,13 +42,15 @@ const typeLabel = (type) => ({
   ENR: 'Enrollment',
   CAN: 'Cancellation',
   TRN: 'Transfer',
+  ERP: 'ERP Updation',
+  OTH: 'Other',
   EXAM: 'Examination',
   APPT: 'Appointment',
   FEE: 'Fees',
 }[type] || type || '');
 
 const seriesForType = (type) => {
-  if (['ENR', 'CAN', 'TRN'].includes(type)) return 'Student Register';
+  if (['ENR', 'CAN', 'TRN', 'ERP', 'OTH'].includes(type)) return 'Student Register';
   if (type === 'EXAM') return 'Examination Register';
   if (type === 'FEE') return 'Fees Register';
   if (type === 'APPT') return 'Appointment Register';
@@ -56,7 +58,7 @@ const seriesForType = (type) => {
 };
 
 const seriesCategoryForType = (type) => {
-  if (['ENR', 'CAN', 'TRN'].includes(type)) return 'STUDENT';
+  if (['ENR', 'CAN', 'TRN', 'ERP', 'OTH'].includes(type)) return 'STUDENT';
   if (type === 'EXAM') return 'EXAM';
   if (type === 'FEE') return 'FEES';
   if (type === 'APPT') return 'APPOINTMENT';
@@ -66,6 +68,16 @@ const seriesCategoryForType = (type) => {
 const normalizeOption = (option) => {
   if (typeof option === 'string') {
     return { value: option, label: option };
+  }
+
+  if (option.institute_code || option.institute_name) {
+    const code = option.institute_code || '';
+    const name = option.institute_name || '';
+    return {
+      value: name || code,
+      label: [code, name].filter(Boolean).join(' - '),
+      key: option.key ?? option.institute_id ?? code ?? name,
+    };
   }
 
   return {

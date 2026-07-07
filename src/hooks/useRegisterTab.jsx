@@ -12,6 +12,8 @@ import {
 
 const normalizeResults = (data) => (Array.isArray(data) ? data : (data?.results || []));
 
+const normalizeLookupText = (value) => String(value || '').trim().toLowerCase();
+
 const useRegisterTab = ({
   allMainCourses,
   commonRefFieldKey,
@@ -116,7 +118,12 @@ const useRegisterTab = ({
       return;
     }
 
-    const match = institutes.find((item) => item.institute_name === extra.college);
+    const collegeValue = normalizeLookupText(extra.college);
+    const match = institutes.find((item) => (
+      normalizeLookupText(item.institute_name) === collegeValue ||
+      normalizeLookupText(item.institute_code) === collegeValue ||
+      normalizeLookupText(`${item.institute_code || ''} - ${item.institute_name || ''}`) === collegeValue
+    ));
 
     if (!match) {
       return;
