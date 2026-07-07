@@ -28,6 +28,7 @@ const useRegisterTab = ({
   isActive,
   listId,
   modeLabel,
+  registerNoFieldKey,
   services,
   showAlert,
   sourceFieldKey,
@@ -76,20 +77,31 @@ const useRegisterTab = ({
     try {
       const response = await services.getNextNumber(type);
       setNextNumber(response);
-      if (commonRefFieldKey && !editing) {
+      if (!editing) {
         setForm((prev) => {
-          const currentValue = prev[commonRefFieldKey] || '';
-          const previousAutoValue = nextNumber.next_common_ref || '';
-          const nextAutoValue = response.next_common_ref || '';
+          const nextForm = { ...prev };
 
-          if (currentValue && currentValue !== previousAutoValue) {
-            return prev;
+          if (commonRefFieldKey) {
+            const currentValue = prev[commonRefFieldKey] || '';
+            const previousAutoValue = nextNumber.next_common_ref || '';
+            const nextAutoValue = response.next_common_ref || '';
+
+            if (!currentValue || currentValue === previousAutoValue) {
+              nextForm[commonRefFieldKey] = nextAutoValue;
+            }
           }
 
-          return {
-            ...prev,
-            [commonRefFieldKey]: nextAutoValue,
-          };
+          if (registerNoFieldKey) {
+            const currentValue = prev[registerNoFieldKey] || '';
+            const previousAutoValue = nextNumber.next_no || '';
+            const nextAutoValue = response.next_no || '';
+
+            if (!currentValue || currentValue === previousAutoValue) {
+              nextForm[registerNoFieldKey] = nextAutoValue;
+            }
+          }
+
+          return nextForm;
         });
       }
     } catch (error) {
@@ -571,6 +583,7 @@ const useRegisterTab = ({
 
     setForm({
       ...(commonRefFieldKey ? { [commonRefFieldKey]: record[commonRefFieldKey] || '' } : {}),
+      ...(registerNoFieldKey ? { [registerNoFieldKey]: record[registerNoFieldKey] || '' } : {}),
       [fieldDefs.date.key]: record[fieldDefs.date.key],
       [typeFieldKey]: record[typeFieldKey],
       [sourceFieldKey]: record[sourceFieldKey],

@@ -83,6 +83,7 @@ const OUTWARD_EXTRA_FIELD_KEYS = [
 const INITIAL_INWARD_FORM = {
   inward_date: '',
   in_common_ref: '',
+  inward_no: '',
   inward_type: 'GEN',
   inward_from: '',
   rec_type: 'Internal',
@@ -93,6 +94,7 @@ const INITIAL_INWARD_FORM = {
 const INITIAL_OUTWARD_FORM = {
   outward_date: '',
   out_common_ref: '',
+  outward_no: '',
   outward_type: 'GEN',
   outward_to: '',
   send_type: 'Internal',
@@ -158,6 +160,7 @@ const InOutRegister = () => {
     formConfig: INWARD_FORM_CONFIG,
     initialForm: INITIAL_INWARD_FORM,
     commonRefFieldKey: 'in_common_ref',
+    registerNoFieldKey: 'inward_no',
     isActive: activeTab === 'inward',
     listId: 'inward-dynamic-colleges',
     modeLabel: 'Inward register',
@@ -186,6 +189,7 @@ const InOutRegister = () => {
     formConfig: FORM_CONFIG,
     initialForm: INITIAL_OUTWARD_FORM,
     commonRefFieldKey: 'out_common_ref',
+    registerNoFieldKey: 'outward_no',
     isActive: activeTab === 'outward',
     listId: 'outward-dynamic-colleges',
     modeLabel: 'Outward register',

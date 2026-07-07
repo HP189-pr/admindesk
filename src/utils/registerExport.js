@@ -2,8 +2,14 @@
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { isoToDMY } from './date';
 
 export const getRegisterDetail = (record) => record.details || record.extra_data?.subject || record.remark || '';
+
+const getPDFDate = (value) => {
+  const formatted = isoToDMY(value) || String(value || '').trim();
+  return formatted.slice(0, 11);
+};
 
 const getReferenceValue = (record, referenceKeys) => {
   for (const key of referenceKeys) {
@@ -98,15 +104,15 @@ export const exportRegisterPDF = ({
       record[numberKey],
       record.extra_data?.file_no || '',
       record.extra_data?.place || '',
-      record[dateKey],
+      getPDFDate(record[dateKey]),
       record[typeKey],
       record[partyKey],
       getRegisterDetail(record),
     ]),
     styles: {
       font: 'helvetica',
-      fontSize: 5.8,
-      cellPadding: { top: 1, right: 1, bottom: 1, left: 1 },
+      fontSize: 5.5,
+      cellPadding: { top: 0.9, right: 0.8, bottom: 0.9, left: 0.8 },
       overflow: 'linebreak',
       lineColor: [226, 232, 240],
       lineWidth: 0.1,
@@ -116,7 +122,7 @@ export const exportRegisterPDF = ({
     headStyles: {
       fillColor: [31, 111, 170],
       textColor: [255, 255, 255],
-      fontSize: 6.4,
+      fontSize: 6,
       fontStyle: 'bold',
       halign: 'left',
       minCellHeight: 6,
@@ -125,13 +131,13 @@ export const exportRegisterPDF = ({
       fillColor: [248, 250, 252],
     },
     columnStyles: {
-      0: { cellWidth: 37 },
-      1: { cellWidth: 37 },
-      2: { cellWidth: 16 },
-      3: { cellWidth: 22 },
-      4: { cellWidth: 18 },
-      5: { cellWidth: 11, halign: 'center' },
-      6: { cellWidth: 62 },
+      0: { cellWidth: 25 },
+      1: { cellWidth: 27 },
+      2: { cellWidth: 14 },
+      3: { cellWidth: 20 },
+      4: { cellWidth: 11 },
+      5: { cellWidth: 9, halign: 'center' },
+      6: { cellWidth: 68 },
       7: { cellWidth: 'auto' },
     },
     didDrawPage: () => {

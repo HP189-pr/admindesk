@@ -301,6 +301,8 @@ def generate_outward_no(doc_type):
 
 class InwardRegisterSerializer(serializers.ModelSerializer):
     """Serializer for Inward Register"""
+    inward_type = serializers.CharField()
+    inward_no = serializers.CharField(required=False, allow_blank=True)
     
     class Meta:
         model = InwardRegister
@@ -309,7 +311,7 @@ class InwardRegisterSerializer(serializers.ModelSerializer):
             'inward_from', 'rec_type', 'details', 'remark', 'extra_data',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['inward_no', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
         extra_kwargs = {
             'in_common_ref': {'required': False, 'allow_blank': True},
             'rec_type': {'required': False, 'allow_blank': True, 'default': ''},
@@ -319,14 +321,17 @@ class InwardRegisterSerializer(serializers.ModelSerializer):
         """Override create to auto-generate inward reference numbers."""
         inward_type = validated_data.get('inward_type')
         common_ref = (validated_data.get('in_common_ref') or '').strip()
+        inward_no = (validated_data.get('inward_no') or '').strip()
         validated_data['in_common_ref'] = common_ref or generate_in_common_ref(inward_type)
-        validated_data['inward_no'] = generate_inward_no(inward_type)
+        validated_data['inward_no'] = inward_no or generate_inward_no(inward_type)
         
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
         if validated_data.get('in_common_ref') == '':
             validated_data.pop('in_common_ref')
+        if validated_data.get('inward_no') == '':
+            validated_data.pop('inward_no')
         return super().update(instance, validated_data)
     
     def validate_inward_type(self, value):
@@ -348,6 +353,8 @@ class InwardRegisterSerializer(serializers.ModelSerializer):
 
 class OutwardRegisterSerializer(serializers.ModelSerializer):
     """Serializer for Outward Register"""
+    outward_type = serializers.CharField()
+    outward_no = serializers.CharField(required=False, allow_blank=True)
     
     class Meta:
         model = OutwardRegister
@@ -356,7 +363,7 @@ class OutwardRegisterSerializer(serializers.ModelSerializer):
             'outward_to', 'send_type', 'details', 'remark', 'extra_data',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['outward_no', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
         extra_kwargs = {
             'out_common_ref': {'required': False, 'allow_blank': True},
             'send_type': {'required': False, 'allow_blank': True, 'default': ''},
@@ -366,14 +373,17 @@ class OutwardRegisterSerializer(serializers.ModelSerializer):
         """Override create to auto-generate outward reference numbers."""
         outward_type = validated_data.get('outward_type')
         common_ref = (validated_data.get('out_common_ref') or '').strip()
+        outward_no = (validated_data.get('outward_no') or '').strip()
         validated_data['out_common_ref'] = common_ref or generate_out_common_ref(outward_type)
-        validated_data['outward_no'] = generate_outward_no(outward_type)
+        validated_data['outward_no'] = outward_no or generate_outward_no(outward_type)
         
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
         if validated_data.get('out_common_ref') == '':
             validated_data.pop('out_common_ref')
+        if validated_data.get('outward_no') == '':
+            validated_data.pop('outward_no')
         return super().update(instance, validated_data)
     
     def validate_outward_type(self, value):

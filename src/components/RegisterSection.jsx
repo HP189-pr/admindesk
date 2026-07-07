@@ -785,7 +785,7 @@ const RegisterSection = ({
             <div className="space-y-5 p-5">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <InfoCard label="Reference No." value={getFieldValue('common_ref') || nextNumber.next_common_ref} icon={Layers} accent={accent} />
-                <InfoCard label="Register No." value={editing ? '-' : nextNumber.next_no} icon={CreateIcon} />
+                <InfoCard label="Register No." value={getFieldValue('register_no') || nextNumber.next_no} icon={CreateIcon} />
               </div>
 
               <form onSubmit={submitAndClose} className="space-y-4">

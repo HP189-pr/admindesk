@@ -1,13 +1,13 @@
 export const FORM_CONFIG = {
   GEN: {
     External: [
-      ['common_ref', 'file_no', 'date', 'type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type'],
       ['receiver', 'place'],
       ['subject'],
       ['remark'],
     ],
     Internal: [
-      ['common_ref', 'file_no', 'date', 'type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type'],
       ['college', 'place'],
       ['subject'],
       ['remark'],
@@ -15,13 +15,13 @@ export const FORM_CONFIG = {
   },
   EXAM: {
     External: [
-      ['common_ref', 'file_no', 'date', 'type', 'send_type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type', 'send_type'],
       ['receiver', 'place'],
       ['subject'],
       ['remark'],
     ],
     Internal: [
-      ['common_ref', 'file_no', 'date', 'type', 'send_type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type', 'send_type'],
       ['college', 'place'],
       ['main_course', 'sub_course'],
       ['subject'],
@@ -30,13 +30,13 @@ export const FORM_CONFIG = {
   },
   APPT: {
     External: [
-      ['common_ref', 'file_no', 'date', 'type', 'send_type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type', 'send_type'],
       ['receiver', 'place'],
       ['subject'],
       ['remark'],
     ],
     Internal: [
-      ['common_ref', 'file_no', 'date', 'type', 'send_type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type', 'send_type'],
       ['college', 'place'],
       ['subject'],
       ['remark'],
@@ -44,13 +44,13 @@ export const FORM_CONFIG = {
   },
   FEE: {
     External: [
-      ['common_ref', 'file_no', 'date', 'type', 'send_type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type', 'send_type'],
       ['receiver', 'place'],
       ['subject'],
       ['remark'],
     ],
     Internal: [
-      ['common_ref', 'file_no', 'date', 'type', 'send_type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type', 'send_type'],
       ['college', 'place'],
       ['subject'],
       ['remark'],
@@ -58,7 +58,7 @@ export const FORM_CONFIG = {
   },
   ENR: {
     default: [
-      ['common_ref', 'file_no', 'date', 'type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type'],
       ['college', 'place'],
       ['main_course', 'sub_course', 'students'],
       ['remark'],
@@ -66,7 +66,7 @@ export const FORM_CONFIG = {
   },
   CAN: {
     default: [
-      ['common_ref', 'file_no', 'date', 'type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type'],
       ['college', 'place'],
       ['inward_ref', 'enrollment_nos'],
       ['remark'],
@@ -74,7 +74,7 @@ export const FORM_CONFIG = {
   },
   TRN: {
     default: [
-      ['common_ref', 'file_no', 'date', 'type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type'],
       ['college', 'place'],
       ['inward_ref', 'enrollment_nos'],
       ['remark'],
@@ -82,7 +82,7 @@ export const FORM_CONFIG = {
   },
   ERP: {
     default: [
-      ['common_ref', 'file_no', 'date', 'type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type'],
       ['college', 'place'],
       ['main_course', 'sub_course', 'students'],
       ['subject'],
@@ -91,7 +91,7 @@ export const FORM_CONFIG = {
   },
   OTH: {
     default: [
-      ['common_ref', 'file_no', 'date', 'type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type'],
       ['college', 'place'],
       ['main_course', 'sub_course', 'students'],
       ['subject'],
@@ -103,13 +103,13 @@ export const FORM_CONFIG = {
 export const INWARD_FORM_CONFIG = {
   GEN: {
     External: [
-      ['common_ref', 'file_no', 'date', 'type', 'rec_type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type', 'rec_type'],
       ['sender', 'place'],
       ['subject'],
       ['remark'],
     ],
     Internal: [
-      ['common_ref', 'file_no', 'date', 'type', 'rec_type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type', 'rec_type'],
       ['college', 'place'],
       ['subject'],
       ['remark'],
@@ -117,13 +117,13 @@ export const INWARD_FORM_CONFIG = {
   },
   EXAM: {
     External: [
-      ['common_ref', 'file_no', 'date', 'type', 'rec_type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type', 'rec_type'],
       ['sender', 'place'],
       ['subject'],
       ['remark'],
     ],
     Internal: [
-      ['common_ref', 'file_no', 'date', 'type', 'rec_type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type', 'rec_type'],
       ['college', 'place'],
       ['main_course', 'sub_course'],
       ['subject'],
@@ -132,13 +132,13 @@ export const INWARD_FORM_CONFIG = {
   },
   APPT: {
     External: [
-      ['common_ref', 'file_no', 'date', 'type', 'rec_type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type', 'rec_type'],
       ['sender', 'place'],
       ['subject'],
       ['remark'],
     ],
     Internal: [
-      ['common_ref', 'file_no', 'date', 'type', 'rec_type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type', 'rec_type'],
       ['college', 'place'],
       ['subject'],
       ['remark'],
@@ -146,13 +146,13 @@ export const INWARD_FORM_CONFIG = {
   },
   FEE: {
     External: [
-      ['common_ref', 'file_no', 'date', 'type', 'rec_type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type', 'rec_type'],
       ['sender', 'place'],
       ['subject'],
       ['remark'],
     ],
     Internal: [
-      ['common_ref', 'file_no', 'date', 'type', 'rec_type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type', 'rec_type'],
       ['college', 'place'],
       ['subject'],
       ['remark'],
@@ -160,7 +160,7 @@ export const INWARD_FORM_CONFIG = {
   },
   ENR: {
     default: [
-      ['common_ref', 'file_no', 'date', 'type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type'],
       ['college', 'place'],
       ['main_course', 'sub_course', 'students'],
       ['remark'],
@@ -168,7 +168,7 @@ export const INWARD_FORM_CONFIG = {
   },
   CAN: {
     default: [
-      ['common_ref', 'file_no', 'date', 'type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type'],
       ['college', 'place'],
       ['inward_ref', 'enrollment_nos'],
       ['remark'],
@@ -176,7 +176,7 @@ export const INWARD_FORM_CONFIG = {
   },
   TRN: {
     default: [
-      ['common_ref', 'file_no', 'date', 'type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type'],
       ['college', 'place'],
       ['inward_ref', 'enrollment_nos'],
       ['remark'],
@@ -184,7 +184,7 @@ export const INWARD_FORM_CONFIG = {
   },
   ERP: {
     default: [
-      ['common_ref', 'file_no', 'date', 'type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type'],
       ['college', 'place'],
       ['main_course', 'sub_course', 'students'],
       ['subject'],
@@ -193,7 +193,7 @@ export const INWARD_FORM_CONFIG = {
   },
   OTH: {
     default: [
-      ['common_ref', 'file_no', 'date', 'type'],
+      ['common_ref', 'register_no', 'file_no', 'date', 'type'],
       ['college', 'place'],
       ['main_course', 'sub_course', 'students'],
       ['subject'],
@@ -208,6 +208,13 @@ export const FIELD_DEFS = {
     type: 'text',
     source: 'form',
     key: 'out_common_ref',
+    placeholder: 'Auto or manual',
+  },
+  register_no: {
+    label: 'Register No',
+    type: 'text',
+    source: 'form',
+    key: 'outward_no',
     placeholder: 'Auto or manual',
   },
   date: {
@@ -324,6 +331,13 @@ export const INWARD_FIELD_DEFS = {
     type: 'text',
     source: 'form',
     key: 'in_common_ref',
+    placeholder: 'Auto or manual',
+  },
+  register_no: {
+    label: 'Register No',
+    type: 'text',
+    source: 'form',
+    key: 'inward_no',
     placeholder: 'Auto or manual',
   },
   date: {
