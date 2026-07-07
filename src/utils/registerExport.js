@@ -135,7 +135,7 @@ export const exportRegisterPDF = ({
       1: { cellWidth: 27 },
       2: { cellWidth: 14 },
       3: { cellWidth: 20 },
-      4: { cellWidth: 11 },
+      4: { cellWidth: 13 },
       5: { cellWidth: 9, halign: 'center' },
       6: { cellWidth: 68 },
       7: { cellWidth: 'auto' },
