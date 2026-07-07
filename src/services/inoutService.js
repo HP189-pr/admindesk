@@ -142,12 +142,39 @@ export const searchInstitutes = async (search = '') => {
   }
 };
 
-export const searchReceivers = async (search = '') => {
+export const searchExternalParties = async (search = '') => {
   try {
+    // It doesn't matter if we use inward or outward, the backend search is unified
     const response = await axiosInstance.get('/api/inward-register/search-receivers/', { params: { search } });
     return response.data;
   } catch (error) {
-    console.error('Error searching receiver names:', error);
+    console.error('Error searching external parties:', error);
+    throw error;
+  }
+};
+
+export const searchFileNo = async (registerType, search = '') => {
+  try {
+    const response = await axiosInstance.get(`/api/${registerType}-register/search-file-no/`, { params: { search } });
+    return response.data;
+  } catch (error) {
+    if (error.response?.status === 404) {
+      return [];
+    }
+    console.error('Error searching file no:', error);
+    throw error;
+  }
+};
+
+export const searchPlace = async (registerType, search = '') => {
+  try {
+    const response = await axiosInstance.get(`/api/${registerType}-register/search-place/`, { params: { search } });
+    return response.data;
+  } catch (error) {
+    if (error.response?.status === 404) {
+      return [];
+    }
+    console.error('Error searching place:', error);
     throw error;
   }
 };

@@ -34,6 +34,7 @@ export const exportRegisterExcel = ({
   const rows = data.map((record) => ({
     'Common Ref': commonRefKey ? record[commonRefKey] : '',
     [numberKey === 'inward_no' ? 'Inward No' : 'Outward No']: record[numberKey],
+    'File No.': record.extra_data?.file_no || '',
     Date: record[dateKey],
     Type: record[typeKey],
     [partyLabel]: record[partyKey],
@@ -74,10 +75,12 @@ export const exportRegisterPDF = ({
   document.text(title, 14, 15);
   autoTable(document, {
     startY: 20,
-    head: [['Common Ref', numberKey === 'inward_no' ? 'Inward No' : 'Outward No', 'Date', 'Type', partyLabel, 'Details']],
+    head: [['Common Ref', numberKey === 'inward_no' ? 'Inward No' : 'Outward No', 'File No.', 'Place', 'Date', 'Type', partyLabel, 'Details']],
     body: data.map((record) => [
       commonRefKey ? record[commonRefKey] : '',
       record[numberKey],
+      record.extra_data?.file_no || '',
+      record.extra_data?.place || '',
       record[dateKey],
       record[typeKey],
       record[partyKey],

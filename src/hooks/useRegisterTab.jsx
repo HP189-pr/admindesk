@@ -5,7 +5,9 @@ import {
   getInstituteCourses,
   getSubCoursesByMain,
   searchInstitutes,
-  searchReceivers,
+  searchExternalParties,
+  searchFileNo,
+  searchPlace,
 } from '../services/inoutService';
 
 const normalizeResults = (data) => (Array.isArray(data) ? data : (data?.results || []));
@@ -44,10 +46,17 @@ const useRegisterTab = ({
   const [editing, setEditing] = useState(null);
   const [institutes, setInstitutes] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
+  const [fileNoSuggestions, setFileNoSuggestions] = useState([]);
+  const [placeSuggestions, setPlaceSuggestions] = useState([]);
   const [instCourses, setInstCourses] = useState([]);
   const [subBranches, setSubBranches] = useState([]);
   const [loading, setLoading] = useState(false);
-  const searchTimer = useRef({ institute: null, receiver: null });
+  const searchTimer = useRef({
+    institute: null,
+    receiver: null,
+    fileNo: null,
+    place: null,
+  });
 
   const loadData = async (nextFilters = filters, errorMessage = 'Failed to load data') => {
     setLoading(true);
@@ -131,14 +140,36 @@ const useRegisterTab = ({
       .catch(() => {});
   };
 
-  const fetchReceiverSearch = (value) => {
+  const fetchExternalPartySearch = (value) => {
     if (!value || value.length < 3) {
       setSuggestions([]);
       return;
     }
 
-    searchReceivers(value)
+    searchExternalParties(value)
       .then((response) => setSuggestions(Array.isArray(response) ? response.slice(0, 10) : []))
+      .catch(() => {});
+  };
+
+  const fetchFileNoSearch = (value) => {
+    if (!value || value.length < 2) {
+      setFileNoSuggestions([]);
+      return;
+    }
+    const registerType = modeLabel.split(' ')[0].toLowerCase();
+    searchFileNo(registerType, value)
+      .then((response) => setFileNoSuggestions(Array.isArray(response) ? response.slice(0, 10) : []))
+      .catch(() => {});
+  };
+
+  const fetchPlaceSearch = (value) => {
+    if (!value || value.length < 3) {
+      setPlaceSuggestions([]);
+      return;
+    }
+    const registerType = modeLabel.split(' ')[0].toLowerCase();
+    searchPlace(registerType, value)
+      .then((response) => setPlaceSuggestions(Array.isArray(response) ? response.slice(0, 10) : []))
       .catch(() => {});
   };
 
@@ -152,13 +183,31 @@ const useRegisterTab = ({
     }, 300);
   };
 
-  const debouncedReceiverSearch = (value) => {
+  const debouncedExternalPartySearch = (value) => {
     if (searchTimer.current.receiver) {
       clearTimeout(searchTimer.current.receiver);
     }
 
     searchTimer.current.receiver = setTimeout(() => {
-      fetchReceiverSearch(value);
+      fetchExternalPartySearch(value);
+    }, 300);
+  };
+
+  const debouncedFileNoSearch = (value) => {
+    if (searchTimer.current.fileNo) {
+      clearTimeout(searchTimer.current.fileNo);
+    }
+    searchTimer.current.fileNo = setTimeout(() => {
+      fetchFileNoSearch(value);
+    }, 300);
+  };
+
+  const debouncedPlaceSearch = (value) => {
+    if (searchTimer.current.place) {
+      clearTimeout(searchTimer.current.place);
+    }
+    searchTimer.current.place = setTimeout(() => {
+      fetchPlaceSearch(value);
     }, 300);
   };
 
@@ -330,6 +379,20 @@ const useRegisterTab = ({
       };
     }
 
+    if (fieldKey === 'file_no') {
+      return {
+        listId: `${listId}-file-no`,
+        listOptions: fileNoSuggestions.map((item) => ({ value: item })),
+      };
+    }
+
+    if (fieldKey === 'place') {
+      return {
+        listId: `${listId}-place`,
+        listOptions: placeSuggestions.map((item) => ({ value: item })),
+      };
+    }
+
     return {};
   };
 
@@ -341,6 +404,8 @@ const useRegisterTab = ({
     setSubBranches([]);
     setInstitutes([]);
     setSuggestions([]);
+    setFileNoSuggestions([]);
+    setPlaceSuggestions([]);
   };
 
   const handleTypeChange = (value) => {
@@ -355,6 +420,8 @@ const useRegisterTab = ({
     setSubBranches([]);
     setInstitutes([]);
     setSuggestions([]);
+    setFileNoSuggestions([]);
+    setPlaceSuggestions([]);
 
     if (!editing) {
       fetchNextNumber(value);
@@ -412,7 +479,15 @@ const useRegisterTab = ({
 
     if (fieldKey === externalPartyFieldKey) {
       setForm((prev) => ({ ...prev, [sourceFieldKey]: value }));
-      debouncedReceiverSearch(value);
+      debouncedExternalPartySearch(value);
+    }
+
+    if (fieldKey === 'file_no') {
+      debouncedFileNoSearch(value);
+    }
+
+    if (fieldKey === 'place') {
+      debouncedPlaceSearch(value);
     }
 
     if (fieldKey === 'subject') {
@@ -505,7 +580,7 @@ const useRegisterTab = ({
     }
 
     if (nextExtra[externalPartyFieldKey]) {
-      fetchReceiverSearch(nextExtra[externalPartyFieldKey]);
+      fetchExternalPartySearch(nextExtra[externalPartyFieldKey]);
     }
   };
 

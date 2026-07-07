@@ -1,6 +1,6 @@
 ﻿// src/pages/inout_register.jsx
 import React, { useEffect, useState } from 'react';
-import { Inbox, Send } from 'lucide-react';
+import { FileText, Inbox, Send } from 'lucide-react';
 import PageTopbar from '../components/PageTopbar';
 import RegisterSection from '../components/RegisterSection';
 import {
@@ -8,7 +8,7 @@ import {
   FORM_CONFIG,
   INWARD_FIELD_DEFS,
   INWARD_FORM_CONFIG,
-} from '../config/formConfig';
+} from './subpages/inoutRegisterConfig';
 import useRegisterTab from '../hooks/useRegisterTab';
 import {
   addInwardRegister,
@@ -30,13 +30,13 @@ import {
 } from '../utils/registerExport';
 
 const TYPE_CHOICES = [
-  { value: 'GEN', label: 'General' },
-  { value: 'ENR', label: 'Enrollment' },
-  { value: 'CAN', label: 'Cancellation' },
-  { value: 'TRN', label: 'Transfer' },
-  { value: 'EXAM', label: 'Examination' },
-  { value: 'APPT', label: 'Appointment' },
-  { value: 'FEE', label: 'Fees' },
+  { value: 'GEN', label: 'General', group: 'General' },
+  { value: 'ENR', label: 'Enrollment', group: 'Student' },
+  { value: 'CAN', label: 'Cancellation', group: 'Student' },
+  { value: 'TRN', label: 'Transfer', group: 'Student' },
+  { value: 'EXAM', label: 'Examination', group: 'Examination' },
+  { value: 'APPT', label: 'Appointment', group: 'Appointment' },
+  { value: 'FEE', label: 'Fees', group: 'Fees' },
 ];
 
 const REC_TYPE_CHOICES = [
@@ -50,9 +50,10 @@ const SEND_TYPE_CHOICES = [
 ];
 
 const INWARD_TYPES_WITH_REC_TYPE = ['GEN', 'EXAM', 'APPT', 'FEE'];
-const OUTWARD_TYPES_WITH_SEND_TYPE = ['GEN', 'EXAM', 'APPT', 'FEE'];
+const OUTWARD_TYPES_WITH_SEND_TYPE = ['EXAM', 'APPT', 'FEE'];
 
 const INWARD_EXTRA_FIELD_KEYS = [
+  'file_no',
   'place',
   'sender',
   'college',
@@ -65,6 +66,7 @@ const INWARD_EXTRA_FIELD_KEYS = [
 ];
 
 const OUTWARD_EXTRA_FIELD_KEYS = [
+  'file_no',
   'place',
   'receiver',
   'college',
@@ -97,23 +99,27 @@ const INITIAL_OUTWARD_FORM = {
 };
 
 const INWARD_TABLE_COLUMNS = [
-  { key: 'in_common_ref', label: 'Common Ref' },
-  { key: 'inward_no', label: 'Inward No' },
-  { key: 'inward_date', label: 'Date' },
+  { key: 'in_common_ref', label: 'Reference No.' },
+  { key: 'inward_no', label: 'Register No.' },
+  { key: 'file_no', label: 'File No.', render: (record) => record.extra_data?.file_no || '' },
+  { key: 'series', label: 'Series' },
   { key: 'inward_type', label: 'Type' },
   { key: 'inward_from', label: 'From' },
-  { key: 'rec_type', label: 'Rec Type', render: (record) => record.rec_type || '' },
-  { key: 'details', label: 'Details', render: (record) => getRegisterDetail(record) },
+  { key: 'subject', label: 'Subject', render: (record) => record.extra_data?.subject || getRegisterDetail(record) },
+  { key: 'inward_date', label: 'Date' },
+  { key: 'status', label: 'Status' },
 ];
 
 const OUTWARD_TABLE_COLUMNS = [
-  { key: 'out_common_ref', label: 'Common Ref' },
-  { key: 'outward_no', label: 'Outward No' },
-  { key: 'outward_date', label: 'Date' },
+  { key: 'out_common_ref', label: 'Reference No.' },
+  { key: 'outward_no', label: 'Register No.' },
+  { key: 'file_no', label: 'File No.', render: (record) => record.extra_data?.file_no || '' },
+  { key: 'series', label: 'Series' },
   { key: 'outward_type', label: 'Type' },
   { key: 'outward_to', label: 'To' },
-  { key: 'send_type', label: 'Send Type', render: (record) => record.send_type || '' },
-  { key: 'details', label: 'Details', render: (record) => getRegisterDetail(record) },
+  { key: 'subject', label: 'Subject', render: (record) => record.extra_data?.subject || getRegisterDetail(record) },
+  { key: 'outward_date', label: 'Date' },
+  { key: 'status', label: 'Status' },
 ];
 
 const TAB_LABELS = {
@@ -252,6 +258,8 @@ const InOutRegister = () => {
         searchLabel: 'Search by Sender',
         searchPlaceholder: 'Enter sender name',
         typeChoices: TYPE_CHOICES,
+        direction: 'inward',
+        theme: 'blue',
       }
     : {
         columns: OUTWARD_TABLE_COLUMNS,
@@ -308,23 +316,50 @@ const InOutRegister = () => {
         searchLabel: 'Search by Receiver',
         searchPlaceholder: 'Enter receiver name',
         typeChoices: TYPE_CHOICES,
+        direction: 'outward',
+        theme: 'orange',
       };
 
-  const topbarActions = Object.values(TAB_LABELS);
-
   return (
-    <div className="space-y-3 p-2 md:p-3">
+    <div className="space-y-3 px-4 py-2 md:px-6 md:py-3">
       <PageTopbar
-        title="Document Register (Inward/Outward)"
-        actions={topbarActions}
-        selected={TAB_LABELS[activeTab]}
-        onSelect={(action) => {
-          const selectedEntry = Object.entries(TAB_LABELS).find(([, label]) => label === action);
-
-          if (selectedEntry) {
-            setActiveTab(selectedEntry[0]);
-          }
-        }}
+        titleSlot={(
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                <FileText size={20} />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-slate-900">Document Register</h2>
+                <p className="text-xs font-medium text-slate-500">University Inward / Outward Tracking</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 lg:ml-4">
+              <button
+                type="button"
+                onClick={() => setActiveTab('inward')}
+                className={`inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 ${
+                  activeTab === 'inward'
+                    ? 'border-blue-600 bg-blue-600 text-white'
+                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <Inbox size={16} /> Inward Register <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">{inward.data.length}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('outward')}
+                className={`inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 ${
+                  activeTab === 'outward'
+                    ? 'border-orange-600 bg-orange-600 text-white'
+                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <Send size={16} /> Outward Register <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">{outward.data.length}</span>
+              </button>
+            </div>
+          </div>
+        )}
       />
 
       {alert.show && (
@@ -339,13 +374,7 @@ const InOutRegister = () => {
         </div>
       )}
 
-      {activeSection.loading ? (
-        <div className="rounded-2xl border border-slate-200 bg-white py-6 text-center shadow-sm">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600"></div>
-        </div>
-      ) : (
-        <RegisterSection {...activeSection} />
-      )}
+      <RegisterSection {...activeSection} />
     </div>
   );
 };

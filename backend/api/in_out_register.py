@@ -4,12 +4,14 @@ Inward/Outward Register Management System
 Single file containing Models, Serializers, Views, and URL patterns
 """
 from django.db import models
+from django.db.models import Q
 from rest_framework import serializers, viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from django.urls import path
 from datetime import datetime
+import re
 
 
 TYPE_CHOICES = [
@@ -32,7 +34,7 @@ SERIES_GROUPS = {
     "FEE": "FEES",
 }
 
-SERIES_DIGITS = 6
+SERIES_DIGITS = 4
 
 
 # ==================== MODELS ====================
@@ -124,6 +126,58 @@ def _get_external_party_suggestions(search):
     return names
 
 
+def _get_json_field_suggestions(search, field_name, min_chars):
+    """
+    Helper to get suggestions from a JSON field in both Inward and Outward registers.
+    Searches across both registers, combines results, sorts by creation date (newest first),
+    deduplicates, and returns up to 10 suggestions.
+    """
+    search_value = (search or '').strip()
+    if len(search_value) < min_chars:
+        return []
+
+    # Using key transforms to query the JSONField
+    inward_key = f'extra_data__{field_name}'
+    outward_key = f'extra_data__{field_name}'
+
+    inward_values = InwardRegister.objects.filter(
+        **{f'{inward_key}__icontains': search_value}
+    ).values('created_at', inward_key)
+
+    outward_values = OutwardRegister.objects.filter(
+        **{f'{outward_key}__icontains': search_value}
+    ).values('created_at', outward_key)
+
+    # Combine, sort, deduplicate
+    combined = sorted(
+        list(inward_values) + list(outward_values),
+        key=lambda x: x['created_at'],
+        reverse=True
+    )
+
+    unique_items = []
+    seen = set()
+    for item in combined:
+        value = item.get(inward_key) or item.get(outward_key)
+        if value and value not in seen:
+            unique_items.append(value)
+            seen.add(value)
+        if len(unique_items) >= 10:
+            break
+            
+    return unique_items
+
+
+def _get_file_no_suggestions(search):
+    """Search for 'file_no' suggestions."""
+    return _get_json_field_suggestions(search, 'file_no', 2)
+
+
+def _get_place_suggestions(search):
+    """Search for 'place' suggestions."""
+    return _get_json_field_suggestions(search, 'place', 3)
+
+
 # ==================== AUTO NUMBER GENERATOR ====================
 
 def get_series_group(doc_type):
@@ -145,9 +199,14 @@ def _parse_sequence(value, *, expected_year=None, common=False):
         return None
     try:
         year_part = int(parts[1] if common else parts[2])
-        sequence = int(parts[-1])
     except (TypeError, ValueError):
         return None
+
+    sequence_match = re.match(r'(\d+)', str(parts[-1] or ''))
+    if not sequence_match:
+        return None
+
+    sequence = int(sequence_match.group(1))
     if expected_year is not None and year_part != expected_year:
         return None
     return sequence
@@ -368,9 +427,25 @@ class InwardRegisterViewSet(viewsets.ModelViewSet):
         # Search by inward_from
         search = self.request.query_params.get('search', None)
         if search:
-            queryset = queryset.filter(inward_from__icontains=search)
+            queryset = queryset.filter(
+                Q(inward_from__icontains=search) |
+                Q(extra_data__file_no__icontains=search) |
+                Q(extra_data__place__icontains=search)
+            )
         
         return queryset
+    
+    @action(detail=False, methods=['get'], url_path='search-file-no')
+    def search_file_no(self, request):
+        search = request.query_params.get('search', '')
+        results = _get_file_no_suggestions(search)
+        return Response(results)
+
+    @action(detail=False, methods=['get'], url_path='search-place')
+    def search_place(self, request):
+        search = request.query_params.get('search', '')
+        results = _get_place_suggestions(search)
+        return Response(results)
     
     @action(detail=False, methods=['get'], url_path='search-receivers')
     def search_receivers(self, request):
@@ -436,9 +511,25 @@ class OutwardRegisterViewSet(viewsets.ModelViewSet):
         # Search by outward_to
         search = self.request.query_params.get('search', None)
         if search:
-            queryset = queryset.filter(outward_to__icontains=search)
+            queryset = queryset.filter(
+                Q(outward_to__icontains=search) |
+                Q(extra_data__file_no__icontains=search) |
+                Q(extra_data__place__icontains=search)
+            )
         
         return queryset
+    
+    @action(detail=False, methods=['get'], url_path='search-file-no')
+    def search_file_no(self, request):
+        search = request.query_params.get('search', '')
+        results = _get_file_no_suggestions(search)
+        return Response(results)
+
+    @action(detail=False, methods=['get'], url_path='search-place')
+    def search_place(self, request):
+        search = request.query_params.get('search', '')
+        results = _get_place_suggestions(search)
+        return Response(results)
     
     @action(detail=False, methods=['get'], url_path='search-receivers')
     def search_receivers(self, request):
@@ -479,6 +570,13 @@ IN_OUT_REGISTER_URLS = [
     path("inward-register/next-number/", InwardRegisterViewSet.as_view({
         'get': 'next_number'
     }), name='inward-register-next-number'),
+
+    path("inward-register/search-file-no/", InwardRegisterViewSet.as_view({
+        'get': 'search_file_no'
+    }), name='inward-register-search-file-no'),
+    path("inward-register/search-place/", InwardRegisterViewSet.as_view({
+        'get': 'search_place'
+    }), name='inward-register-search-place'),
     
     path("inward-register/<int:pk>/", InwardRegisterViewSet.as_view({
         'get': 'retrieve',
@@ -495,6 +593,13 @@ IN_OUT_REGISTER_URLS = [
     path("outward-register/next-number/", OutwardRegisterViewSet.as_view({
         'get': 'next_number'
     }), name='outward-register-next-number'),
+
+    path("outward-register/search-file-no/", OutwardRegisterViewSet.as_view({
+        'get': 'search_file_no'
+    }), name='outward-register-search-file-no'),
+    path("outward-register/search-place/", OutwardRegisterViewSet.as_view({
+        'get': 'search_place'
+    }), name='outward-register-search-place'),
     
     path("outward-register/<int:pk>/", OutwardRegisterViewSet.as_view({
         'get': 'retrieve',
