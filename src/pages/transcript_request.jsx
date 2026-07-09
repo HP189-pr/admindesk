@@ -452,30 +452,28 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
   const sortedRows = useMemo(() => {
     const copy = [...rows];
 
-    const statusPriority = (status) => {
-      const s = String(status || "").trim().toLowerCase();
+    const statusPriority = (status) =>
+    {
+      const s = normalizeTranscriptMailStatus(status);
 
-      if (s === "pending") return 0;
-      if (["progress", "in progress", "processing", "in-progress"].includes(s)) return 1;
-      if (["done", "sent", "yes"].includes(s)) return 2;
-      if (["cancel", "cancelled", "canceled"].includes(s)) return 3;
-
-      return 4;
+      switch (s) {
+        case "pending":
+          return 0;
+        case "progress":
+          return 1;
+        case "done":
+          return 2;
+        case "cancel":
+          return 3;
+        default:
+          return 4;
+      }
     };
 
     const parseDate = (date) => {
       if (!date) return 0;
-
       const d = new Date(date);
-      if (!isNaN(d)) return d.getTime();
-
-      const parts = String(date).split(/[-/]/);
-      if (parts.length === 3) {
-        const [dd, mm, yyyy] = parts;
-        return new Date(`${yyyy}-${mm}-${dd}`).getTime();
-      }
-
-      return 0;
+      return isNaN(d.getTime()) ? 0 : d.getTime();
     };
 
     const parseTR = (row) => {
@@ -485,8 +483,8 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
     copy.sort((a, b) => {
 
       // 1. Pending -> Progress -> Done -> Cancel
-      const sp = statusPriority(a.mail_status) - statusPriority(b.mail_status);
-      if (sp !== 0) return sp;
+      const statusDiff = statusPriority(a.mail_status) - statusPriority(b.mail_status);
+      if (statusDiff !== 0) return statusDiff;
 
       // 2. Latest Date first
       const dateDiff = parseDate(b.requested_at) - parseDate(a.requested_at);
@@ -495,6 +493,7 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
       // 3. Highest TR No first
       return parseTR(b) - parseTR(a);
     });
+
     return copy;
   }, [rows]);
 
