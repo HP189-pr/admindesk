@@ -35,22 +35,21 @@ class TranscriptRequestViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        # Order by mail_status priority (done > progress > pending) then by
-        # tr_request_no (descending) so higher TR numbers appear first, and
-        # finally by requested_at desc as a fallback.
+        # Order by mail_status priority first, then latest requested date,
+        # then highest TR number.
         try:
             from django.db.models import Case, When, IntegerField, Value
 
             qs = qs.annotate(
                 _status_rank=Case(
-                    When(mail_status=TranscriptRequest.STATUS_DONE, then=Value(0)),
+                    When(mail_status=TranscriptRequest.STATUS_PENDING, then=Value(0)),
                     When(mail_status=TranscriptRequest.STATUS_PROGRESS, then=Value(1)),
-                    When(mail_status=TranscriptRequest.STATUS_PENDING, then=Value(2)),
+                    When(mail_status=TranscriptRequest.STATUS_DONE, then=Value(2)),
                     When(mail_status=TranscriptRequest.STATUS_CANCEL, then=Value(3)),
                     default=Value(4),
                     output_field=IntegerField(),
                 )
-            ).order_by('_status_rank', '-tr_request_no', '-requested_at')
+            ).order_by('_status_rank', '-requested_at', '-tr_request_no')
         except Exception:
             # If annotation fails (older DB/backends), fall back to tr_request_no desc
             if hasattr(TranscriptRequest, 'tr_request_no'):

@@ -121,15 +121,19 @@ class MainBranchViewSet(viewsets.ModelViewSet):
 
 
 class SubBranchViewSet(viewsets.ModelViewSet):
-    queryset = SubBranch.objects.all()
+    queryset = SubBranch.objects.select_related("maincourse").all()
     serializer_class = SubBranchSerializer
 
     def get_queryset(self):
         qs = super().get_queryset()
-        mcid = self.request.query_params.get("maincourse_id")
+        mcid = self.request.query_params.get("maincourse_id") or self.request.query_params.get("maincourse")
         if mcid:
-            return qs.filter(maincourse_id__iexact=str(mcid).strip())
-        return qs
+            value = str(mcid).strip()
+            return qs.filter(
+                Q(maincourse__maincourse_id__iexact=value) |
+                Q(maincourse__course_code__iexact=value)
+            )
+        return qs.order_by("subcourse_name", "subcourse_id")
 
 
 class InstituteViewSet(viewsets.ModelViewSet):

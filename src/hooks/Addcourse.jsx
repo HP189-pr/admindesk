@@ -163,9 +163,16 @@ const Addcourse = () => {
   // =========================
   const createSub = async () => {
     try {
+      const selectedMain = subForm.maincourse_id;
       await API.post("/api/subbranch/", subForm);
-      setSubForm({ subcourse_id: "", maincourse_id: "", subcourse_name: "" });
-      loadData();
+      setSubForm({ subcourse_id: "", maincourse_id: selectedMain, subcourse_name: "" });
+      await loadData();
+      if (selectedMain) {
+        const response = await API.get(
+          `/api/subbranch/?maincourse_id=${encodeURIComponent(selectedMain)}`
+        );
+        setSubCourses(normalizeList(response.data));
+      }
     } catch (err) {
       console.error("❌ Failed to create sub course:", err);
     }
@@ -322,9 +329,11 @@ const Addcourse = () => {
               <select
                 className="border p-2"
                 value={subForm.maincourse_id}
-                onChange={(e) =>
-                  setSubForm((v) => ({ ...v, maincourse_id: e.target.value }))
-                }
+                onChange={async (e) => {
+                  const selectedMain = e.target.value;
+                  setSubForm((v) => ({ ...v, maincourse_id: selectedMain }));
+                  await loadSubCoursesForMain(selectedMain);
+                }}
               >
                 <option value="">Select Main Course</option>
                 {mainCourses.map((mc) => (
@@ -362,6 +371,13 @@ const Addcourse = () => {
                   </tr>
                 </thead>
                 <tbody>
+                  {subCourses.length === 0 && (
+                    <tr>
+                      <td className="border p-3 text-center text-gray-500" colSpan={3}>
+                        No sub courses found for selected main course.
+                      </td>
+                    </tr>
+                  )}
                   {subCourses.map((sc) => (
                     <tr key={sc.id || sc.subcourse_id}>
                       <td className="border p-2">{sc.subcourse_id || "-"}</td>

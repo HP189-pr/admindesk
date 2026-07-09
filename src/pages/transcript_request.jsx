@@ -472,12 +472,19 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
 
     const parseDate = (date) => {
       if (!date) return 0;
-      const d = new Date(date);
-      return isNaN(d.getTime()) ? 0 : d.getTime();
+      const raw = String(date).trim();
+      const dmyMatch = raw.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})(?:[T\s].*)?$/);
+      if (dmyMatch) {
+        const year = String(dmyMatch[3]).length === 2 ? `20${String(dmyMatch[3]).padStart(2, '0')}` : dmyMatch[3];
+        return new Date(Number(year), Number(dmyMatch[2]) - 1, Number(dmyMatch[1])).getTime();
+      }
+      const d = new Date(raw);
+      return Number.isNaN(d.getTime()) ? 0 : d.getTime();
     };
 
     const parseTR = (row) => {
-      return Number(row.tr_request_no || row.request_ref_no || 0);
+      const value = Number(row.tr_request_no);
+      return Number.isFinite(value) ? value : 0;
     };
 
     copy.sort((a, b) => {

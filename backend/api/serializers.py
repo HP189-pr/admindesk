@@ -224,8 +224,12 @@ class MainBranchSerializer(serializers.ModelSerializer):
 
 # ✅ Sub Branch Serializer
 class SubBranchSerializer(serializers.ModelSerializer):
-    # Expose the raw FK value (varchar) to filter on the frontend
-    maincourse_id = serializers.CharField(source="maincourse.maincourse_id", read_only=True)
+    maincourse = serializers.PrimaryKeyRelatedField(read_only=True)
+    maincourse_id = serializers.SlugRelatedField(
+        source="maincourse",
+        slug_field="maincourse_id",
+        queryset=MainBranch.objects.all(),
+    )
 
     class Meta:
         model = SubBranch

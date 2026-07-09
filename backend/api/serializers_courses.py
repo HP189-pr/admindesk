@@ -22,7 +22,13 @@ class MainBranchSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class SubBranchSerializer(serializers.ModelSerializer):
-    maincourse_id = serializers.CharField(source="maincourse.maincourse_id", read_only=True)
+    maincourse = serializers.PrimaryKeyRelatedField(read_only=True)
+    maincourse_id = serializers.SlugRelatedField(
+        source="maincourse",
+        slug_field="maincourse_id",
+        queryset=MainBranch.objects.all(),
+    )
+
     class Meta:
         model = SubBranch
         fields = ['id','subcourse_id','subcourse_name','maincourse','maincourse_id','updated_by','created_at','updated_at']
