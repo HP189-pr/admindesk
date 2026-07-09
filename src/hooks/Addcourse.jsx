@@ -90,7 +90,7 @@ const Addcourse = () => {
   const loadSubCoursesForMain = async (selectedMain) => {
     const target = String(selectedMain || '').trim();
     if (!target) {
-      setSubCourses([]);
+      setSubCourses(Array.isArray(allSubCourses) ? allSubCourses : []);
       return;
     }
 
