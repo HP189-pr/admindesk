@@ -449,8 +449,8 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
     return counts;
   }, [rows]);
 
-  // sort rows for display by pending status first, then by numeric `tr_request_no` (higher = newer),
-  // then fallback to requested_at desc.
+  // sort rows for display by latest date, then by status priority (pending/progress first),
+  // and finally by numeric `tr_request_no` (higher = newer).
   const sortedRows = useMemo(() => {
     const copy = Array.isArray(rows) ? [...rows] : [];
 
@@ -463,33 +463,30 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
       return Number.isFinite(m) ? m : NaN;
     };
 
-    const isPending = (val) => {
+    const getStatusPriority = (val) => {
       const text = String(val || '').trim().toLowerCase();
-      return text === 'pending' || text === 'pending approval';
+      if (text === 'pending' || text === 'pending approval') return 0; // Highest priority
+      if (['progress', 'in progress', 'in-progress', 'processing'].includes(text)) return 1; // Second priority
+      return 2; // Others
     };
 
     copy.sort((a, b) => {
-      // 1. Pending first
-      const aPending = isPending(a?.mail_status);
-      const bPending = isPending(b?.mail_status);
-      if (aPending && !bPending) return -1;
-      if (!aPending && bPending) return 1;
-
-      // 2. Higher tr_request_no first
-      const aNo = parseNumeric(a?.tr_request_no ?? a?.request_ref_no);
-      const bNo = parseNumeric(b?.tr_request_no ?? b?.request_ref_no);
-      const aHas = Number.isFinite(aNo);
-      const bHas = Number.isFinite(bNo);
-      if (aHas || bHas) {
-        if (!aHas) return 1;
-        if (!bHas) return -1;
-        if (bNo !== aNo) return bNo - aNo; // higher numbers first
-      }
-
-      // fallback to requested_at desc
+      // 1. Latest Date on top
       const da = a?.requested_at ? new Date(a.requested_at).getTime() : 0;
       const db = b?.requested_at ? new Date(b.requested_at).getTime() : 0;
-      return db - da;
+      if (db !== da) return db - da;
+
+      // 2. Pending or In Progress on top
+      const statusPriorityA = getStatusPriority(a?.mail_status);
+      const statusPriorityB = getStatusPriority(b?.mail_status);
+      if (statusPriorityA !== statusPriorityB) return statusPriorityA - statusPriorityB;
+
+      // 3. Then sort by number (higher first)
+      const aNo = parseNumeric(a?.tr_request_no ?? a?.request_ref_no);
+      const bNo = parseNumeric(b?.tr_request_no ?? b?.request_ref_no);
+      if (Number.isFinite(aNo) && Number.isFinite(bNo)) return bNo - aNo;
+
+      return 0;
     });
     return copy;
   }, [rows]);
