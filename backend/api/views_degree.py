@@ -73,6 +73,44 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
         if self.action == 'retrieve':
             return StudentDegreeDetailSerializer
         return StudentDegreeSerializer
+
+    def _get_report_queryset(self, request):
+        """Build the shared queryset used by report summaries and filter options."""
+        queryset = StudentDegree.objects.all()
+
+        convocation_no = request.query_params.get('convocation_no')
+        if convocation_no:
+            queryset = queryset.filter(convocation_no=convocation_no)
+
+        institute_name = request.query_params.get('institute_name_dg')
+        if institute_name:
+            queryset = queryset.filter(institute_name_dg__icontains=institute_name)
+
+        institute_code = request.query_params.get('institute_code')
+        if institute_code:
+            enrollments_for_inst = Enrollment.objects.filter(
+                enrollment_no__isnull=False,
+                institute__institute_code__iexact=institute_code
+            ).values('enrollment_no')
+            queryset = queryset.filter(enrollment_no__in=models.Subquery(enrollments_for_inst))
+
+        degree_name = request.query_params.get('degree_name')
+        if degree_name:
+            queryset = queryset.filter(degree_name__icontains=degree_name)
+
+        subcourse_name = request.query_params.get('subcourse_name')
+        if subcourse_name:
+            enrollments_for_subcourse = Enrollment.objects.filter(
+                enrollment_no__isnull=False,
+                subcourse__subcourse_name__icontains=subcourse_name
+            ).values('enrollment_no')
+            queryset = queryset.filter(enrollment_no__in=models.Subquery(enrollments_for_subcourse))
+
+        exam_year = request.query_params.get('last_exam_year')
+        if exam_year:
+            queryset = queryset.filter(last_exam_year=exam_year)
+
+        return queryset
     
     def get_queryset(self):
         """Filter queryset based on query params"""
@@ -358,39 +396,14 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='report')
     def report_summary(self, request):
         """Aggregated report data for convocation, institution, and course analysis"""
-        queryset = StudentDegree.objects.all()
+        queryset = self._get_report_queryset(request)
 
         convocation_no = request.query_params.get('convocation_no')
-        if convocation_no:
-            queryset = queryset.filter(convocation_no=convocation_no)
-
         institute_name = request.query_params.get('institute_name_dg')
-        if institute_name:
-            queryset = queryset.filter(institute_name_dg__icontains=institute_name)
-
         institute_code = request.query_params.get('institute_code')
-        if institute_code:
-            enrollments_for_inst = Enrollment.objects.filter(
-                enrollment_no__isnull=False,
-                institute__institute_code__iexact=institute_code
-            ).values('enrollment_no')
-            queryset = queryset.filter(enrollment_no__in=models.Subquery(enrollments_for_inst))
-
         degree_name = request.query_params.get('degree_name')
-        if degree_name:
-            queryset = queryset.filter(degree_name__icontains=degree_name)
-
         subcourse_name = request.query_params.get('subcourse_name')
-        if subcourse_name:
-            enrollments_for_subcourse = Enrollment.objects.filter(
-                enrollment_no__isnull=False,
-                subcourse__subcourse_name__icontains=subcourse_name
-            ).values('enrollment_no')
-            queryset = queryset.filter(enrollment_no__in=models.Subquery(enrollments_for_subcourse))
-
         exam_year = request.query_params.get('last_exam_year')
-        if exam_year:
-            queryset = queryset.filter(last_exam_year=exam_year)
 
         convocation_title_sq = ConvocationMaster.objects.filter(
             convocation_no=OuterRef('convocation_no')
@@ -455,9 +468,12 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='filter-options')
     def filter_options(self, request):
-        """Return distinct values for report filters"""
+        """Return distinct values for report filters, narrowed by selected filters."""
+        degree_queryset = self._get_report_queryset(request)
+        enrollment_numbers = degree_queryset.values('enrollment_no')
+
         years_qs = (
-            StudentDegree.objects
+            degree_queryset
             .filter(last_exam_year__isnull=False)
             .values_list('last_exam_year', flat=True)
             .order_by('-last_exam_year')
@@ -467,7 +483,7 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
         institute_codes_qs = (
             Enrollment.objects
             .filter(enrollment_no__isnull=False)
-            .filter(enrollment_no__in=StudentDegree.objects.values('enrollment_no'))
+            .filter(enrollment_no__in=enrollment_numbers)
             .exclude(institute__institute_code__isnull=True)
             .exclude(institute__institute_code='')
             .values_list('institute__institute_code', flat=True)
@@ -476,7 +492,7 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
         )
 
         institutes_qs = (
-            StudentDegree.objects
+            degree_queryset
             .exclude(institute_name_dg__isnull=True)
             .exclude(institute_name_dg='')
             .values_list('institute_name_dg', flat=True)
@@ -485,7 +501,7 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
         )
 
         courses_qs = (
-            StudentDegree.objects
+            degree_queryset
             .exclude(degree_name__isnull=True)
             .exclude(degree_name='')
             .values_list('degree_name', flat=True)
@@ -496,7 +512,7 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
         subcourses_qs = (
             Enrollment.objects
             .filter(enrollment_no__isnull=False)
-            .filter(enrollment_no__in=StudentDegree.objects.values('enrollment_no'))
+            .filter(enrollment_no__in=enrollment_numbers)
             .exclude(subcourse__subcourse_name__isnull=True)
             .exclude(subcourse__subcourse_name='')
             .values_list('subcourse__subcourse_name', flat=True)

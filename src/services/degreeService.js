@@ -128,8 +128,11 @@ export const getDegreeReport = async (params = {}, config = {}) => {
 /**
  * Get filter dropdown options
  */
-export const getDegreeFilterOptions = async () => {
-    const res = await API.get(`${DEGREE_API}filter-options/`);
+export const getDegreeFilterOptions = async (params = {}, config = {}) => {
+    const res = await API.get(
+        `${DEGREE_API}filter-options/`,
+        { params, ...config }
+    );
     return res.data;
 };
 

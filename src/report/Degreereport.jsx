@@ -1,5 +1,9 @@
 ﻿// src/report/Degreereport.jsx
 import React, { useEffect, useMemo, useState } from 'react';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { FaFileExcel, FaFilePdf } from 'react-icons/fa6';
 import { getAllConvocations, getDegreeReport, getDegreeFilterOptions } from '../services/degreeService';
 
 const defaultFilters = {
@@ -17,6 +21,66 @@ const emptyFilterOptions = {
     courses: [],
     subcourses: []
 };
+
+const EXPORT_EXCEL_BUTTON_CLASS = 'inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm shadow-emerald-100 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-100 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50';
+const EXPORT_PDF_BUTTON_CLASS = 'inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 shadow-sm shadow-rose-100 transition duration-200 hover:-translate-y-0.5 hover:bg-rose-100 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50';
+
+const makeParams = (filters = {}) => Object.fromEntries(
+    Object.entries(filters).filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== '')
+);
+
+const withSelectedValue = (options = [], selectedValue = '') => {
+    const cleanOptions = Array.isArray(options) ? options : [];
+    const selected = String(selectedValue || '').trim();
+    if (!selected || cleanOptions.some((option) => String(option) === selected)) {
+        return cleanOptions;
+    }
+    return [selected, ...cleanOptions];
+};
+
+const formatCount = (value) => Number(value || 0).toLocaleString();
+
+const buildReportExportTables = (report, institutionSummaryRows) => ([
+    {
+        title: 'Convocation Summary',
+        columns: ['Convocation', 'Title', 'Month/Year', 'Degree Count'],
+        rows: (report?.convocations || []).map((row) => [
+            row.convocation_no || '',
+            row.convocation_title || '',
+            row.month_year || '',
+            row.total || 0,
+        ]),
+    },
+    {
+        title: 'Institution-wise Summary',
+        columns: ['Institute', 'Degree Count'],
+        rows: (institutionSummaryRows || []).map((row) => [
+            row.institute_name_dg || '',
+            row.total || 0,
+        ]),
+    },
+    {
+        title: 'Course-wise Summary',
+        columns: ['Course / Degree', 'Degree Count'],
+        rows: (report?.courses || []).map((row) => [
+            row.degree_name || '',
+            row.total || 0,
+        ]),
+    },
+    {
+        title: 'Institution Course Matrix',
+        columns: ['Institute', 'Course', 'Degrees'],
+        rows: (report?.institution_course || []).map((row) => [
+            row.institute_name_dg || '',
+            row.degree_name || '',
+            row.total || 0,
+        ]),
+    },
+]);
+
+const buildExportFilename = (extension) => (
+    `degree_report_${new Date().toISOString().slice(0, 10)}.${extension}`
+);
 
 const SummaryCard = ({ title, value = 0, sublabel }) => (
     <div className="border rounded-2xl p-4 bg-white shadow-sm">
@@ -87,10 +151,20 @@ const DegreeReport = () => {
                 if (isMounted) setConvocations([]);
             });
 
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        const controller = new AbortController();
+        const params = makeParams(filters);
+        let isMounted = true;
+
         const loadFilterOptions = async () => {
             setFilterOptionsLoading(true);
             try {
-                const data = await getDegreeFilterOptions();
+                const data = await getDegreeFilterOptions(params, { signal: controller.signal });
                 if (!isMounted) return;
                 setFilterOptions({
                     years: Array.isArray(data?.years) ? data.years : [],
@@ -100,7 +174,9 @@ const DegreeReport = () => {
                     subcourses: Array.isArray(data?.subcourses) ? data.subcourses : [],
                 });
             } catch (err) {
-                if (isMounted) setFilterOptions(emptyFilterOptions);
+                if (isMounted && err.name !== 'CanceledError' && err.name !== 'AbortError') {
+                    setFilterOptions(emptyFilterOptions);
+                }
             } finally {
                 if (isMounted) setFilterOptionsLoading(false);
             }
@@ -109,14 +185,13 @@ const DegreeReport = () => {
         loadFilterOptions();
         return () => {
             isMounted = false;
+            controller.abort();
         };
-    }, []);
+    }, [filters]);
 
     useEffect(() => {
         const controller = new AbortController();
-        const params = Object.fromEntries(
-            Object.entries(filters).filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== '')
-        );
+        const params = makeParams(filters);
 
         const fetchReport = async () => {
             setLoading(true);
@@ -129,7 +204,9 @@ const DegreeReport = () => {
                     setError(err.response?.data?.detail || 'Unable to load degree report');
                 }
             } finally {
-                setLoading(false);
+                if (!controller.signal.aborted) {
+                    setLoading(false);
+                }
             }
         };
 
@@ -140,6 +217,22 @@ const DegreeReport = () => {
     const topConvocation = useMemo(() => report?.convocations?.[0], [report]);
     const topInstitution = useMemo(() => report?.institutions?.[0], [report]);
     const topCourse = useMemo(() => report?.courses?.[0], [report]);
+    const yearOptions = useMemo(
+        () => withSelectedValue(filterOptions.years, filters.last_exam_year),
+        [filterOptions.years, filters.last_exam_year]
+    );
+    const instituteCodeOptions = useMemo(
+        () => withSelectedValue(filterOptions.instituteCodes, filters.institute_code),
+        [filterOptions.instituteCodes, filters.institute_code]
+    );
+    const courseOptions = useMemo(
+        () => withSelectedValue(filterOptions.courses, filters.degree_name),
+        [filterOptions.courses, filters.degree_name]
+    );
+    const subcourseOptions = useMemo(
+        () => withSelectedValue(filterOptions.subcourses, filters.subcourse_name),
+        [filterOptions.subcourses, filters.subcourse_name]
+    );
     const institutionSummaryRows = useMemo(() => {
         const rows = Array.isArray(report?.institutions) ? report.institutions : [];
         return [...rows].sort((a, b) => {
@@ -149,6 +242,11 @@ const DegreeReport = () => {
         });
     }, [report]);
 
+    const exportTables = useMemo(
+        () => buildReportExportTables(report, institutionSummaryRows),
+        [report, institutionSummaryRows]
+    );
+
     const handleInput = (event) => {
         const { name, value } = event.target;
         setFilters((prev) => ({ ...prev, [name]: value }));
@@ -156,9 +254,94 @@ const DegreeReport = () => {
 
     const resetFilters = () => setFilters(defaultFilters);
 
+    const exportExcel = () => {
+        if (!report) return;
+
+        const workbook = XLSX.utils.book_new();
+        const overviewRows = [
+            ['Metric', 'Value'],
+            ['Total Degrees', report.overall_total || 0],
+            ['Convocation Buckets', report.convocations?.length || 0],
+            ['Institutions', report.institutions?.length || 0],
+            ['Courses', report.courses?.length || 0],
+        ];
+
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(overviewRows), 'Overview');
+        exportTables.forEach((table) => {
+            const rows = table.rows.length ? table.rows : [['No data available']];
+            XLSX.utils.book_append_sheet(
+                workbook,
+                XLSX.utils.aoa_to_sheet([table.columns, ...rows]),
+                table.title.slice(0, 31)
+            );
+        });
+        XLSX.writeFile(workbook, buildExportFilename('xlsx'));
+    };
+
+    const exportPDF = () => {
+        if (!report) return;
+
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        doc.setFontSize(16);
+        doc.text('Degree Report', 14, 16);
+        doc.setFontSize(9);
+        doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 22);
+        autoTable(doc, {
+            startY: 28,
+            head: [['Metric', 'Value']],
+            body: [
+                ['Total Degrees', formatCount(report.overall_total)],
+                ['Convocation Buckets', formatCount(report.convocations?.length)],
+                ['Institutions', formatCount(report.institutions?.length)],
+                ['Courses', formatCount(report.courses?.length)],
+            ],
+            theme: 'grid',
+            styles: { fontSize: 9 },
+            headStyles: { fillColor: [15, 23, 42] },
+        });
+
+        exportTables.forEach((table) => {
+            doc.addPage('a4', 'landscape');
+            doc.setFontSize(13);
+            doc.text(table.title, 14, 16);
+            autoTable(doc, {
+                startY: 22,
+                head: [table.columns],
+                body: table.rows.length ? table.rows : [table.columns.map(() => '')],
+                theme: 'striped',
+                styles: { fontSize: 8, cellPadding: 2 },
+                headStyles: { fillColor: [15, 23, 42] },
+            });
+        });
+
+        doc.save(buildExportFilename('pdf'));
+    };
+
     return (
         <div className="space-y-4">
             <div className="bg-slate-50 border rounded-2xl p-4">
+                <div className="mb-3 flex items-center justify-end gap-2">
+                    <button
+                        type="button"
+                        onClick={exportExcel}
+                        disabled={!report || loading}
+                        title="Export Excel"
+                        aria-label="Export Excel"
+                        className={EXPORT_EXCEL_BUTTON_CLASS}
+                    >
+                        <FaFileExcel size={20} color="#1D6F42" />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={exportPDF}
+                        disabled={!report || loading}
+                        title="Export PDF"
+                        aria-label="Export PDF"
+                        className={EXPORT_PDF_BUTTON_CLASS}
+                    >
+                        <FaFilePdf size={20} color="#D32F2F" />
+                    </button>
+                </div>
                 <div className="flex flex-wrap gap-3">
                     <div className="flex-1 min-w-[160px]">
                         <label className="text-xs text-slate-500">Convocation</label>
@@ -186,7 +369,7 @@ const DegreeReport = () => {
                             disabled={filterOptionsLoading}
                         >
                             <option value="">All Years</option>
-                            {filterOptions.years.map((year) => (
+                            {yearOptions.map((year) => (
                                 <option key={year} value={year}>{year}</option>
                             ))}
                         </select>
@@ -201,7 +384,7 @@ const DegreeReport = () => {
                             disabled={filterOptionsLoading}
                         >
                             <option value="">All Codes</option>
-                            {filterOptions.instituteCodes.map((code) => (
+                            {instituteCodeOptions.map((code) => (
                                 <option key={code} value={code}>{code}</option>
                             ))}
                         </select>
@@ -216,7 +399,7 @@ const DegreeReport = () => {
                             disabled={filterOptionsLoading}
                         >
                             <option value="">All Courses</option>
-                            {filterOptions.courses.map((name) => (
+                            {courseOptions.map((name) => (
                                 <option key={name} value={name}>{name}</option>
                             ))}
                         </select>
@@ -231,7 +414,7 @@ const DegreeReport = () => {
                             disabled={filterOptionsLoading}
                         >
                             <option value="">All Subcourses</option>
-                            {filterOptions.subcourses.map((name) => (
+                            {subcourseOptions.map((name) => (
                                 <option key={name} value={name}>{name}</option>
                             ))}
                         </select>
