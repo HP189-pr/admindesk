@@ -719,7 +719,7 @@ DG002,2023002,Jane Smith,456 Park Ave Delhi,+91 9876543211,XYZ College,Master of
             </div>
 
             {/* Records Section */}
-            {selectedMenu !== '➕' && selectedMenu !== '🎖 Convocation' && (
+            {selectedMenu !== '➕' && selectedMenu !== '📄 Report' && selectedMenu !== '🎖 Convocation' && (
                 <div className="bg-white shadow rounded-2xl p-4 h-[calc(100vh-220px)] overflow-auto">
                     <h2 className="text-lg font-semibold mb-4">Degree Search</h2>
                     <div className="overflow-x-auto rounded-2xl border border-indigo-100 shadow-sm">

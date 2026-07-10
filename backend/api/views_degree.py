@@ -182,6 +182,22 @@ class StudentDegreeViewSet(viewsets.ModelViewSet):
         degree_name = self.request.query_params.get('degree_name', None)
         if degree_name:
             queryset = queryset.filter(degree_name__icontains=degree_name)
+
+        institute_code = self.request.query_params.get('institute_code', None)
+        if institute_code:
+            enrollments_for_inst = Enrollment.objects.filter(
+                enrollment_no__isnull=False,
+                institute__institute_code__iexact=institute_code
+            ).values('enrollment_no')
+            queryset = queryset.filter(enrollment_no__in=models.Subquery(enrollments_for_inst))
+
+        subcourse_name = self.request.query_params.get('subcourse_name', None)
+        if subcourse_name:
+            enrollments_for_subcourse = Enrollment.objects.filter(
+                enrollment_no__isnull=False,
+                subcourse__subcourse_name__icontains=subcourse_name
+            ).values('enrollment_no')
+            queryset = queryset.filter(enrollment_no__in=models.Subquery(enrollments_for_subcourse))
         
         return queryset.order_by('-convocation_no', '-last_exam_year', '-id')
     

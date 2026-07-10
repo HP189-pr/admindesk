@@ -137,6 +137,17 @@ export const getDegreeFilterOptions = async (params = {}, config = {}) => {
 };
 
 /**
+ * Get degree student list for report filters
+ */
+export const getDegreeReportStudents = async (params = {}, config = {}) => {
+    const res = await API.get(
+        DEGREE_API,
+        { params, ...config }
+    );
+    return res.data;
+};
+
+/**
  * Search degrees by enrollment number
  */
 export const searchDegreesByEnrollment = async (enrollmentNo) => {
@@ -235,6 +246,7 @@ export default {
     getDegreeStatistics,
     getDegreeReport,
     getDegreeFilterOptions,
+    getDegreeReportStudents,
     searchDegreesByEnrollment,
     getConvocations,
     getAllConvocations,

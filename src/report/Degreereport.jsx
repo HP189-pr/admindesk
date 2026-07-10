@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { FaFileExcel, FaFilePdf } from 'react-icons/fa6';
-import { getAllConvocations, getDegreeReport, getDegreeFilterOptions } from '../services/degreeService';
+import { getAllConvocations, getDegreeReport, getDegreeFilterOptions, getDegreeReportStudents } from '../services/degreeService';
 
 const defaultFilters = {
     convocation_no: '',
@@ -38,45 +38,28 @@ const withSelectedValue = (options = [], selectedValue = '') => {
     return [selected, ...cleanOptions];
 };
 
-const formatCount = (value) => Number(value || 0).toLocaleString();
+const STUDENT_EXPORT_COLUMNS = [
+    { key: 'enrollment_no', label: 'Enrollment' },
+    { key: 'student_name_dg', label: 'Student Name' },
+    { key: 'institute_name_dg', label: 'Institute' },
+    { key: 'degree_name', label: 'Degree' },
+    { key: 'specialisation', label: 'Specialisation' },
+    { key: 'last_exam', label: 'Last Exam' },
+    { key: 'class_obtain', label: 'Class' },
+    { key: 'convocation_no', label: 'Conv.No' },
+    { key: 'convocation_month_year', label: 'Conv-On' },
+    { key: 'seat_last_exam', label: 'Seat No' },
+];
 
-const buildReportExportTables = (report, institutionSummaryRows) => ([
-    {
-        title: 'Convocation Summary',
-        columns: ['Convocation', 'Title', 'Month/Year', 'Degree Count'],
-        rows: (report?.convocations || []).map((row) => [
-            row.convocation_no || '',
-            row.convocation_title || '',
-            row.month_year || '',
-            row.total || 0,
-        ]),
-    },
-    {
-        title: 'Institution-wise Summary',
-        columns: ['Institute', 'Degree Count'],
-        rows: (institutionSummaryRows || []).map((row) => [
-            row.institute_name_dg || '',
-            row.total || 0,
-        ]),
-    },
-    {
-        title: 'Course-wise Summary',
-        columns: ['Course / Degree', 'Degree Count'],
-        rows: (report?.courses || []).map((row) => [
-            row.degree_name || '',
-            row.total || 0,
-        ]),
-    },
-    {
-        title: 'Institution Course Matrix',
-        columns: ['Institute', 'Course', 'Degrees'],
-        rows: (report?.institution_course || []).map((row) => [
-            row.institute_name_dg || '',
-            row.degree_name || '',
-            row.total || 0,
-        ]),
-    },
-]);
+const getLastExam = (row = {}) => {
+    if (row.last_exam_month && row.last_exam_year) return `${row.last_exam_month}-${row.last_exam_year}`;
+    return row.last_exam_month || row.last_exam_year || '';
+};
+
+const buildStudentExportRows = (students = []) => students.map((student) => ({
+    ...student,
+    last_exam: getLastExam(student),
+}));
 
 const buildExportFilename = (extension) => (
     `degree_report_${new Date().toISOString().slice(0, 10)}.${extension}`
@@ -90,44 +73,66 @@ const SummaryCard = ({ title, value = 0, sublabel }) => (
     </div>
 );
 
-const TableSection = ({ title, columns, rows = [], emptyLabel }) => (
+const StudentListSection = ({ students = [], total = 0, loading = false, error = '' }) => (
     <div className="bg-white rounded-2xl shadow-sm border">
         <div className="flex items-center justify-between px-4 py-3 border-b">
-            <h3 className="font-semibold text-slate-800">{title}</h3>
-            <span className="text-xs text-slate-400">{rows.length} rows</span>
+            <h3 className="font-semibold text-slate-800">Student List</h3>
+            <span className="text-xs text-slate-400">
+                {loading ? 'Loading...' : `${students.length.toLocaleString()} of ${total.toLocaleString()} records`}
+            </span>
         </div>
         <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-                <thead className="bg-slate-50">
+                <thead className="bg-indigo-50">
                     <tr>
-                        {columns.map((col) => (
-                            <th key={col.key} className="text-left px-4 py-2 font-medium text-slate-600 border-b">
-                                {col.label}
+                        {STUDENT_EXPORT_COLUMNS.map((column) => (
+                            <th key={column.key} className="text-left px-4 py-3 font-semibold text-indigo-900 uppercase text-[11px] tracking-wide border-b">
+                                {column.label}
                             </th>
                         ))}
                     </tr>
                 </thead>
                 <tbody>
-                    {rows.length === 0 ? (
+                    {loading ? (
                         <tr>
-                            <td colSpan={columns.length} className="px-4 py-8 text-center text-slate-400">
-                                {emptyLabel || 'No data available'}
+                            <td colSpan={STUDENT_EXPORT_COLUMNS.length} className="px-4 py-8 text-center text-slate-500">
+                                Loading student records...
+                            </td>
+                        </tr>
+                    ) : error ? (
+                        <tr>
+                            <td colSpan={STUDENT_EXPORT_COLUMNS.length} className="px-4 py-8 text-center text-red-600">
+                                {error}
+                            </td>
+                        </tr>
+                    ) : students.length === 0 ? (
+                        <tr>
+                            <td colSpan={STUDENT_EXPORT_COLUMNS.length} className="px-4 py-8 text-center text-slate-400">
+                                No student records match the selected filters
                             </td>
                         </tr>
                     ) : (
-                        rows.map((row, idx) => (
-                            <tr key={idx} className="odd:bg-white even:bg-slate-50">
-                                {columns.map((col) => (
-                                    <td key={col.key} className="px-4 py-2 border-b border-slate-100">
-                                        {col.render ? col.render(row[col.key], row) : (row[col.key] ?? '-')}
-                                    </td>
-                                ))}
-                            </tr>
-                        ))
+                        students.map((student, idx) => {
+                            const row = { ...student, last_exam: getLastExam(student) };
+                            return (
+                                <tr key={student.id || `${student.enrollment_no}-${idx}`} className={idx % 2 === 0 ? 'bg-white' : 'bg-indigo-50/40'}>
+                                    {STUDENT_EXPORT_COLUMNS.map((column) => (
+                                        <td key={column.key} className="px-4 py-3 border-b border-indigo-100 text-slate-700">
+                                            {row[column.key] || '-'}
+                                        </td>
+                                    ))}
+                                </tr>
+                            );
+                        })
                     )}
                 </tbody>
             </table>
         </div>
+        {total > students.length && !loading && (
+            <div className="px-4 py-3 text-xs text-amber-700 bg-amber-50 border-t border-amber-100">
+                Showing first {students.length.toLocaleString()} records. Apply more filters to narrow the list before export.
+            </div>
+        )}
     </div>
 );
 
@@ -137,8 +142,12 @@ const DegreeReport = () => {
     const [filterOptions, setFilterOptions] = useState(emptyFilterOptions);
     const [filterOptionsLoading, setFilterOptionsLoading] = useState(false);
     const [report, setReport] = useState(null);
+    const [students, setStudents] = useState([]);
+    const [studentCount, setStudentCount] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [studentsLoading, setStudentsLoading] = useState(false);
     const [error, setError] = useState('');
+    const [studentError, setStudentError] = useState('');
 
     useEffect(() => {
         let isMounted = true;
@@ -214,6 +223,38 @@ const DegreeReport = () => {
         return () => controller.abort();
     }, [filters]);
 
+    useEffect(() => {
+        const controller = new AbortController();
+        const params = {
+            ...makeParams(filters),
+            page: 1,
+            page_size: 10000,
+        };
+
+        const fetchStudents = async () => {
+            setStudentsLoading(true);
+            setStudentError('');
+            try {
+                const data = await getDegreeReportStudents(params, { signal: controller.signal });
+                setStudents(Array.isArray(data?.results) ? data.results : []);
+                setStudentCount(Number(data?.count || 0));
+            } catch (err) {
+                if (err.name !== 'CanceledError' && err.name !== 'AbortError') {
+                    setStudents([]);
+                    setStudentCount(0);
+                    setStudentError(err.response?.data?.detail || 'Unable to load student list');
+                }
+            } finally {
+                if (!controller.signal.aborted) {
+                    setStudentsLoading(false);
+                }
+            }
+        };
+
+        fetchStudents();
+        return () => controller.abort();
+    }, [filters]);
+
     const topConvocation = useMemo(() => report?.convocations?.[0], [report]);
     const topInstitution = useMemo(() => report?.institutions?.[0], [report]);
     const topCourse = useMemo(() => report?.courses?.[0], [report]);
@@ -233,19 +274,7 @@ const DegreeReport = () => {
         () => withSelectedValue(filterOptions.subcourses, filters.subcourse_name),
         [filterOptions.subcourses, filters.subcourse_name]
     );
-    const institutionSummaryRows = useMemo(() => {
-        const rows = Array.isArray(report?.institutions) ? report.institutions : [];
-        return [...rows].sort((a, b) => {
-            const left = String(a?.institute_name_dg || '').trim();
-            const right = String(b?.institute_name_dg || '').trim();
-            return left.localeCompare(right, undefined, { sensitivity: 'base' });
-        });
-    }, [report]);
-
-    const exportTables = useMemo(
-        () => buildReportExportTables(report, institutionSummaryRows),
-        [report, institutionSummaryRows]
-    );
+    const studentExportRows = useMemo(() => buildStudentExportRows(students), [students]);
 
     const handleInput = (event) => {
         const { name, value } = event.target;
@@ -255,63 +284,38 @@ const DegreeReport = () => {
     const resetFilters = () => setFilters(defaultFilters);
 
     const exportExcel = () => {
-        if (!report) return;
+        if (!studentExportRows.length) return;
 
         const workbook = XLSX.utils.book_new();
-        const overviewRows = [
-            ['Metric', 'Value'],
-            ['Total Degrees', report.overall_total || 0],
-            ['Convocation Buckets', report.convocations?.length || 0],
-            ['Institutions', report.institutions?.length || 0],
-            ['Courses', report.courses?.length || 0],
-        ];
-
-        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(overviewRows), 'Overview');
-        exportTables.forEach((table) => {
-            const rows = table.rows.length ? table.rows : [['No data available']];
-            XLSX.utils.book_append_sheet(
-                workbook,
-                XLSX.utils.aoa_to_sheet([table.columns, ...rows]),
-                table.title.slice(0, 31)
-            );
-        });
+        const rows = studentExportRows.map((row) => (
+            Object.fromEntries(STUDENT_EXPORT_COLUMNS.map((column) => [column.label, row[column.key] || '']))
+        ));
+        const worksheet = XLSX.utils.json_to_sheet(rows);
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Student List');
         XLSX.writeFile(workbook, buildExportFilename('xlsx'));
     };
 
     const exportPDF = () => {
-        if (!report) return;
+        if (!studentExportRows.length) return;
 
         const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
         doc.setFontSize(16);
-        doc.text('Degree Report', 14, 16);
+        doc.text('Degree Student List', 14, 16);
         doc.setFontSize(9);
-        doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 22);
+        doc.text(`Generated: ${new Date().toLocaleString()} | Records: ${studentCount.toLocaleString()}`, 14, 22);
         autoTable(doc, {
             startY: 28,
-            head: [['Metric', 'Value']],
-            body: [
-                ['Total Degrees', formatCount(report.overall_total)],
-                ['Convocation Buckets', formatCount(report.convocations?.length)],
-                ['Institutions', formatCount(report.institutions?.length)],
-                ['Courses', formatCount(report.courses?.length)],
-            ],
-            theme: 'grid',
-            styles: { fontSize: 9 },
+            head: [STUDENT_EXPORT_COLUMNS.map((column) => column.label)],
+            body: studentExportRows.map((row) => STUDENT_EXPORT_COLUMNS.map((column) => row[column.key] || '')),
+            theme: 'striped',
+            styles: { fontSize: 7, cellPadding: 1.6, overflow: 'linebreak' },
             headStyles: { fillColor: [15, 23, 42] },
-        });
-
-        exportTables.forEach((table) => {
-            doc.addPage('a4', 'landscape');
-            doc.setFontSize(13);
-            doc.text(table.title, 14, 16);
-            autoTable(doc, {
-                startY: 22,
-                head: [table.columns],
-                body: table.rows.length ? table.rows : [table.columns.map(() => '')],
-                theme: 'striped',
-                styles: { fontSize: 8, cellPadding: 2 },
-                headStyles: { fillColor: [15, 23, 42] },
-            });
+            columnStyles: {
+                1: { cellWidth: 38 },
+                2: { cellWidth: 45 },
+                3: { cellWidth: 38 },
+                4: { cellWidth: 34 },
+            },
         });
 
         doc.save(buildExportFilename('pdf'));
@@ -324,7 +328,7 @@ const DegreeReport = () => {
                     <button
                         type="button"
                         onClick={exportExcel}
-                        disabled={!report || loading}
+                        disabled={!studentExportRows.length || studentsLoading}
                         title="Export Excel"
                         aria-label="Export Excel"
                         className={EXPORT_EXCEL_BUTTON_CLASS}
@@ -334,7 +338,7 @@ const DegreeReport = () => {
                     <button
                         type="button"
                         onClick={exportPDF}
-                        disabled={!report || loading}
+                        disabled={!studentExportRows.length || studentsLoading}
                         title="Export PDF"
                         aria-label="Export PDF"
                         className={EXPORT_PDF_BUTTON_CLASS}
@@ -430,7 +434,7 @@ const DegreeReport = () => {
                     </div>
                 </div>
                 <p className="text-xs text-slate-400 mt-3">
-                    Filters drive both the visual report and the downstream data-analysis exports.
+                    Filters drive the student list and the Excel/PDF exports.
                     {filterOptionsLoading && ' Loading filter lists…'}
                 </p>
             </div>
@@ -456,47 +460,11 @@ const DegreeReport = () => {
                         <SummaryCard title="Courses" value={report.courses?.length || 0} sublabel={topCourse?.degree_name} />
                     </div>
 
-                    <TableSection
-                        title="Convocation Summary"
-                        columns={[
-                            { key: 'convocation_no', label: 'Convocation' },
-                            { key: 'convocation_title', label: 'Title' },
-                            { key: 'month_year', label: 'Month/Year' },
-                            { key: 'total', label: 'Degree Count', render: (val) => (val || 0).toLocaleString() }
-                        ]}
-                        rows={report.convocations || []}
-                        emptyLabel="No convocation data for selected filters"
-                    />
-
-                    <TableSection
-                        title="Institution-wise Summary"
-                        columns={[
-                            { key: 'institute_name_dg', label: 'Institute' },
-                            { key: 'total', label: 'Degree Count', render: (val) => (val || 0).toLocaleString() }
-                        ]}
-                        rows={institutionSummaryRows}
-                        emptyLabel="No institutions match the current filters"
-                    />
-
-                    <TableSection
-                        title="Course-wise Summary"
-                        columns={[
-                            { key: 'degree_name', label: 'Course / Degree' },
-                            { key: 'total', label: 'Degree Count', render: (val) => (val || 0).toLocaleString() }
-                        ]}
-                        rows={report.courses || []}
-                        emptyLabel="No course data for selected filters"
-                    />
-
-                    <TableSection
-                        title="Institution × Course Matrix"
-                        columns={[
-                            { key: 'institute_name_dg', label: 'Institute' },
-                            { key: 'degree_name', label: 'Course' },
-                            { key: 'total', label: 'Degrees', render: (val) => (val || 0).toLocaleString() }
-                        ]}
-                        rows={report.institution_course || []}
-                        emptyLabel="No combined rows for the current slice"
+                    <StudentListSection
+                        students={students}
+                        total={studentCount}
+                        loading={studentsLoading}
+                        error={studentError}
                     />
                 </div>
             )}
