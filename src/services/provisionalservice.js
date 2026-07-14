@@ -69,10 +69,11 @@ export async function fetchCourseCodes(search = '') {
   return fetchJson(url);
 }
 
-export async function fetchSubcourseNames(search = '') {
-  const url = search
-    ? `${SUB_API}?search=${encodeURIComponent(search)}`
+export async function fetchSubcourseNames(maincourse_id = '') {
+  const url = maincourse_id
+    ? `${SUB_API}?maincourse_id=${encodeURIComponent(maincourse_id)}`
     : SUB_API;
+
   return fetchJson(url);
 }
 

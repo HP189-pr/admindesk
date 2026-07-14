@@ -25,7 +25,7 @@ import {
   getEnrollmentByNumber,
   resolveEnrollment,
 } from "../services/enrollmentservice";
-import { fetchInstituteCodes, fetchCourseCodes, fetchSubcourseNames } from "../services/provisionalservice";
+import { fetchInstituteCodes, fetchCourseCodes, fetchSubcourseNames } from "../services/courseService";
 import { useAuth } from "../hooks/AuthContext";
 import API from "../api/axiosInstance";
 import EnrollmentReport from "../report/enrollmentreport";
@@ -383,19 +383,44 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
   useEffect(() => {
     (async () => {
       try {
-        const [inst, courses, subs] = await Promise.all([
+        const [inst, courses] = await Promise.all([
           fetchInstituteCodes(),
           fetchCourseCodes(),
-          fetchSubcourseNames(),
         ]);
+
         setInstOptions(inst || []);
         setCourseOptions(courses || []);
-        setSubcourseOptions(subs || []);
       } catch (error) {
-        console.error("Failed to load enrollment dropdown options:", error);
+        console.error(error);
       }
     })();
   }, []);
+  useEffect(() => {
+  async function loadSubCourses() {
+
+    if (!formState.data.maincourse_id) {
+      setSubcourseOptions([]);
+      return;
+    }
+
+    try {
+      const subs = await fetchSubcourseNames(
+        formState.data.maincourse_id
+      );
+
+      console.log("Subcourses:", subs);
+
+      setSubcourseOptions(subs || []);
+
+    } catch (err) {
+      console.error(err);
+      setSubcourseOptions([]);
+    }
+  }
+
+  loadSubCourses();
+
+}, [formState.data.maincourse_id]);
 
   // Memoized database fields
   const databaseFields = React.useMemo(() => getDatabaseFields(), []);
@@ -658,15 +683,23 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormState((prev) => ({
-      ...prev,
-      data: {
-        ...prev.data,
-        [name]: value,
-      },
-    }));
-  };
+
+  const { name, value } = e.target;
+
+  setFormState(prev => ({
+    ...prev,
+    data: {
+      ...prev.data,
+      [name]: value,
+
+      ...(name === "maincourse_id"
+        ? {
+            subcourse_id: ""
+          }
+        : {})
+    }
+  }));
+};
 
   const resetCancelForm = () => {
     setCancelForm(buildCancelFormState());
