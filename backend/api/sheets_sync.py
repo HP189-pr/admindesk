@@ -60,6 +60,18 @@ BANK_SHEET_WORKSHEET_CANDIDATES = (
     "BankSheet",
 )
 
+CASH_SHEET_NEW_WORKSHEET_CANDIDATES = (
+    "CashSheetNew",
+)
+
+UPI_SHEET_NEW_WORKSHEET_CANDIDATES = (
+    "UPISheetNew",
+)
+
+BANK_SHEET_NEW_WORKSHEET_CANDIDATES = (
+    "BankSheetNew",
+)
+
 CASH_SHEET_BASE_HEADERS = ["date"]
 
 CASH_SHEET_TRAILING_HEADERS = [
@@ -111,7 +123,45 @@ TRANSCRIPT_FIELD_ALIASES: Dict[str, tuple[str, ...]] = {
     "transcript_remark": (
         "transcript remark",
         "remark",
+        "remark ",
+        "remark",
         "remarks",
+    ),
+    "request_ref_no": (
+        "college outward / college transcript no",
+        "college transcript no",
+        "request_ref_no",
+        "reference",
+        "ref no",
+    ),
+    "enrollment_no": (
+        "enrollment no",
+        "enrollment number",
+        "enrollment_no",
+        "enrollment",
+    ),
+    "student_name": (
+        "student name",
+        "student_name",
+        "name",
+    ),
+    "institute_name": (
+        "college name / department",
+        "institute name",
+        "institute",
+        "institute_name",
+    ),
+    "transcript_receipt": (
+        "transcript payment rec no",
+        "transcript receipt",
+        "receipt",
+    ),
+    "submit_mail": (
+        "email address",
+        "submit mail",
+        "submit_mail",
+        "email",
+        "mail",
     ),
     # allow writing back TR No to the sheet
     "tr_request_no": (
@@ -602,17 +652,19 @@ def import_transcript_requests_from_sheet(sheet_id: Optional[str] = None, worksh
             'request_ref_no',
             'trn_reqest_ref_no',
             'trn_request_ref_no',
+            'college outward / college transcript no',
+            'college transcript no',
             'request ref no',
             'ref no',
             'reference',
             'ref',
         )
-        enrollment_no = pick(norm_row, 'enrollment_no', 'enrollment', 'enroll no', 'enroll')
-        student_name = pick(norm_row, 'student_name', 'name', 'student')
-        institute_name = pick(norm_row, 'institute_name', 'institute')
-        transcript_receipt = pick(norm_row, 'transcript_receipt', 'receipt', 'transcript receipt')
-        transcript_remark = pick(norm_row, 'transcript_remark', 'remark', 'remarks', 'comment')
-        submit_mail = pick(norm_row, 'submit_mail', 'submit mail', 'email', 'mail')
+        enrollment_no = pick(norm_row, 'enrollment_no', 'enrollment number', 'enrollment', 'enroll no', 'enroll')
+        student_name = pick(norm_row, 'student_name', 'student name', 'name', 'student')
+        institute_name = pick(norm_row, 'institute_name', 'college name / department', 'institute', 'institute name')
+        transcript_receipt = pick(norm_row, 'transcript_receipt', 'transcript payment rec no', 'receipt', 'transcript receipt')
+        transcript_remark = pick(norm_row, 'transcript_remark', 'remark', 'remark ', 'remarks', 'comment')
+        submit_mail = pick(norm_row, 'submit_mail', 'email address', 'submit mail', 'email', 'mail')
         pdf_generate = pick(norm_row, 'pdf_generate', 'pdf', 'pdf generate')
         mail_status_raw = pick(norm_row, 'mail_status', 'status', 'mail status')
         requested_at_raw = pick(norm_row, 'requested_at', 'date', 'request date', 'trn_reqest_date', 'trn_request_date')
@@ -947,7 +999,9 @@ def import_transcript_requests_from_sheet(sheet_id: Optional[str] = None, worksh
             inst = TranscriptRequest.objects.filter(enrollment_no__iexact=str(norm_row.get('enrollment_no'))).first()
         if not inst and norm_row.get('submit_mail'):
             inst = TranscriptRequest.objects.filter(submit_mail__iexact=str(norm_row.get('submit_mail'))).first()
-        if inst and (inst.tr_request_no is None):
+        # Treat 0 the same as missing here: rows imported without a TR number
+        # are initially stored with 0, and they must still receive a real ID.
+        if inst and not inst.tr_request_no:
             assigned = next_tr
             next_tr += 1
             inst.tr_request_no = assigned
@@ -1881,6 +1935,7 @@ def _sync_payment_mode_sheet_to_sheet(
     date_to: Optional[str] = None,
     all_dates: bool = False,
     sheet_id: Optional[str] = None,
+    compact_nonzero_columns: bool = False,
 ) -> Dict[str, int]:
     """Upsert one daily summary row for a payment-mode worksheet."""
     from .domain_cash_register import FeeType, Receipt
@@ -1893,6 +1948,15 @@ def _sync_payment_mode_sheet_to_sheet(
     today_str = timezone.now().date().isoformat()
     resolved_from = date_from or today_str
     resolved_to = date_to or resolved_from
+    if compact_nonzero_columns:
+        try:
+            base_day = datetime.strptime(resolved_from, "%Y-%m-%d").date()
+        except (TypeError, ValueError):
+            base_day = timezone.now().date()
+        fiscal_start_year = base_day.year if base_day.month >= 4 else base_day.year - 1
+        resolved_from = date_type(fiscal_start_year, 4, 1).isoformat()
+        resolved_to = date_type(fiscal_start_year + 1, 3, 31).isoformat()
+        all_dates = False
 
     try:
         worksheet = _get_or_create_named_worksheet(sheet_id, worksheet_candidates)
@@ -1923,47 +1987,14 @@ def _sync_payment_mode_sheet_to_sheet(
         .order_by("code")
         .values_list("code", flat=True)
     )
-    merged_fee_headers = [
+    all_fee_headers = [
         str(code).strip()
         for code in active_fee_type_codes
         if str(code).strip()
     ]
 
-    final_headers = [
-        *CASH_SHEET_BASE_HEADERS,
-        *merged_fee_headers,
-        *CASH_SHEET_TRAILING_HEADERS,
-    ]
-    sheet_width = max(len(header_row), len(final_headers), 1)
-
     def _column_label(column_number: int) -> str:
         return "".join(ch for ch in rowcol_to_a1(1, column_number) if ch.isalpha())
-
-    if final_headers != existing_headers:
-        try:
-            end_col = _column_label(sheet_width)
-            header_payload = final_headers + ([""] * (sheet_width - len(final_headers)))
-            worksheet.update(f"A1:{end_col}1", [header_payload], value_input_option="USER_ENTERED")
-            existing_values = [final_headers, *existing_values[1:]] if existing_values else [final_headers]
-        except Exception as exc:
-            logger.error("%s: cannot update header row: %s", log_label, exc)
-            return {"appended": 0, "updated": 0, "skipped": 0, "total": 0}
-
-    def _pad_existing_row(row: list[str], width: int) -> list[str]:
-        trimmed = [str(value).strip() for value in row]
-        return trimmed + ([""] * (width - len(trimmed)))
-
-    existing_dates: Dict[str, int] = {}
-    existing_rows_by_date: Dict[str, list[str]] = {}
-    duplicate_row_numbers = []
-    for row_index, row in enumerate(existing_values[1:], start=2):
-        if row and row[0]:
-            date_key = str(row[0]).strip()
-            if date_key in existing_dates:
-                duplicate_row_numbers.append(row_index)
-                continue
-            existing_dates[date_key] = row_index
-            existing_rows_by_date[date_key] = [str(value).strip() for value in _pad_existing_row(row, sheet_width)]
 
     summary_by_date: Dict[str, Dict[str, object]] = {}
     for receipt in qs:
@@ -1973,7 +2004,7 @@ def _sync_payment_mode_sheet_to_sheet(
         summary = summary_by_date.setdefault(
             date_key,
             {
-                "totals": {fee_code: 0 for fee_code in merged_fee_headers},
+                "totals": {fee_code: 0 for fee_code in all_fee_headers},
                 "grand_total": 0,
                 "start_rec": "",
                 "end_rec": "",
@@ -1981,7 +2012,7 @@ def _sync_payment_mode_sheet_to_sheet(
                 "end_seq": None,
             },
         )
-        for fee_code in merged_fee_headers:
+        for fee_code in all_fee_headers:
             summary["totals"].setdefault(fee_code, 0)
 
         for item in receipt.items.all():
@@ -2003,6 +2034,61 @@ def _sync_payment_mode_sheet_to_sheet(
             if summary["end_seq"] is None or rec_no > summary["end_seq"]:
                 summary["end_seq"] = rec_no
                 summary["end_rec"] = receipt_full
+
+    if compact_nonzero_columns:
+        merged_fee_headers = [
+            str(code).strip()
+            for code in active_fee_type_codes
+            if str(code).strip()
+            and any((summary["totals"].get(str(code).strip(), 0) or 0) != 0 for summary in summary_by_date.values())
+        ]
+    else:
+        merged_fee_headers = [
+            str(code).strip()
+            for code in active_fee_type_codes
+            if str(code).strip()
+        ]
+
+    final_headers = [
+        *CASH_SHEET_BASE_HEADERS,
+        *merged_fee_headers,
+        *CASH_SHEET_TRAILING_HEADERS,
+    ]
+    sheet_width = (
+        max(len(final_headers), 1)
+        if compact_nonzero_columns
+        else max(len(header_row), len(final_headers), 1)
+    )
+
+    if final_headers != existing_headers:
+        try:
+            end_col = _column_label(sheet_width)
+            header_payload = final_headers + ([""] * (sheet_width - len(final_headers)))
+            worksheet.update(f"A1:{end_col}1", [header_payload], value_input_option="USER_ENTERED")
+            if compact_nonzero_columns and len(header_row) > len(final_headers):
+                clear_start_col = _column_label(len(final_headers) + 1)
+                clear_end_col = _column_label(len(header_row))
+                worksheet.batch_clear([f"{clear_start_col}1:{clear_end_col}{max(len(existing_values), 1)}"])
+            existing_values = [final_headers, *existing_values[1:]] if existing_values else [final_headers]
+        except Exception as exc:
+            logger.error("%s: cannot update header row: %s", log_label, exc)
+            return {"appended": 0, "updated": 0, "skipped": 0, "total": 0}
+
+    def _pad_existing_row(row: list[str], width: int) -> list[str]:
+        trimmed = [str(value).strip() for value in row]
+        return trimmed + ([""] * (width - len(trimmed)))
+
+    existing_dates: Dict[str, int] = {}
+    existing_rows_by_date: Dict[str, list[str]] = {}
+    duplicate_row_numbers = []
+    for row_index, row in enumerate(existing_values[1:], start=2):
+        if row and row[0]:
+            date_key = str(row[0]).strip()
+            if date_key in existing_dates:
+                duplicate_row_numbers.append(row_index)
+                continue
+            existing_dates[date_key] = row_index
+            existing_rows_by_date[date_key] = [str(value).strip() for value in _pad_existing_row(row, sheet_width)]
 
     appended = 0
     updated = 0
@@ -2116,4 +2202,61 @@ def sync_bank_sheet_to_sheet(
         date_to=date_to,
         all_dates=all_dates,
         sheet_id=sheet_id,
+    )
+
+
+def sync_cash_sheet_new_to_sheet(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    all_dates: bool = False,
+    sheet_id: Optional[str] = None,
+) -> Dict[str, int]:
+    """Refresh CashSheetNew with zero-only fee columns removed."""
+    return _sync_payment_mode_sheet_to_sheet(
+        payment_mode="CASH",
+        worksheet_candidates=CASH_SHEET_NEW_WORKSHEET_CANDIDATES,
+        log_label="sync_cash_sheet_new_to_sheet",
+        date_from=date_from,
+        date_to=date_to,
+        all_dates=all_dates,
+        sheet_id=sheet_id,
+        compact_nonzero_columns=True,
+    )
+
+
+def sync_upi_sheet_new_to_sheet(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    all_dates: bool = False,
+    sheet_id: Optional[str] = None,
+) -> Dict[str, int]:
+    """Refresh UPISheetNew with zero-only fee columns removed."""
+    return _sync_payment_mode_sheet_to_sheet(
+        payment_mode="UPI",
+        worksheet_candidates=UPI_SHEET_NEW_WORKSHEET_CANDIDATES,
+        log_label="sync_upi_sheet_new_to_sheet",
+        date_from=date_from,
+        date_to=date_to,
+        all_dates=all_dates,
+        sheet_id=sheet_id,
+        compact_nonzero_columns=True,
+    )
+
+
+def sync_bank_sheet_new_to_sheet(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    all_dates: bool = False,
+    sheet_id: Optional[str] = None,
+) -> Dict[str, int]:
+    """Refresh BankSheetNew with zero-only fee columns removed."""
+    return _sync_payment_mode_sheet_to_sheet(
+        payment_mode="BANK",
+        worksheet_candidates=BANK_SHEET_NEW_WORKSHEET_CANDIDATES,
+        log_label="sync_bank_sheet_new_to_sheet",
+        date_from=date_from,
+        date_to=date_to,
+        all_dates=all_dates,
+        sheet_id=sheet_id,
+        compact_nonzero_columns=True,
     )

@@ -22,6 +22,8 @@ import {
   validateEnrollmentData,
   getAdmissionCancellationList,
   createAdmissionCancellation,
+  updateAdmissionCancellation,
+  deleteAdmissionCancellation,
   getEnrollmentByNumber,
   resolveEnrollment,
 } from "../services/enrollmentservice";
@@ -79,6 +81,17 @@ const getCancelRecordBatch = (record = {}) => {
   const year = Number(yearPrefix[1]);
   if (Number.isNaN(year)) return "";
   return String(year >= 50 ? 1900 + year : 2000 + year);
+};
+
+const getCancelRecordYear = (record = {}) => {
+  const value = record.outward_date || record.inward_date;
+  if (!value) return '';
+  const text = String(value).trim();
+  const isoMatch = text.match(/^(\d{4})[-/]/);
+  if (isoMatch) return isoMatch[1];
+  const dmyMatch = text.match(/^\d{1,2}[-/]\d{1,2}[-/](\d{2,4})/);
+  if (!dmyMatch) return '';
+  return dmyMatch[1].length === 2 ? `20${dmyMatch[1]}` : dmyMatch[1];
 };
 
 const buildCancelExportRows = (records = []) => records.map((record, index) => ({
@@ -186,6 +199,7 @@ const getApiErrorMessage = (error, fallback = "Failed to save enrollment") => {
 
   const buildCancelFormState = () => {
     return {
+    id: null,
     enrollmentNoInput: '',
     enrollmentId: null,
     studentName: '',
@@ -203,6 +217,7 @@ const getApiErrorMessage = (error, fallback = "Failed to save enrollment") => {
 
 const buildMultipleCancelRowState = () => ({
   rowId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  recordId: null,
   enrollmentNoInput: '',
   enrollmentId: null,
   studentName: '',
@@ -268,6 +283,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
   const [cancelRecords, setCancelRecords] = useState([]);
   const [cancelSearch, setCancelSearch] = useState('');
   const [cancelBatchFilter, setCancelBatchFilter] = useState('');
+  const [cancelYearFilter, setCancelYearFilter] = useState(() => String(new Date().getFullYear()));
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelForm, setCancelForm] = useState(() => buildCancelFormState());
   const [cancelEntryMode, setCancelEntryMode] = useState('multiple');
@@ -310,8 +326,20 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
         getCancelRecordBatch(r) === String(cancelBatchFilter)
       );
     }
+    if (cancelYearFilter) {
+      records = records.filter(r => getCancelRecordYear(r) === String(cancelYearFilter));
+    }
     return records;
-  }, [cancelRecords, cancelSearch, cancelBatchFilter]);
+  }, [cancelRecords, cancelSearch, cancelBatchFilter, cancelYearFilter]);
+
+  const cancelYearOptions = useMemo(() => {
+    const years = new Set([String(new Date().getFullYear())]);
+    cancelRecords.forEach((record) => {
+      const year = getCancelRecordYear(record);
+      if (year) years.add(year);
+    });
+    return [...years].sort((left, right) => Number(right) - Number(left));
+  }, [cancelRecords]);
 
   const exportCancelAdmissionExcel = () => {
     if (!filteredCancelRecords.length) {
@@ -467,26 +495,37 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
           ? data
           : data?.results || data?.items || [];
         
+        const parseDate = (value) => {
+          if (!value) return 0;
+          const text = String(value).trim();
+          if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(text)) {
+            return new Date(text).getTime() || 0;
+          }
+          const match = text.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})/);
+          if (match) {
+            const year = match[3].length === 2 ? `20${match[3]}` : match[3];
+            return new Date(`${year}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`).getTime() || 0;
+          }
+          return new Date(text).getTime() || 0;
+        };
+
+        const compareDescending = (left, right) => String(right || '').localeCompare(
+          String(left || ''),
+          undefined,
+          { numeric: true, sensitivity: 'base' },
+        );
+
         const sortedRows = [...rows].sort((a, b) => {
-          const parseDate = (d) => {
-             if (!d) return 0;
-             const s = String(d).trim();
-             if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(s)) {
-                 return new Date(s).getTime() || 0;
-             }
-             const m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})/);
-             if (m) {
-                 return new Date(`${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`).getTime() || 0;
-             }
-             return new Date(s).getTime() || 0;
-          };
-          const dateA = parseDate(a.outward_date);
-          const dateB = parseDate(b.outward_date);
-          if (dateA !== dateB) return dateB - dateA;
-          
-          const enrA = String(a.enrollment_no || '');
-          const enrB = String(b.enrollment_no || '');
-          return enrA.localeCompare(enrB);
+          const dateDifference = parseDate(b.outward_date) - parseDate(a.outward_date);
+          if (dateDifference !== 0) return dateDifference;
+
+          const outwardDifference = compareDescending(a.outward_no, b.outward_no);
+          if (outwardDifference !== 0) return outwardDifference;
+
+          return compareDescending(
+            a.enrollment_no || a.enrollment?.enrollment_no,
+            b.enrollment_no || b.enrollment?.enrollment_no,
+          );
         });
 
         const missingBatchEnrollmentNos = [
@@ -738,16 +777,21 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
     }));
   };
 
-  const updateEnrollmentAdmissionStatus = async (enrollmentId, status) => {
-    await API.patch(`/api/enrollments/${enrollmentId}/`, {
-      cancel: status === 'CANCELLED',
-    });
-  };
+  const saveAdmissionCancellation = async (payload, enrollmentId, recordId = null) => {
+    if (recordId) {
+      return updateAdmissionCancellation(recordId, payload);
+    }
 
-  const buildCancellationAuditPayload = () => ({
-    ...(user?.id || user?.username ? { updated_by: user?.id || user?.username } : {}),
-    updated_at: new Date().toISOString(),
-  });
+    const existing = cancelRecords.find((record) => (
+      Number(record.enrollment?.id || record.enrollment_id) === Number(enrollmentId)
+    ));
+
+    if (existing?.id) {
+      return updateAdmissionCancellation(existing.id, payload);
+    }
+
+    return createAdmissionCancellation(payload);
+  };
 
   const addMultipleCancelRow = async () => {
     const draft = multipleCancelForm.draftRow;
@@ -933,6 +977,68 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
     });
   };
 
+  const editCancellationRecord = (record) => {
+    forceShowCancelPanel();
+    setActiveTab('cancel');
+    const enrollmentKey = record.enrollment?.id || record.enrollment_id || getCancelRecordEnrollmentNo(record);
+    const matchingRecords = cancelRecords.filter((item) => (
+      (item.enrollment?.id || item.enrollment_id || getCancelRecordEnrollmentNo(item)) === enrollmentKey
+    ));
+
+    if (matchingRecords.length > 1) {
+      setCancelEntryMode('multiple');
+      setMultipleCancelForm({
+        ...buildMultipleCancelFormState(),
+        inward_no: record.inward_no || '',
+        inward_date: normalizeOptionalDate(record.inward_date),
+        outward_no: record.outward_no || '',
+        outward_date: normalizeOptionalDate(record.outward_date),
+        can_remark: record.can_remark || '',
+        rows: matchingRecords.map((item) => ({
+          ...buildMultipleCancelRowState(),
+          rowId: `edit-${item.id}`,
+          recordId: item.id,
+          enrollmentNoInput: getCancelRecordEnrollmentNo(item),
+          enrollmentId: item.enrollment?.id || item.enrollment_id || null,
+          studentName: item.student_name || item.enrollment?.student_name || '',
+          status: item.status === 'REVOKED' ? 'ACTIVE' : 'CANCELLED',
+        })),
+      });
+      return;
+    }
+
+    setCancelEntryMode('single');
+    setCancelForm({
+      ...buildCancelFormState(),
+      id: record.id,
+      enrollmentNoInput: getCancelRecordEnrollmentNo(record),
+      enrollmentId: record.enrollment?.id || record.enrollment_id || null,
+      studentName: record.student_name || record.enrollment?.student_name || '',
+      inward_no: record.inward_no || '',
+      inward_date: normalizeOptionalDate(record.inward_date),
+      outward_no: record.outward_no || '',
+      outward_date: normalizeOptionalDate(record.outward_date),
+      can_remark: record.can_remark || '',
+      status: record.status === 'REVOKED' ? 'ACTIVE' : 'CANCELLED',
+    });
+  };
+
+  const removeCancellationRecord = async (record) => {
+    if (!record?.id || !window.confirm(`Delete cancellation for ${getCancelRecordEnrollmentNo(record)}?`)) {
+      return;
+    }
+
+    try {
+      await deleteAdmissionCancellation(record.id);
+      toast.success('Cancellation record deleted');
+      if (cancelForm.id === record.id) resetCancelForm();
+      await loadCancellationRecords();
+      loadEnrollments(state.searchTerm, state.pagination.currentPage);
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to delete cancellation'));
+    }
+  };
+
   const submitCancelForm = async () => {
     if (!cancelForm.enrollmentId) {
       setCancelForm(prev => ({ ...prev, error: 'Fetch an enrollment before saving.' }));
@@ -948,11 +1054,9 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
         outward_no: cancelForm.outward_no || null,
         outward_date: cancelForm.outward_date || null,
         can_remark: cancelForm.can_remark || null,
-        status: cancelForm.status,
-        ...buildCancellationAuditPayload(),
+        status: cancelForm.status === 'ACTIVE' ? 'REVOKED' : 'CANCELLED',
       };
-      await createAdmissionCancellation(payload);
-      await updateEnrollmentAdmissionStatus(cancelForm.enrollmentId, cancelForm.status);
+      await saveAdmissionCancellation(payload, cancelForm.enrollmentId);
       toast.success("Admission cancellation saved");
       setCancelForm(buildCancelFormState());
       loadCancellationRecords();
@@ -1001,13 +1105,11 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
         outward_no: multipleCancelForm.outward_no || null,
         outward_date: multipleCancelForm.outward_date || null,
         can_remark: multipleCancelForm.can_remark || null,
-        status: row.status,
-        ...buildCancellationAuditPayload(),
+        status: row.status === 'ACTIVE' ? 'REVOKED' : 'CANCELLED',
       };
 
       try {
-        await createAdmissionCancellation(payload);
-        await updateEnrollmentAdmissionStatus(row.enrollmentId, row.status);
+        await saveAdmissionCancellation(payload, row.enrollmentId, row.recordId);
         successCount += 1;
       } catch (error) {
         failures.push(`${row.enrollmentNoInput}: ${extractApiErrorMessage(error, 'Failed to save cancellation')}`);
@@ -1060,6 +1162,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
                   <th className="border p-2 text-left">Batch</th>
                   
                   <th className="border p-2 text-left">Status</th>
+                  <th className="border p-2 text-left">Actions</th>
                   {rights.can_edit || rights.can_delete ? (<th className="border p-2 text-left">Actions</th>) : null}
                 </tr>
               </thead>
@@ -1143,7 +1246,8 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
           <h2 className="text-lg font-semibold">Cancel Admission</h2>
           <p className="text-sm text-slate-500">
             Showing {filteredCancelRecords.length} record{filteredCancelRecords.length === 1 ? "" : "s"}
-            {cancelBatchFilter ? ` for batch ${cancelBatchFilter}` : ""}
+            {cancelYearFilter ? ` for cancellation year ${cancelYearFilter}` : ""}
+            {cancelBatchFilter ? ` and batch ${cancelBatchFilter}` : ""}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -1182,7 +1286,19 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
         <div className="text-center py-4">Loading cancellations...</div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse border">
+          <table className="w-full min-w-[1160px] table-fixed border-collapse border">
+            <colgroup>
+              <col className="w-[140px]" />
+              <col className="w-[220px]" />
+              <col className="w-[70px]" />
+              <col className="w-[110px]" />
+              <col className="w-[110px]" />
+              <col className="w-[110px]" />
+              <col className="w-[110px]" />
+              <col className="w-[140px]" />
+              <col className="w-[110px]" />
+              <col className="w-[100px]" />
+            </colgroup>
             <thead>
               <tr className="bg-gray-100">
                 <th className="border p-2 text-left">Enrollment No</th>
@@ -1199,23 +1315,55 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
             <tbody>
               {filteredCancelRecords.length === 0 ? (
                 <tr>
-                  <td className="border p-4 text-center" colSpan={9}>No cancellation records</td>
+                  <td className="border p-4 text-center" colSpan={10}>No cancellation records</td>
                 </tr>
               ) : (
                 filteredCancelRecords.map(record => (
-                  <tr key={record.id}>
-                    <td className="border p-2">{record.enrollment_no}</td>
-                    <td className="border p-2">{record.student_name}</td>
-                    <td className="border p-2">{getCancelRecordBatch(record) || '-'}</td>
-                    <td className="border p-2">{record.inward_no || '-'}</td>
-                    <td className="border p-2">{isoToDMY(record.inward_date) || '-'}</td>
-                    <td className="border p-2">{record.outward_no || '-'}</td>
-                    <td className="border p-2">{isoToDMY(record.outward_date) || '-'}</td>
-                    <td className="border p-2">{record.can_remark || '-'}</td>
-                    <td className="border p-2">
+                  <tr
+                    key={record.id}
+                    className="cursor-pointer hover:bg-indigo-50"
+                    onClick={() => editCancellationRecord(record)}
+                  >
+                    <td className="border px-2 py-1 text-sm align-top whitespace-nowrap">{getCancelRecordEnrollmentNo(record)}</td>
+                    <td className="border px-2 py-1 text-sm align-top break-words">{record.student_name}</td>
+                    <td className="border px-2 py-1 text-sm align-top">{getCancelRecordBatch(record) || '-'}</td>
+                    <td className="border px-2 py-1 text-sm align-top break-words">{record.inward_no || '-'}</td>
+                    <td className="border px-2 py-1 text-sm align-top whitespace-nowrap">{isoToDMY(record.inward_date) || '-'}</td>
+                    <td className="border px-2 py-1 text-sm align-top break-words">{record.outward_no || '-'}</td>
+                    <td className="border px-2 py-1 text-sm align-top whitespace-nowrap">{isoToDMY(record.outward_date) || '-'}</td>
+                    <td className="border px-2 py-1 text-sm align-top break-words">{record.can_remark || '-'}</td>
+                    <td className="border px-2 py-1 text-sm align-top">
                       <span className={`px-2 py-1 rounded-full text-xs font-semibold ${record.status === 'CANCELLED' ? 'bg-red-100 text-red-600' : 'bg-yellow-100 text-yellow-700'}`}>
                         {record.status}
                       </span>
+                    </td>
+                    <td className="border px-2 py-1 text-sm align-top">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded bg-blue-600 text-white hover:bg-blue-700"
+                          title="Edit cancellation"
+                          aria-label="Edit cancellation"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            editCancellationRecord(record);
+                          }}
+                        >
+                          <FaEdit size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded bg-red-600 text-white hover:bg-red-700"
+                          title="Delete cancellation"
+                          aria-label="Delete cancellation"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            removeCancellationRecord(record);
+                          }}
+                        >
+                          <FaTrash size={12} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -1913,6 +2061,17 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
                   <option value="">All Batches</option>
                   {BATCH_OPTIONS.map((batch) => (
                     <option key={batch} value={batch}>{batch}</option>
+                  ))}
+                </select>
+                <select
+                  value={cancelYearFilter}
+                  onChange={(e) => setCancelYearFilter(e.target.value)}
+                  className="border rounded px-4 py-2 min-w-[150px]"
+                  aria-label="Cancellation year"
+                >
+                  <option value="">All Cancellation Years</option>
+                  {cancelYearOptions.map((year) => (
+                    <option key={year} value={year}>{year}</option>
                   ))}
                 </select>
               </>

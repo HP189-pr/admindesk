@@ -46,12 +46,18 @@ const SHEET_SYNC_OPTIONS = [
   { value: 'selected-sheet', label: 'Selected Date - CashSheet', syncTarget: 'cash_sheet', allDates: false },
   { value: 'selected-upi-sheet', label: 'Selected Date - UPISheet', syncTarget: 'upi_sheet', allDates: false },
   { value: 'selected-bank-sheet', label: 'Selected Date - BankSheet', syncTarget: 'bank_sheet', allDates: false },
+  { value: 'selected-sheet-new', label: 'Selected Date - CashSheetNew', syncTarget: 'cash_sheet_new', allDates: false },
+  { value: 'selected-upi-sheet-new', label: 'Selected Date - UPISheetNew', syncTarget: 'upi_sheet_new', allDates: false },
+  { value: 'selected-bank-sheet-new', label: 'Selected Date - BankSheetNew', syncTarget: 'bank_sheet_new', allDates: false },
   { value: 'all-all', label: 'All Dates - All Sheets', syncTarget: 'all', allDates: true },
   { value: 'all-register', label: 'All Dates - Cash Register', syncTarget: 'cash_register', allDates: true },
   { value: 'all-deposite', label: 'All Dates - Cash-Deposite', syncTarget: 'cash_deposite', allDates: true },
   { value: 'all-sheet', label: 'All Dates - CashSheet', syncTarget: 'cash_sheet', allDates: true },
   { value: 'all-upi-sheet', label: 'All Dates - UPISheet', syncTarget: 'upi_sheet', allDates: true },
   { value: 'all-bank-sheet', label: 'All Dates - BankSheet', syncTarget: 'bank_sheet', allDates: true },
+  { value: 'all-sheet-new', label: 'All Dates - CashSheetNew', syncTarget: 'cash_sheet_new', allDates: true },
+  { value: 'all-upi-sheet-new', label: 'All Dates - UPISheetNew', syncTarget: 'upi_sheet_new', allDates: true },
+  { value: 'all-bank-sheet-new', label: 'All Dates - BankSheetNew', syncTarget: 'bank_sheet_new', allDates: true },
 ];
 
 const RECEIPT_PREFIX_BY_MODE = {
@@ -758,6 +764,9 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
       cash_sheet: 'CashSheet',
       upi_sheet: 'UPISheet',
       bank_sheet: 'BankSheet',
+      cash_sheet_new: 'CashSheetNew',
+      upi_sheet_new: 'UPISheetNew',
+      bank_sheet_new: 'BankSheetNew',
     };
     const targetLabel = targetLabelMap[syncTarget] || 'all sheets';
     setFlash('info', `Syncing ${targetLabel} for ${scopeLabel}...`);
@@ -778,12 +787,18 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
       const cashSheet = result.cash_sheet || {};
       const upiSheet = result.upi_sheet || {};
       const bankSheet = result.bank_sheet || {};
+      const cashSheetNew = result.cash_sheet_new || {};
+      const upiSheetNew = result.upi_sheet_new || {};
+      const bankSheetNew = result.bank_sheet_new || {};
       const changedCount =
         (result.appended || 0) + (result.updated || 0) + (result.deleted || 0)
         + (cashDeposite.appended || 0) + (cashDeposite.updated || 0) + (cashDeposite.deleted || 0)
         + (cashSheet.appended || 0) + (cashSheet.updated || 0) + (cashSheet.deleted || 0)
         + (upiSheet.appended || 0) + (upiSheet.updated || 0) + (upiSheet.deleted || 0)
-        + (bankSheet.appended || 0) + (bankSheet.updated || 0) + (bankSheet.deleted || 0);
+        + (bankSheet.appended || 0) + (bankSheet.updated || 0) + (bankSheet.deleted || 0)
+        + (cashSheetNew.appended || 0) + (cashSheetNew.updated || 0) + (cashSheetNew.deleted || 0)
+        + (upiSheetNew.appended || 0) + (upiSheetNew.updated || 0) + (upiSheetNew.deleted || 0)
+        + (bankSheetNew.appended || 0) + (bankSheetNew.updated || 0) + (bankSheetNew.deleted || 0);
       if (
         !changedCount
         && !result.total
@@ -791,6 +806,9 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
         && !cashSheet.total
         && !upiSheet.total
         && !bankSheet.total
+        && !cashSheetNew.total
+        && !upiSheetNew.total
+        && !bankSheetNew.total
       ) {
         setFlash('error', `No ${targetLabel} data found for ${scopeLabel}.`);
         return;
@@ -810,6 +828,15 @@ const CashRegister = ({ rights = DEFAULT_RIGHTS, onToggleSidebar, onToggleChatbo
       }
       if (syncTarget === 'all' || syncTarget === 'bank_sheet') {
         messages.push(`BankSheet appended: ${bankSheet.appended || 0}, updated: ${bankSheet.updated || 0}, deleted: ${bankSheet.deleted || 0}, skipped: ${bankSheet.skipped || 0}`);
+      }
+      if (syncTarget === 'all' || syncTarget === 'cash_sheet_new') {
+        messages.push(`CashSheetNew appended: ${cashSheetNew.appended || 0}, updated: ${cashSheetNew.updated || 0}, deleted: ${cashSheetNew.deleted || 0}, skipped: ${cashSheetNew.skipped || 0}`);
+      }
+      if (syncTarget === 'all' || syncTarget === 'upi_sheet_new') {
+        messages.push(`UPISheetNew appended: ${upiSheetNew.appended || 0}, updated: ${upiSheetNew.updated || 0}, deleted: ${upiSheetNew.deleted || 0}, skipped: ${upiSheetNew.skipped || 0}`);
+      }
+      if (syncTarget === 'all' || syncTarget === 'bank_sheet_new') {
+        messages.push(`BankSheetNew appended: ${bankSheetNew.appended || 0}, updated: ${bankSheetNew.updated || 0}, deleted: ${bankSheetNew.deleted || 0}, skipped: ${bankSheetNew.skipped || 0}`);
       }
       setFlash('success', `Sheet sync done for ${scopeLabel}. ${messages.join('. ')}`);
     } catch (err) {

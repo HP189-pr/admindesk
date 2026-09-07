@@ -16,6 +16,7 @@ import {
   deleteCashOutward,
   fetchFeesAggregate,
   fetchRecRange,
+  syncCashRegisterToSheet,
 } from '../services/cashRegisterService';
 
 const DENOMS = [500, 200, 100, 50, 20, 10, 5, 2, 1];
@@ -692,6 +693,11 @@ const CashReport = ({ onBack }) => {
         await closeCashDay(payload);
         setMsg('Cash day closed successfully');
       }
+      await syncCashRegisterToSheet({
+        date_from: payload.date,
+        date_to: payload.date,
+        sync_target: 'all',
+      });
       load();
     } catch (e) {
       setMsg(e?.response?.data?.detail || 'Failed');

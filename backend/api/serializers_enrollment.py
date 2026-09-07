@@ -195,7 +195,7 @@ class EnrollmentSerializer(serializers.ModelSerializer):
 
 class AdmissionCancelSerializer(serializers.ModelSerializer):
     enrollment_no = serializers.CharField(source='enrollment.enrollment_no', read_only=True)
-    enrollment = EnrollmentSerializer(read_only=True)
+    enrollment = serializers.PrimaryKeyRelatedField(queryset=Enrollment.objects.all())
 
     class Meta:
         model = AdmissionCancel
@@ -217,6 +217,22 @@ class AdmissionCancelSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         enrollment = attrs.get('enrollment')
         student_name = attrs.get('student_name')
+
+        if enrollment and AdmissionCancel.objects.filter(
+            enrollment=enrollment,
+        ).exclude(pk=getattr(self.instance, 'pk', None)).exists():
+            raise serializers.ValidationError({
+                'enrollment': 'An admission cancellation record already exists for this enrollment.'
+            })
+
         if not student_name and enrollment:
             attrs['student_name'] = enrollment.student_name
         return super().validate(attrs)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['enrollment'] = EnrollmentSerializer(
+            instance.enrollment,
+            context=self.context,
+        ).data
+        return data

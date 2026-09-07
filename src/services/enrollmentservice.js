@@ -108,6 +108,16 @@ export const createAdmissionCancellation = async (payload) => {
     return res.data;
 };
 
+export const updateAdmissionCancellation = async (id, payload) => {
+    const res = await API.patch(`/api/admission-cancel/${id}/`, payload);
+    return res.data;
+};
+
+export const deleteAdmissionCancellation = async (id) => {
+    const res = await API.delete(`/api/admission-cancel/${id}/`);
+    return res.data;
+};
+
 export const getEnrollmentByNumber = async (enrollmentNo) => {
     const res = await API.get(`${ENROLLMENT_API}by-number/`, {
         params: { enrollment_no: enrollmentNo }

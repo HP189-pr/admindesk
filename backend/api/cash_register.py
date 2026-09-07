@@ -639,10 +639,13 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
     def sync_to_sheet(self, request):
         """Push receipts for a given date range to the Google Sheet."""
         from .sheets_sync import (
+            sync_bank_sheet_new_to_sheet,
             sync_bank_sheet_to_sheet,
             sync_cash_deposite_to_sheet,
             sync_cash_register_to_sheet,
+            sync_cash_sheet_new_to_sheet,
             sync_cash_sheet_to_sheet,
+            sync_upi_sheet_new_to_sheet,
             sync_upi_sheet_to_sheet,
         )
         date_from = (request.data.get("date_from") or "").strip() or None
@@ -685,6 +688,24 @@ class CashRegisterViewSet(FinancePermissionMixin, viewsets.ModelViewSet):
                 )
             if sync_target in {"all", "bank_sheet"}:
                 result["bank_sheet"] = sync_bank_sheet_to_sheet(
+                    date_from=date_from,
+                    date_to=date_to,
+                    all_dates=all_dates,
+                )
+            if sync_target in {"all", "cash_sheet_new"}:
+                result["cash_sheet_new"] = sync_cash_sheet_new_to_sheet(
+                    date_from=date_from,
+                    date_to=date_to,
+                    all_dates=all_dates,
+                )
+            if sync_target in {"all", "upi_sheet_new"}:
+                result["upi_sheet_new"] = sync_upi_sheet_new_to_sheet(
+                    date_from=date_from,
+                    date_to=date_to,
+                    all_dates=all_dates,
+                )
+            if sync_target in {"all", "bank_sheet_new"}:
+                result["bank_sheet_new"] = sync_bank_sheet_new_to_sheet(
                     date_from=date_from,
                     date_to=date_to,
                     all_dates=all_dates,

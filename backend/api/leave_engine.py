@@ -13,11 +13,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, timedelta, datetime
 from decimal import Decimal, ROUND_HALF_UP
-from typing import Dict, List, Optional, Sequence, Tuple, Any
+from typing import Dict, List, Optional, Sequence, Any
 from collections import defaultdict
 
-from django.db.models import Case, IntegerField, QuerySet, Value
-from django.db.models import Q, When
+from django.db.models import Case, IntegerField, QuerySet, Value  # pyright: ignore[reportMissingModuleSource]
+from django.db.models import Q, When  # pyright: ignore[reportMissingModuleSource]
 
 from .domain_emp import EmpProfile, LeaveAllocation, LeaveEntry, LeavePeriod, LeaveType
 from .domain_core import Holiday
@@ -150,7 +150,7 @@ class PeriodWindow:
 
     @classmethod
     def from_model(cls, p: LeavePeriod) -> "PeriodWindow":
-        return cls(id=p.id, name=p.period_name, start=p.start_date, end=p.end_date)
+        return cls(id=p.pk, name=p.period_name, start=p.start_date, end=p.end_date)
 
 
 class LeaveEngine:
@@ -207,13 +207,16 @@ class LeaveEngine:
     # -------------------------
     def _split_entry(self, entry: LeaveEntry, periods: List[PeriodWindow], holidays_set: set, sandwiched_resolver=None) -> Dict[int, Dict[str, Decimal]]:
         """Return mapping period_id -> {group_code: Decimal amount}"""
+        del sandwiched_resolver
         if not entry.start_date or not entry.end_date or entry.end_date < entry.start_date:
             return {}
-        code_raw = getattr(entry, "leave_type_id", None) or (getattr(entry.leave_type, "leave_code", None) if getattr(entry, "leave_type", None) else None)
+        lt_obj = getattr(entry, "leave_type", None)
+        code_raw = getattr(lt_obj, "leave_code", None) if lt_obj is not None else None
+        if not code_raw:
+            code_raw = getattr(entry, "leave_code", None) or getattr(entry, "leave_type_code", None)
         if not code_raw:
             return {}
         leave_code = str(code_raw).upper()
-        lt_obj = getattr(entry, "leave_type", None)
         group = _group_code(lt_obj) or leave_code
         dv = _day_value_for(lt_obj)
         saved_total_days = _to_decimal(getattr(entry, "total_days", None))
@@ -264,11 +267,11 @@ class LeaveEngine:
         Returns { employees: [ ... ], metadata: {...} }
         Each employee includes per-period starting/allocation/used/ending for tracked codes.
         """
+        del leave_calculation_date, config
         periods = self.load_periods()
         if not periods:
             return {"employees": [], "metadata": {"periods": []}}
 
-        period_map = {p.id: p for p in periods}
         allocations = self.load_allocations_for_periods([p.id for p in periods])
         entries_qs = list(self.load_entries(employee_ids))
         min_start = min((p.start for p in periods))
@@ -281,7 +284,8 @@ class LeaveEngine:
         alloc_sandwich_flags = {}  # (emp_id_or_None, period_id, code_or_*) -> bool
 
         for alloc in allocations:
-            pid = getattr(alloc, "period_id", None) or (alloc.period.id if getattr(alloc, "period", None) else None)
+            period = getattr(alloc, "period", None)
+            pid = getattr(alloc, "period_id", None) or (period.pk if period is not None else None)
             emp_fk = getattr(alloc, "emp", None)
             prof_id = getattr(emp_fk, "emp_id", None) if emp_fk else None
             code = (getattr(alloc, "leave_code", "") or "").upper()
@@ -400,7 +404,7 @@ class LeaveEngine:
 
             # IMPORTANT: include ALL periods (reports are historical)
             relevant_periods = periods
-            for idx, p in enumerate(relevant_periods):
+            for p in relevant_periods:
                 if effective_employee_start and effective_employee_start > p.end:
                     continue
 
@@ -418,6 +422,8 @@ class LeaveEngine:
                 for alloc_bucket in (base_alloc, emp_spec):
                     alloc_bucket[entitlement_code] = alloc_bucket.get("EL", DEC0) + alloc_bucket.get("VAC", DEC0)
                     alloc_bucket[other_entitlement_code] = DEC0
+
+                period_active = False
 
                 for code in self.tracked:
                     original_alloc = base_alloc.get(code, DEC0) + emp_spec.get(code, DEC0)
