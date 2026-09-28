@@ -15,7 +15,7 @@ from .domain_verification import Verification, MigrationRecord, ProvisionalRecor
 from .domain_letter import InstLetterMain, InstLetterStudent
 from .domain_degree import StudentDegree, ConvocationMaster
 from .domain_courses import Institute, MainBranch, SubBranch
-from .domain_documents import DocRec
+from .domain_documents import DocRec, Eca
 from .search_utils import apply_fts_search
 
 __all__ = ['StudentSearchViewSet']
@@ -133,6 +133,7 @@ class StudentSearchViewSet(viewsets.ViewSet):
         
         verification_list = []
         for vr in verifications:
+            eca_entry = Eca.objects.filter(doc_rec_id=vr.doc_rec.doc_rec_id if vr.doc_rec else '').order_by('-createdat').first()
             verification_list.append({
                 'id': vr.id,
                 'doc_rec_id': vr.doc_rec.doc_rec_id if vr.doc_rec else '',
@@ -148,6 +149,10 @@ class StudentSearchViewSet(viewsets.ViewSet):
                 'mail_status': vr.mail_status or '',
                 'pay_rec_no': vr.pay_rec_no or '',
                 'remark': getattr(vr, 'doc_remark', '') or '',
+                'eca_name': vr.eca_name or (eca_entry.eca_name if eca_entry else '') or '',
+                'eca_ref_no': vr.eca_ref_no or (eca_entry.eca_ref_no if eca_entry else '') or '',
+                'eca_send_date': (vr.eca_send_date or (eca_entry.eca_send_date if eca_entry else None)).strftime('%Y-%m-%d') if (vr.eca_send_date or (eca_entry.eca_send_date if eca_entry else None)) else '',
+                'eca_status': vr.eca_status or '',
             })
         
         # Provisional records - use enrollment ForeignKey
@@ -163,6 +168,7 @@ class StudentSearchViewSet(viewsets.ViewSet):
                 'date': pr.prv_date.strftime('%Y-%m-%d') if pr.prv_date else '',
                 'status': pr.prv_status or '',
                 'final_no': pr.prv_number or '',
+                'class_obtain': pr.class_obtain or '',
                 'remark': getattr(pr, 'doc_remark', '') or '',
             })
         

@@ -2,6 +2,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   FaUserGraduate,
+  FaGraduationCap,
+  FaChevronDown,
+  FaChevronUp,
   FaTimes
 } from 'react-icons/fa';
 import SearchField from './SearchField';
@@ -13,6 +16,7 @@ const PopupSearch = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [instFallback, setInstFallback] = useState({ inst_veri_number: '', rec_inst_name: '' });
 
   /* ================= LOGIC (UNCHANGED) ================= */
@@ -69,13 +73,21 @@ const PopupSearch = () => {
     .filter(Boolean)
     .join(', ') || '-';
 
+  const formatProvisionalNumber = (value) => {
+    const text = String(value || '').trim();
+    const erpMatch = text.match(/^KSV\/PRO\/(\d{4})\/(\d+)$/i);
+    return erpMatch ? `${erpMatch[1]}/${erpMatch[2]}` : (text || '-');
+  };
+
   const provisionalNumbers = (result?.services?.provisional || [])
     .map(p => p.prv_number || p.final_no)
     .filter(Boolean)
+    .map(formatProvisionalNumber)
     .join(', ') || '-';
   const provisionalDate = formatDate(
     firstProvisional?.prv_date || firstProvisional?.date
   );
+  const provisionalClass = firstProvisional?.class_obtain || '-';
 
   const migrationNumbers = (result?.services?.migration || [])
     .map(m => m.mg_number || m.final_no)
@@ -156,14 +168,14 @@ const PopupSearch = () => {
   const Field = ({ label, value }) => (
     <div className="flex justify-between text-[12px] text-slate-600">
       <span>{label}</span>
-      <span className="font-medium text-slate-800">
+      <span className="min-w-0 max-w-[68%] break-words text-right font-medium text-slate-800">
         {value !== undefined && value !== null && value !== '' ? value : '-'}
       </span>
     </div>
   );
 
   const Card = ({ title, count, children, bgColor = '#ffffff', cardClassName = '' }) => (
-    <div className={`border border-slate-200 rounded-xl p-3 ${cardClassName}`} style={{ backgroundColor: bgColor }}>
+    <div className={`h-full border border-slate-200 rounded-xl p-3 ${cardClassName}`} style={{ backgroundColor: bgColor }}>
       <div className="flex justify-between items-center mb-2">
         <span className="text-[13px] text-slate-600">{title}</span>
         <span className="text-lg font-semibold text-slate-800">{count}</span>
@@ -172,11 +184,24 @@ const PopupSearch = () => {
     </div>
   );
 
+  const ClassHighlight = ({ value, tone = 'amber' }) => {
+    const toneClasses = tone === 'green'
+      ? 'border-green-300 bg-green-50 text-green-900 text-green-700'
+      : 'border-amber-300 bg-amber-50 text-amber-900 text-amber-700';
+    const [borderClass, backgroundClass, textClass, iconClass] = toneClasses.split(' ');
+    return (
+      <div className={`mt-1 flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-center text-[11px] font-bold uppercase leading-tight ${borderClass} ${backgroundClass} ${textClass}`}>
+        <FaGraduationCap className={`shrink-0 text-lg ${iconClass}`} aria-hidden="true" />
+        <span>{value || '-'}</span>
+      </div>
+    );
+  };
+
   /* ================= UI ================= */
 
   return (
-    <div className={`fixed right-[05px] bottom-16 z-[60] ${open ? 'w-[380px] max-w-full' : 'w-14 h-14'}`}>
-      <div className={open ? 'bg-white border shadow-xl rounded-2xl overflow-hidden' : 'w-fit ml-auto'}>
+    <div className={`fixed right-2 bottom-4 z-[60] ${open ? 'w-[calc(100vw-1rem)] max-w-[520px] max-h-[calc(100vh-5rem)]' : 'w-14 h-14'}`}>
+      <div className={open ? 'flex max-h-[calc(100vh-5rem)] flex-col overflow-hidden rounded-2xl border bg-white shadow-xl' : 'w-fit ml-auto'}>
         {/* Header */}
         <div
           className={
@@ -205,7 +230,7 @@ const PopupSearch = () => {
         </div>
 
         {open && (
-          <div className="p-4 space-y-3">
+          <div className="min-h-0 overflow-y-auto p-3 space-y-3 sm:p-4">
             {/* Search */}
             <div className="relative">
               <SearchField
@@ -233,24 +258,52 @@ const PopupSearch = () => {
               <>
                 {/* Student Header */}
                 <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2">
-                  <div className="flex justify-between items-center">
-                    <div className="text-[13px] font-semibold text-slate-800 uppercase">
+                  <div className="flex min-w-0 items-center justify-between gap-2">
+                    <div className="min-w-0 truncate text-[13px] font-semibold uppercase text-slate-800">
                       {general.student_name || '-'}
                     </div>
-                    <span className="text-[11px] bg-white border border-slate-300 px-2 py-0.5 rounded-full">
-                      {general.enrollment_no || general.temp_enrollment_no}
-                    </span>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <span className="rounded-full border border-slate-300 bg-white px-2 py-0.5 text-[11px]">
+                        {general.enrollment_no || general.temp_enrollment_no}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setDetailsExpanded((expanded) => !expanded)}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-full text-slate-500 transition hover:bg-white hover:text-indigo-700"
+                        aria-label={detailsExpanded ? 'Collapse student details' : 'Expand student details'}
+                        aria-expanded={detailsExpanded}
+                      >
+                        {detailsExpanded ? <FaChevronUp size={12} /> : <FaChevronDown size={12} />}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                {/* GRID */}
-                <div className="grid grid-cols-2 gap-1 items-stretch min-h-[300px]">
+                {detailsExpanded ? (
+                  <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-3">
+                    <div className="mb-2 text-[13px] font-bold text-slate-700">Student Details</div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[12px]">
+                      <Field label="Batch" value={general.batch} />
+                      <Field label="Gender" value={general.gender} />
+                      <Field label="Mother Name" value={general.mother_name} />
+                      <Field label="Father Name" value={general.father_name} />
+                      <Field label="Admission Date" value={formatDate(general.admission_date)} />
+                      <Field label="Aadhaar No" value={general.aadhar_no} />
+                      <Field label="ABC ID" value={general.abc_id} />
+                      <Field label="Contact" value={general.contact_no} />
+                      <Field label="Email" value={general.email} />
+                      <Field label="Institute Code" value={general.institute_code} />
+                    </div>
+                  </div>
+                ) : (
+                /* GRID */
+                <div className="grid grid-cols-1 items-stretch gap-2 sm:grid-cols-2 sm:grid-rows-[200px_160px_auto]">
                   <div className="h-full">
                     <Card
                       title={<span className="font-bold">Verification</span>}
                       count={counts.verification}
                       bgColor={SERVICE_BG.verification}
-                      cardClassName="min-h-[228px]"
+                      cardClassName="min-h-[210px] sm:min-h-0"
                     >
                       <div className="grid grid-cols-6 gap-1 text-[12px] text-slate-700">
                         <span>TR</span><span>{firstVerification?.tr_count ?? '-'}</span>
@@ -268,54 +321,49 @@ const PopupSearch = () => {
                     </Card>
                   </div>
 
-                  <div className="h-full flex flex-col gap-2">
-                    <div className="flex-1">
-                      <Card
-                        title={<span className="font-bold">Provisional</span>}
-                        count={counts.provisional}
-                        bgColor={SERVICE_BG.provisional}
-                      >
-                        <Field label="pvr_number" value={provisionalNumbers} />
-                        <Field label="pvr_date" value={provisionalDate} />
-                      </Card>
-                    </div>
-
-                    <div className="flex-1">
-                      <Card
-                        title={<span className="font-bold">Migration</span>}
-                        count={counts.migration}
-                        bgColor={SERVICE_BG.migration}
-                      >
-                        <Field label="mg_number" value={migrationNumbers} />
-                        <Field label="mg_date" value={migrationDate} />
-                      </Card>
-                    </div>
+                  <div className="h-full">
+                    <Card
+                      title={<span className="font-bold">Degree</span>}
+                      count={counts.degree}
+                      bgColor={SERVICE_BG.degree}
+                      cardClassName="min-h-[210px] sm:min-h-0"
+                    >
+                      <Field label="Convocation No" value={firstDegree?.convocation_no} />
+                      <Field label="Convocation Month-Year" value={firstDegree?.convocation_period} />
+                      <div className="flex justify-between gap-2 text-[12px] text-slate-600">
+                        <span>Class Obtain</span>
+                      </div>
+                      <ClassHighlight value={firstDegree?.class_obtain} tone="green" />
+                    </Card>
                   </div>
 
-                    {/* Degree — FULL WIDTH */}
-                    <div className="col-span-2">
-                        <Card
-                          title={<span className="font-bold">Degree</span>}
-                          count={counts.degree}
-                          bgColor={SERVICE_BG.degree}
-                        >
-                        <Field
-                            label="Convocation No"
-                            value={firstDegree?.convocation_no}
-                        />
-                        <Field
-                            label="Convocation Month-Year"
-                            value={firstDegree?.convocation_period}
-                        />
-                        <Field
-                          label="Class Obtain"
-                          value={firstDegree?.class_obtain}
-                        />
-                        </Card>
-                    </div>
+                  <div className="h-full">
+                    <Card
+                      title={<span className="font-bold">Migration</span>}
+                      count={counts.migration}
+                      bgColor={SERVICE_BG.migration}
+                      cardClassName="min-h-[190px] sm:min-h-0"
+                    >
+                      <Field label="mg_number" value={migrationNumbers} />
+                      <Field label="mg_date" value={migrationDate} />
+                    </Card>
+                  </div>
 
-                    {/* Inst-Verification — FULL WIDTH */}
-                    <div className="col-span-2">
+                  <div className="h-full">
+                    <Card
+                      title={<span className="font-bold">Provisional</span>}
+                      count={counts.provisional}
+                      bgColor={SERVICE_BG.provisional}
+                      cardClassName="min-h-[190px] sm:min-h-0"
+                    >
+                      <Field label="pvr_number" value={provisionalNumbers} />
+                      <Field label="pvr_date" value={provisionalDate} />
+                      <ClassHighlight value={provisionalClass} />
+                    </Card>
+                  </div>
+
+                  {/* Inst-Verification — FULL WIDTH */}
+                  <div className="col-span-1 sm:col-span-2">
                         <Card
                         title={<span className="font-bold">Institutional Verification</span>}
                         count={counts.institutional_verification}
@@ -332,6 +380,7 @@ const PopupSearch = () => {
                         </Card>
                     </div>
                     </div>
+                  )}
 
 
                 <div className="text-[11px] text-slate-500">

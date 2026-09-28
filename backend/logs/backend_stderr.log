@@ -90295,3 +90295,64 @@ Not Found: /favicon.ico
 2026-09-28 13:25:24,390 INFO     Listening on TCP address 0.0.0.0:8001
 Unauthorized: /api/users/
 2026-09-28 14:34:01,364 WARNING  Unauthorized: /api/users/
+2026-09-28 14:40:08,335 INFO     Killed 1 pending application instances
+2026-09-28 14:40:10,716 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-28 14:40:10,716 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-28 14:40:10,716 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-28 14:40:10,716 INFO     Listening on TCP address 0.0.0.0:8001
+2026-09-28 14:48:14,611 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26345'}
+2026-09-28 14:48:14,611 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-28 14:48:14,626 INFO     InstLetterPDF grouped records: keys=['2026/345']
+2026-09-28 14:48:14,626 INFO     DEBUG rec_inst_pin value: '201304'
+2026-09-28 14:55:07,330 INFO     Killed 2 pending application instances
+2026-09-28 14:55:09,352 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-28 14:55:09,353 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-28 14:55:09,353 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-28 14:55:09,354 INFO     Listening on TCP address 0.0.0.0:8001
+Not Found: /api/student-search/search/
+2026-09-28 14:55:17,269 WARNING  Not Found: /api/student-search/search/
+2026-09-28 15:03:07,449 INFO     Killed 2 pending application instances
+2026-09-28 15:03:09,287 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-28 15:03:09,287 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-28 15:03:09,287 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-28 15:03:09,287 INFO     Listening on TCP address 0.0.0.0:8001
+Internal Server Error: /api/student-search/search/
+2026-09-28 15:07:34,714 ERROR    Internal Server Error: /api/student-search/search/
+2026-09-28 15:12:09,403 INFO     Killed 2 pending application instances
+2026-09-28 15:12:11,235 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-28 15:12:11,235 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-28 15:12:11,235 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-28 15:12:11,235 INFO     Listening on TCP address 0.0.0.0:8001
+2026-09-28 15:23:13,577 INFO     Killed 2 pending application instances
+2026-09-28 15:23:15,101 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-28 15:23:15,101 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-28 15:23:15,101 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-28 15:23:15,101 INFO     Listening on TCP address 0.0.0.0:8001
+Internal Server Error: /api/student-search/search/
+2026-09-28 15:23:25,083 ERROR    Internal Server Error: /api/student-search/search/
+Internal Server Error: /api/student-search/search/
+2026-09-28 15:23:28,087 ERROR    Internal Server Error: /api/student-search/search/
+Internal Server Error: /api/student-search/search/
+2026-09-28 15:23:43,217 ERROR    Internal Server Error: /api/student-search/search/
+Internal Server Error: /api/student-search/search/
+2026-09-28 15:24:31,101 ERROR    Internal Server Error: /api/student-search/search/
+2026-09-28 15:25:03,607 INFO     Killed 2 pending application instances
+2026-09-28 15:25:05,244 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-28 15:25:05,244 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-28 15:25:05,244 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-28 15:25:05,245 INFO     Listening on TCP address 0.0.0.0:8001
+Not Found: /api/student-search/search/
+2026-09-28 15:27:31,481 WARNING  Not Found: /api/student-search/search/
+2026-09-28 15:32:10,010 INFO     Killed 2 pending application instances
+2026-09-28 15:32:12,118 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-28 15:32:12,118 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-28 15:32:12,118 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-28 15:32:12,118 INFO     Listening on TCP address 0.0.0.0:8001
+Not Found: /api/student-search/search/
+2026-09-28 15:32:51,369 WARNING  Not Found: /api/student-search/search/
+Not Found: /api/student-search/search/
+2026-09-28 15:32:54,049 WARNING  Not Found: /api/student-search/search/
+Not Found: /api/student-search/search/
+2026-09-28 15:32:55,430 WARNING  Not Found: /api/student-search/search/
+Not Found: /api/student-search/search/
+2026-09-28 15:32:55,685 WARNING  Not Found: /api/student-search/search/
