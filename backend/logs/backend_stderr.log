@@ -90249,3 +90249,5 @@ Bad Request: /api/exam/sync-from-sheet/
 2026-09-28 09:17:01,321 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
 2026-09-28 09:17:01,321 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
 2026-09-28 09:17:01,321 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/users/
+2026-09-28 10:30:57,359 WARNING  Unauthorized: /api/users/
