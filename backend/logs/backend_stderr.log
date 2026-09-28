@@ -90288,3 +90288,8 @@ Not Found: /favicon.ico
 2026-09-28 12:54:17,819 WARNING  Not Found: /favicon.ico
 Not Found: /favicon.ico
 2026-09-28 12:55:45,063 WARNING  Not Found: /favicon.ico
+2026-09-28 13:25:22,222 INFO     Killed 1 pending application instances
+2026-09-28 13:25:24,389 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-28 13:25:24,389 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-28 13:25:24,389 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-28 13:25:24,390 INFO     Listening on TCP address 0.0.0.0:8001

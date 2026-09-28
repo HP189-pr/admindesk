@@ -3,7 +3,7 @@
 import React, { useEffect, useState, Suspense, useMemo } from 'react';
 import axios from '../api/axiosInstance';
 import { useAuth } from '../hooks/AuthContext';
-import { FaUserTie } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaUserTie } from 'react-icons/fa';
 import PanelToggleButton from '../components/PanelToggleButton';
 import { parseDMY, fmtDate, toISO } from '../report/utils';
 import PageTopbar from "../components/PageTopbar";
@@ -64,6 +64,7 @@ function EmpLeavePage() {
   const [profiles, setProfiles] = useState([]);
   const [periods, setPeriods] = useState([]);
   const [selectedPeriod, setSelectedPeriod] = useState('');
+  const [rights, setRights] = useState({ can_view: true, can_create: true, can_edit: true, can_delete: true });
 
   // FORM STATE ONLY HOLDS FORM DATA
   const [form, setForm] = useState({
@@ -102,6 +103,28 @@ function EmpLeavePage() {
     axios.get('/api/empprofile/')
       .then(r => setProfiles(normalize(r.data)))
       .catch(() => setProfiles([]));
+  }, []);
+
+  useEffect(() => {
+    axios.get('/api/my-navigation/')
+      .then(({ data }) => {
+        let matchedRights = { can_view: false, can_create: false, can_edit: false, can_delete: false };
+        for (const module of (data.modules || [])) {
+          for (const menu of (module.menus || [])) {
+            const menuName = String(menu.name || '').toLowerCase();
+            if (menuName.includes('leave management') || menuName === 'leave') {
+              matchedRights = menu.rights || matchedRights;
+            }
+          }
+        }
+        setRights({
+          can_view: !!matchedRights.can_view,
+          can_create: !!matchedRights.can_create,
+          can_edit: !!matchedRights.can_edit,
+          can_delete: !!matchedRights.can_delete,
+        });
+      })
+      .catch(() => setRights({ can_view: true, can_create: true, can_edit: true, can_delete: true }));
   }, []);
 
   // Load leave entries (filtered by selected period)
@@ -219,6 +242,52 @@ function EmpLeavePage() {
       return dateB - dateA;
     });
   }
+
+  const openLeaveEntry = (leaveEntry) => {
+    const profile = profiles.find(px => String(px.emp_id) === String(leaveEntry.emp));
+    setForm({
+      report_no: leaveEntry.leave_report_no,
+      emp_id: profile?.emp_id || '',
+      emp_name: leaveEntry.emp_name,
+      leave_type: leaveEntry.leave_type,
+      start_date: toISO(leaveEntry.start_date),
+      end_date: toISO(leaveEntry.end_date),
+      remark: leaveEntry.remark || leaveEntry.reason || '',
+      total_days: leaveEntry.total_days,
+      status: leaveEntry.status,
+      sandwich_leave:
+        leaveEntry.sandwich_leave === true
+          ? 'yes'
+          : leaveEntry.sandwich_leave === false
+            ? 'no'
+            : ''
+    });
+    setEditingId(leaveEntry.id);
+    setSelectedPanel('Entry Leave');
+    setPanelOpen(true);
+  };
+
+  const deleteLeaveEntry = async (leaveEntry) => {
+    if (!window.confirm(`Delete leave record ${leaveEntry.leave_report_no || leaveEntry.id}?`)) return;
+    setLoading(true);
+    try {
+      await axios.delete(`/api/leaveentry/${leaveEntry.id}/`);
+      const r = await axios.get('/api/leaveentry/?limit=9999');
+      setLeaveEntries(sortLeaveEntries(normalize(r.data)));
+      if (editingId === leaveEntry.id) {
+        setEditingId(null);
+        setForm({
+          report_no: '', emp_id: '', emp_name: '', leave_type: '', start_date: '',
+          end_date: '', remark: '', total_days: '', status: '', sandwich_leave: ''
+        });
+      }
+    } catch (err) {
+      const detail = err?.response?.data?.detail || 'Delete failed. You may not have permission.';
+      alert(detail);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleTopbar = (p) => {
     if (selectedPanel === p) {
@@ -498,42 +567,55 @@ function EmpLeavePage() {
                       <th className="p-2">Dates</th>
                       <th className="p-2">Days</th>
                       <th className="p-2">Status</th>
+                      {(rights.can_edit || rights.can_delete) && <th className="p-2">Actions</th>}
                     </tr>
                   </thead>
                   <tbody>
                     {filteredEntries.length === 0 ? (
-                      <tr><td colSpan={6} className="text-center py-6 text-gray-500">No records</td></tr>
+                      <tr><td colSpan={rights.can_edit || rights.can_delete ? 7 : 6} className="text-center py-6 text-gray-500">No records</td></tr>
                     ) : filteredEntries.map((le) => (
                       <tr key={le.id} className="border-b cursor-pointer hover:bg-gray-50"
-                        onClick={() => {
-                          const p = profiles.find(px => String(px.emp_id) === String(le.emp));
-                          setForm({
-                            report_no: le.leave_report_no,
-                            emp_id: p?.emp_id || '',
-                            emp_name: le.emp_name,
-                            leave_type: le.leave_type,
-                            start_date: toISO(le.start_date),
-                            end_date: toISO(le.end_date),
-                            remark: le.remark || le.reason || '',
-                            total_days: le.total_days,
-                            status: le.status,
-                            sandwich_leave:
-                              le.sandwich_leave === true
-                                ? 'yes'
-                                : le.sandwich_leave === false
-                                  ? 'no'
-                                  : ''
-                          });
-                          setEditingId(le.id);
-                          setSelectedPanel('Entry Leave');
-                          setPanelOpen(true);
-                        }}>
+                        onClick={() => openLeaveEntry(le)}>
                         <td className="p-2">{le.leave_report_no}</td>
                         <td className="p-2">{le.emp_name}</td>
                         <td className="p-2">{le.leave_type_name || le.leave_type}</td>
                         <td className="p-2">{fmtDate(le.start_date)} - {fmtDate(le.end_date)}</td>
                         <td className="p-2">{le.total_days}</td>
                         <td className="p-2">{le.status}</td>
+                        {(rights.can_edit || rights.can_delete) && (
+                          <td className="p-2">
+                            <div className="flex items-center gap-2">
+                              {rights.can_edit && (
+                                <button
+                                  type="button"
+                                  title="Edit"
+                                  aria-label="Edit leave record"
+                                  className="w-5 h-5 flex items-center justify-center icon-edit-button shadow-md rounded"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    openLeaveEntry(le);
+                                  }}
+                                >
+                                  <FaEdit size={12} />
+                                </button>
+                              )}
+                              {rights.can_delete && (
+                                <button
+                                  type="button"
+                                  title="Delete"
+                                  aria-label="Delete leave record"
+                                  className="w-5 h-5 flex items-center justify-center icon-delete-button shadow-md rounded"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    deleteLeaveEntry(le);
+                                  }}
+                                >
+                                  <FaTrash size={12} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
