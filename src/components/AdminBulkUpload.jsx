@@ -545,13 +545,21 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
           </div>
           <div className="mt-2">
             <label style={{display:'inline-flex', alignItems:'center', gap:8}}><input type="checkbox" id="auto-create" /> Auto-create missing DocRec</label>
-            <div style={{display:'inline-block', marginLeft:12, verticalAlign:'middle'}}>
-              {/* Circular progress */}
+            <button
+              disabled={isUploading || columns.filter(c=>document.querySelector(`input[value="${c}"]`)?.checked).length===0}
+              onClick={()=>{ const selected=[...document.querySelectorAll('input[type=checkbox]:checked')].map(i=>i.value); const auto=document.getElementById('auto-create')?.checked; doCommit(selected, {auto_create_docrec: !!auto}); }}
+              style={{marginLeft:16, padding:'8px 16px', background:'#16a34a', color:'#fff', borderRadius:6, fontWeight:700, boxShadow:'0 2px 6px rgba(0,0,0,0.12)', verticalAlign:'middle'}}
+            >
+              <span style={{display:'inline-block', marginRight:8}}>⬆️</span> {isUploading ? 'Uploading…' : 'Upload'}
+            </button>
+            <div style={{display:'inline-flex', alignItems:'center', gap:10, marginLeft:12, verticalAlign:'middle'}}>
               <div style={{width:56, height:56, position:'relative', display:'inline-block'}} aria-hidden>
-                <svg viewBox="0 0 36 36" style={{transform:'rotate(-90deg)'}}>
-                  <path d="M18 2.0845a15.9155 15.9155 0 1 1 0 31.831" fill="none" stroke="#e6eef8" strokeWidth="3.8"/>
-                  <path
-                    d="M18 2.0845a15.9155 15.9155 0 1 1 0 31.831"
+                <svg width="56" height="56" viewBox="0 0 36 36" preserveAspectRatio="xMidYMid meet" style={{display:'block', transform:'rotate(-90deg)'}}>
+                  <circle cx="18" cy="18" r="15.9155" fill="none" stroke="#e6eef8" strokeWidth="3.8" />
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r="15.9155"
                     fill="none"
                     stroke="url(#g)"
                     strokeWidth="3.8"
@@ -566,7 +574,7 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
                 <div style={{position:'absolute', left:0, right:0, top:0, bottom:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700}}>{progressCaption}</div>
               </div>
               {showServerStats ? (
-                <div className="text-xs text-slate-600 mt-1 text-center space-y-0.5">
+                <div className="text-xs text-slate-600 space-y-0.5">
                   {hasServerTotals ? (
                     <div>{processedRows}/{totalRows} rows processed</div>
                   ) : null}
@@ -576,13 +584,6 @@ export default function AdminBulkUpload({ service = 'VERIFICATION', uploadApi = 
                 </div>
               ) : null}
             </div>
-            <button
-              disabled={isUploading || columns.filter(c=>document.querySelector(`input[value="${c}"]`)?.checked).length===0}
-              onClick={()=>{ const selected=[...document.querySelectorAll('input[type=checkbox]:checked')].map(i=>i.value); const auto=document.getElementById('auto-create')?.checked; doCommit(selected, {auto_create_docrec: !!auto}); }}
-              style={{marginLeft:16, padding:'8px 16px', background:'#16a34a', color:'#fff', borderRadius:6, fontWeight:700, boxShadow:'0 2px 6px rgba(0,0,0,0.12)'}}
-            >
-              <span style={{display:'inline-block', marginRight:8}}>⬆️</span> {isUploading ? 'Uploading…' : 'Upload'}
-            </button>
           </div>
         </div>
       )}

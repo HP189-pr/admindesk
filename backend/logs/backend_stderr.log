@@ -90258,3 +90258,33 @@ Unauthorized: /api/users/
 2026-09-28 11:29:25,156 WARNING  Skipping row 180: institute_name is required but empty
 Not Found: /api/student-search/search/
 2026-09-28 11:37:57,750 WARNING  Not Found: /api/student-search/search/
+2026-09-28 11:59:43,652 INFO     Killed 2 pending application instances
+2026-09-28 11:59:45,545 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-28 11:59:45,545 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-28 11:59:45,545 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-28 11:59:45,547 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/users/
+2026-09-28 12:33:27,356 WARNING  Unauthorized: /api/users/
+Not Found: /api/student-search/search/
+2026-09-28 12:43:51,057 WARNING  Not Found: /api/student-search/search/
+Not Found: /api/student-search/search/
+2026-09-28 12:44:24,277 WARNING  Not Found: /api/student-search/search/
+Not Found: /api/student-search/search/
+2026-09-28 12:45:50,547 WARNING  Not Found: /api/student-search/search/
+Not Found: /api/student-search/search/
+2026-09-28 12:45:57,082 WARNING  Not Found: /api/student-search/search/
+Not Found: /api/student-search/search/
+2026-09-28 12:47:39,117 WARNING  Not Found: /api/student-search/search/
+Not Found: /api/student-search/search/
+2026-09-28 12:49:30,516 WARNING  Not Found: /api/student-search/search/
+2026-09-28 12:51:49,520 INFO     Killed 2 pending application instances
+2026-09-28 12:51:51,702 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-28 12:51:51,702 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-28 12:51:51,702 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-28 12:51:51,703 INFO     Listening on TCP address 0.0.0.0:8001
+Not Found: /
+2026-09-28 12:54:17,762 WARNING  Not Found: /
+Not Found: /favicon.ico
+2026-09-28 12:54:17,819 WARNING  Not Found: /favicon.ico
+Not Found: /favicon.ico
+2026-09-28 12:55:45,063 WARNING  Not Found: /favicon.ico
