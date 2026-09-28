@@ -291,14 +291,12 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
           <table className="min-w-[1100px] w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
+                <th className="text-left py-2 px-1 w-[96px] whitespace-nowrap">PRV Date</th>
                 <th className="text-left py-2 px-1 w-[64px] whitespace-nowrap">PRV No</th>
                 <th className="text-left py-2 px-1">Enroll</th>
                 <th className="text-left py-2 px-1">Name</th>
-                <th className="text-left py-2 px-1">Inst Code</th>
-                <th className="text-left py-2 px-1">Subcourse</th>
                 <th className="text-left py-2 px-1">Class</th>
                 <th className="text-left py-2 px-1">Degree</th>
-                <th className="text-left py-2 px-1 w-[96px] whitespace-nowrap">PRV Date</th>
                 <th className="text-left py-2 px-1 w-[80px] whitespace-nowrap">Pass Year</th>
                 <th className="text-left py-2 px-1">Status</th>
                 <th className="text-left py-2 px-1">Pay Rec</th>
@@ -307,7 +305,7 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
             </thead>
             <tbody>
               {sortedList.length === 0 && !loading && (
-                <tr><td colSpan={12} className="py-6 text-center text-gray-500">No records</td></tr>
+                <tr><td colSpan={10} className="py-6 text-center text-gray-500">No records</td></tr>
               )}
               {sortedList.map((r)=> (
                 <tr key={r.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={()=>{
@@ -332,14 +330,12 @@ const Provisional = ({ onToggleSidebar, onToggleChatbox }) => {
                     doc_remark: r.doc_remark || '',
                   });
                 }}>
+                  <td className="py-2 px-1 w-[96px] whitespace-nowrap">{r.prv_date || '-'}</td>
                   <td className="py-2 px-1 w-[64px] whitespace-nowrap">{r.prv_number || '-'}</td>
                   <td className="py-2 px-1">{r.enrollment || r.enrollment_no || '-'}</td>
                   <td className="py-2 px-1">{r.student_name || '-'}</td>
-                  <td className="py-2 px-1">{r.institute_code || r.institute || r.institute_id || '-'}</td>
-                  <td className="py-2 px-1">{r.subcourse_name || r.subcourse || r.subcourse_id || '-'}</td>
                   <td className="py-2 px-1">{r.class_obtain || '-'}</td>
                   <td className="py-2 px-1">{r.prv_degree_name || '-'}</td>
-                  <td className="py-2 px-1 w-[96px] whitespace-nowrap">{r.prv_date || '-'}</td>
                   <td className="py-2 px-1 w-[80px] whitespace-nowrap">{r.passing_year || '-'}</td>
                   <td className="py-2 px-1">{r.prv_status || '-'}</td>
                   <td className="py-2 px-1">{r.pay_rec_no || '-'}</td>
