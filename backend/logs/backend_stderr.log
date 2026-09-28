@@ -89471,3 +89471,781 @@ Bad Request: /api/enrollments/93715/
 2026-09-07 10:24:15,282 INFO     InstLetterPDF grouped records: keys=['2026/319']
 2026-09-07 10:24:15,283 INFO     DEBUG rec_inst_pin value: ''
 2026-09-07 10:30:08,825 INFO     Killed 1 pending application instances
+2026-09-07 10:30:10,731 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-07 10:30:10,731 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-07 10:30:10,731 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-07 10:30:10,731 INFO     Listening on TCP address 0.0.0.0:8001
+2026-09-07 10:34:53,082 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26320'}
+2026-09-07 10:34:53,088 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-07 10:34:53,092 INFO     InstLetterPDF grouped records: keys=['2026/320']
+2026-09-07 10:34:53,092 INFO     DEBUG rec_inst_pin value: '382016'
+2026-09-07 10:46:23,974 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26321'}
+2026-09-07 10:46:23,976 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-07 10:46:23,976 INFO     InstLetterPDF grouped records: keys=['2026/321']
+2026-09-07 10:46:23,976 INFO     DEBUG rec_inst_pin value: '110033'
+Not Found: /api/student-search/search/
+2026-09-07 11:11:27,594 WARNING  Not Found: /api/student-search/search/
+Not Found: /api/student-search/search/
+2026-09-07 11:11:28,644 WARNING  Not Found: /api/student-search/search/
+Unauthorized: /api/users/
+2026-09-07 12:01:21,209 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-09-07 12:30:22,349 WARNING  Unauthorized: /api/users/
+2026-09-07 13:25:05,406 INFO     Import mail requests completed via API: Found 439 rows; starting import
+Processed 200/439 rows
+Processed 400/439 rows
+Processed 439/439 rows
+Import complete. Created: 2, Updated: 437
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-09-07 13:25:05,560 WARNING  Skipping row 180: institute_name is required but empty
+2026-09-07 13:25:08,311 INFO     Import mail requests completed via API: Found 439 rows; starting import
+Processed 200/439 rows
+Processed 400/439 rows
+Processed 439/439 rows
+Import complete. Created: 0, Updated: 439
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-09-07 13:37:50,940 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26322'}
+2026-09-07 13:37:50,955 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-07 13:37:50,965 INFO     InstLetterPDF grouped records: keys=['2026/322']
+2026-09-07 13:37:50,982 INFO     DEBUG rec_inst_pin value: '382721'
+2026-09-07 13:41:33,129 INFO     InstLetterStudent update payload_keys=['doc_rec_key', 'enrollment', 'enrollment_no_text', 'iv_degree_name', 'month_year', 'sr_no', 'student_name', 'study_mode', 'type_of_credential', 'verification_status']
+2026-09-07 13:41:37,515 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26322'}
+2026-09-07 13:41:37,519 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-07 13:41:37,523 INFO     InstLetterPDF grouped records: keys=['2026/322']
+2026-09-07 13:41:37,523 INFO     DEBUG rec_inst_pin value: '382721'
+2026-09-07 15:08:44,842 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26322'}
+2026-09-07 15:08:44,847 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-07 15:08:44,855 INFO     InstLetterPDF grouped records: keys=['2026/322']
+2026-09-07 15:08:44,862 INFO     DEBUG rec_inst_pin value: '382721'
+2026-09-07 15:11:11,855 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26322'}
+2026-09-07 15:11:11,861 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-07 15:11:11,871 INFO     InstLetterPDF grouped records: keys=['2026/322']
+2026-09-07 15:11:11,874 INFO     DEBUG rec_inst_pin value: '382721'
+2026-09-07 15:22:27,225 INFO     sync_cash_deposite_to_sheet: 2026-09-07\u21922026-09-07 appended=1 updated=0 deleted=0 total=1
+2026-09-07 15:22:29,128 INFO     sync_cash_sheet_to_sheet: 2026-09-07\u21922026-09-07 appended=1 updated=0 deleted=0 total=1
+2026-09-07 15:22:29,128 INFO     sync_cash_register_to_sheet: 2026-09-07\u21922026-09-07 appended=10 updated=0 deleted=0 skipped=0 total=10
+2026-09-07 15:22:30,734 INFO     sync_cash_deposite_to_sheet: 2026-09-07\u21922026-09-07 appended=0 updated=0 deleted=0 total=1
+2026-09-07 15:22:32,041 INFO     sync_cash_sheet_to_sheet: 2026-09-07\u21922026-09-07 appended=0 updated=0 deleted=0 total=1
+2026-09-07 15:22:33,890 INFO     sync_upi_sheet_to_sheet: 2026-09-07\u21922026-09-07 appended=1 updated=0 deleted=0 total=1
+2026-09-07 15:22:35,257 INFO     sync_bank_sheet_to_sheet: 2026-09-07\u21922026-09-07 appended=0 updated=0 deleted=0 total=0
+2026-09-07 15:22:38,525 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=2 updated=0 deleted=0 total=125
+2026-09-07 15:22:40,041 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=107
+2026-09-07 15:23:04,546 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-12: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-07 15:23:04,864 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-13: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-07 15:23:05,150 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-17: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-07 15:23:05,807 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-20: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-07 15:23:06,100 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-21: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-07 15:23:06,408 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-22: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-07 15:23:06,698 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-24: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-07 15:23:07,007 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-25: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-07 15:23:07,422 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-27: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-07 15:23:07,705 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-29: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-07 15:23:07,705 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=56 deleted=0 total=66
+2026-09-07 15:58:13,065 INFO     Killed 0 pending application instances
+2026-09-08 08:28:51,249 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-08 08:28:51,251 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-08 08:28:51,251 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-08 08:28:51,251 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/users/
+2026-09-08 13:04:58,906 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-09-08 14:41:28,425 WARNING  Unauthorized: /api/users/
+2026-09-08 15:35:37,749 INFO     sync_cash_deposite_to_sheet: 2026-09-08\u21922026-09-08 appended=1 updated=0 deleted=0 total=1
+2026-09-08 15:35:39,450 INFO     sync_cash_sheet_to_sheet: 2026-09-08\u21922026-09-08 appended=1 updated=0 deleted=0 total=1
+2026-09-08 15:35:39,452 INFO     sync_cash_register_to_sheet: 2026-09-08\u21922026-09-08 appended=10 updated=0 deleted=0 skipped=0 total=6
+2026-09-08 15:35:41,105 INFO     sync_cash_deposite_to_sheet: 2026-09-08\u21922026-09-08 appended=0 updated=0 deleted=0 total=1
+2026-09-08 15:35:42,397 INFO     sync_cash_sheet_to_sheet: 2026-09-08\u21922026-09-08 appended=0 updated=0 deleted=0 total=1
+2026-09-08 15:35:44,084 INFO     sync_upi_sheet_to_sheet: 2026-09-08\u21922026-09-08 appended=1 updated=0 deleted=0 total=1
+2026-09-08 15:35:45,816 INFO     sync_bank_sheet_to_sheet: 2026-09-08\u21922026-09-08 appended=1 updated=0 deleted=0 total=1
+2026-09-08 15:35:47,776 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=126
+2026-09-08 15:35:49,850 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=1 deleted=0 total=108
+2026-09-08 15:35:55,638 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=10 deleted=0 total=67
+2026-09-08 15:59:37,771 INFO     Killed 0 pending application instances
+2026-09-09 08:25:00,468 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-09 08:25:00,470 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-09 08:25:00,470 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-09 08:25:00,472 INFO     Listening on TCP address 0.0.0.0:8001
+2026-09-09 15:51:17,071 INFO     sync_cash_deposite_to_sheet: 2026-09-09\u21922026-09-09 appended=1 updated=0 deleted=0 total=1
+2026-09-09 15:51:18,544 INFO     sync_cash_sheet_to_sheet: 2026-09-09\u21922026-09-09 appended=1 updated=0 deleted=0 total=1
+2026-09-09 15:51:18,544 INFO     sync_cash_register_to_sheet: 2026-09-09\u21922026-09-09 appended=11 updated=0 deleted=0 skipped=1 total=11
+2026-09-09 15:51:20,028 INFO     sync_cash_deposite_to_sheet: 2026-09-09\u21922026-09-09 appended=0 updated=0 deleted=0 total=1
+2026-09-09 15:51:21,128 INFO     sync_cash_sheet_to_sheet: 2026-09-09\u21922026-09-09 appended=0 updated=0 deleted=0 total=1
+2026-09-09 15:51:22,629 INFO     sync_upi_sheet_to_sheet: 2026-09-09\u21922026-09-09 appended=1 updated=0 deleted=0 total=1
+2026-09-09 15:51:24,210 INFO     sync_bank_sheet_to_sheet: 2026-09-09\u21922026-09-09 appended=1 updated=0 deleted=0 total=1
+2026-09-09 15:51:25,960 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=127
+2026-09-09 15:51:27,494 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=109
+2026-09-09 15:51:28,977 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=68
+2026-09-09 15:58:52,531 INFO     Killed 0 pending application instances
+2026-09-10 08:26:54,347 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-10 08:26:54,347 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-10 08:26:54,347 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-10 08:26:54,349 INFO     Listening on TCP address 0.0.0.0:8001
+2026-09-10 08:29:08,716 INFO     Killed 0 pending application instances
+2026-09-10 08:29:33,535 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-10 08:29:33,535 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-10 08:29:33,535 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-10 08:29:33,535 INFO     Listening on TCP address 0.0.0.0:8001
+2026-09-10 08:29:43,638 INFO     Killed 0 pending application instances
+2026-09-10 08:30:30,374 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-10 08:30:30,374 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-10 08:30:30,374 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-10 08:30:30,374 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/users/
+2026-09-10 11:14:35,374 WARNING  Unauthorized: /api/users/
+2026-09-10 16:00:15,967 INFO     Killed 1 pending application instances
+2026-09-11 08:26:41,963 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-11 08:26:41,965 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-11 08:26:41,965 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-11 08:26:41,965 INFO     Listening on TCP address 0.0.0.0:8001
+Not Found: /api/student-search/search/
+2026-09-11 09:36:25,439 WARNING  Not Found: /api/student-search/search/
+Unauthorized: /api/users/
+2026-09-11 11:37:33,383 WARNING  Unauthorized: /api/users/
+2026-09-11 14:21:20,706 INFO     sync_cash_deposite_to_sheet: 2026-09-10\u21922026-09-10 appended=1 updated=0 deleted=0 total=1
+2026-09-11 14:21:22,443 INFO     sync_cash_sheet_to_sheet: 2026-09-10\u21922026-09-10 appended=1 updated=0 deleted=0 total=1
+2026-09-11 14:21:22,443 INFO     sync_cash_register_to_sheet: 2026-09-10\u21922026-09-10 appended=22 updated=0 deleted=0 skipped=0 total=17
+2026-09-11 14:21:24,143 INFO     sync_cash_deposite_to_sheet: 2026-09-10\u21922026-09-10 appended=0 updated=0 deleted=0 total=1
+2026-09-11 14:21:25,469 INFO     sync_cash_sheet_to_sheet: 2026-09-10\u21922026-09-10 appended=0 updated=0 deleted=0 total=1
+2026-09-11 14:21:27,092 INFO     sync_upi_sheet_to_sheet: 2026-09-10\u21922026-09-10 appended=1 updated=0 deleted=0 total=1
+2026-09-11 14:21:28,339 INFO     sync_bank_sheet_to_sheet: 2026-09-10\u21922026-09-10 appended=0 updated=0 deleted=0 total=0
+2026-09-11 14:21:30,123 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=128
+2026-09-11 14:21:31,822 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=110
+2026-09-11 14:21:33,066 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=0 deleted=0 total=68
+Not Found: /api/student-search/search/
+2026-09-11 14:45:00,881 WARNING  Not Found: /api/student-search/search/
+Not Found: /api/student-search/search/
+2026-09-11 14:45:02,154 WARNING  Not Found: /api/student-search/search/
+Not Found: /api/student-search/search/
+2026-09-11 14:45:02,653 WARNING  Not Found: /api/student-search/search/
+Not Found: /api/student-search/search/
+2026-09-11 14:45:03,172 WARNING  Not Found: /api/student-search/search/
+Not Found: /api/student-search/search/
+2026-09-11 14:45:04,720 WARNING  Not Found: /api/student-search/search/
+Not Found: /api/student-search/search/
+2026-09-11 14:45:05,244 WARNING  Not Found: /api/student-search/search/
+Not Found: /api/student-search/search/
+2026-09-11 14:45:05,620 WARNING  Not Found: /api/student-search/search/
+2026-09-11 15:59:23,938 INFO     Killed 0 pending application instances
+2026-09-12 08:23:44,361 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-12 08:23:44,367 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-12 08:23:44,369 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-12 08:23:44,371 INFO     Listening on TCP address 0.0.0.0:8001
+2026-09-12 09:19:30,920 WARNING  Skipping row 180: institute_name is required but empty
+2026-09-12 09:19:32,229 WARNING  Skipping row 180: institute_name is required but empty
+2026-09-12 09:19:33,162 INFO     Import mail requests completed via API: Found 442 rows; starting import
+Processed 200/442 rows
+Processed 400/442 rows
+Processed 442/442 rows
+Import complete. Created: 3, Updated: 439
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-09-12 09:21:41,302 INFO     Import mail requests completed via API: Found 442 rows; starting import
+Processed 200/442 rows
+Processed 400/442 rows
+Processed 442/442 rows
+Import complete. Created: 0, Updated: 442
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-09-12 09:21:44,751 INFO     Import mail requests completed via API: Found 442 rows; starting import
+Processed 200/442 rows
+Processed 400/442 rows
+Processed 442/442 rows
+Import complete. Created: 0, Updated: 442
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-09-12 09:36:47,403 INFO     Import mail requests completed via API: Found 442 rows; starting import
+Processed 200/442 rows
+Processed 400/442 rows
+Processed 442/442 rows
+Import complete. Created: 0, Updated: 442
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+Not Found: /api/student-search/search/
+2026-09-12 10:27:07,596 WARNING  Not Found: /api/student-search/search/
+2026-09-12 10:28:40,915 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26323'}
+2026-09-12 10:28:40,919 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-12 10:28:40,919 INFO     InstLetterPDF grouped records: keys=['2026/323']
+2026-09-12 10:28:40,919 INFO     DEBUG rec_inst_pin value: '364710'
+2026-09-12 10:29:20,594 INFO     InstLetterStudent update payload_keys=['doc_rec_key', 'enrollment', 'enrollment_no_text', 'iv_degree_name', 'month_year', 'sr_no', 'student_name', 'study_mode', 'type_of_credential', 'verification_status']
+2026-09-12 10:29:23,803 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26323'}
+2026-09-12 10:29:23,803 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-12 10:29:23,820 INFO     InstLetterPDF grouped records: keys=['2026/323']
+2026-09-12 10:29:23,820 INFO     DEBUG rec_inst_pin value: '364710'
+Unauthorized: /api/users/
+2026-09-12 12:24:05,356 WARNING  Unauthorized: /api/users/
+2026-09-12 13:36:40,367 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26324'}
+2026-09-12 13:36:40,375 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-12 13:36:40,383 INFO     InstLetterPDF grouped records: keys=['2026/324']
+2026-09-12 13:36:40,397 INFO     DEBUG rec_inst_pin value: '110033'
+2026-09-12 13:41:26,804 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26325'}
+2026-09-12 13:41:26,816 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-12 13:41:26,818 INFO     InstLetterPDF grouped records: keys=['2026/325']
+2026-09-12 13:41:26,818 INFO     DEBUG rec_inst_pin value: '110033'
+2026-09-12 13:51:43,389 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26326'}
+2026-09-12 13:51:43,559 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-12 13:51:43,574 INFO     InstLetterPDF grouped records: keys=['2026/326']
+2026-09-12 13:51:43,759 INFO     DEBUG rec_inst_pin value: '122016'
+2026-09-12 14:23:12,181 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26327'}
+2026-09-12 14:23:12,181 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-12 14:23:12,181 INFO     InstLetterPDF grouped records: keys=['2026/327']
+2026-09-12 14:23:12,195 INFO     DEBUG rec_inst_pin value: '110048'
+2026-09-12 14:31:01,154 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26328'}
+2026-09-12 14:31:01,159 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-12 14:31:01,164 INFO     InstLetterPDF grouped records: keys=['2026/328']
+2026-09-12 14:31:01,165 INFO     DEBUG rec_inst_pin value: '380052'
+2026-09-12 14:40:19,899 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26329'}
+2026-09-12 14:40:19,930 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-12 14:40:19,949 INFO     InstLetterPDF grouped records: keys=['2026/329']
+2026-09-12 14:40:19,960 INFO     DEBUG rec_inst_pin value: '388121'
+2026-09-12 15:20:09,178 INFO     sync_cash_deposite_to_sheet: 2026-09-12\u21922026-09-12 appended=1 updated=0 deleted=0 total=1
+2026-09-12 15:20:10,780 INFO     sync_cash_sheet_to_sheet: 2026-09-12\u21922026-09-12 appended=1 updated=0 deleted=0 total=1
+2026-09-12 15:20:10,780 INFO     sync_cash_register_to_sheet: 2026-09-12\u21922026-09-12 appended=16 updated=0 deleted=0 skipped=0 total=12
+2026-09-12 15:20:12,278 INFO     sync_cash_deposite_to_sheet: 2026-09-12\u21922026-09-12 appended=0 updated=0 deleted=0 total=1
+2026-09-12 15:20:13,416 INFO     sync_cash_sheet_to_sheet: 2026-09-12\u21922026-09-12 appended=0 updated=0 deleted=0 total=1
+2026-09-12 15:20:14,949 INFO     sync_upi_sheet_to_sheet: 2026-09-12\u21922026-09-12 appended=1 updated=0 deleted=0 total=1
+2026-09-12 15:20:16,134 INFO     sync_bank_sheet_to_sheet: 2026-09-12\u21922026-09-12 appended=0 updated=0 deleted=0 total=0
+2026-09-12 15:20:18,311 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=2 updated=0 deleted=0 total=130
+2026-09-12 15:20:20,216 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=2 updated=0 deleted=0 total=112
+2026-09-12 15:20:21,718 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=69
+2026-09-12 15:57:01,811 INFO     Killed 0 pending application instances
+2026-09-14 08:18:50,120 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-14 08:18:50,120 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-14 08:18:50,120 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-14 08:18:50,120 INFO     Listening on TCP address 0.0.0.0:8001
+Not Found: /api/my-leave-balance/
+2026-09-14 09:02:47,032 WARNING  Not Found: /api/my-leave-balance/
+Forbidden: /api/leave-report/all-employees-balance/
+2026-09-14 09:02:52,430 WARNING  Forbidden: /api/leave-report/all-employees-balance/
+Unauthorized: /api/users/
+2026-09-14 11:50:57,730 WARNING  Unauthorized: /api/users/
+2026-09-14 13:25:36,716 INFO     Import mail requests completed via API: Found 442 rows; starting import
+Processed 200/442 rows
+Processed 400/442 rows
+Processed 442/442 rows
+Import complete. Created: 0, Updated: 442
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-09-14 13:29:02,233 WARNING  Skipping row 180: institute_name is required but empty
+2026-09-14 13:44:05,749 WARNING  Skipping row 180: institute_name is required but empty
+2026-09-14 13:59:09,965 WARNING  Skipping row 180: institute_name is required but empty
+2026-09-14 15:26:57,750 INFO     sync_cash_deposite_to_sheet: 2026-09-14\u21922026-09-14 appended=1 updated=0 deleted=0 total=1
+2026-09-14 15:26:59,251 INFO     sync_cash_sheet_to_sheet: 2026-09-14\u21922026-09-14 appended=1 updated=0 deleted=0 total=1
+2026-09-14 15:26:59,251 INFO     sync_cash_register_to_sheet: 2026-09-14\u21922026-09-14 appended=13 updated=0 deleted=0 skipped=0 total=9
+2026-09-14 15:27:00,749 INFO     sync_cash_deposite_to_sheet: 2026-09-14\u21922026-09-14 appended=0 updated=0 deleted=0 total=1
+2026-09-14 15:27:02,066 INFO     sync_cash_sheet_to_sheet: 2026-09-14\u21922026-09-14 appended=0 updated=0 deleted=0 total=1
+2026-09-14 15:27:03,579 INFO     sync_upi_sheet_to_sheet: 2026-09-14\u21922026-09-14 appended=1 updated=0 deleted=0 total=1
+2026-09-14 15:27:05,016 INFO     sync_bank_sheet_to_sheet: 2026-09-14\u21922026-09-14 appended=1 updated=0 deleted=0 total=1
+2026-09-14 15:27:07,300 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=131
+2026-09-14 15:27:08,783 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=113
+2026-09-14 15:27:31,483 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-08: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-14 15:27:31,776 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-11: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-14 15:27:32,430 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-13: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-14 15:27:32,715 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-17: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-14 15:27:33,018 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-18: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-14 15:27:33,315 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-20: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-14 15:27:33,621 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-21: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-14 15:27:33,914 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-22: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-14 15:27:34,213 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-24: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-14 15:27:34,547 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-25: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-14 15:27:34,850 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-27: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-14 15:27:35,150 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-29: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-14 15:27:35,451 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-09-08: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-14 15:27:35,759 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-09-09: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-14 15:27:36,035 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-09-11: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-14 15:27:36,407 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=54 deleted=0 total=70
+2026-09-14 15:59:53,714 INFO     Killed 0 pending application instances
+2026-09-16 08:22:55,731 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-16 08:22:55,731 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-16 08:22:55,731 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-16 08:22:55,731 INFO     Listening on TCP address 0.0.0.0:8001
+Not Found: /api/student-search/search/
+2026-09-16 08:34:16,885 WARNING  Not Found: /api/student-search/search/
+Not Found: /api/student-search/search/
+2026-09-16 08:34:36,562 WARNING  Not Found: /api/student-search/search/
+Unauthorized: /api/users/
+2026-09-16 10:34:37,348 WARNING  Unauthorized: /api/users/
+2026-09-16 11:14:53,171 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26330'}
+2026-09-16 11:14:53,185 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-16 11:14:53,187 INFO     InstLetterPDF grouped records: keys=['2026/330']
+2026-09-16 11:14:53,203 INFO     DEBUG rec_inst_pin value: '395001'
+2026-09-16 11:27:08,595 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26331'}
+2026-09-16 11:27:08,599 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-16 11:27:08,599 INFO     InstLetterPDF grouped records: keys=['2026/331']
+2026-09-16 11:27:08,599 INFO     DEBUG rec_inst_pin value: '380009'
+2026-09-16 11:35:40,157 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26332'}
+2026-09-16 11:35:40,157 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-16 11:35:40,157 INFO     InstLetterPDF grouped records: keys=['2026/332']
+2026-09-16 11:35:40,157 INFO     DEBUG rec_inst_pin value: ''
+2026-09-16 12:07:15,972 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26333'}
+2026-09-16 12:07:15,976 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-16 12:07:15,989 INFO     InstLetterPDF grouped records: keys=['2026/333']
+2026-09-16 12:07:16,005 INFO     DEBUG rec_inst_pin value: '370421'
+Unauthorized: /api/users/
+2026-09-16 12:30:44,092 WARNING  Unauthorized: /api/users/
+2026-09-16 15:11:30,934 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26330'}
+2026-09-16 15:11:30,950 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-16 15:11:30,966 INFO     InstLetterPDF grouped records: keys=['2026/330']
+2026-09-16 15:11:30,966 INFO     DEBUG rec_inst_pin value: '395001'
+2026-09-16 15:45:45,064 INFO     sync_cash_deposite_to_sheet: 2026-09-16\u21922026-09-16 appended=1 updated=0 deleted=0 total=1
+2026-09-16 15:45:46,848 INFO     sync_cash_sheet_to_sheet: 2026-09-16\u21922026-09-16 appended=1 updated=0 deleted=0 total=1
+2026-09-16 15:45:46,848 INFO     sync_cash_register_to_sheet: 2026-09-16\u21922026-09-16 appended=7 updated=0 deleted=0 skipped=0 total=4
+2026-09-16 15:45:48,395 INFO     sync_cash_deposite_to_sheet: 2026-09-16\u21922026-09-16 appended=0 updated=0 deleted=0 total=1
+2026-09-16 15:45:49,592 INFO     sync_cash_sheet_to_sheet: 2026-09-16\u21922026-09-16 appended=0 updated=0 deleted=0 total=1
+2026-09-16 15:45:51,239 INFO     sync_upi_sheet_to_sheet: 2026-09-16\u21922026-09-16 appended=1 updated=0 deleted=0 total=1
+2026-09-16 15:45:52,396 INFO     sync_bank_sheet_to_sheet: 2026-09-16\u21922026-09-16 appended=0 updated=0 deleted=0 total=0
+2026-09-16 15:45:57,060 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=132
+2026-09-16 15:45:58,687 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=114
+2026-09-16 15:46:05,895 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=15 deleted=0 total=70
+2026-09-16 15:58:17,433 INFO     Killed 0 pending application instances
+2026-09-17 08:28:42,738 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-17 08:28:42,738 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-17 08:28:42,740 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-17 08:28:42,740 INFO     Listening on TCP address 0.0.0.0:8001
+Not Found: /api/student-search/search/
+2026-09-17 10:31:53,268 WARNING  Not Found: /api/student-search/search/
+2026-09-17 10:34:40,689 INFO     sync_cash_deposite_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=0 deleted=0 total=114
+2026-09-17 10:35:26,270 INFO     sync_cash_sheet_to_sheet: 2026-04-01\u21922027-03-31 appended=4 updated=52 deleted=0 total=132
+2026-09-17 10:35:26,272 INFO     sync_cash_register_to_sheet: 2026-04-01\u21922027-03-31 appended=42 updated=0 deleted=1 skipped=2687 total=2187
+2026-09-17 10:35:27,904 INFO     sync_cash_deposite_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=0 deleted=0 total=114
+2026-09-17 10:35:29,240 INFO     sync_cash_sheet_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=0 deleted=0 total=132
+2026-09-17 10:35:59,027 INFO     sync_upi_sheet_to_sheet: 2026-04-01\u21922027-03-31 appended=4 updated=38 deleted=0 total=114
+2026-09-17 10:36:19,690 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-05-12: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:20,040 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-05-14: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:20,388 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-05-15: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:20,722 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-05-21: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:23,833 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-06-04: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:24,198 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-06-06: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:24,531 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-06-27: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:24,896 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-06-29: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:25,287 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-06-30: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:25,628 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-07-01: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:25,961 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-07-02: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:26,298 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-07-03: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:28,291 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-07-04: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:28,609 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-07-07: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:28,942 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-07-10: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:29,498 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-07-13: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:30,050 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-07-15: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:30,386 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-07-16: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:30,760 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-07-21: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:31,102 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-07-27: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:31,593 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-07-29: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:31,963 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-08-03: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:32,587 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-08-07: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:32,906 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-08-08: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:33,267 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-08-11: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:34,013 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-08-13: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:34,378 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-08-17: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:34,737 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-08-18: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:35,062 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-08-24: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:35,549 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-08-25: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:36,031 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-08-27: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:36,364 ERROR    sync_bank_sheet_to_sheet: failed to upsert row for 2026-09-11: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 10:36:36,371 INFO     sync_bank_sheet_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=24 deleted=0 total=70
+2026-09-17 10:36:37,698 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=0 deleted=0 total=132
+2026-09-17 10:36:39,100 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=0 deleted=0 total=114
+2026-09-17 10:36:41,028 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=0 deleted=0 total=70
+2026-09-17 11:34:24,538 WARNING  Skipping row 180: institute_name is required but empty
+2026-09-17 11:34:29,856 INFO     Import mail requests completed via API: Found 445 rows; starting import
+Processed 200/445 rows
+Processed 400/445 rows
+Processed 445/445 rows
+Import complete. Created: 3, Updated: 442
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+Unauthorized: /api/users/
+2026-09-17 12:34:28,350 WARNING  Unauthorized: /api/users/
+2026-09-17 12:57:02,630 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26334'}
+2026-09-17 12:57:02,636 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-17 12:57:02,646 INFO     InstLetterPDF grouped records: keys=['2026/334']
+2026-09-17 12:57:02,652 INFO     DEBUG rec_inst_pin value: '201301'
+Unauthorized: /api/users/
+2026-09-17 14:36:06,350 WARNING  Unauthorized: /api/users/
+2026-09-17 15:48:42,410 INFO     sync_cash_deposite_to_sheet: 2026-09-17\u21922026-09-17 appended=1 updated=0 deleted=0 total=1
+2026-09-17 15:48:43,991 INFO     sync_cash_sheet_to_sheet: 2026-09-17\u21922026-09-17 appended=1 updated=0 deleted=0 total=1
+2026-09-17 15:48:43,991 INFO     sync_cash_register_to_sheet: 2026-09-17\u21922026-09-17 appended=18 updated=0 deleted=0 skipped=0 total=12
+2026-09-17 15:48:45,510 INFO     sync_cash_deposite_to_sheet: 2026-09-17\u21922026-09-17 appended=0 updated=0 deleted=0 total=1
+2026-09-17 15:48:46,678 INFO     sync_cash_sheet_to_sheet: 2026-09-17\u21922026-09-17 appended=0 updated=0 deleted=0 total=1
+2026-09-17 15:48:47,868 INFO     sync_upi_sheet_to_sheet: 2026-09-17\u21922026-09-17 appended=0 updated=0 deleted=0 total=0
+2026-09-17 15:48:49,559 INFO     sync_bank_sheet_to_sheet: 2026-09-17\u21922026-09-17 appended=1 updated=0 deleted=0 total=1
+2026-09-17 15:48:51,598 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=133
+2026-09-17 15:48:52,772 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=0 deleted=0 total=114
+2026-09-17 15:49:16,281 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-11: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 15:49:16,591 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-12: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 15:49:16,891 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-13: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 15:49:17,206 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-17: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 15:49:17,507 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-18: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 15:49:17,823 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-20: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 15:49:18,124 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-21: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 15:49:18,440 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-22: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 15:49:19,533 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-27: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 15:49:19,863 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-08-29: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 15:49:20,168 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-09-08: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 15:49:20,485 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-09-09: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 15:49:20,797 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-09-11: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 15:49:21,099 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-09-14: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 15:49:21,411 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-09-17: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-17 15:49:21,411 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=56 deleted=0 total=71
+2026-09-17 15:55:50,824 INFO     Killed 0 pending application instances
+2026-09-18 08:33:32,448 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-18 08:33:32,448 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-18 08:33:32,448 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-18 08:33:32,451 INFO     Listening on TCP address 0.0.0.0:8001
+2026-09-18 09:44:26,250 INFO     Import mail requests completed via API: Found 447 rows; starting import
+Processed 200/447 rows
+Processed 400/447 rows
+Processed 447/447 rows
+Import complete. Created: 2, Updated: 445
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-09-18 10:00:19,993 INFO     Import mail requests completed via API: Found 447 rows; starting import
+Processed 200/447 rows
+Processed 400/447 rows
+Processed 447/447 rows
+Import complete. Created: 0, Updated: 447
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-09-18 10:15:19,973 INFO     Import mail requests completed via API: Found 447 rows; starting import
+Processed 200/447 rows
+Processed 400/447 rows
+Processed 447/447 rows
+Import complete. Created: 0, Updated: 447
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+Unauthorized: /api/token/verify/
+2026-09-18 10:24:27,197 WARNING  Unauthorized: /api/token/verify/
+2026-09-18 10:29:25,252 INFO     Import mail requests completed via API: Found 447 rows; starting import
+Processed 200/447 rows
+Processed 400/447 rows
+Processed 447/447 rows
+Import complete. Created: 0, Updated: 447
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-09-18 10:44:25,095 INFO     Import mail requests completed via API: Found 447 rows; starting import
+Processed 200/447 rows
+Processed 400/447 rows
+Processed 447/447 rows
+Import complete. Created: 0, Updated: 447
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+Unauthorized: /api/users/
+2026-09-18 10:47:21,344 WARNING  Unauthorized: /api/users/
+2026-09-18 10:59:25,292 INFO     Import mail requests completed via API: Found 447 rows; starting import
+Processed 200/447 rows
+Processed 400/447 rows
+Processed 447/447 rows
+Import complete. Created: 0, Updated: 447
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-09-18 11:15:20,455 INFO     Import mail requests completed via API: Found 447 rows; starting import
+Processed 200/447 rows
+Processed 400/447 rows
+Processed 447/447 rows
+Import complete. Created: 0, Updated: 447
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-09-18 15:48:43,013 INFO     sync_cash_deposite_to_sheet: 2026-09-18\u21922026-09-18 appended=1 updated=0 deleted=0 total=1
+2026-09-18 15:48:44,715 INFO     sync_cash_sheet_to_sheet: 2026-09-18\u21922026-09-18 appended=1 updated=0 deleted=0 total=1
+2026-09-18 15:48:44,715 INFO     sync_cash_register_to_sheet: 2026-09-18\u21922026-09-18 appended=11 updated=0 deleted=0 skipped=0 total=7
+2026-09-18 15:48:46,298 INFO     sync_cash_deposite_to_sheet: 2026-09-18\u21922026-09-18 appended=0 updated=0 deleted=0 total=1
+2026-09-18 15:48:47,531 INFO     sync_cash_sheet_to_sheet: 2026-09-18\u21922026-09-18 appended=0 updated=0 deleted=0 total=1
+2026-09-18 15:48:49,164 INFO     sync_upi_sheet_to_sheet: 2026-09-18\u21922026-09-18 appended=1 updated=0 deleted=0 total=1
+2026-09-18 15:48:50,382 INFO     sync_bank_sheet_to_sheet: 2026-09-18\u21922026-09-18 appended=0 updated=0 deleted=0 total=0
+2026-09-18 15:48:52,076 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=134
+2026-09-18 15:48:54,222 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=115
+2026-09-18 15:49:01,639 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=14 deleted=0 total=71
+2026-09-18 15:58:12,792 INFO     Killed 0 pending application instances
+2026-09-21 10:42:24,622 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-21 10:42:24,624 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-21 10:42:24,624 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-21 10:42:24,626 INFO     Listening on TCP address 0.0.0.0:8001
+2026-09-21 11:26:06,398 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26335'}
+2026-09-21 11:26:06,398 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-21 11:26:06,398 INFO     InstLetterPDF grouped records: keys=['2026/335']
+2026-09-21 11:26:06,398 INFO     DEBUG rec_inst_pin value: '380009'
+2026-09-21 15:50:49,166 INFO     sync_cash_deposite_to_sheet: 2026-09-21\u21922026-09-21 appended=1 updated=0 deleted=0 total=1
+2026-09-21 15:50:50,868 INFO     sync_cash_sheet_to_sheet: 2026-09-21\u21922026-09-21 appended=1 updated=0 deleted=0 total=1
+2026-09-21 15:50:50,868 INFO     sync_cash_register_to_sheet: 2026-09-21\u21922026-09-21 appended=18 updated=0 deleted=0 skipped=0 total=15
+2026-09-21 15:50:52,553 INFO     sync_cash_deposite_to_sheet: 2026-09-21\u21922026-09-21 appended=0 updated=0 deleted=0 total=1
+2026-09-21 15:50:53,853 INFO     sync_cash_sheet_to_sheet: 2026-09-21\u21922026-09-21 appended=0 updated=0 deleted=0 total=1
+2026-09-21 15:50:55,543 INFO     sync_upi_sheet_to_sheet: 2026-09-21\u21922026-09-21 appended=1 updated=0 deleted=0 total=1
+2026-09-21 15:50:57,557 INFO     sync_bank_sheet_to_sheet: 2026-09-21\u21922026-09-21 appended=1 updated=0 deleted=0 total=1
+2026-09-21 15:50:59,274 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=135
+2026-09-21 15:51:01,004 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=116
+2026-09-21 15:51:18,985 INFO     Killed 2 pending application instances
+2026-09-22 08:27:56,421 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-22 08:27:56,421 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-22 08:27:56,421 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-22 08:27:56,421 INFO     Listening on TCP address 0.0.0.0:8001
+2026-09-22 11:37:14,159 INFO     Import mail requests completed via API: Found 447 rows; starting import
+Processed 200/447 rows
+Processed 400/447 rows
+Processed 447/447 rows
+Import complete. Created: 0, Updated: 447
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-09-22 11:37:15,548 WARNING  Skipping row 180: institute_name is required but empty
+2026-09-22 11:37:15,597 INFO     Updated tr_request_no for record 1189 from 26203 to 26203
+2026-09-22 12:10:17,092 WARNING  Skipping row 180: institute_name is required but empty
+2026-09-22 12:25:18,882 WARNING  Skipping row 180: institute_name is required but empty
+2026-09-22 12:40:17,798 WARNING  Skipping row 180: institute_name is required but empty
+2026-09-22 12:55:17,411 WARNING  Skipping row 180: institute_name is required but empty
+2026-09-22 13:10:17,306 WARNING  Skipping row 180: institute_name is required but empty
+2026-09-22 13:25:17,042 WARNING  Skipping row 180: institute_name is required but empty
+Unauthorized: /api/users/
+2026-09-22 13:38:42,359 WARNING  Unauthorized: /api/users/
+2026-09-22 13:40:17,710 WARNING  Skipping row 180: institute_name is required but empty
+2026-09-22 13:55:48,453 WARNING  Skipping row 180: institute_name is required but empty
+2026-09-22 15:19:42,300 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26336'}
+2026-09-22 15:19:42,300 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-22 15:19:42,316 INFO     InstLetterPDF grouped records: keys=['2026/336']
+2026-09-22 15:19:42,316 INFO     DEBUG rec_inst_pin value: '201301'
+2026-09-22 15:25:04,951 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26337'}
+2026-09-22 15:25:04,951 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-22 15:25:04,951 INFO     InstLetterPDF grouped records: keys=['2026/337']
+2026-09-22 15:25:04,951 INFO     DEBUG rec_inst_pin value: '411040'
+Unauthorized: /api/users/
+2026-09-22 15:26:08,435 WARNING  Unauthorized: /api/users/
+2026-09-22 15:42:34,254 INFO     sync_cash_deposite_to_sheet: 2026-09-22\u21922026-09-22 appended=1 updated=0 deleted=0 total=1
+2026-09-22 15:42:35,809 INFO     sync_cash_sheet_to_sheet: 2026-09-22\u21922026-09-22 appended=1 updated=0 deleted=0 total=1
+2026-09-22 15:42:35,810 INFO     sync_cash_register_to_sheet: 2026-09-22\u21922026-09-22 appended=11 updated=0 deleted=0 skipped=0 total=8
+2026-09-22 15:42:37,381 INFO     sync_cash_deposite_to_sheet: 2026-09-22\u21922026-09-22 appended=0 updated=0 deleted=0 total=1
+2026-09-22 15:42:38,605 INFO     sync_cash_sheet_to_sheet: 2026-09-22\u21922026-09-22 appended=0 updated=0 deleted=0 total=1
+2026-09-22 15:42:40,138 INFO     sync_upi_sheet_to_sheet: 2026-09-22\u21922026-09-22 appended=1 updated=0 deleted=0 total=1
+2026-09-22 15:42:41,330 INFO     sync_bank_sheet_to_sheet: 2026-09-22\u21922026-09-22 appended=0 updated=0 deleted=0 total=0
+2026-09-22 15:42:43,001 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=136
+2026-09-22 15:42:44,671 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=117
+2026-09-22 15:43:01,487 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=38 deleted=0 total=72
+2026-09-22 15:54:54,309 INFO     Killed 2 pending application instances
+2026-09-23 08:26:41,640 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-23 08:26:41,642 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-23 08:26:41,642 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-23 08:26:41,642 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/token/verify/
+2026-09-23 10:16:23,771 WARNING  Unauthorized: /api/token/verify/
+2026-09-23 10:25:23,584 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26338'}
+2026-09-23 10:25:23,584 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-23 10:25:23,600 INFO     InstLetterPDF grouped records: keys=['2026/338']
+2026-09-23 10:25:23,600 INFO     DEBUG rec_inst_pin value: '110033'
+2026-09-23 10:34:27,353 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26339'}
+2026-09-23 10:34:27,360 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-23 10:34:27,363 INFO     InstLetterPDF grouped records: keys=['2026/339']
+2026-09-23 10:34:27,363 INFO     DEBUG rec_inst_pin value: '560005'
+2026-09-23 11:27:45,613 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26340'}
+2026-09-23 11:27:45,623 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-23 11:27:45,639 INFO     InstLetterPDF grouped records: keys=['2026/340']
+2026-09-23 11:27:45,649 INFO     DEBUG rec_inst_pin value: '382016'
+2026-09-23 11:44:16,668 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26341'}
+2026-09-23 11:44:16,684 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-23 11:44:16,684 INFO     InstLetterPDF grouped records: keys=['2026/341']
+2026-09-23 11:44:16,700 INFO     DEBUG rec_inst_pin value: '110052'
+2026-09-23 12:14:10,995 INFO     Import mail requests completed via API: Found 448 rows; starting import
+Processed 200/448 rows
+Processed 400/448 rows
+Processed 448/448 rows
+Import complete. Created: 1, Updated: 447
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-09-23 12:14:20,833 INFO     Import mail requests completed via API: Found 448 rows; starting import
+Processed 200/448 rows
+Processed 400/448 rows
+Processed 448/448 rows
+Import complete. Created: 0, Updated: 448
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+Unauthorized: /api/users/
+2026-09-23 12:16:31,982 WARNING  Unauthorized: /api/users/
+2026-09-23 12:29:06,585 INFO     Import mail requests completed via API: Found 448 rows; starting import
+Processed 200/448 rows
+Processed 400/448 rows
+Processed 448/448 rows
+Import complete. Created: 0, Updated: 448
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-09-23 12:44:13,554 INFO     Import mail requests completed via API: Found 448 rows; starting import
+Processed 200/448 rows
+Processed 400/448 rows
+Processed 448/448 rows
+Import complete. Created: 0, Updated: 448
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-09-23 12:59:11,103 INFO     Import mail requests completed via API: Found 448 rows; starting import
+Processed 200/448 rows
+Processed 400/448 rows
+Processed 448/448 rows
+Import complete. Created: 0, Updated: 448
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-09-23 13:14:10,935 INFO     Import mail requests completed via API: Found 448 rows; starting import
+Processed 200/448 rows
+Processed 400/448 rows
+Processed 448/448 rows
+Import complete. Created: 0, Updated: 448
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-09-23 15:25:38,810 INFO     sync_cash_deposite_to_sheet: 2026-09-23\u21922026-09-23 appended=1 updated=0 deleted=0 total=1
+2026-09-23 15:25:40,485 INFO     sync_cash_sheet_to_sheet: 2026-09-23\u21922026-09-23 appended=1 updated=0 deleted=0 total=1
+2026-09-23 15:25:40,485 INFO     sync_cash_register_to_sheet: 2026-09-23\u21922026-09-23 appended=24 updated=0 deleted=0 skipped=0 total=16
+2026-09-23 15:25:42,166 INFO     sync_cash_deposite_to_sheet: 2026-09-23\u21922026-09-23 appended=0 updated=0 deleted=0 total=1
+2026-09-23 15:25:43,449 INFO     sync_cash_sheet_to_sheet: 2026-09-23\u21922026-09-23 appended=0 updated=0 deleted=0 total=1
+2026-09-23 15:25:45,056 INFO     sync_upi_sheet_to_sheet: 2026-09-23\u21922026-09-23 appended=1 updated=0 deleted=0 total=1
+2026-09-23 15:25:46,653 INFO     sync_bank_sheet_to_sheet: 2026-09-23\u21922026-09-23 appended=1 updated=0 deleted=0 total=1
+2026-09-23 15:25:48,538 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=137
+2026-09-23 15:25:50,520 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=118
+2026-09-23 15:25:52,050 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=73
+2026-09-23 15:57:10,430 INFO     Killed 0 pending application instances
+2026-09-24 08:26:18,560 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-24 08:26:18,560 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-24 08:26:18,560 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-24 08:26:18,560 INFO     Listening on TCP address 0.0.0.0:8001
+2026-09-24 08:26:30,620 INFO     Killed 0 pending application instances
+2026-09-24 08:26:59,691 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-24 08:26:59,691 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-24 08:26:59,691 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-24 08:26:59,691 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/token/verify/
+2026-09-24 10:09:17,235 WARNING  Unauthorized: /api/token/verify/
+2026-09-24 10:11:33,493 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26342'}
+2026-09-24 10:11:33,493 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-24 10:11:33,509 INFO     InstLetterPDF grouped records: keys=['2026/342']
+2026-09-24 10:11:33,509 INFO     DEBUG rec_inst_pin value: '411040'
+Unauthorized: /api/users/
+2026-09-24 11:36:39,358 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-09-24 13:59:56,491 WARNING  Unauthorized: /api/users/
+2026-09-24 15:45:49,312 INFO     sync_cash_deposite_to_sheet: 2026-09-24\u21922026-09-24 appended=1 updated=0 deleted=0 total=1
+2026-09-24 15:45:50,866 INFO     sync_cash_sheet_to_sheet: 2026-09-24\u21922026-09-24 appended=1 updated=0 deleted=0 total=1
+2026-09-24 15:45:50,866 INFO     sync_cash_register_to_sheet: 2026-09-24\u21922026-09-24 appended=20 updated=0 deleted=0 skipped=0 total=13
+2026-09-24 15:45:52,433 INFO     sync_cash_deposite_to_sheet: 2026-09-24\u21922026-09-24 appended=0 updated=0 deleted=0 total=1
+2026-09-24 15:45:53,632 INFO     sync_cash_sheet_to_sheet: 2026-09-24\u21922026-09-24 appended=0 updated=0 deleted=0 total=1
+2026-09-24 15:45:55,161 INFO     sync_upi_sheet_to_sheet: 2026-09-24\u21922026-09-24 appended=1 updated=0 deleted=0 total=1
+2026-09-24 15:45:56,683 INFO     sync_bank_sheet_to_sheet: 2026-09-24\u21922026-09-24 appended=1 updated=0 deleted=0 total=1
+2026-09-24 15:45:58,381 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=138
+2026-09-24 15:45:59,970 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=119
+2026-09-24 15:46:01,524 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=74
+2026-09-24 15:57:48,576 INFO     Killed 1 pending application instances
+2026-09-25 08:28:57,640 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-25 08:28:57,640 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-25 08:28:57,640 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-25 08:28:57,640 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/users/
+2026-09-25 10:44:36,467 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-09-25 12:45:30,459 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-09-25 13:53:36,971 WARNING  Unauthorized: /api/users/
+2026-09-25 15:40:13,616 INFO     sync_cash_deposite_to_sheet: 2026-09-25\u21922026-09-25 appended=1 updated=0 deleted=0 total=1
+2026-09-25 15:40:15,271 INFO     sync_cash_sheet_to_sheet: 2026-09-25\u21922026-09-25 appended=1 updated=0 deleted=0 total=1
+2026-09-25 15:40:15,271 INFO     sync_cash_register_to_sheet: 2026-09-25\u21922026-09-25 appended=13 updated=0 deleted=0 skipped=0 total=12
+2026-09-25 15:40:16,997 INFO     sync_cash_deposite_to_sheet: 2026-09-25\u21922026-09-25 appended=0 updated=0 deleted=0 total=1
+2026-09-25 15:40:18,325 INFO     sync_cash_sheet_to_sheet: 2026-09-25\u21922026-09-25 appended=0 updated=0 deleted=0 total=1
+2026-09-25 15:40:20,347 INFO     sync_upi_sheet_to_sheet: 2026-09-25\u21922026-09-25 appended=1 updated=0 deleted=0 total=1
+2026-09-25 15:40:21,968 INFO     sync_bank_sheet_to_sheet: 2026-09-25\u21922026-09-25 appended=1 updated=0 deleted=0 total=1
+2026-09-25 15:40:23,794 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=139
+2026-09-25 15:40:25,590 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=120
+2026-09-25 15:40:27,199 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=75
+2026-09-25 16:00:09,202 INFO     Killed 0 pending application instances
+2026-09-26 08:27:45,735 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-26 08:27:45,735 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-26 08:27:45,735 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-26 08:27:45,735 INFO     Listening on TCP address 0.0.0.0:8001
+Not Found: /api/student-search/search/
+2026-09-26 09:31:44,941 WARNING  Not Found: /api/student-search/search/
+2026-09-26 09:56:23,947 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26344'}
+2026-09-26 09:56:23,947 INFO     InstLetterPDF resolved 0 doc_rec_ids (iv_requested=True)
+Not Found: /api/inst-letter/generate-pdf/
+2026-09-26 09:56:23,947 WARNING  Not Found: /api/inst-letter/generate-pdf/
+2026-09-26 09:56:52,396 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26343'}
+2026-09-26 09:56:52,396 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-26 09:56:52,403 INFO     InstLetterPDF grouped records: keys=['2026/343']
+2026-09-26 09:56:52,403 INFO     DEBUG rec_inst_pin value: ''
+Unauthorized: /api/users/
+2026-09-26 10:43:15,340 WARNING  Unauthorized: /api/users/
+2026-09-26 13:17:35,650 INFO     Killed 0 pending application instances
+2026-09-26 13:18:09,581 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-26 13:18:09,581 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-26 13:18:09,581 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-26 13:18:09,583 INFO     Listening on TCP address 0.0.0.0:8001
+2026-09-26 15:43:31,260 INFO     Killed 0 pending application instances
+2026-09-28 08:24:40,818 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-28 08:24:40,818 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-28 08:24:40,818 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-28 08:24:40,820 INFO     Listening on TCP address 0.0.0.0:8001
+Bad Request: /api/exam/sync-from-sheet/
+2026-09-28 08:36:55,276 WARNING  Bad Request: /api/exam/sync-from-sheet/
+Bad Request: /api/exam/sync-from-sheet/
+2026-09-28 08:36:58,576 WARNING  Bad Request: /api/exam/sync-from-sheet/
+Bad Request: /api/exam/sync-from-sheet/
+2026-09-28 08:37:18,559 WARNING  Bad Request: /api/exam/sync-from-sheet/
+Bad Request: /api/exam/sync-from-sheet/
+2026-09-28 08:37:22,259 WARNING  Bad Request: /api/exam/sync-from-sheet/
+Bad Request: /api/exam/sync-from-sheet/
+2026-09-28 08:37:24,410 WARNING  Bad Request: /api/exam/sync-from-sheet/
+Bad Request: /api/exam/sync-from-sheet/
+2026-09-28 08:37:29,589 WARNING  Bad Request: /api/exam/sync-from-sheet/
+Bad Request: /api/exam/sync-from-sheet/
+2026-09-28 08:37:38,109 WARNING  Bad Request: /api/exam/sync-from-sheet/
+Bad Request: /api/exam/sync-from-sheet/
+2026-09-28 08:37:55,092 WARNING  Bad Request: /api/exam/sync-from-sheet/
+Bad Request: /api/exam/sync-from-sheet/
+2026-09-28 08:37:57,945 WARNING  Bad Request: /api/exam/sync-from-sheet/
+Bad Request: /api/exam/sync-from-sheet/
+2026-09-28 08:38:00,476 WARNING  Bad Request: /api/exam/sync-from-sheet/
+Bad Request: /api/exam/sync-from-sheet/
+2026-09-28 08:38:01,942 WARNING  Bad Request: /api/exam/sync-from-sheet/
+Bad Request: /api/exam/sync-from-sheet/
+2026-09-28 08:38:38,375 WARNING  Bad Request: /api/exam/sync-from-sheet/
+Bad Request: /api/exam/sync-from-sheet/
+2026-09-28 08:38:42,692 WARNING  Bad Request: /api/exam/sync-from-sheet/
+Bad Request: /api/exam/sync-from-sheet/
+2026-09-28 08:39:24,392 WARNING  Bad Request: /api/exam/sync-from-sheet/
+Bad Request: /api/exam/sync-from-sheet/
+2026-09-28 08:39:29,233 WARNING  Bad Request: /api/exam/sync-from-sheet/
+Bad Request: /api/exam/sync-from-sheet/
+2026-09-28 08:39:34,593 WARNING  Bad Request: /api/exam/sync-from-sheet/
+Bad Request: /api/exam/sync-from-sheet/
+2026-09-28 08:40:12,109 WARNING  Bad Request: /api/exam/sync-from-sheet/
+Bad Request: /api/exam/sync-from-sheet/
+2026-09-28 08:41:14,464 WARNING  Bad Request: /api/exam/sync-from-sheet/
+Bad Request: /api/exam/sync-from-sheet/
+2026-09-28 08:46:36,927 WARNING  Bad Request: /api/exam/sync-from-sheet/
+Bad Request: /api/exam/sync-from-sheet/
+2026-09-28 08:46:42,522 WARNING  Bad Request: /api/exam/sync-from-sheet/
+2026-09-28 08:47:21,000 INFO     Killed 2 pending application instances
+2026-09-28 08:47:23,027 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-28 08:47:23,027 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-28 08:47:23,027 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-28 08:47:23,027 INFO     Listening on TCP address 0.0.0.0:8001
+2026-09-28 08:54:31,519 INFO     sync_cash_deposite_to_sheet: 2026-09-28\u21922026-09-28 appended=1 updated=0 deleted=0 total=1
+2026-09-28 08:54:37,364 INFO     sync_cash_sheet_to_sheet: 2026-09-28\u21922026-09-28 appended=1 updated=0 deleted=0 total=1
+2026-09-28 08:54:37,364 INFO     sync_cash_register_to_sheet: 2026-09-28\u21922026-09-28 appended=21 updated=0 deleted=0 skipped=0 total=14
+2026-09-28 08:54:38,890 INFO     sync_cash_deposite_to_sheet: 2026-09-28\u21922026-09-28 appended=0 updated=0 deleted=0 total=1
+2026-09-28 08:54:40,101 INFO     sync_cash_sheet_to_sheet: 2026-09-28\u21922026-09-28 appended=0 updated=0 deleted=0 total=1
+2026-09-28 08:54:40,667 INFO     Killed 3 pending application instances
+2026-09-28 08:54:41,659 INFO     sync_upi_sheet_to_sheet: 2026-09-28\u21922026-09-28 appended=1 updated=0 deleted=0 total=1
+2026-09-28 08:54:43,427 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-28 08:54:43,427 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-28 08:54:43,427 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-28 08:54:43,427 INFO     Listening on TCP address 0.0.0.0:8001
+2026-09-28 08:54:49,011 INFO     sync_cash_deposite_to_sheet: 2026-09-28\u21922026-09-28 appended=0 updated=0 deleted=0 total=1
+2026-09-28 08:54:50,220 INFO     sync_cash_sheet_to_sheet: 2026-09-28\u21922026-09-28 appended=0 updated=0 deleted=0 total=1
+2026-09-28 08:54:50,220 INFO     sync_cash_register_to_sheet: 2026-09-28\u21922026-09-28 appended=0 updated=0 deleted=0 skipped=21 total=14
+2026-09-28 08:54:51,851 INFO     sync_cash_deposite_to_sheet: 2026-09-28\u21922026-09-28 appended=0 updated=0 deleted=0 total=1
+2026-09-28 08:54:53,098 INFO     sync_cash_sheet_to_sheet: 2026-09-28\u21922026-09-28 appended=0 updated=0 deleted=0 total=1
+2026-09-28 08:54:54,219 INFO     sync_upi_sheet_to_sheet: 2026-09-28\u21922026-09-28 appended=0 updated=0 deleted=0 total=1
+2026-09-28 08:54:55,795 INFO     sync_bank_sheet_to_sheet: 2026-09-28\u21922026-09-28 appended=1 updated=0 deleted=0 total=1
+2026-09-28 08:54:57,387 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=140
+2026-09-28 08:54:58,904 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=121
+2026-09-28 08:55:00,376 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=76
+2026-09-28 09:03:31,012 INFO     Killed 1 pending application instances
+2026-09-28 09:03:32,308 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-28 09:03:32,308 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-28 09:03:32,308 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-28 09:03:32,308 INFO     Listening on TCP address 0.0.0.0:8001
+2026-09-28 09:16:59,743 INFO     Killed 2 pending application instances
+2026-09-28 09:17:01,321 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-28 09:17:01,321 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-28 09:17:01,321 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-28 09:17:01,321 INFO     Listening on TCP address 0.0.0.0:8001

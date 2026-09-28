@@ -16,10 +16,11 @@ __all__ = [
 # ============================
 
 class CCTVExam(models.Model):
+    record_id = models.CharField(max_length=100, unique=True, null=True, blank=True)
     exam_date = models.CharField(max_length=50)
     exam_time = models.CharField(max_length=100)
     course = models.CharField(max_length=100)
-    sem = models.CharField(max_length=10)
+    sem = models.CharField(max_length=50)
     subject_code = models.CharField(max_length=100)
     subject_name = models.CharField(max_length=200)
     no_of_students = models.IntegerField(default=0)
@@ -74,6 +75,7 @@ class CCTVCentreEntry(models.Model):
             else:
                 last = CCTVCentreEntry.objects.filter(
                     session=self.session,
+                    exam__exam_year_session=self.exam.exam_year_session,
                     end_number__isnull=False,
                 ).aggregate(max_end=Max("end_number"))
 

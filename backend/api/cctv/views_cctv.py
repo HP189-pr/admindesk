@@ -246,6 +246,7 @@ class CCTVCentreEntryViewSet(CctvPermissionMixin, viewsets.ModelViewSet):
             last = (
                 CCTVCentreEntry.objects.filter(
                     session=centre.session,
+                    exam__exam_year_session=centre.exam.exam_year_session,
                     end_number__isnull=False,
                 )
                 .exclude(pk=centre.pk)
@@ -313,7 +314,9 @@ class CCTVDVDViewSet(CctvPermissionMixin, viewsets.ModelViewSet):
 
         with transaction.atomic():
             centre = CCTVCentreEntry.objects.select_for_update().get(id=centre_id)
-            last = CCTVDVD.objects.aggregate(max_cc=Max("cc_number"))
+            last = CCTVDVD.objects.filter(
+                centre__exam__exam_year_session=centre.exam.exam_year_session,
+            ).aggregate(max_cc=Max("cc_number"))
             last_number = last["max_cc"] or 0
 
             start_number = last_number + 1

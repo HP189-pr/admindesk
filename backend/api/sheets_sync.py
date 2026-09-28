@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 from typing import Dict, Iterable, Mapping, Optional
@@ -1143,13 +1144,14 @@ def import_cctv_centres_from_sheet(
         records = worksheet.get_all_records()
     except Exception:
         values = worksheet.get_all_values()
-        if not values or len(values) < 2:
-            return {"created": 0, "updated": 0, "total": 0, "skipped": 0}
-        headers = [h.strip().lower() for h in values[0]]
-        records = []
-        for row in values[1:]:
-            rec = {headers[i]: (row[i] if i < len(row) else "") for i in range(len(headers))}
-            records.append(rec)
+        if not values:
+            records = []
+        else:
+            headers = [h.strip().lower() for h in values[0]]
+            records = []
+            for row in values[1:]:
+                rec = {headers[i]: (row[i] if i < len(row) else "") for i in range(len(headers))}
+                records.append(rec)
 
     created = 0
     updated = 0
@@ -1373,6 +1375,7 @@ def import_cctv_exams_from_sheet(
     updated = 0
     total = 0
     skipped = 0
+    matched_ids = set()
 
     def pick(norm_row, *keys):
         for k in keys:
@@ -1394,6 +1397,7 @@ def import_cctv_exams_from_sheet(
         total += 1
         norm_row = {str(k).strip().lower(): v for k, v in (raw.items() if isinstance(raw, Mapping) else {})}
 
+        record_id = pick(norm_row, "record_id", "record id", "recordid")
         exam_date = pick(norm_row, "exam date", "exam_date", "date")
         exam_time = pick(norm_row, "exam time", "exam_time", "time")
         course = pick(norm_row, "course")
@@ -1417,6 +1421,20 @@ def import_cctv_exams_from_sheet(
             skipped += 1
             continue
 
+        # Older CCTV sheets label the course-code column as ``Sem`` and the
+        # year column as ``Subject Code``. Normalize that layout before saving.
+        sem_value = str(sem or "").strip()
+        subject_code_value = str(subject_code or "").strip()
+        compact_subject_code = re.sub(r"[\s-]+", "", subject_code_value).lower()
+        compact_sem = re.sub(r"[\s-]+", "", sem_value).lower()
+        subject_code_is_year = bool(
+            re.fullmatch(r"year\d+", compact_subject_code)
+            or re.fullmatch(r"\d+", compact_subject_code)
+        )
+        sem_is_year = bool(re.fullmatch(r"year\d+", compact_sem))
+        if subject_code_is_year and sem_value and not sem_is_year:
+            sem, subject_code = subject_code, sem
+
         payload = {
             "exam_date": str(exam_date).strip(),
             "exam_time": str(exam_time or "").strip(),
@@ -1429,12 +1447,28 @@ def import_cctv_exams_from_sheet(
             "exam_year_session": str(sheet_name).strip(),
             "raw_row": dict(raw) if isinstance(raw, Mapping) else {},
         }
+        if record_id is not None:
+            payload["record_id"] = str(record_id).strip()
 
-        instance = CCTVExam.objects.filter(
-            exam_year_session__iexact=str(sheet_name).strip(),
-            subject_code__iexact=str(subject_code).strip(),
-            exam_date=str(exam_date).strip(),
-        ).first()
+        instance = None
+        if record_id is not None:
+            instance = CCTVExam.objects.filter(
+                exam_year_session__iexact=str(sheet_name).strip(),
+                record_id=str(record_id).strip(),
+            ).first()
+        if not instance:
+            instance = CCTVExam.objects.filter(
+                exam_year_session__iexact=str(sheet_name).strip(),
+                subject_code__iexact=str(subject_code).strip(),
+                exam_date=str(exam_date).strip(),
+            ).first()
+        if not instance and subject_name:
+            instance = CCTVExam.objects.filter(
+                exam_year_session__iexact=str(sheet_name).strip(),
+                exam_date=str(exam_date).strip(),
+                course__iexact=str(course or "").strip(),
+                subject_name__iexact=str(subject_name).strip(),
+            ).first()
 
         if instance:
             changed = False
@@ -1445,16 +1479,25 @@ def import_cctv_exams_from_sheet(
             if changed:
                 instance.save()
                 updated += 1
+            matched_ids.add(instance.id)
             continue
 
-        CCTVExam.objects.create(**payload)
+        instance = CCTVExam.objects.create(**payload)
+        matched_ids.add(instance.id)
         created += 1
+
+    deleted = 0
+    if limit is None and skipped == 0:
+        deleted, _ = CCTVExam.objects.filter(
+            exam_year_session__iexact=str(sheet_name).strip()
+        ).exclude(id__in=matched_ids).delete()
 
     return {
         "created": created,
         "updated": updated,
         "total": total,
         "skipped": skipped,
+        "deleted": deleted,
     }
 
 
