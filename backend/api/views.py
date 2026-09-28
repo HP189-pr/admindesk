@@ -34,6 +34,7 @@ from .views_auth import LoginView
 from .domain_enrollment import Enrollment, StudentProfile
 from .domain_degree import StudentDegree
 from .domain_verification import MigrationRecord, ProvisionalRecord, Verification, VerificationStatus, ProvisionalStatus, generate_next_migration_identifiers
+from .domain_documents import ApplyFor, generate_provisional_doc_rec_id
 from .serializers import StudentProfileSerializer
 from .models import (
     DocRec, Eca, PayBy, InstLetterMain, InstLetterStudent,
@@ -730,7 +731,6 @@ class DocRecViewSet(viewsets.ModelViewSet):
         if not apply_for:
             return Response({"detail": "apply_for is required"}, status=400)
         try:
-            from .domain_documents import ApplyFor
             # Validate apply_for is a valid choice
             if apply_for not in [choice[0] for choice in ApplyFor.choices]:
                 return Response({"detail": f"Invalid apply_for value: {apply_for}"}, status=400)
@@ -750,24 +750,29 @@ class DocRecViewSet(viewsets.ModelViewSet):
             # Always use calendar year
             doc_year = doc_date.year
 
-            yy = doc_year % 100
-            prefix = tmp._prefix_for_apply()
-            year_str = f"{yy:02d}"
-            base = f"{prefix}{year_str}"
-            pad_len = 4 if str(apply_for).upper() == ApplyFor.INST_VERIFICATION else 6
-            last = (
-                DocRec.objects
-                .filter(doc_rec_id__istartswith=base)
-                .order_by("-doc_rec_id")
-                .first()
-            )
-            next_num = 1
-            if last and last.doc_rec_id:
-                try:
-                    next_num = int(last.doc_rec_id[len(base):]) + 1
-                except Exception:
-                    next_num = 1
-            return Response({"next_id": f"{base}{next_num:0{pad_len}d}"})
+            provisional_number = request.query_params.get('prv_number')
+            if apply_for == ApplyFor.PROVISIONAL and provisional_number:
+                next_id = generate_provisional_doc_rec_id(provisional_number, doc_date)
+            else:
+                yy = doc_year % 100
+                prefix = tmp._prefix_for_apply()
+                year_str = f"{yy:02d}"
+                base = f"{prefix}{year_str}"
+                pad_len = 4 if str(apply_for).upper() == ApplyFor.INST_VERIFICATION else 6
+                last = (
+                    DocRec.objects
+                    .filter(doc_rec_id__istartswith=base)
+                    .order_by("-doc_rec_id")
+                    .first()
+                )
+                next_num = 1
+                if last and last.doc_rec_id:
+                    try:
+                        next_num = int(last.doc_rec_id[len(base):]) + 1
+                    except Exception:
+                        next_num = 1
+                next_id = f"{base}{next_num:0{pad_len}d}"
+            return Response({"next_id": next_id})
         except Exception as e:
             import traceback
             traceback.print_exc()

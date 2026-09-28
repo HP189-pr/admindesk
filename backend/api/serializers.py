@@ -27,6 +27,7 @@ from django.db import transaction
 from .models import Holiday, UserProfile, User, Module, Menu, UserPermission, DashboardPreference, Enrollment, Institute, MainBranch, SubBranch, InstituteCourseOffering, Verification, VerificationStatus, DocRec, MigrationRecord, ProvisionalRecord, Eca, StudentProfile, ProvisionalStatus
 from .domain_letter import InstLetterMain, InstLetterStudent
 from .domain_verification import MigrationStatus, generate_migration_doc_rec_id, generate_next_migration_identifiers
+from .domain_documents import ApplyFor, generate_provisional_doc_rec_id
 from django.conf import settings
 
 # --- Holiday Serializer ---
@@ -435,7 +436,16 @@ class DocRecSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and request.user and request.user.is_authenticated:
             validated['created_by'] = request.user
-        return super().create(validated)
+        with transaction.atomic():
+            if validated.get('apply_for') == ApplyFor.PROVISIONAL:
+                prv_number = request.data.get('prv_number') if request else None
+                if prv_number:
+                    validated['doc_rec_id'] = generate_provisional_doc_rec_id(
+                        prv_number,
+                        validated.get('doc_rec_date'),
+                        lock=True,
+                    )
+            return super().create(validated)
 
 
 class MigrationRecordSerializer(serializers.ModelSerializer):

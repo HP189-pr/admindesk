@@ -90251,3 +90251,10 @@ Bad Request: /api/exam/sync-from-sheet/
 2026-09-28 09:17:01,321 INFO     Listening on TCP address 0.0.0.0:8001
 Unauthorized: /api/users/
 2026-09-28 10:30:57,359 WARNING  Unauthorized: /api/users/
+2026-09-28 11:15:22,507 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26344'}
+2026-09-28 11:15:22,513 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-09-28 11:15:22,517 INFO     InstLetterPDF grouped records: keys=['2026/344']
+2026-09-28 11:15:22,517 INFO     DEBUG rec_inst_pin value: '362220'
+2026-09-28 11:29:25,156 WARNING  Skipping row 180: institute_name is required but empty
+Not Found: /api/student-search/search/
+2026-09-28 11:37:57,750 WARNING  Not Found: /api/student-search/search/

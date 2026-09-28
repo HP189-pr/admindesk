@@ -3,7 +3,7 @@
 
 from ..helpers import clean_cell, normalize_month_year, parse_excel_date
 from ..validators import field_scope
-from ...domain_documents import ApplyFor
+from ...domain_documents import ApplyFor, generate_provisional_doc_rec_id
 from ...domain_verification import ProvisionalRecord, ProvisionalStatus
 from .base import ImportContext, RowImportResult
 from .common import (
@@ -32,6 +32,10 @@ def process_row(row, context: ImportContext) -> RowImportResult:
     doc_rec_date = docrec_date_from_row(row, scope, "doc_rec_date")
     doc_remark = docrec_remark_from_row(row, scope)
     if doc_rec is None and context.auto_create_docrec:
+        # Provisional uploads may provide either an existing doc_rec_id or only
+        # prv_number; preserve an explicit ID and generate one only when absent.
+        if not doc_rec_key:
+            doc_rec_key = generate_provisional_doc_rec_id(prv_number, doc_rec_date)
         doc_rec, _ = ensure_docrec(
             doc_rec_key,
             apply_for=ApplyFor.PROVISIONAL,

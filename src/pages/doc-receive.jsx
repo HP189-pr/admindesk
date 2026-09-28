@@ -232,7 +232,10 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     const run = async () => {
       try {
         const token = localStorage.getItem("access_token");
-        const res = await fetch(`/api/docrec/next-id/?apply_for=${encodeURIComponent(form.apply_for)}&doc_rec_date=${dmyToISO(form.doc_rec_date)}`, {
+        const provisionalQuery = form.apply_for === 'PR' && form.prv_number
+          ? `&prv_number=${encodeURIComponent(form.prv_number)}`
+          : '';
+        const res = await fetch(`/api/docrec/next-id/?apply_for=${encodeURIComponent(form.apply_for)}&doc_rec_date=${dmyToISO(form.doc_rec_date)}${provisionalQuery}`, {
           headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           signal: ctrl.signal,
         });
@@ -254,7 +257,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
     };
     if (form.apply_for) run();
     return () => ctrl.abort();
-  }, [form.apply_for, form.doc_rec_date]);
+  }, [form.apply_for, form.doc_rec_date, form.prv_number]);
 
   // Listen for bulk upload completion events from other tabs/components
   useEffect(()=>{
@@ -603,6 +606,7 @@ export default function DocReceive({ onToggleSidebar, onToggleChatbox }) {
       // send ISO date if provided
       doc_rec_date: form.doc_rec_date ? dmyToISO(form.doc_rec_date) : undefined,
       doc_remark: form.doc_remark || null,
+      ...(form.apply_for === 'PR' && form.prv_number ? { prv_number: form.prv_number } : {}),
     };
     const res = await fetch("/api/docrec/", {
       method: "POST",

@@ -11,6 +11,7 @@ from django.db.models import Value
 from django.db.models.functions import Lower, Replace
 from django.db.models import Q
 from .domain_verification import MigrationStatus, generate_migration_doc_rec_id, generate_next_migration_identifiers
+from .domain_documents import ApplyFor, generate_provisional_doc_rec_id
 from .models import (
     DocRec, Verification, VerificationStatus, MigrationRecord, ProvisionalRecord,
     InstLetterMain, InstLetterStudent, Eca, Enrollment
@@ -123,7 +124,16 @@ class DocRecSerializer(serializers.ModelSerializer):
         req = self.context.get('request')
         if req and req.user and req.user.is_authenticated:
             validated['created_by'] = req.user
-        return super().create(validated)
+        with transaction.atomic():
+            if validated.get('apply_for') == ApplyFor.PROVISIONAL:
+                prv_number = req.data.get('prv_number') if req else None
+                if prv_number:
+                    validated['doc_rec_id'] = generate_provisional_doc_rec_id(
+                        prv_number,
+                        validated.get('doc_rec_date'),
+                        lock=True,
+                    )
+            return super().create(validated)
 
 class MigrationRecordSerializer(serializers.ModelSerializer):
     doc_rec_key = serializers.CharField(write_only=True, required=False, allow_null=True, allow_blank=True)

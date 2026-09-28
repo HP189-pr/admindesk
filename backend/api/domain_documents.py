@@ -7,8 +7,39 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.contrib.auth.models import User
+import re
 
-__all__ = ['ApplyFor', 'PayBy', 'PayPrefixRule', 'DocRec', 'Eca']
+__all__ = ['ApplyFor', 'PayBy', 'PayPrefixRule', 'DocRec', 'Eca', 'generate_provisional_doc_rec_id']
+
+
+def generate_provisional_doc_rec_id(prv_number, target_date=None, *, lock=False):
+    """Return the next DocRec ID for a legacy or ERP provisional number."""
+    raw_number = str(prv_number or '').strip()
+    active_date = target_date or timezone.localdate()
+    year = active_date.year
+    yy = year % 100
+
+    erp_match = re.fullmatch(r'KSV/PRO/(\d{4})/(\d+)', raw_number, re.IGNORECASE)
+    if erp_match:
+        year = int(erp_match.group(1))
+        yy = year % 100
+        base = f'pr_{yy:02d}_'
+        width = 4
+    else:
+        base = f'pr{yy:02d}'
+        width = 6
+
+    queryset = DocRec.objects.filter(doc_rec_id__istartswith=base)
+    if lock:
+        queryset = queryset.select_for_update()
+
+    last_number = 0
+    for existing_id in queryset.values_list('doc_rec_id', flat=True):
+        suffix = str(existing_id)[len(base):]
+        if suffix.isdigit():
+            last_number = max(last_number, int(suffix))
+
+    return f'{base}{last_number + 1:0{width}d}'
 
 class ApplyFor(models.TextChoices):
     VERIFICATION = 'VR', 'Verification'
@@ -136,30 +167,39 @@ class DocRec(models.Model):
             if not self.pay_rec_no_pre:
                 self.pay_rec_no_pre = self._pay_prefix_for_payby(yy, yyyy)
 
-        # Generate doc_rec_id ONLY if not already set
+        # Generate doc_rec_id ONLY if not already set. Provisional records use
+        # separate legacy and ERP sequences selected from their provisional number.
         if not self.doc_rec_id:
             prefix = self._prefix_for_apply()
             year_str = f"{yy:02d}"
-            base = f"{prefix}{year_str}"
-            pad_len = 4 if str(self.apply_for).upper() == ApplyFor.INST_VERIFICATION else 6
+            if str(self.apply_for).upper() == ApplyFor.PROVISIONAL:
+                with transaction.atomic():
+                    self.doc_rec_id = generate_provisional_doc_rec_id(
+                        getattr(self, 'provisional_number', None),
+                        base_date,
+                        lock=True,
+                    )
+            else:
+                base = f"{prefix}{year_str}"
+                pad_len = 4 if str(self.apply_for).upper() == ApplyFor.INST_VERIFICATION else 6
 
-            with transaction.atomic():
-                last = (
-                    DocRec.objects
-                    .select_for_update(skip_locked=True)
-                    .filter(doc_rec_id__istartswith=base)
-                    .order_by('-doc_rec_id')
-                    .first()
-                )
+                with transaction.atomic():
+                    last = (
+                        DocRec.objects
+                        .select_for_update(skip_locked=True)
+                        .filter(doc_rec_id__istartswith=base)
+                        .order_by('-doc_rec_id')
+                        .first()
+                    )
 
-                next_num = 1
-                if last and last.doc_rec_id:
-                    try:
-                        next_num = int(last.doc_rec_id[len(base):]) + 1
-                    except Exception:
-                        next_num = 1
+                    next_num = 1
+                    if last and last.doc_rec_id:
+                        try:
+                            next_num = int(last.doc_rec_id[len(base):]) + 1
+                        except Exception:
+                            next_num = 1
 
-                self.doc_rec_id = f"{prefix}{year_str}{next_num:0{pad_len}d}"
+                    self.doc_rec_id = f"{prefix}{year_str}{next_num:0{pad_len}d}"
 
         # Ensure doc_rec_date is stored
         if not self.doc_rec_date:
