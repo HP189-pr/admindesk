@@ -90692,3 +90692,35 @@ Not Found: /api/enrollment-analytics/
 2026-09-30 09:49:15,636 INFO     Listening on TCP address 0.0.0.0:8001
 Unauthorized: /api/enrollment-analytics/
 2026-09-30 09:49:26,119 WARNING  Unauthorized: /api/enrollment-analytics/
+2026-09-30 10:17:26,737 INFO     Killed 1 pending application instances
+2026-09-30 10:17:28,436 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-30 10:17:28,436 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-30 10:17:28,436 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-30 10:17:28,436 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/enrollment-analytics/
+2026-09-30 10:17:39,920 WARNING  Unauthorized: /api/enrollment-analytics/
+2026-09-30 10:20:48,139 INFO     Import mail requests completed via API: Found 454 rows; starting import
+Processed 200/454 rows
+Processed 400/454 rows
+Processed 454/454 rows
+Import complete. Created: 0, Updated: 454
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+Unauthorized: /api/users/
+2026-09-30 10:37:44,462 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-09-30 14:44:59,354 WARNING  Unauthorized: /api/users/
+2026-09-30 15:06:49,029 INFO     Killed 1 pending application instances
+2026-09-30 15:06:51,666 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-30 15:06:51,666 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-30 15:06:51,666 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-30 15:06:51,666 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/enrollment-analytics/
+2026-09-30 15:07:21,812 WARNING  Unauthorized: /api/enrollment-analytics/
+2026-09-30 15:26:31,457 INFO     Killed 2 pending application instances
+2026-09-30 15:26:33,657 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-09-30 15:26:33,657 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-09-30 15:26:33,657 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-09-30 15:26:33,657 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/enrollment-analytics/
+2026-09-30 15:26:50,666 WARNING  Unauthorized: /api/enrollment-analytics/

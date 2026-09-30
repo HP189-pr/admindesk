@@ -50,6 +50,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     base: '/',
+    worker: { format: 'es' },
     server: {
       port: 3000,
       strictPort: true,

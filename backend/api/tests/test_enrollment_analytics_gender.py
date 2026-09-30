@@ -12,7 +12,8 @@ class EnrollmentGenderTests(SimpleTestCase):
             self.assertEqual(EnrollmentAnalyticsView._normalize_gender(raw), 'Male')
         for raw in ('Female', 'f', ' FEMALE ', 'FEMAL', 'FEMAIL', 'FEMAE', 'FAMALE'):
             self.assertEqual(EnrollmentAnalyticsView._normalize_gender(raw), 'Female')
-        self.assertEqual(EnrollmentAnalyticsView._normalize_gender(' Other '), 'Other')
+        for raw in ('o', ' O ', 'OTHER', ' Other '):
+            self.assertEqual(EnrollmentAnalyticsView._normalize_gender(raw), 'Other')
 
     @patch('api.views_enrollment.Enrollment')
     @patch('api.views_enrollment.StudentDegree')

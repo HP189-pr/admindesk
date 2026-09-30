@@ -2,6 +2,7 @@
 """Enrollment-specific API views."""
 from __future__ import annotations
 
+from datetime import date
 import pandas as pd
 from django.db import models
 from django.db.models import Case, CharField, Count, F, Max, Min, Q, Subquery, Value, When
@@ -14,6 +15,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .analytics_documents import DOCUMENTS, display_value, document_options, scoped_documents, document_trend, document_page
 from .models import Enrollment, AdmissionCancel
 from .domain_degree import StudentDegree
 from .domain_verification import MigrationRecord, ProvisionalRecord, Verification, VerificationStatus
@@ -456,6 +458,7 @@ class EnrollmentAnalyticsView(APIView):
             return None
         return {
             'm': 'Male', 'male': 'Male', 'mlae': 'Male',
+            'o': 'Other', 'other': 'Other',
             'f': 'Female', 'female': 'Female', 'femal': 'Female',
             'femail': 'Female', 'femae': 'Female', 'famale': 'Female',
         }.get(key, value)
@@ -514,8 +517,11 @@ class EnrollmentAnalyticsView(APIView):
                 qs = qs.filter(institute_id=int(department))
             except (TypeError, ValueError):
                 return Response({'detail': 'Invalid department filter.'}, status=status.HTTP_400_BAD_REQUEST)
-        qs = qs.annotate(
-            category_label=Coalesce(NullIf(Trim('student_profile__category'), Value('')), Value('NA')),
+        qs = qs.annotate(category_key=Lower(Trim('student_profile__category'))).annotate(
+            category_label=Case(
+                When(Q(category_key__isnull=True) | Q(category_key__in=['', 'null', 'none', 'undefined', 'n/a', 'na']), then=Value('NA')),
+                default=Trim('student_profile__category'), output_field=CharField(),
+            ),
         )
         if gender:
             selected_gender = self._normalize_gender(gender) or 'NA'
@@ -535,15 +541,37 @@ class EnrollmentAnalyticsView(APIView):
                 Q(student_name__icontains=search)
                 | Q(enrollment_no__icontains=search)
                 | Q(temp_enroll_no__icontains=search)
+                | Q(enrollment_no__in=StudentDegree.objects.filter(dg_sr_no__icontains=search).values('enrollment_no'))
+                | Q(enrollment_no__in=ProvisionalRecord.objects.filter(prv_number__icontains=search).values('enrollment_id'))
+                | Q(enrollment_no__in=MigrationRecord.objects.filter(mg_number__icontains=search).values('enrollment_id'))
+                | Q(enrollment_no__in=Verification.objects.filter(final_no__icontains=search).values('enrollment_no'))
             )
 
-        # Correlated counts avoid multiplying students when several certificates exist.
+        # Independent document counts avoid multiplying students across joins.
         certificate_sources = {
             'degree': (StudentDegree.objects.all(), 'enrollment_no'),
             'provisional': (ProvisionalRecord.objects.filter(Q(prv_status__iexact='Issued') | Q(prv_status__isnull=True) | Q(prv_status='')), 'enrollment_id'),
             'migration': (MigrationRecord.objects.filter(mg_status__iexact='Issued').exclude(mg_cancelled__iexact='Yes'), 'enrollment_id'),
             'verification': (Verification.objects.filter(status__in=[VerificationStatus.DONE, VerificationStatus.DONE_WITH_REMARKS]), 'enrollment_no'),
         }
+        try:
+            issue_from = date.fromisoformat(request.query_params['issue_date_from']) if request.query_params.get('issue_date_from') else None
+            issue_to = date.fromisoformat(request.query_params['issue_date_to']) if request.query_params.get('issue_date_to') else None
+        except (TypeError, ValueError):
+            return Response({'detail': 'Invalid document date. Use YYYY-MM-DD.'}, status=400)
+        if issue_from and issue_to and issue_from > issue_to:
+            return Response({'detail': 'Document date From must not exceed To.'}, status=400)
+        if issue_from or issue_to:
+            for name, (source, field) in list(certificate_sources.items()):
+                date_field = DOCUMENTS[name]['date']
+                if not date_field:
+                    source = source.none()
+                else:
+                    if issue_from:
+                        source = source.filter(**{date_field + '__gte': issue_from})
+                    if issue_to:
+                        source = source.filter(**{date_field + '__lte': issue_to})
+                certificate_sources[name] = (source, field)
         certificate = self._clean(request.query_params.get('certificate'))
         certificate_matches = Q()
         for name, (source, field) in certificate_sources.items():
@@ -551,6 +579,8 @@ class EnrollmentAnalyticsView(APIView):
             if certificate == name:
                 qs = qs.filter(match)
             certificate_matches |= match
+        if (issue_from or issue_to) and not certificate:
+            qs = qs.filter(certificate_matches)
         if certificate == 'none':
             qs = qs.exclude(certificate_matches)
         elif certificate == 'any':
@@ -562,6 +592,9 @@ class EnrollmentAnalyticsView(APIView):
             sub_courses=Count('subcourse_id', distinct=True), departments=Count('institute_id', distinct=True),
             batches=Count('batch', distinct=True), year_from=Min('batch'), year_to=Max('batch'),
         )
+        if certificate in certificate_sources:
+            certificate_sources = {key: (source if key == certificate else source.none(), field) for key, (source, field) in certificate_sources.items()}
+        certificate_sources = scoped_documents(certificate_sources, qs)
         certificate_counts = {
             name: {row[field]: row['n'] for row in source.order_by().values(field).annotate(n=Count('pk'))}
             for name, (source, field) in certificate_sources.items()
@@ -569,9 +602,14 @@ class EnrollmentAnalyticsView(APIView):
         dimensions = {'Institute': 'institute__institute_name', 'Main Course': 'maincourse__course_name',
                       'Sub Course': 'subcourse__subcourse_name', 'Admission Year': 'batch',
                       'Gender': 'gender_label', 'Category': 'category_label'}
+        cross_dimensions = {
+            'Institute': ('institute_id', 'department'), 'Main Course': ('maincourse_id', 'mainCourse'),
+            'Sub Course': ('subcourse_id', 'subCourse'), 'Gender': ('gender_label', 'gender'), 'Category': ('category_label', 'category'),
+        }
+        cross = {name: {} for name in cross_dimensions}
         grouped = {name: {} for name in dimensions}
         issuance_summary = {name: 0 for name in certificate_sources}
-        for row in qs.order_by().values('pk', 'enrollment_no', *[field for field in dimensions.values() if field != 'gender_label']).iterator(chunk_size=2000):
+        for row in qs.order_by().values('pk', 'enrollment_no', 'institute_id', 'maincourse_id', 'subcourse_id', *[field for field in dimensions.values() if field != 'gender_label']).iterator(chunk_size=2000):
             row['gender_label'] = resolved_genders.get(row['pk'], 'NA')
             counts = {name: values.get(row['enrollment_no'], 0) if row['enrollment_no'] else 0 for name, values in certificate_counts.items()}
             for name, count in counts.items():
@@ -582,7 +620,20 @@ class EnrollmentAnalyticsView(APIView):
                 item['students'] += 1
                 for key, count in counts.items():
                     item[key] += count
+            for name, (id_field, filter_key) in cross_dimensions.items():
+                value = str(row[id_field])
+                label = display_value(row[dimensions[name]])
+                item = cross[name].setdefault(value, {'value': value, 'label': label, 'filters': {filter_key: value}, 'years': {}, 'documents': {key: 0 for key in certificate_sources}, 'total': 0})
+                year = str(row['batch'])
+                item['years'][year] = item['years'].get(year, 0) + 1
+                item['total'] += 1
+                for key, count in counts.items():
+                    item['documents'][key] += count
         breakdowns = {name: sorted(rows.values(), key=lambda row: str(row['group'])) for name, rows in grouped.items()}
+        cross_analysis = {name: sorted(rows.values(), key=lambda row: (-row['total'], row['label'])) for name, rows in cross.items()}
+        data_quality = {name: sum(row['students'] for row in breakdowns[name] if display_value(row['group']) == 'NA') for name in ['Gender', 'Category', 'Institute']}
+        documents_trend = document_trend(certificate_sources)
+
 
         trend = [
             {'year': int(row['batch']), 'total': int(row['total'])}
@@ -665,6 +716,16 @@ class EnrollmentAnalyticsView(APIView):
             page_size = min(max(int(request.query_params.get('page_size', 25)), 1), 100)
         except (TypeError, ValueError):
             page, page_size = 1, 25
+        export_all = request.query_params.get('export') in {'excel', 'json'}
+        certificate_records = document_page({key: value for key, value in certificate_sources.items() if DOCUMENTS[key]['kind'] == 'certificate' and (certificate not in DOCUMENTS or certificate == key)}, page, page_size, export_all)
+        verification_source = Verification.objects.none() if certificate in DOCUMENTS and certificate != 'verification' else Verification.objects.all()
+        if issue_from:
+            verification_source = verification_source.filter(vr_done_date__gte=issue_from)
+        if issue_to:
+            verification_source = verification_source.filter(vr_done_date__lte=issue_to)
+        verification_source = scoped_documents({'verification': (verification_source, 'enrollment_no')}, qs)
+        verification_records = document_page(verification_source, page, page_size, export_all)
+        verification_summary = [{ 'status': display_value(row['status']), 'total': row['total']} for row in verification_source['verification'][0].order_by().values('status').annotate(total=Count('pk'))]
         ordered_records = qs.order_by('-batch', 'maincourse__course_name', 'subcourse__subcourse_name', 'student_name', 'id')
         total_records = ordered_records.count()
         start = (page - 1) * page_size
@@ -688,6 +749,8 @@ class EnrollmentAnalyticsView(APIView):
             for record in (ordered_records if request.query_params.get('export') == 'json' else ordered_records[start:start + page_size])
         ]
 
+        records = [{key: display_value(value) for key, value in row.items()} for row in records]
+
         if request.query_params.get('export') == 'excel':
             export_rows = [
                 {
@@ -704,10 +767,17 @@ class EnrollmentAnalyticsView(APIView):
                 }
                 for record in ordered_records
             ]
+            export_rows = [{key: display_value(value) for key, value in row.items()} for row in export_rows]
             response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
             response['Content-Disposition'] = 'attachment; filename="Enrollment_Analytics.xlsx"'
             with pd.ExcelWriter(response, engine='openpyxl') as writer:
-                pd.DataFrame([dict(request.query_params.items())]).to_excel(writer, index=False, sheet_name='Filters')
+                pd.DataFrame([{key: ', '.join(request.query_params.getlist(key)) for key in request.query_params if key not in {'export', 'page', 'page_size'}}]).to_excel(writer, index=False, sheet_name='Filters')
+                pd.DataFrame([{'Students': totals['total'], **issuance_summary}]).to_excel(writer, index=False, sheet_name='Summary')
+                for name, data in [('Certificate Records', certificate_records), ('Verification Records', verification_records)]:
+                    if data['count']:
+                        pd.DataFrame(data['results']).drop(columns=['record_id'], errors='ignore').to_excel(writer, index=False, sheet_name=name)
+                pd.DataFrame(documents_trend['rows']).to_excel(writer, index=False, sheet_name='Document Timeline')
+                pd.DataFrame(verification_summary).to_excel(writer, index=False, sheet_name='Verification Status')
                 pd.DataFrame([issuance_summary]).to_excel(writer, index=False, sheet_name='Certificate Totals')
                 for name, rows in breakdowns.items():
                     pd.DataFrame(rows).to_excel(writer, index=False, sheet_name=name)
@@ -742,6 +812,12 @@ class EnrollmentAnalyticsView(APIView):
                 'gendered_profiles': sum(row['students'] for row in breakdowns['Gender'] if row['group'] != 'NA'),
             },
             'issuance': issuance_summary,
+            'cross_analysis': cross_analysis,
+            'data_quality': data_quality,
+            'document_trend': documents_trend,
+            'certificate_records': certificate_records,
+            'verification_records': verification_records,
+            'verification_summary': verification_summary,
             'breakdowns': breakdowns,
             'options': {
                 'batches': [int(value) for value in option_batches if value is not None],
@@ -758,7 +834,8 @@ class EnrollmentAnalyticsView(APIView):
                     for row in option_departments
                 ],
                 'genders': sorted(set(['Male', 'Female', 'NA'] + [str(value).strip() for value in option_genders])),
-                'categories': sorted(set(['NA'] + [str(value).strip() for value in option_categories])),
+                'categories': sorted(set(['NA'] + [str(display_value(value)) for value in option_categories])),
+                'document_types': document_options(),
             },
             'trend': trend,
             'courses': courses,

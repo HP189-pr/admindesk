@@ -4,7 +4,7 @@ import EnrollmentState from '../utils/EnrollmentState';
 
 const Record = () => {
   return (
-    <div className="min-h-full min-w-0 bg-slate-50 p-3 md:p-6">
+    <div className="record-page min-h-full min-w-0 p-3 md:p-6">
       <EnrollmentState />
     </div>
   );
