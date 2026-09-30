@@ -33,6 +33,7 @@ FIELD_ALIASES: Dict[str, Tuple[str, ...]] = {
             "tr_request_no",
             "trn_request_no",
         "College Outward / College Transcript No",
+            "College Outward",
         "College Transcript No",
         "Request Ref No",
         "Reference",

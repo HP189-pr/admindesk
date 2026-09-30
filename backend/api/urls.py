@@ -16,7 +16,7 @@ try:
         SubBranchViewSet, InstituteViewSet,
     )
     from .views_enrollment import (
-        EnrollmentViewSet, AdmissionCancelViewSet, EnrollmentStatsView,
+        EnrollmentViewSet, AdmissionCancelViewSet, EnrollmentStatsView, EnrollmentAnalyticsView,
     )
 
     from .views_mail_request import GoogleFormSubmissionViewSet
@@ -249,6 +249,7 @@ try:
         path("cash-on-hand/report/", CashOnHandReportView.as_view()),
         path("cash-on-hand/close/", CloseCashDayView.as_view()),
         path("enrollment-stats/", EnrollmentStatsView.as_view(), name="enrollment-stats"),
+        path("enrollment-analytics/", EnrollmentAnalyticsView.as_view(), name="enrollment-analytics"),
         path("", include(router.urls)),
 
     ] + IN_OUT_REGISTER_URLS

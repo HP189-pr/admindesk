@@ -130,6 +130,7 @@ TRANSCRIPT_FIELD_ALIASES: Dict[str, tuple[str, ...]] = {
     ),
     "request_ref_no": (
         "college outward / college transcript no",
+        "college outward",
         "college transcript no",
         "request_ref_no",
         "reference",
@@ -654,6 +655,7 @@ def import_transcript_requests_from_sheet(sheet_id: Optional[str] = None, worksh
             'trn_reqest_ref_no',
             'trn_request_ref_no',
             'college outward / college transcript no',
+            'college outward',
             'college transcript no',
             'request ref no',
             'ref no',

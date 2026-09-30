@@ -943,13 +943,12 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                         aria-label="Select all"
                       />
                     </th>
-                      <th className="px-3 py-2 text-left">TR No</th>
-                      <th className="px-3 py-2 text-left whitespace-nowrap w-[10ch] min-w-[10ch]">Requested Date</th>
+                      <th className="px-2 py-2 text-left whitespace-nowrap w-[7ch] min-w-[7ch] max-w-[7ch]">TR No</th>
+                      <th className="px-2 py-2 text-left whitespace-nowrap w-[12ch] min-w-[12ch] max-w-[12ch]">Date</th>
                       <th className="px-3 py-2 text-left">Enrollment No</th>
                       <th className="px-3 py-2 text-left">Student</th>
                       <th className="px-3 py-2 text-left">Reference</th>
                       <th className="px-3 py-2 text-left">Institute</th>
-                      <th className="px-3 py-2 text-left">Receipt</th>
                       <th className="px-3 py-2 text-left">Transcript Remark</th>
                       <th className="px-3 py-2 text-left">PDF Generated</th>
                       <th className="px-3 py-2 text-left">Mail Status</th>
@@ -960,14 +959,14 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                 <tbody>
                   {loading && (
                     <tr>
-                      <td colSpan={13} className="px-4 py-6 text-center text-gray-500">
+                      <td colSpan={12} className="px-4 py-6 text-center text-gray-500">
                         Loading transcript requests...
                       </td>
                     </tr>
                   )}
                   {!loading && rows.length === 0 && (
                     <tr>
-                      <td colSpan={13} className="px-4 py-6 text-center text-gray-500">
+                      <td colSpan={12} className="px-4 py-6 text-center text-gray-500">
                         No transcript requests found.
                       </td>
                     </tr>
@@ -997,8 +996,8 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                             aria-label={`Select request ${row.id}`}
                           />
                         </td>
-                        <td className="px-3 py-2 align-top">{row.tr_request_no ?? row.request_ref_no ?? 'N/A'}</td>
-                        <td className="px-3 py-2 align-top whitespace-nowrap w-[10ch] min-w-[10ch]">{formatDateOnly(row.requested_at)}</td>
+                        <td className="px-2 py-2 align-top whitespace-nowrap w-[7ch] min-w-[7ch] max-w-[7ch]">{row.tr_request_no ?? row.request_ref_no ?? 'N/A'}</td>
+                        <td className="px-2 py-2 align-top whitespace-nowrap w-[12ch] min-w-[12ch] max-w-[12ch]">{formatDateOnly(row.requested_at)}</td>
                         <td className="px-3 py-2 align-top">{row.enrollment_no || 'N/A'}</td>
                         <td className="px-3 py-2 align-top">{row.student_name || 'N/A'}</td>
                         <td className="px-3 py-2 align-top">{row.request_ref_no || 'N/A'}</td>
@@ -1011,7 +1010,6 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
                             {row.institute_name || 'N/A'}
                           </div>
                         </td>
-                        <td className="px-3 py-2 align-top">{row.transcript_receipt || ''}</td>
                         <td className="px-3 py-2 align-top text-xs text-gray-600 max-w-[18rem]">
                           {row.transcript_remark ? row.transcript_remark : ''}
                         </td>

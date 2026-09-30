@@ -23,6 +23,15 @@ export const getEnrollmentReportSummary = async (params = {}, requestConfig = {}
     return res.data;
 };
 
+export const getEnrollmentAnalytics = async (params = {}, requestConfig = {}) => {
+    const res = await API.get('/api/enrollment-analytics/', {
+        timeout: 120000,
+        params,
+        ...requestConfig,
+    });
+    return res.data;
+};
+
 const sanitizeEnrollmentPayload = (data = {}) => {
     const {
         id,
@@ -208,6 +217,7 @@ export const resolveEnrollment = async (enrollmentNo) => {
 export default {
     getEnrollments,
     getEnrollmentReportSummary,
+    getEnrollmentAnalytics,
     createEnrollment,
     updateEnrollment,
     patchEnrollment: updateEnrollment,

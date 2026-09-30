@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pandas as pd
 from django.db import models
-from django.db.models import Case, CharField, Count, F, Q, Value, When
-from django.db.models.functions import Lower, Replace, Coalesce
+from django.db.models import Case, CharField, Count, F, Max, Min, Q, Subquery, Value, When
+from django.db.models.functions import Lower, Replace, Coalesce, Trim, NullIf
 from django.http import HttpResponse
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -15,6 +15,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Enrollment, AdmissionCancel
+from .domain_degree import StudentDegree
+from .domain_verification import MigrationRecord, ProvisionalRecord, Verification, VerificationStatus
 from .serializers_enrollment import EnrollmentSerializer, AdmissionCancelSerializer
 
 BATCH_DEFAULTS = [2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028]
@@ -428,8 +430,356 @@ class EnrollmentStatsView(APIView):
         })
 
 
+class EnrollmentAnalyticsView(APIView):
+    """Return filterable enrollment analytics without loading the full table in the browser."""
+
+    permission_classes = [IsAuthenticated]
+
+    @staticmethod
+    def _clean(value):
+        value = str(value or '').strip()
+        return '' if value.lower() in {'all', 'undefined', 'null'} else value
+
+    @staticmethod
+    def _label(code, name, fallback='Unknown'):
+        code = str(code or '').strip()
+        name = str(name or '').strip()
+        if code and name:
+            return f'{code} - {name}'
+        return name or code or fallback
+
+    @staticmethod
+    def _normalize_gender(value):
+        value = str(value or '').strip()
+        key = value.casefold()
+        if key in {'', 'na', 'n/a', 'null', 'none', '0'}:
+            return None
+        return {
+            'm': 'Male', 'male': 'Male', 'mlae': 'Male',
+            'f': 'Female', 'female': 'Female', 'femal': 'Female',
+            'femail': 'Female', 'femae': 'Female', 'famale': 'Female',
+        }.get(key, value)
+
+    @classmethod
+    def _resolved_genders(cls):
+        # Bulk reads avoid a separate degree lookup for each student. Highest ID
+        # wins among degree rows with a usable gender; profile data takes priority.
+        degree_genders = {}
+        for number, raw in StudentDegree.objects.order_by('-id').values_list('enrollment_no', 'dg_gender').iterator(chunk_size=2000):
+            gender = cls._normalize_gender(raw)
+            if number and gender:
+                degree_genders.setdefault(number, gender)
+        return {
+            pk: cls._normalize_gender(raw) or degree_genders.get(number) or 'NA'
+            for pk, number, raw in Enrollment.objects.order_by().values_list(
+                'pk', 'enrollment_no', 'student_profile__gender'
+            ).iterator(chunk_size=2000)
+        }
+
+    def get(self, request):
+        main_course = self._clean(request.query_params.get('main_course'))
+        sub_course = self._clean(request.query_params.get('sub_course'))
+        department = self._clean(request.query_params.get('department'))
+        gender = self._clean(request.query_params.get('gender'))
+        category = self._clean(request.query_params.get('category'))
+        search = self._clean(request.query_params.get('search'))
+        status_filter = self._clean(request.query_params.get('status')) or 'all'
+
+        try:
+            year_from = int(request.query_params.get('year_from')) if request.query_params.get('year_from') else None
+            year_to = int(request.query_params.get('year_to')) if request.query_params.get('year_to') else None
+        except (TypeError, ValueError):
+            return Response({'detail': 'Invalid year filter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        batch_values = []
+        for value in request.query_params.getlist('batch'):
+            try:
+                batch_values.append(int(value))
+            except (TypeError, ValueError):
+                continue
+        batch_values = sorted(set(batch_values))
+
+        resolved_genders = self._resolved_genders()
+        qs = Enrollment.objects.select_related('institute', 'maincourse', 'subcourse', 'student_profile')
+        if status_filter == 'active':
+            qs = qs.filter(Q(cancel=False) | Q(cancel__isnull=True))
+        elif status_filter == 'cancelled':
+            qs = qs.filter(cancel=True)
+        if main_course:
+            qs = qs.filter(maincourse_id=main_course)
+        if sub_course:
+            qs = qs.filter(subcourse_id=sub_course)
+        if department:
+            try:
+                qs = qs.filter(institute_id=int(department))
+            except (TypeError, ValueError):
+                return Response({'detail': 'Invalid department filter.'}, status=status.HTTP_400_BAD_REQUEST)
+        qs = qs.annotate(
+            category_label=Coalesce(NullIf(Trim('student_profile__category'), Value('')), Value('NA')),
+        )
+        if gender:
+            selected_gender = self._normalize_gender(gender) or 'NA'
+            qs = qs.filter(pk__in=[pk for pk, value in resolved_genders.items() if value.casefold() == selected_gender.casefold()])
+        if category:
+            qs = qs.filter(category_label__iexact=category)
+        if year_from is not None and year_to is not None and year_from > year_to:
+            return Response({'detail': 'Year From must not exceed Year To.'}, status=400)
+        if batch_values:
+            qs = qs.filter(batch__in=batch_values)
+        if year_from is not None:
+            qs = qs.filter(batch__gte=year_from)
+        if year_to is not None:
+            qs = qs.filter(batch__lte=year_to)
+        if search:
+            qs = qs.filter(
+                Q(student_name__icontains=search)
+                | Q(enrollment_no__icontains=search)
+                | Q(temp_enroll_no__icontains=search)
+            )
+
+        # Correlated counts avoid multiplying students when several certificates exist.
+        certificate_sources = {
+            'degree': (StudentDegree.objects.all(), 'enrollment_no'),
+            'provisional': (ProvisionalRecord.objects.filter(Q(prv_status__iexact='Issued') | Q(prv_status__isnull=True) | Q(prv_status='')), 'enrollment_id'),
+            'migration': (MigrationRecord.objects.filter(mg_status__iexact='Issued').exclude(mg_cancelled__iexact='Yes'), 'enrollment_id'),
+            'verification': (Verification.objects.filter(status__in=[VerificationStatus.DONE, VerificationStatus.DONE_WITH_REMARKS]), 'enrollment_no'),
+        }
+        certificate = self._clean(request.query_params.get('certificate'))
+        certificate_matches = Q()
+        for name, (source, field) in certificate_sources.items():
+            match = Q(enrollment_no__in=Subquery(source.exclude(**{field + '__isnull': True}).order_by().values(field)))
+            if certificate == name:
+                qs = qs.filter(match)
+            certificate_matches |= match
+        if certificate == 'none':
+            qs = qs.exclude(certificate_matches)
+        elif certificate == 'any':
+            qs = qs.filter(certificate_matches)
+        elif certificate and certificate not in certificate_sources:
+            return Response({'detail': 'Invalid certificate filter.'}, status=400)
+        totals = qs.aggregate(
+            total=Count('id'), main_courses=Count('maincourse_id', distinct=True),
+            sub_courses=Count('subcourse_id', distinct=True), departments=Count('institute_id', distinct=True),
+            batches=Count('batch', distinct=True), year_from=Min('batch'), year_to=Max('batch'),
+        )
+        certificate_counts = {
+            name: {row[field]: row['n'] for row in source.order_by().values(field).annotate(n=Count('pk'))}
+            for name, (source, field) in certificate_sources.items()
+        }
+        dimensions = {'Institute': 'institute__institute_name', 'Main Course': 'maincourse__course_name',
+                      'Sub Course': 'subcourse__subcourse_name', 'Admission Year': 'batch',
+                      'Gender': 'gender_label', 'Category': 'category_label'}
+        grouped = {name: {} for name in dimensions}
+        issuance_summary = {name: 0 for name in certificate_sources}
+        for row in qs.order_by().values('pk', 'enrollment_no', *[field for field in dimensions.values() if field != 'gender_label']).iterator(chunk_size=2000):
+            row['gender_label'] = resolved_genders.get(row['pk'], 'NA')
+            counts = {name: values.get(row['enrollment_no'], 0) if row['enrollment_no'] else 0 for name, values in certificate_counts.items()}
+            for name, count in counts.items():
+                issuance_summary[name] += count
+            for name, field in dimensions.items():
+                label = row[field] if row[field] is not None else 'NA'
+                item = grouped[name].setdefault(label, {'group': label, 'students': 0, **{key: 0 for key in certificate_sources}})
+                item['students'] += 1
+                for key, count in counts.items():
+                    item[key] += count
+        breakdowns = {name: sorted(rows.values(), key=lambda row: str(row['group'])) for name, rows in grouped.items()}
+
+        trend = [
+            {'year': int(row['batch']), 'total': int(row['total'])}
+            for row in qs.values('batch').annotate(total=Count('id')).order_by('batch')
+            if row.get('batch') is not None
+        ]
+
+        course_rows = qs.values(
+            'maincourse_id', 'maincourse__course_code', 'maincourse__course_name'
+        ).annotate(total=Count('id')).order_by('-total', 'maincourse__course_name')
+        courses = [
+            {
+                'value': str(row['maincourse_id']),
+                'label': self._label(row['maincourse__course_code'], row['maincourse__course_name'], str(row['maincourse_id'])),
+                'total': int(row['total']),
+            }
+            for row in course_rows
+        ]
+
+        subcourse_rows = qs.values(
+            'subcourse_id', 'subcourse__subcourse_name', 'maincourse_id'
+        ).annotate(total=Count('id')).order_by('-total', 'subcourse__subcourse_name')
+        subcourses = [
+            {
+                'value': str(row['subcourse_id']),
+                'label': str(row['subcourse__subcourse_name'] or row['subcourse_id']),
+                'main_course': str(row['maincourse_id']),
+                'total': int(row['total']),
+            }
+            for row in subcourse_rows
+        ]
+
+        department_rows = qs.values(
+            'institute_id', 'institute__institute_code', 'institute__institute_name'
+        ).annotate(total=Count('id')).order_by('-total', 'institute__institute_name')
+        departments = [
+            {
+                'value': str(row['institute_id']),
+                'label': self._label(row['institute__institute_code'], row['institute__institute_name'], str(row['institute_id'])),
+                'total': int(row['total']),
+            }
+            for row in department_rows
+        ]
+
+        years = [int(row['batch']) for row in qs.values('batch').distinct().order_by('batch') if row.get('batch') is not None]
+        heatmap = []
+        for row in qs.values(
+            'maincourse_id', 'maincourse__course_code', 'maincourse__course_name', 'batch'
+        ).annotate(total=Count('id')).order_by('maincourse__course_name', 'batch'):
+            course_value = str(row['maincourse_id'])
+            item = next((entry for entry in heatmap if entry['value'] == course_value), None)
+            if item is None:
+                item = {
+                    'value': course_value,
+                    'label': self._label(row['maincourse__course_code'], row['maincourse__course_name'], course_value),
+                    'values': {},
+                }
+                heatmap.append(item)
+            if row.get('batch') is not None:
+                item['values'][str(row['batch'])] = int(row['total'])
+
+        matrix_rows = qs.values(
+            'subcourse__subcourse_name', 'batch'
+        ).annotate(total=Count('id')).order_by('subcourse__subcourse_name', 'batch')
+        matrix_map = {}
+        for row in matrix_rows:
+            label = str(row['subcourse__subcourse_name'] or 'Unknown Course')
+            matrix_map.setdefault(label, {})[str(row['batch'])] = int(row['total'])
+        matrix = [
+            {
+                'subcourse_name': label,
+                'values': {str(year): values.get(str(year), 0) for year in years},
+                'total': sum(values.values()),
+            }
+            for label, values in matrix_map.items()
+        ]
+
+        try:
+            page = max(int(request.query_params.get('page', 1)), 1)
+            page_size = min(max(int(request.query_params.get('page_size', 25)), 1), 100)
+        except (TypeError, ValueError):
+            page, page_size = 1, 25
+        ordered_records = qs.order_by('-batch', 'maincourse__course_name', 'subcourse__subcourse_name', 'student_name', 'id')
+        total_records = ordered_records.count()
+        start = (page - 1) * page_size
+        records = [
+            {
+                **{name: certificate_counts[name].get(record.enrollment_no, 0) if record.enrollment_no else 0 for name in certificate_sources},
+                'id': record.id,
+                'enrollment_no': record.enrollment_no or record.temp_enroll_no or '',
+                'student_name': record.student_name or '',
+                'main_course': self._label(record.maincourse.course_code, record.maincourse.course_name, record.maincourse.maincourse_id),
+                'main_course_value': record.maincourse.maincourse_id,
+                'sub_course': record.subcourse.subcourse_name or record.subcourse.subcourse_id,
+                'sub_course_value': record.subcourse.subcourse_id,
+                'department': self._label(record.institute.institute_code, record.institute.institute_name, str(record.institute.institute_id)),
+                'department_value': record.institute.institute_id,
+                'gender': resolved_genders.get(record.pk, 'NA'),
+                'category': record.category_label,
+                'batch': record.batch,
+                'status': 'Cancelled' if record.cancel else 'Active',
+            }
+            for record in (ordered_records if request.query_params.get('export') == 'json' else ordered_records[start:start + page_size])
+        ]
+
+        if request.query_params.get('export') == 'excel':
+            export_rows = [
+                {
+                    **{name.title(): certificate_counts[name].get(record.enrollment_no, 0) if record.enrollment_no else 0 for name in certificate_sources},
+                    'Enrollment No': record.enrollment_no or record.temp_enroll_no or '',
+                    'Student Name': record.student_name or '',
+                    'Main Course': self._label(record.maincourse.course_code, record.maincourse.course_name, record.maincourse.maincourse_id),
+                    'Sub Course': record.subcourse.subcourse_name or record.subcourse.subcourse_id,
+                    'Department': self._label(record.institute.institute_code, record.institute.institute_name, str(record.institute.institute_id)),
+                    'Gender': resolved_genders.get(record.pk, 'NA'),
+                    'Category': record.category_label,
+                    'Batch': record.batch,
+                    'Status': 'Cancelled' if record.cancel else 'Active',
+                }
+                for record in ordered_records
+            ]
+            response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            response['Content-Disposition'] = 'attachment; filename="Enrollment_Analytics.xlsx"'
+            with pd.ExcelWriter(response, engine='openpyxl') as writer:
+                pd.DataFrame([dict(request.query_params.items())]).to_excel(writer, index=False, sheet_name='Filters')
+                pd.DataFrame([issuance_summary]).to_excel(writer, index=False, sheet_name='Certificate Totals')
+                for name, rows in breakdowns.items():
+                    pd.DataFrame(rows).to_excel(writer, index=False, sheet_name=name)
+                pd.DataFrame(export_rows).to_excel(writer, index=False, sheet_name='Filtered Records')
+                pd.DataFrame([
+                    {'Sub Course': row['subcourse_name'], **row['values'], 'Total': row['total']}
+                    for row in matrix
+                ]).to_excel(writer, index=False, sheet_name='Summary Matrix')
+            return response
+
+        option_qs = Enrollment.objects.select_related('institute', 'maincourse', 'subcourse', 'student_profile')
+        if status_filter == 'active':
+            option_qs = option_qs.filter(Q(cancel=False) | Q(cancel__isnull=True))
+        if main_course:
+            option_qs = option_qs.filter(maincourse_id=main_course)
+        option_subcourses = option_qs.values('subcourse_id', 'subcourse__subcourse_name').distinct().order_by('subcourse__subcourse_name')
+        option_departments = option_qs.values('institute_id', 'institute__institute_code', 'institute__institute_name').distinct().order_by('institute__institute_name')
+        option_courses = Enrollment.objects.values('maincourse_id', 'maincourse__course_code', 'maincourse__course_name').distinct().order_by('maincourse__course_name')
+        option_batches = Enrollment.objects.values_list('batch', flat=True).distinct().order_by('batch')
+        option_genders = set(resolved_genders.values())
+        option_categories = Enrollment.objects.exclude(student_profile__category__isnull=True).exclude(student_profile__category='').values_list('student_profile__category', flat=True).distinct().order_by('student_profile__category')
+
+        return Response({
+            'summary': {
+                'total': int(totals['total'] or 0),
+                'main_courses': int(totals['main_courses'] or 0),
+                'sub_courses': int(totals['sub_courses'] or 0),
+                'departments': int(totals['departments'] or 0),
+                'active_batches': int(totals['batches'] or 0),
+                'year_from': totals['year_from'],
+                'year_to': totals['year_to'],
+                'gendered_profiles': sum(row['students'] for row in breakdowns['Gender'] if row['group'] != 'NA'),
+            },
+            'issuance': issuance_summary,
+            'breakdowns': breakdowns,
+            'options': {
+                'batches': [int(value) for value in option_batches if value is not None],
+                'courses': [
+                    {'value': str(row['maincourse_id']), 'label': self._label(row['maincourse__course_code'], row['maincourse__course_name'], str(row['maincourse_id']))}
+                    for row in option_courses
+                ],
+                'subcourses': [
+                    {'value': str(row['subcourse_id']), 'label': str(row['subcourse__subcourse_name'] or row['subcourse_id'])}
+                    for row in option_subcourses
+                ],
+                'departments': [
+                    {'value': str(row['institute_id']), 'label': self._label(row['institute__institute_code'], row['institute__institute_name'], str(row['institute_id']))}
+                    for row in option_departments
+                ],
+                'genders': sorted(set(['Male', 'Female', 'NA'] + [str(value).strip() for value in option_genders])),
+                'categories': sorted(set(['NA'] + [str(value).strip() for value in option_categories])),
+            },
+            'trend': trend,
+            'courses': courses,
+            'subcourses': subcourses,
+            'departments': departments,
+            'years': years,
+            'heatmap': heatmap,
+            'matrix': matrix,
+            'records': {
+                'results': records,
+                'count': total_records,
+                'page': page,
+                'page_size': page_size,
+                'pages': (total_records + page_size - 1) // page_size,
+            },
+        })
+
+
 __all__ = [
     'EnrollmentViewSet',
     'AdmissionCancelViewSet',
     'EnrollmentStatsView',
+    'EnrollmentAnalyticsView',
 ]
