@@ -1,0 +1,469 @@
+{
+  "prepared_at": "2026-09-30T10:06:05.008106+00:00",
+  "summary": {
+    "mode": "apply",
+    "update_profiles": 57,
+    "create_profiles": 0,
+    "preserve_nonempty_profiles": 48407,
+    "skip_conflicting_degree_enrollments": 0,
+    "skip_degree_without_enrollment": 478
+  },
+  "changes": [
+    {
+      "action": "update",
+      "id": 61693,
+      "enrollment_no": "220SBECI54008",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 65087,
+      "enrollment_no": "22MSCMB22060",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 65086,
+      "enrollment_no": "22MSCMB22059",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 65085,
+      "enrollment_no": "22MSCMB22058",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 65084,
+      "enrollment_no": "22MSCMB22057",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 65083,
+      "enrollment_no": "22MSCMB22056",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 65082,
+      "enrollment_no": "22MSCMB22055",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 65081,
+      "enrollment_no": "22MSCMB22054",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 65080,
+      "enrollment_no": "22MSCMB22053",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 65079,
+      "enrollment_no": "22MSCMB22052",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 65078,
+      "enrollment_no": "22MSCMB22051",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 65077,
+      "enrollment_no": "22MSCMB22050",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 65075,
+      "enrollment_no": "22MSCMB22048",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 65074,
+      "enrollment_no": "22MSCMB22047",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 65073,
+      "enrollment_no": "22MSCMB22046",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 65069,
+      "enrollment_no": "22MSCMB22042",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 65068,
+      "enrollment_no": "22MSCMB22041",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 58506,
+      "enrollment_no": "21BCA53040",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Male"
+    },
+    {
+      "action": "update",
+      "id": 57993,
+      "enrollment_no": "21BCA04104",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51821,
+      "enrollment_no": "19PBN13023",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51810,
+      "enrollment_no": "19PBN13012",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51805,
+      "enrollment_no": "19PBN13006",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51828,
+      "enrollment_no": "19PBN13030",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51827,
+      "enrollment_no": "19PBN13029",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51826,
+      "enrollment_no": "19PBN13028",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51824,
+      "enrollment_no": "19PBN13026",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51823,
+      "enrollment_no": "19PBN13025",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51822,
+      "enrollment_no": "19PBN13024",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51820,
+      "enrollment_no": "19PBN13022",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51819,
+      "enrollment_no": "19PBN13021",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51818,
+      "enrollment_no": "19PBN13020",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51816,
+      "enrollment_no": "19PBN13018",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51815,
+      "enrollment_no": "19PBN13017",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51814,
+      "enrollment_no": "19PBN13016",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51813,
+      "enrollment_no": "19PBN13015",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51812,
+      "enrollment_no": "19PBN13014",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51811,
+      "enrollment_no": "19PBN13013",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51807,
+      "enrollment_no": "19PBN13008",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51806,
+      "enrollment_no": "19PBN13007",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51804,
+      "enrollment_no": "19PBN13005",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51803,
+      "enrollment_no": "19PBN13004",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51802,
+      "enrollment_no": "19PBN13003",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51801,
+      "enrollment_no": "19PBN13002",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 51800,
+      "enrollment_no": "19PBN13001",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 36389,
+      "enrollment_no": "1618PBN13005",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 36393,
+      "enrollment_no": "1618PBN13009",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 36387,
+      "enrollment_no": "1618PBN13003",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 36386,
+      "enrollment_no": "1618PBN13002",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 36390,
+      "enrollment_no": "1618PBN13006",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 36388,
+      "enrollment_no": "1618PBN13004",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 36392,
+      "enrollment_no": "1618PBN13008",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 36391,
+      "enrollment_no": "1618PBN13007",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 36385,
+      "enrollment_no": "1618PBN13001",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 34910,
+      "enrollment_no": "1617PGDJMC22008",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 34915,
+      "enrollment_no": "1617PGDJMC22020",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 21928,
+      "enrollment_no": "1216BEEC30089",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    },
+    {
+      "action": "update",
+      "id": 21881,
+      "enrollment_no": "1216BEEC30032",
+      "old_gender": null,
+      "old_updated_at": "2026-09-30T07:12:09.732338+00:00",
+      "gender": "Female"
+    }
+  ]
+}

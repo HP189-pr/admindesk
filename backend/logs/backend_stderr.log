@@ -90724,3 +90724,34 @@ Unauthorized: /api/enrollment-analytics/
 2026-09-30 15:26:33,657 INFO     Listening on TCP address 0.0.0.0:8001
 Unauthorized: /api/enrollment-analytics/
 2026-09-30 15:26:50,666 WARNING  Unauthorized: /api/enrollment-analytics/
+2026-09-30 15:29:13,726 INFO     Import mail requests completed via API: Found 454 rows; starting import
+Processed 200/454 rows
+Processed 400/454 rows
+Processed 454/454 rows
+Import complete. Created: 0, Updated: 454
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-09-30 15:38:10,084 INFO     sync_cash_deposite_to_sheet: 2026-09-30\u21922026-09-30 appended=1 updated=0 deleted=0 total=1
+2026-09-30 15:38:11,753 INFO     sync_cash_sheet_to_sheet: 2026-09-30\u21922026-09-30 appended=1 updated=0 deleted=0 total=1
+2026-09-30 15:38:11,753 INFO     sync_cash_register_to_sheet: 2026-09-30\u21922026-09-30 appended=19 updated=0 deleted=0 skipped=0 total=13
+2026-09-30 15:38:13,448 INFO     sync_cash_deposite_to_sheet: 2026-09-30\u21922026-09-30 appended=0 updated=0 deleted=0 total=1
+2026-09-30 15:38:14,818 INFO     sync_cash_sheet_to_sheet: 2026-09-30\u21922026-09-30 appended=0 updated=0 deleted=0 total=1
+2026-09-30 15:38:16,447 INFO     sync_upi_sheet_to_sheet: 2026-09-30\u21922026-09-30 appended=1 updated=0 deleted=0 total=1
+2026-09-30 15:38:18,101 INFO     sync_bank_sheet_to_sheet: 2026-09-30\u21922026-09-30 appended=1 updated=0 deleted=0 total=1
+2026-09-30 15:38:46,587 ERROR    sync_cash_sheet_new_to_sheet: failed to upsert row for 2026-08-25: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-30 15:38:46,889 ERROR    sync_cash_sheet_new_to_sheet: failed to upsert row for 2026-08-26: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-30 15:38:47,609 ERROR    sync_cash_sheet_new_to_sheet: failed to upsert row for 2026-08-29: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-30 15:38:47,922 ERROR    sync_cash_sheet_new_to_sheet: failed to upsert row for 2026-08-31: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-30 15:38:48,215 ERROR    sync_cash_sheet_new_to_sheet: failed to upsert row for 2026-09-01: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-30 15:38:48,502 ERROR    sync_cash_sheet_new_to_sheet: failed to upsert row for 2026-09-02: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-30 15:38:48,821 ERROR    sync_cash_sheet_new_to_sheet: failed to upsert row for 2026-09-03: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-30 15:38:49,124 ERROR    sync_cash_sheet_new_to_sheet: failed to upsert row for 2026-09-07: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-30 15:38:49,429 ERROR    sync_cash_sheet_new_to_sheet: failed to upsert row for 2026-09-08: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-30 15:38:49,738 ERROR    sync_cash_sheet_new_to_sheet: failed to upsert row for 2026-09-09: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-30 15:38:50,102 ERROR    sync_cash_sheet_new_to_sheet: failed to upsert row for 2026-09-10: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-30 15:38:50,436 ERROR    sync_cash_sheet_new_to_sheet: failed to upsert row for 2026-09-11: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-30 15:38:50,755 ERROR    sync_cash_sheet_new_to_sheet: failed to upsert row for 2026-09-12: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-30 15:38:51,070 ERROR    sync_cash_sheet_new_to_sheet: failed to upsert row for 2026-09-14: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-09-30 15:38:51,581 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=64 deleted=0 total=143
+2026-09-30 15:38:53,184 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=124
+2026-09-30 15:38:54,698 ERROR    sync_bank_sheet_new_to_sheet: cannot update header row: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
