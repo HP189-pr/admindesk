@@ -209,9 +209,27 @@ const EnrollmentReport = ({ onBack }) => {
 
   const fetchStudentListData = useCallback(async () => {
     try {
-      // Fetch all enrollments with a large page size
-      const response = await getEnrollments("", 1, 10000);
-      let enrollments = response.results || response || [];
+      let enrollments = [];
+      const cancelFilter = statusFilter === "active"
+        ? "no"
+        : statusFilter === "cancelled"
+          ? "yes"
+          : undefined;
+      let page = 1;
+      let expectedTotal = null;
+
+      // Collect every page because the API may cap the requested page size.
+      while (page <= 1000) {
+        const response = await getEnrollments("", page, 100, cancelFilter);
+        const pageRows = Array.isArray(response) ? response : response?.results || [];
+        enrollments.push(...pageRows);
+        expectedTotal = Number.isFinite(Number(response?.count)) ? Number(response.count) : expectedTotal;
+
+        if (!pageRows.length || response?.next === null || (expectedTotal !== null && enrollments.length >= expectedTotal)) {
+          break;
+        }
+        page += 1;
+      }
 
       // Apply filters on client side
       enrollments = enrollments.filter((enrollment) => {

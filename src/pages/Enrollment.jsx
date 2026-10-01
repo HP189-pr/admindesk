@@ -134,6 +134,34 @@ const createEmptyEnrollmentFormData = () => ({
   temp_enroll_no: ''
 });
 
+const createEmptyStudentProfileFormData = () => ({
+  gender: '',
+  birth_date: '',
+  address1: '',
+  address2: '',
+  city1: '',
+  city2: '',
+  contact_no: '',
+  email: '',
+  fees: '',
+  hostel_required: false,
+  aadhar_no: '',
+  abc_id: '',
+  mobile_adhar: '',
+  name_adhar: '',
+  mother_name: '',
+  father_name: '',
+  category: '',
+  is_d2d: false,
+  program_medium: '',
+});
+
+const STUDENT_PROFILE_SELECT_OPTIONS = {
+  gender: ['', 'Male', 'Female', 'Other'],
+  category: ['', 'NDNT', 'OBC', 'OPEN', 'SC', 'SEBC', 'ST', 'General', 'EWS'],
+  program_medium: ['', 'English', 'Gujarati', 'Hindi'],
+};
+
 const normalizeTextField = (value) => {
   if (value === null || value === undefined) return '';
   return String(value).trim();
@@ -275,6 +303,12 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
     data: createEmptyEnrollmentFormData(),
     isEditing: false
   });
+  const [studentProfileState, setStudentProfileState] = useState({
+    data: createEmptyStudentProfileFormData(),
+    id: null,
+    isLoading: false,
+  });
+  const [saveMessage, setSaveMessage] = useState({ type: '', text: '' });
   const [instOptions, setInstOptions] = useState([]);
   const [courseOptions, setCourseOptions] = useState([]);
   const [subcourseOptions, setSubcourseOptions] = useState([]);
@@ -685,6 +719,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
   // Form Handlers
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSaveMessage({ type: '', text: '' });
     
     const errors = validateEnrollmentData(formState.data);
     if (Object.keys(errors).length > 0) {
@@ -695,7 +730,25 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
     try {
       const payload = buildEnrollmentPayload(formState.data);
       if (formState.isEditing) {
-        await updateEnrollment(formState.data.id, payload);
+        const updatedEnrollment = await updateEnrollment(formState.data.id, payload);
+        const profilePayload = {
+          ...studentProfileState.data,
+          enrollment_no: formState.data.enrollment_no,
+          birth_date: normalizeOptionalDate(studentProfileState.data.birth_date) || null,
+          fees: studentProfileState.data.fees || null,
+        };
+        if (studentProfileState.id) {
+          await API.patch(`/api/student-profiles/${studentProfileState.id}/`, profilePayload);
+        } else {
+          await API.post('/api/student-profiles/', profilePayload);
+        }
+        const refreshedEnrollment = getHydratedEnrollment({
+          ...formState.data,
+          ...(updatedEnrollment || {}),
+          ...payload,
+        });
+        setFormState(prev => ({ ...prev, data: refreshedEnrollment }));
+        setSaveMessage({ type: 'success', text: 'Enrollment and student profile updated successfully.' });
         toast.success("Enrollment updated successfully");
       } else {
         await createEnrollment(payload);
@@ -711,6 +764,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
       if (Object.keys(fieldErrors).length > 0) {
         setState(prev => ({ ...prev, validationErrors: fieldErrors }));
       }
+      setSaveMessage({ type: 'error', text: message });
       console.error("Error saving enrollment:", {
         message,
         status: error?.response?.status,
@@ -1144,6 +1198,60 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
     temp_enroll_no: enr.temp_enroll_no || '',
   });
 
+  const getHydratedStudentProfile = (profile) => ({
+    ...createEmptyStudentProfileFormData(),
+    ...profile,
+    birth_date: normalizeOptionalDate(profile?.birth_date),
+    fees: profile?.fees ?? '',
+    hostel_required: !!profile?.hostel_required,
+    is_d2d: !!profile?.is_d2d,
+  });
+
+  const openEnrollmentEditor = async (enr) => {
+    const hydrated = getHydratedEnrollment(enr);
+    setFormState({ data: hydrated, isEditing: true });
+    setSaveMessage({ type: '', text: '' });
+    setStudentProfileState({
+      data: createEmptyStudentProfileFormData(),
+      id: null,
+      isLoading: true,
+    });
+    setSelectedAction("➕");
+    if (!panelOpen) setPanelOpen(true);
+
+    try {
+      const response = await API.get('/api/student-profiles/', {
+        params: { search: hydrated.enrollment_no, limit: 20 },
+      });
+      const profiles = response.data?.results || (Array.isArray(response.data) ? response.data : []);
+      const profile = profiles.find((item) => (
+        String(item.enrollment || item.enrollment_no || '').trim().toLowerCase() ===
+        String(hydrated.enrollment_no || '').trim().toLowerCase()
+      ));
+      setStudentProfileState({
+        data: getHydratedStudentProfile(profile),
+        id: profile?.id || null,
+        isLoading: false,
+      });
+    } catch (error) {
+      console.error('Error loading student profile:', error);
+      setStudentProfileState({
+        data: createEmptyStudentProfileFormData(),
+        id: null,
+        isLoading: false,
+      });
+      toast.error('Student profile could not be loaded');
+    }
+  };
+
+  const handleStudentProfileChange = (event) => {
+    const { name, value, type, checked } = event.target;
+    setStudentProfileState((prev) => ({
+      ...prev,
+      data: { ...prev.data, [name]: type === 'checkbox' ? checked : value },
+    }));
+  };
+
   // Optimized render methods
   const renderSearchView = () => (
     <div>
@@ -1172,10 +1280,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
                     key={enr.id || enr.enrollment_no || `enr-${idx}`}
                     className="cursor-pointer hover:bg-slate-50"
                     onClick={() => {
-                      const hydrated = getHydratedEnrollment(enr);
-                      setFormState({ data: hydrated, isEditing: true });
-                      setSelectedAction("➕");
-                      if (!panelOpen) setPanelOpen(true);
+                      openEnrollmentEditor(enr);
                     }}
                   >
                     <td className="border px-2 py-0.5">{enr.enrollment_no}</td>
@@ -1198,10 +1303,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
                               className="w-5 h-5 flex items-center justify-center icon-edit-button shadow-md rounded"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const hydrated = getHydratedEnrollment(enr);
-                                setFormState({ data: hydrated, isEditing: true });
-                                setSelectedAction("➕");
-                                if (!panelOpen) setPanelOpen(true);
+                                openEnrollmentEditor(enr);
                               }}
                             >
                               <FaEdit size={12} />
@@ -1380,6 +1482,11 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
       <h2 className="text-lg font-semibold text-slate-800 mb-4">
         {formState.isEditing ? "Edit Enrollment" : "Add New Enrollment"}
       </h2>
+      {saveMessage.text && (
+        <p className={`mb-4 rounded-lg px-3 py-2 text-sm font-medium ${saveMessage.type === 'success' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+          {saveMessage.text}
+        </p>
+      )}
       {!rights.can_create && !formState.isEditing && (
         <p className="text-sm text-red-600 mb-2">You do not have rights to create enrollments.</p>
       )}
@@ -1526,6 +1633,90 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
             )}
           </div>
         </div>
+
+        {formState.isEditing && (
+          <fieldset className="rounded-xl border border-slate-200 bg-white p-4">
+            <legend className="px-2 text-sm font-semibold text-slate-800">Student Profile</legend>
+            {studentProfileState.isLoading ? (
+              <p className="text-sm text-slate-500">Loading student profile...</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {['gender', 'category', 'program_medium'].map((field) => (
+                  <div key={field}>
+                    <label className={ENROLLMENT_FORM_LABEL_CLASS}>
+                      {field === 'program_medium' ? 'Program Medium' : field[0].toUpperCase() + field.slice(1)}
+                    </label>
+                    <select
+                      name={field}
+                      value={studentProfileState.data[field]}
+                      onChange={handleStudentProfileChange}
+                      className={ENROLLMENT_FORM_FIELD_CLASS}
+                    >
+                      {STUDENT_PROFILE_SELECT_OPTIONS[field].map((option) => (
+                        <option key={option || 'empty'} value={option}>{option || 'Select'}</option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+
+                <div>
+                  <label className={ENROLLMENT_FORM_LABEL_CLASS}>Birth Date</label>
+                  <input
+                    type="date"
+                    name="birth_date"
+                    value={studentProfileState.data.birth_date}
+                    onChange={handleStudentProfileChange}
+                    className={ENROLLMENT_FORM_FIELD_CLASS}
+                  />
+                </div>
+                {[
+                  ['contact_no', 'Contact Number'],
+                  ['email', 'Email'],
+                  ['aadhar_no', 'Aadhar Number'],
+                  ['abc_id', 'ABC ID'],
+                  ['mobile_adhar', 'Aadhar Mobile'],
+                  ['name_adhar', 'Aadhar Name'],
+                  ['mother_name', 'Mother Name'],
+                  ['father_name', 'Father Name'],
+                  ['city1', 'City'],
+                  ['city2', 'Alternate City'],
+                  ['address1', 'Address'],
+                  ['address2', 'Alternate Address'],
+                  ['fees', 'Fees'],
+                ].map(([field, label]) => (
+                  <div key={field}>
+                    <label className={ENROLLMENT_FORM_LABEL_CLASS}>{label}</label>
+                    <input
+                      type={field === 'email' ? 'email' : field === 'fees' ? 'number' : 'text'}
+                      name={field}
+                      value={studentProfileState.data[field]}
+                      onChange={handleStudentProfileChange}
+                      className={ENROLLMENT_FORM_FIELD_CLASS}
+                    />
+                  </div>
+                ))}
+                <label className="flex items-center gap-2 pt-7 text-sm font-medium text-slate-800">
+                  <input
+                    type="checkbox"
+                    name="hostel_required"
+                    checked={studentProfileState.data.hostel_required}
+                    onChange={handleStudentProfileChange}
+                  />
+                  Hostel Required
+                </label>
+                <label className="flex items-center gap-2 pt-7 text-sm font-medium text-slate-800">
+                  <input
+                    type="checkbox"
+                    name="is_d2d"
+                    checked={studentProfileState.data.is_d2d}
+                    onChange={handleStudentProfileChange}
+                  />
+                  Direct to Degree
+                </label>
+              </div>
+            )}
+          </fieldset>
+        )}
         <div className="flex justify-end space-x-2">
           <button
             type="button"
