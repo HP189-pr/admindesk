@@ -154,6 +154,7 @@ const createEmptyStudentProfileFormData = () => ({
   category: '',
   is_d2d: false,
   program_medium: '',
+  specialisation: '',
 });
 
 const STUDENT_PROFILE_SELECT_OPTIONS = {
@@ -1678,6 +1679,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
                   ['name_adhar', 'Aadhar Name'],
                   ['mother_name', 'Mother Name'],
                   ['father_name', 'Father Name'],
+                  ['specialisation', 'Specialisation'],
                   ['city1', 'City'],
                   ['city2', 'Alternate City'],
                   ['address1', 'Address'],

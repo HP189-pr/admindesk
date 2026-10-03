@@ -16,7 +16,7 @@ PROFILE_UPLOAD_COLS = {
     "gender", "birth_date", "address1", "address2", "city1", "city2",
     "contact_no", "email", "fees", "hostel_required", "aadhar_no", "abc_id",
     "mobile_adhar", "name_adhar", "mother_name", "father_name", "category",
-    "photo_uploaded", "is_d2d", "program_medium",
+    "photo_uploaded", "is_d2d", "program_medium", "specialisation",
 }
 
 ENROLLMENT_CORE_COLS = {
@@ -200,6 +200,8 @@ def build_profile_defaults(row, user, active_fields: Optional[Iterable[str]] = N
         defaults["is_d2d"] = to_bool(row.get("is_d2d"))
     if "program_medium" in scope:
         defaults["program_medium"] = clean_cell(row.get("program_medium"))
+    if "specialisation" in scope:
+        defaults["specialisation"] = clean_cell(row.get("specialisation"))
 
     return defaults
 

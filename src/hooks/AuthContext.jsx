@@ -28,11 +28,18 @@ let _pendingRefresh = null;
 const INACTIVITY_TIMEOUT_MS = 60 * 60 * 1000;
 const LAST_ACTIVITY_KEY = "admindesk_last_activity_at";
 
-export function AuthProvider({ children }) {
-    const [user, setUser] = useState(() => {
+const getStoredUser = () => {
+    try {
         const storedUser = localStorage.getItem("user");
         return storedUser ? JSON.parse(storedUser) : null;
-    });
+    } catch (error) {
+        localStorage.removeItem("user");
+        return null;
+    }
+};
+
+export function AuthProvider({ children }) {
+    const [user, setUser] = useState(getStoredUser);
 
     const [token, setToken] = useState(() =>
         localStorage.getItem("access_token")

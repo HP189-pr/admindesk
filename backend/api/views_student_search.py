@@ -94,6 +94,7 @@ class StudentSearchViewSet(viewsets.ViewSet):
         return {
             'enrollment_no': enrollment.enrollment_no or '',
             'temp_enrollment_no': enrollment.temp_enroll_no or '',
+            'temp_enroll_no': enrollment.temp_enroll_no or '',
             'student_name': enrollment.student_name or '',
             'institute_name': institute.institute_name if institute else '',
             'institute_code': institute.institute_code if institute else '',
@@ -118,6 +119,7 @@ class StudentSearchViewSet(viewsets.ViewSet):
             'city1': profile.city1 if profile else '',
             'city2': profile.city2 if profile else '',
             'category': profile.category if profile else '',
+            'hostel_required': profile.hostel_required if profile else False,
             'abc_id': profile.abc_id if profile else '',
         }
 

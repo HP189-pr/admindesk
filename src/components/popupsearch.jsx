@@ -285,9 +285,13 @@ const PopupSearch = () => {
                     <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[12px]">
                       <Field label="Batch" value={general.batch} />
                       <Field label="Gender" value={general.gender} />
+                      <Field label="Birth Date" value={formatDate(general.birth_date)} />
+                      <Field label="Category" value={general.category} />
+                      <Field label="Temp Enrollment No" value={general.temp_enroll_no || general.temp_enrollment_no} />
                       <Field label="Mother Name" value={general.mother_name} />
                       <Field label="Father Name" value={general.father_name} />
                       <Field label="Admission Date" value={formatDate(general.admission_date)} />
+                      <Field label="Hostel Required" value={general.hostel_required ? 'Yes' : 'No'} />
                       <Field label="Aadhaar No" value={general.aadhar_no} />
                       <Field label="ABC ID" value={general.abc_id} />
                       <Field label="Contact" value={general.contact_no} />

@@ -5,7 +5,8 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { ArrowLeft, RotateCcw, Rows3, Users } from "lucide-react";
 import { FaFileExcel, FaFilePdf } from "react-icons/fa6";
-import { getEnrollmentReportSummary, getEnrollments } from "../services/enrollmentservice";
+import { getEnrollmentReportSummary, getEnrollmentReportStudents } from "../services/enrollmentservice";
+import { toast } from "react-toastify";
 
 const GROUP_OPTIONS = [
   { value: "batch", label: "Batch Wise" },
@@ -208,52 +209,13 @@ const EnrollmentReport = ({ onBack }) => {
   }, [loadReportSummary]);
 
   const fetchStudentListData = useCallback(async () => {
-    try {
-      let enrollments = [];
-      const cancelFilter = statusFilter === "active"
-        ? "no"
-        : statusFilter === "cancelled"
-          ? "yes"
-          : undefined;
-      let page = 1;
-      let expectedTotal = null;
-
-      // Collect every page because the API may cap the requested page size.
-      while (page <= 1000) {
-        const response = await getEnrollments("", page, 100, cancelFilter);
-        const pageRows = Array.isArray(response) ? response : response?.results || [];
-        enrollments.push(...pageRows);
-        expectedTotal = Number.isFinite(Number(response?.count)) ? Number(response.count) : expectedTotal;
-
-        if (!pageRows.length || response?.next === null || (expectedTotal !== null && enrollments.length >= expectedTotal)) {
-          break;
-        }
-        page += 1;
-      }
-
-      // Apply filters on client side
-      enrollments = enrollments.filter((enrollment) => {
-        // Status filter
-        if (statusFilter === "active" && enrollment.cancel) return false;
-        if (statusFilter === "cancelled" && !enrollment.cancel) return false;
-
-        // Batch filter
-        if (batchFilter && String(enrollment.batch) !== String(batchFilter)) return false;
-
-        // Institute filter
-        if (instituteFilter && String(pickEnrollmentInstituteId(enrollment)) !== String(instituteFilter)) return false;
-
-        // Course filter
-        if (courseFilter && String(pickEnrollmentMaincourseId(enrollment)) !== String(courseFilter)) return false;
-
-        return true;
-      });
-
-      return enrollments;
-    } catch (err) {
-      console.error("Failed to fetch student list:", err);
-      return [];
-    }
+    const data = await getEnrollmentReportStudents({
+      status: statusFilter,
+      batch: batchFilter,
+      institute: instituteFilter,
+      course: courseFilter,
+    });
+    return Array.isArray(data) ? data : data?.results || [];
   }, [statusFilter, batchFilter, instituteFilter, courseFilter]);
 
   const handleExportExcel = async () => {
@@ -289,10 +251,13 @@ const EnrollmentReport = ({ onBack }) => {
             ["Student List"],
             ["Total Students", students.length],
             [],
-            ["Enrollment No", "Student Name", "Batch", "institute_id", "maincourse_id", "subcourse_id", "Institute", "Course", "Subcourse", "Status"],
+            ["Enrollment No", "Temporary No", "Student Name", "Phone", "Birth Date", "Batch", "institute_id", "maincourse_id", "subcourse_id", "Institute", "Course", "Subcourse", "Status"],
             ...students.map((enrollment) => [
               enrollment.enrollment_no || "N/A",
+              enrollment.temp_enroll_no || "N/A",
               enrollment.student_name || "N/A",
+              enrollment.contact_no || "N/A",
+              enrollment.birth_date || "N/A",
               enrollment.batch || "N/A",
               pickEnrollmentInstituteId(enrollment) || "N/A",
               pickEnrollmentMaincourseId(enrollment) || "N/A",
@@ -314,6 +279,9 @@ const EnrollmentReport = ({ onBack }) => {
         XLSX.utils.book_append_sheet(wb, worksheets[sheetName], sheetName);
       });
       XLSX.writeFile(wb, `enrollment_report_${groupBy}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    } catch (error) {
+      console.error("Failed to export enrollment report:", error);
+      toast.error(error?.response?.data?.detail || error?.message || "Failed to export enrollment report");
     } finally {
       setFetchingStudents(false);
     }
@@ -369,10 +337,13 @@ const EnrollmentReport = ({ onBack }) => {
 
           autoTable(doc, {
             startY: doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 40,
-            head: [["Enrollment No", "Student Name", "Batch", "Institute", "Course", "Status"]],
+            head: [["Enrollment No", "Temporary No", "Student Name", "Phone", "Birth Date", "Batch", "Institute", "Course", "Status"]],
             body: students.map((enrollment) => [
               enrollment.enrollment_no || "N/A",
+              enrollment.temp_enroll_no || "N/A",
               enrollment.student_name || "N/A",
+              enrollment.contact_no || "N/A",
+              enrollment.birth_date || "N/A",
               enrollment.batch || "N/A",
               enrollment.institute?.institute_code ? `${enrollment.institute.institute_code}` : "N/A",
               enrollment.maincourse?.course_code ? `${enrollment.maincourse.course_code}` : "N/A",
@@ -389,6 +360,9 @@ const EnrollmentReport = ({ onBack }) => {
       }
 
       doc.save(`enrollment_report_${groupBy}_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error("Failed to export enrollment report:", error);
+      toast.error(error?.response?.data?.detail || error?.message || "Failed to export enrollment report");
     } finally {
       setFetchingStudents(false);
     }

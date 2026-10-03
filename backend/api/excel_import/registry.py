@@ -59,6 +59,8 @@ BULK_SERVICE_TEMPLATE_COLUMNS = {
     ],
     "ENROLLMENT": [
         "student_name", "institute_id", "batch", "enrollment_date", "subcourse_id", "maincourse_id", "enrollment_no", "temp_enroll_no", "admission_date",
+        "gender", "birth_date", "address1", "address2", "city1", "city2", "contact_no", "email", "fees", "hostel_required",
+        "aadhar_no", "abc_id", "mobile_adhar", "name_adhar", "mother_name", "father_name", "category", "photo_uploaded", "is_d2d", "program_medium", "specialisation",
     ],
     "MIGRATION": [
         "doc_rec_id", "enrollment_no", "student_name", "institute_id", "maincourse_id", "subcourse_id", "mg_number", "mg_date", "exam_year", "admission_year", "exam_details", "mg_status", "mg_cancelled", "mg_remark", "book_no", "pay_rec_no",
@@ -86,7 +88,7 @@ BULK_SERVICE_TEMPLATE_COLUMNS = {
         "enrollment_no", "temp_enroll_no", "enrollment_id", "receipt_no", "receipt_date", "term", "amount", "remark",
     ],
     "STUDENT_PROFILE": [
-        "enrollment_no", "gender", "birth_date", "address1", "address2", "city1", "city2", "contact_no", "email", "fees", "hostel_required", "aadhar_no", "abc_id", "mobile_adhar", "name_adhar", "mother_name", "father_name", "category", "photo_uploaded", "is_d2d", "program_medium",
+        "enrollment_no", "gender", "birth_date", "address1", "address2", "city1", "city2", "contact_no", "email", "fees", "hostel_required", "aadhar_no", "abc_id", "mobile_adhar", "name_adhar", "mother_name", "father_name", "category", "photo_uploaded", "is_d2d", "program_medium", "specialisation",
     ],
 }
 

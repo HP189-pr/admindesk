@@ -329,6 +329,36 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
             },
         })
 
+    @action(detail=False, methods=['get'], url_path='report-students', pagination_class=None)
+    def report_students(self, request):
+        """Return all students matching the enrollment report filters."""
+        status_filter = (request.query_params.get('status') or 'all').strip().lower()
+        batch_filter = (request.query_params.get('batch') or '').strip()
+        institute_filter = (request.query_params.get('institute') or '').strip()
+        course_filter = (request.query_params.get('course') or '').strip()
+
+        qs = Enrollment.objects.select_related(
+            'institute', 'subcourse', 'maincourse', 'student_profile'
+        ).order_by('-created_at')
+        if status_filter == 'active':
+            qs = qs.filter(Q(cancel=False) | Q(cancel__isnull=True))
+        elif status_filter == 'cancelled':
+            qs = qs.filter(cancel=True)
+        if batch_filter and batch_filter.lower() != 'all':
+            qs = qs.filter(batch=int(batch_filter))
+        if institute_filter and institute_filter.lower() != 'all':
+            qs = qs.filter(institute_id=int(institute_filter))
+        if course_filter and course_filter.lower() != 'all':
+            qs = qs.filter(maincourse_id=course_filter)
+
+        serialized_rows = self.get_serializer(qs, many=True).data
+        for enrollment, row in zip(qs, serialized_rows):
+            profile = getattr(enrollment, 'student_profile', None)
+            row['contact_no'] = profile.contact_no if profile else ''
+            row['birth_date'] = profile.birth_date.isoformat() if profile and profile.birth_date else ''
+
+        return Response(serialized_rows)
+
 
 class AdmissionCancelViewSet(viewsets.ModelViewSet):
     queryset = AdmissionCancel.objects.select_related('enrollment').filter(

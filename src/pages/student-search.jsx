@@ -273,14 +273,16 @@ export default function StudentSearch() {
                   <DetailStat label="Student Name" value={generalInfo.student_name} large />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <DetailStat label="Enrollment No" value={generalInfo.enrollment_no} />
-                    <DetailStat label="Temp Enrollment" value={generalInfo.temp_enrollment_no} />
+                    <DetailStat label="Temp Enrollment No" value={generalInfo.temp_enroll_no || generalInfo.temp_enrollment_no} />
                     <DetailStat label="Batch" value={generalInfo.batch} />
                     <DetailStat label="Category" value={generalInfo.category} />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <DetailStat label="Gender" value={generalInfo.gender} />
+                    <DetailStat label="Birth Date" value={formatISODate(generalInfo.birth_date)} />
                     <DetailStat label="Admission Date" value={formatISODate(generalInfo.admission_date)} />
                     <DetailStat label="Enrollment Date" value={formatISODate(generalInfo.enrollment_date)} />
+                    <DetailStat label="Hostel Required" value={generalInfo.hostel_required ? 'Yes' : 'No'} />
                     <DetailStat label="ABC ID" value={generalInfo.abc_id} />
                     <DetailStat label="Aadhaar No" value={generalInfo.aadhar_no} />
                   </div>

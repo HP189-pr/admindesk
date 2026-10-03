@@ -65,6 +65,7 @@ class StudentProfile(models.Model):
     photo_uploaded = models.BooleanField(default=False, db_column='photo_uploaded')
     is_d2d = models.BooleanField(default=False, db_column='is_d2d')
     program_medium = models.CharField(max_length=50, null=True, blank=True, db_column='program_medium')
+    specialisation = models.CharField(max_length=255, null=True, blank=True, db_column='specialisation')
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     updated_at = models.DateTimeField(auto_now=True, db_column='updated_at')
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='updated_by', related_name='updated_student_profiles')

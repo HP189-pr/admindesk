@@ -19,15 +19,6 @@ def parse_excel_date(val: Any):
     """
     if val is None:
         return None
-    if isinstance(val, date) and not isinstance(val, datetime):
-        return val
-    if isinstance(val, datetime):
-        if getattr(val, 'tzinfo', None) is not None:
-            try:
-                val = val.replace(tzinfo=None)
-            except Exception:
-                pass
-        return val.date()
     try:
         import pandas as pd
     except Exception:
@@ -46,6 +37,15 @@ def parse_excel_date(val: Any):
                 return py_dt.date()
             except Exception:
                 return None
+    if isinstance(val, date) and not isinstance(val, datetime):
+        return val
+    if isinstance(val, datetime):
+        if getattr(val, 'tzinfo', None) is not None:
+            try:
+                val = val.replace(tzinfo=None)
+            except Exception:
+                pass
+        return val.date()
     if isinstance(val, (int, float)):
         try:
             if val > 25000:

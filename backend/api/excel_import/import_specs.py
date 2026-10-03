@@ -48,7 +48,7 @@ IMPORT_SPECS: Dict[type, Dict[str, Any]] = {
             "address1", "address2", "city1", "city2", "contact_no", "email",
             "fees", "hostel_required", "aadhar_no", "abc_id", "mobile_adhar",
             "name_adhar", "mother_name", "father_name", "category",
-            "photo_uploaded", "is_d2d", "program_medium",
+            "photo_uploaded", "is_d2d", "program_medium", "specialisation",
         ],
         "required_keys": ["enrollment_no"],
         "create_requires": [
@@ -92,7 +92,7 @@ IMPORT_SPECS: Dict[type, Dict[str, Any]] = {
             "city1", "city2", "contact_no", "email", "fees", "hostel_required",
             "aadhar_no", "abc_id", "mobile_adhar", "name_adhar",
             "mother_name", "father_name", "category", "photo_uploaded",
-            "is_d2d", "program_medium",
+            "is_d2d", "program_medium", "specialisation",
         ],
         "required_keys": ["enrollment_no"],
         "create_requires": ["enrollment_no"],

@@ -23,6 +23,14 @@ export const getEnrollmentReportSummary = async (params = {}, requestConfig = {}
     return res.data;
 };
 
+export const getEnrollmentReportStudents = async (params = {}, requestConfig = {}) => {
+    const res = await API.get(`${ENROLLMENT_API}report-students/`, {
+        params,
+        ...requestConfig,
+    });
+    return res.data;
+};
+
 export const getEnrollmentAnalytics = async (params = {}, requestConfig = {}) => {
     const res = await API.get('/api/enrollment-analytics/', {
         timeout: 120000,
@@ -217,6 +225,7 @@ export const resolveEnrollment = async (enrollmentNo) => {
 export default {
     getEnrollments,
     getEnrollmentReportSummary,
+    getEnrollmentReportStudents,
     getEnrollmentAnalytics,
     createEnrollment,
     updateEnrollment,

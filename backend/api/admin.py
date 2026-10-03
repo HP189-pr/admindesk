@@ -455,8 +455,8 @@ class InstLetterStudentAdmin(admin.ModelAdmin):
 
 @admin.register(StudentProfile)
 class StudentProfileAdmin(CommonAdminMixin):
-    list_display = ("id", "enrollment", "gender", "birth_date", "city1", "city2", "contact_no", "abc_id", "photo_uploaded", "is_d2d", "updated_at")
-    search_fields = ("enrollment__enrollment_no", "enrollment__student_name", "abc_id", "aadhar_no", "mobile_adhar", "name_adhar", "mother_name", "father_name", "category")
+    list_display = ("id", "enrollment", "gender", "birth_date", "specialisation", "city1", "city2", "contact_no", "abc_id", "photo_uploaded", "is_d2d", "updated_at")
+    search_fields = ("enrollment__enrollment_no", "enrollment__student_name", "abc_id", "aadhar_no", "mobile_adhar", "name_adhar", "mother_name", "father_name", "category", "specialisation")
     list_filter = ("gender", "city1", "city2", "photo_uploaded", "is_d2d", "category")
     readonly_fields = ("created_at", "updated_at")
     autocomplete_fields = ("enrollment",)
