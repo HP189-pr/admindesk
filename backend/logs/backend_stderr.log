@@ -91454,3 +91454,34 @@ Processed 455/455 rows
 Import complete. Created: 0, Updated: 455
 Prune skipped (--no-prune). DB rows will not be deleted.
 
+2026-10-03 15:57:47,369 INFO     Killed 1 pending application instances
+2026-10-05 08:31:01,701 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-05 08:31:01,717 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-05 08:31:01,717 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-05 08:31:01,717 INFO     Listening on TCP address 0.0.0.0:8001
+2026-10-05 08:54:07,781 INFO     Import mail requests completed via API: Found 455 rows; starting import
+Processed 200/455 rows
+Processed 400/455 rows
+Processed 455/455 rows
+Import complete. Created: 0, Updated: 455
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-10-05 08:54:17,131 INFO     Import mail requests completed via API: Found 455 rows; starting import
+Processed 200/455 rows
+Processed 400/455 rows
+Processed 455/455 rows
+Import complete. Created: 0, Updated: 455
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-10-05 08:55:12,080 WARNING  Application instance <Task pending name='Task-595' coro=<ProtocolTypeRouter.__call__() running at E:\admindesk\.venv\Lib\site-packages\channels\routing.py:48> wait_for=<_GatheringFuture pending cb=[Task.task_wakeup()]>> for connection <WebRequest at 0x1299db14d10 method=GET uri=/api/enrollment-analytics/?gender=NA&batch=2008&batch=2009&batch=2012&batch=2013&batch=2014&batch=2015&batch=2018&batch=2024&batch=2021&batch=2023&batch=2020&batch=2017&batch=2016&batch=2019&batch=2022&batch=2025&page=1&page_size=25 clientproto=HTTP/1.1> took too long to shut down and was killed.
+2026-10-05 08:55:13,246 WARNING  Application instance <Task pending name='Task-608' coro=<ProtocolTypeRouter.__call__() running at E:\admindesk\.venv\Lib\site-packages\channels\routing.py:48> wait_for=<_GatheringFuture pending cb=[Task.task_wakeup()]>> for connection <WebRequest at 0x1299dbf74a0 method=GET uri=/api/enrollment-analytics/?gender=NA&batch=2009&batch=2012&batch=2013&batch=2014&batch=2015&batch=2018&batch=2024&batch=2021&batch=2023&batch=2020&batch=2017&batch=2016&batch=2019&batch=2022&batch=2025&page=1&page_size=25 clientproto=HTTP/1.1> took too long to shut down and was killed.
+Bad Request: /api/verify-admin-panel-password/
+2026-10-05 09:33:24,283 WARNING  Bad Request: /api/verify-admin-panel-password/
+Unauthorized: /api/token/verify/
+2026-10-05 09:48:42,079 WARNING  Unauthorized: /api/token/verify/
+Not Found: /api/student-search/search/
+2026-10-05 09:48:56,365 WARNING  Not Found: /api/student-search/search/
+Unauthorized: /api/users/
+2026-10-05 10:52:25,346 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-10-05 12:52:46,373 WARNING  Unauthorized: /api/users/

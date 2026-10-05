@@ -17,7 +17,7 @@ const PopupSearch = () => {
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
-  const [instFallback, setInstFallback] = useState({ inst_veri_number: '', rec_inst_name: '' });
+  const [instFallback, setInstFallback] = useState({ inst_veri_number: '', inst_veri_date: '', rec_inst_name: '' });
 
   /* ================= LOGIC (UNCHANGED) ================= */
 
@@ -102,7 +102,7 @@ const PopupSearch = () => {
     const run = async () => {
       const row = firstInstitutionalVerification;
       if (!row) {
-        setInstFallback({ inst_veri_number: '', rec_inst_name: '' });
+        setInstFallback({ inst_veri_number: '', inst_veri_date: '', rec_inst_name: '' });
         return;
       }
 
@@ -110,6 +110,7 @@ const PopupSearch = () => {
       if (hasLocal) {
         setInstFallback({
           inst_veri_number: row?.inst_veri_number || '',
+          inst_veri_date: row?.date || row?.inst_veri_date || '',
           rec_inst_name: row?.rec_inst_name || '',
         });
         return;
@@ -117,7 +118,7 @@ const PopupSearch = () => {
 
       const docRecId = (row?.doc_rec_id || '').trim();
       if (!docRecId) {
-        setInstFallback({ inst_veri_number: '', rec_inst_name: '' });
+        setInstFallback({ inst_veri_number: '', inst_veri_date: '', rec_inst_name: '' });
         return;
       }
 
@@ -140,12 +141,13 @@ const PopupSearch = () => {
         if (!cancelled && item) {
           setInstFallback({
             inst_veri_number: item?.inst_veri_number || '',
+            inst_veri_date: item?.inst_veri_date || '',
             rec_inst_name: item?.rec_inst_name || '',
           });
         }
       } catch {
         if (!cancelled) {
-          setInstFallback({ inst_veri_number: '', rec_inst_name: '' });
+          setInstFallback({ inst_veri_number: '', inst_veri_date: '', rec_inst_name: '' });
         }
       }
     };
@@ -373,10 +375,20 @@ const PopupSearch = () => {
                         count={counts.institutional_verification}
                       bgColor={SERVICE_BG.institutional_verification}
                         >
-                          <Field
-                            label="Letter No"
-                            value={firstInstitutionalVerification?.inst_veri_number || instFallback?.inst_veri_number}
-                          />
+                          <div className="grid grid-cols-2 gap-x-4">
+                            <Field
+                              label="Letter No"
+                              value={firstInstitutionalVerification?.inst_veri_number || instFallback?.inst_veri_number}
+                            />
+                            <Field
+                              label="Inst Veri Date"
+                              value={formatDate(
+                                firstInstitutionalVerification?.inst_veri_date ||
+                                firstInstitutionalVerification?.date ||
+                                instFallback?.inst_veri_date
+                              )}
+                            />
+                          </div>
                           <Field
                             label="Verification From"
                             value={firstInstitutionalVerification?.rec_inst_name || instFallback?.rec_inst_name}
