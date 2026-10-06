@@ -732,12 +732,16 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
       const payload = buildEnrollmentPayload(formState.data);
       if (formState.isEditing) {
         const updatedEnrollment = await updateEnrollment(formState.data.id, payload);
+        const { photo_uploaded: photoUploaded, ...editableStudentProfileData } = studentProfileState.data;
         const profilePayload = {
-          ...studentProfileState.data,
+          ...editableStudentProfileData,
           enrollment_no: formState.data.enrollment_no,
           birth_date: normalizeOptionalDate(studentProfileState.data.birth_date) || null,
           fees: studentProfileState.data.fees || null,
         };
+        if (photoUploaded !== null && photoUploaded !== undefined) {
+          profilePayload.photo_uploaded = Boolean(photoUploaded);
+        }
         if (studentProfileState.id) {
           await API.patch(`/api/student-profiles/${studentProfileState.id}/`, profilePayload);
         } else {

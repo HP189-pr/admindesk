@@ -91511,3 +91511,52 @@ Unauthorized: /api/users/
 2026-10-06 09:34:26,390 INFO     Updated tr_request_no for record 1158 from 26179 to 26179
 2026-10-06 09:40:17,215 INFO     Updated tr_request_no for record 1158 from 26168 to 26168
 2026-10-06 09:40:17,231 INFO     Updated tr_request_no for record 1158 from 26179 to 26179
+2026-10-06 09:43:09,438 INFO     Updated tr_request_no for record 1158 from 26168 to 26168
+2026-10-06 09:43:09,454 INFO     Updated tr_request_no for record 1158 from 26179 to 26179
+2026-10-06 09:45:21,323 INFO     Import mail requests completed via API: Found 455 rows; starting import
+Processed 200/455 rows
+Processed 400/455 rows
+Processed 455/455 rows
+Import complete. Created: 0, Updated: 455
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-10-06 10:37:41,188 INFO     Killed 0 pending application instances
+2026-10-06 10:38:06,623 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-06 10:38:06,625 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-06 10:38:06,625 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-06 10:38:06,625 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/token/verify/
+2026-10-06 12:51:46,922 WARNING  Unauthorized: /api/token/verify/
+2026-10-06 12:59:55,546 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26351'}
+2026-10-06 12:59:55,546 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-06 12:59:55,561 INFO     InstLetterPDF grouped records: keys=['2026/351']
+2026-10-06 12:59:55,564 INFO     DEBUG rec_inst_pin value: '110052'
+2026-10-06 13:03:49,596 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26352'}
+2026-10-06 13:03:49,596 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-06 13:03:49,596 INFO     InstLetterPDF grouped records: keys=['2026/352']
+2026-10-06 13:03:49,596 INFO     DEBUG rec_inst_pin value: ''
+Unauthorized: /api/token/verify/
+2026-10-06 13:06:00,791 WARNING  Unauthorized: /api/token/verify/
+2026-10-06 14:00:59,977 INFO     sync_cash_deposite_to_sheet: 2026-10-06\u21922026-10-06 appended=1 updated=0 deleted=0 total=1
+2026-10-06 14:01:02,306 INFO     sync_cash_sheet_to_sheet: 2026-10-06\u21922026-10-06 appended=1 updated=0 deleted=0 total=1
+2026-10-06 14:01:02,306 INFO     sync_cash_register_to_sheet: 2026-10-06\u21922026-10-06 appended=17 updated=0 deleted=0 skipped=0 total=12
+2026-10-06 14:01:03,837 INFO     sync_cash_deposite_to_sheet: 2026-10-06\u21922026-10-06 appended=0 updated=0 deleted=0 total=1
+2026-10-06 14:01:05,250 INFO     sync_cash_sheet_to_sheet: 2026-10-06\u21922026-10-06 appended=0 updated=0 deleted=0 total=1
+2026-10-06 14:01:07,674 INFO     sync_upi_sheet_to_sheet: 2026-10-06\u21922026-10-06 appended=1 updated=0 deleted=0 total=1
+2026-10-06 14:01:09,325 INFO     sync_bank_sheet_to_sheet: 2026-10-06\u21922026-10-06 appended=1 updated=0 deleted=0 total=1
+2026-10-06 14:01:12,324 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=147
+2026-10-06 14:01:14,008 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=127
+2026-10-06 14:01:15,759 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=81
+2026-10-06 14:03:27,808 INFO     Import mail requests completed via API: Found 455 rows; starting import
+Processed 200/455 rows
+Processed 400/455 rows
+Processed 455/455 rows
+Import complete. Created: 0, Updated: 455
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+Bad Request: /api/student-profiles/26078/
+2026-10-06 14:03:50,445 WARNING  Bad Request: /api/student-profiles/26078/
+Bad Request: /api/student-profiles/26078/
+2026-10-06 14:07:03,569 WARNING  Bad Request: /api/student-profiles/26078/
+Bad Request: /api/student-profiles/26078/
+2026-10-06 14:07:29,663 WARNING  Bad Request: /api/student-profiles/26078/
