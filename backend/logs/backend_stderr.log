@@ -91485,3 +91485,29 @@ Unauthorized: /api/users/
 2026-10-05 10:52:25,346 WARNING  Unauthorized: /api/users/
 Unauthorized: /api/users/
 2026-10-05 12:52:46,373 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/token/verify/
+2026-10-05 15:20:32,946 WARNING  Unauthorized: /api/token/verify/
+Unauthorized: /api/users/
+2026-10-05 15:23:10,437 WARNING  Unauthorized: /api/users/
+2026-10-05 15:43:18,621 INFO     sync_cash_deposite_to_sheet: 2026-10-05\u21922026-10-05 appended=1 updated=0 deleted=0 total=1
+2026-10-05 15:43:20,362 INFO     sync_cash_sheet_to_sheet: 2026-10-05\u21922026-10-05 appended=1 updated=0 deleted=0 total=1
+2026-10-05 15:43:20,362 INFO     sync_cash_register_to_sheet: 2026-10-05\u21922026-10-05 appended=14 updated=0 deleted=0 skipped=0 total=10
+2026-10-05 15:43:21,975 INFO     sync_cash_deposite_to_sheet: 2026-10-05\u21922026-10-05 appended=0 updated=0 deleted=0 total=1
+2026-10-05 15:43:23,275 INFO     sync_cash_sheet_to_sheet: 2026-10-05\u21922026-10-05 appended=0 updated=0 deleted=0 total=1
+2026-10-05 15:43:24,898 INFO     sync_upi_sheet_to_sheet: 2026-10-05\u21922026-10-05 appended=1 updated=0 deleted=0 total=1
+2026-10-05 15:43:26,417 INFO     sync_bank_sheet_to_sheet: 2026-10-05\u21922026-10-05 appended=1 updated=0 deleted=0 total=1
+2026-10-05 15:43:28,403 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=2 updated=0 deleted=0 total=146
+2026-10-05 15:43:29,925 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=126
+2026-10-05 15:43:31,923 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=2 updated=0 deleted=0 total=80
+2026-10-05 15:55:52,236 INFO     Killed 0 pending application instances
+2026-10-06 08:21:56,576 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-06 08:21:56,576 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-06 08:21:56,576 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-06 08:21:56,576 INFO     Listening on TCP address 0.0.0.0:8001
+2026-10-06 09:28:19,776 INFO     Updated tr_request_no for record 1158 from 26168 to 26168
+2026-10-06 09:28:19,792 INFO     Updated tr_request_no for record 1158 from 26179 to 26179
+2026-10-06 09:28:19,862 INFO     Updated tr_request_no for record 370 from 26228 to 26228
+2026-10-06 09:34:26,374 INFO     Updated tr_request_no for record 1158 from 26168 to 26168
+2026-10-06 09:34:26,390 INFO     Updated tr_request_no for record 1158 from 26179 to 26179
+2026-10-06 09:40:17,215 INFO     Updated tr_request_no for record 1158 from 26168 to 26168
+2026-10-06 09:40:17,231 INFO     Updated tr_request_no for record 1158 from 26179 to 26179

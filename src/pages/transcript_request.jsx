@@ -519,7 +519,7 @@ const TranscriptRequestPage = ({ onToggleSidebar, onToggleChatbox }) => {
       const dd = String(day).padStart(2, '0');
       const mm = String(month).padStart(2, '0');
       const yyyy = String(year).length === 2 ? `20${String(year).padStart(2, '0')}` : String(year);
-      return `${dd}-${mm}-${yyyy}`;
+      return `${dd}/${mm}/${yyyy}`;
     };
 
     const ymdMatch = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[T\s].*)?$/);

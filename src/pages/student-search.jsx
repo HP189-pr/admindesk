@@ -100,8 +100,7 @@ export default function StudentSearch() {
 
   const formatTableDate = (value) => {
     if (!value) return '-';
-    const str = String(value);
-    return str.includes('-') ? formatDate(str) : str;
+    return formatDate(value);
   };
 
   const formatISODate = (value) => {

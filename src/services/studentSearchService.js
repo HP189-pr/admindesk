@@ -57,18 +57,27 @@ export const searchStudent = async (enrollmentNo) => {
 };
 
 /**
- * Format date for display (YYYY-MM-DD to DD-MM-YYYY)
- * @param {string} dateString - ISO date string
+ * Format a date for display as DD/MM/YYYY.
+ * Accepts API ISO dates as well as already formatted DMY values.
+ * @param {string} dateString - ISO or DMY date string
  * @returns {string} Formatted date
  */
 export const formatDate = (dateString) => {
     if (!dateString) return '-';
-    try {
-        const [year, month, day] = dateString.split('-');
-        return `${day}-${month}-${year}`;
-    } catch {
-        return dateString;
+    const value = String(dateString).trim();
+    const isoMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+        const [, year, month, day] = isoMatch;
+        return `${day}/${month}/${year}`;
     }
+
+    const dmyMatch = value.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+    if (dmyMatch) {
+        const [, day, month, year] = dmyMatch;
+        return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+    }
+
+    return value;
 };
 
 /**
