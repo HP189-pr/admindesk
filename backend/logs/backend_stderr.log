@@ -91560,3 +91560,35 @@ Bad Request: /api/student-profiles/26078/
 2026-10-06 14:07:03,569 WARNING  Bad Request: /api/student-profiles/26078/
 Bad Request: /api/student-profiles/26078/
 2026-10-06 14:07:29,663 WARNING  Bad Request: /api/student-profiles/26078/
+Unauthorized: /api/bulk-upload/
+2026-10-06 15:06:05,008 WARNING  Unauthorized: /api/bulk-upload/
+Unauthorized: /api/bulk-upload/
+2026-10-06 15:06:14,131 WARNING  Unauthorized: /api/bulk-upload/
+Unauthorized: /api/mainbranch/
+2026-10-06 15:06:17,184 WARNING  Unauthorized: /api/mainbranch/
+Unauthorized: /api/institutes/
+2026-10-06 15:06:17,184 WARNING  Unauthorized: /api/institutes/
+Unauthorized: /api/subbranch/
+2026-10-06 15:06:17,184 WARNING  Unauthorized: /api/subbranch/
+Unauthorized: /api/institute-course-offerings/
+2026-10-06 15:06:17,184 WARNING  Unauthorized: /api/institute-course-offerings/
+2026-10-06 15:58:16,541 INFO     Killed 0 pending application instances
+2026-10-07 08:27:29,765 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-07 08:27:29,765 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-07 08:27:29,765 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-07 08:27:29,774 INFO     Listening on TCP address 0.0.0.0:8001
+2026-10-07 08:30:27,297 INFO     Killed 0 pending application instances
+2026-10-07 08:30:58,449 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-07 08:30:58,449 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-07 08:30:58,449 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-07 08:30:58,449 INFO     Listening on TCP address 0.0.0.0:8001
+2026-10-07 08:33:19,839 INFO     Killed 0 pending application instances
+2026-10-07 08:33:45,195 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-07 08:33:45,197 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-07 08:33:45,197 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-07 08:33:45,197 INFO     Listening on TCP address 0.0.0.0:8001
+2026-10-07 10:02:14,449 INFO     Killed 1 pending application instances
+2026-10-07 10:02:17,074 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-07 10:02:17,074 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-07 10:02:17,074 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-07 10:02:17,074 INFO     Listening on TCP address 0.0.0.0:8001

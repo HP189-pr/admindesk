@@ -38,14 +38,12 @@ class EnrollmentSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'id',
-            'enrollment_date',
             'created_at',
             'updated_at',
             'institute',
             'subcourse',
             'maincourse',
             'updated_by',
-            'cancel',
             'status'
         ]
         extra_kwargs = {

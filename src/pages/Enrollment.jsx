@@ -4,7 +4,7 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { isoToDMY, dmyToISO } from "../utils/date";
-import { FaEdit, FaTrash } from "react-icons/fa";
+import { FaEdit, FaTrash, FaGraduationCap, FaUser, FaAddressCard, FaSave, FaTimes } from "react-icons/fa";
 import { FaFileExcel, FaFilePdf } from "react-icons/fa6";
 import { useNavigate } from 'react-router-dom';
 import PanelToggleButton from "../components/PanelToggleButton";
@@ -51,10 +51,12 @@ const CANCEL_ENTRY_MODE_OPTIONS = [
 
 const CANCEL_ACTION = "Cancel Admission";
 const BATCH_OPTIONS = [2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024,2025, 2026, 2027, 2028];
-const ENROLLMENT_FORM_PANEL_CLASS = "rounded-2xl border border-slate-200 bg-slate-100 p-4 md:p-5";
-const ENROLLMENT_FORM_LABEL_CLASS = "mb-1 block text-sm font-medium text-slate-800";
-const ENROLLMENT_FORM_FIELD_CLASS = "w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-slate-800 shadow-sm transition focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-100";
+const ENROLLMENT_FORM_PANEL_CLASS = "rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-sm md:p-5";
+const ENROLLMENT_FORM_LABEL_CLASS = "mb-1 block text-xs font-semibold text-slate-700";
+const ENROLLMENT_FORM_FIELD_CLASS = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm transition focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-100";
 const ENROLLMENT_FORM_FIELD_ERROR_CLASS = "border-red-500 focus:border-red-500 focus:ring-red-100";
+const ENROLLMENT_FORM_SECTION_CLASS = "rounded-xl border p-3 shadow-sm md:p-4";
+const ENROLLMENT_FORM_SECTION_HEADER_CLASS = "mb-3 flex items-center gap-2";
 const EXPORT_EXCEL_BUTTON_CLASS = "inline-flex h-10 w-10 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 shadow transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50";
 const EXPORT_PDF_BUTTON_CLASS = "inline-flex h-10 w-10 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 shadow transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50";
 
@@ -129,6 +131,8 @@ const createEmptyEnrollmentFormData = () => ({
   institute_id: '',
   batch: '',
   admission_date: '',
+  enrollment_date: '',
+  cancel: false,
   subcourse_id: '',
   maincourse_id: '',
   temp_enroll_no: ''
@@ -187,14 +191,12 @@ const buildEnrollmentPayload = (data = {}) => {
   };
 
   const admissionDate = normalizeOptionalDate(data.admission_date);
-  if (admissionDate) {
-    payload.admission_date = admissionDate;
-  }
+  payload.admission_date = admissionDate || null;
 
   const enrollmentDate = normalizeOptionalDate(data.enrollment_date);
-  if (enrollmentDate) {
-    payload.enrollment_date = enrollmentDate;
-  }
+  payload.enrollment_date = enrollmentDate || null;
+
+  payload.cancel = Boolean(data.cancel);
 
   return payload;
 };
@@ -799,6 +801,17 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
   }));
 };
 
+  const handleEnrollmentStatusChange = (e) => {
+    const { value } = e.target;
+    setFormState(prev => ({
+      ...prev,
+      data: {
+        ...prev.data,
+        cancel: value === 'CANCELLED',
+      },
+    }));
+  };
+
   const resetCancelForm = () => {
     setCancelForm(buildCancelFormState());
   };
@@ -1197,6 +1210,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
     ...enr,
     admission_date: isoToDMY(enr.admission_date) || '',
     enrollment_date: isoToDMY(enr.enrollment_date) || '',
+    cancel: Boolean(enr.cancel),
     institute_id: enr.institute?.institute_id || enr.institute_id || enr.institute?.id || '',
     maincourse_id: enr.maincourse?.maincourse_id || enr.maincourse_id || '',
     subcourse_id: enr.subcourse?.subcourse_id || enr.subcourse_id || '',
@@ -1251,9 +1265,12 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
 
   const handleStudentProfileChange = (event) => {
     const { name, value, type, checked } = event.target;
+    const limitedValue = ['contact_no', 'aadhar_no', 'abc_id'].includes(name)
+      ? value.slice(0, 16)
+      : value;
     setStudentProfileState((prev) => ({
       ...prev,
-      data: { ...prev.data, [name]: type === 'checkbox' ? checked : value },
+      data: { ...prev.data, [name]: type === 'checkbox' ? checked : limitedValue },
     }));
   };
 
@@ -1483,10 +1500,30 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
   );
 
   const renderFormView = () => (
-    <div className={ENROLLMENT_FORM_PANEL_CLASS}>
-      <h2 className="text-lg font-semibold text-slate-800 mb-4">
-        {formState.isEditing ? "Edit Enrollment" : "Add New Enrollment"}
-      </h2>
+    <div className={`${ENROLLMENT_FORM_PANEL_CLASS} bg-gradient-to-br from-slate-50 via-white to-sky-50/60`}>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-sky-600 shadow-sm">
+            <FaGraduationCap size={22} />
+          </span>
+          <div>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-600">Enrollment workspace</p>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+            {formState.isEditing ? "Edit Enrollment" : "Add New Enrollment"}
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            {formState.isEditing
+              ? "Update enrollment, status, dates, and student profile information."
+              : "Create an enrollment and complete its academic information."}
+          </p>
+          </div>
+        </div>
+        {formState.isEditing && (
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${formState.data.cancel ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+            {formState.data.cancel ? 'Cancelled enrollment' : 'Active enrollment'}
+          </span>
+        )}
+      </div>
       {saveMessage.text && (
         <p className={`mb-4 rounded-lg px-3 py-2 text-sm font-medium ${saveMessage.type === 'success' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
           {saveMessage.text}
@@ -1498,8 +1535,18 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
       {!rights.can_edit && formState.isEditing && (
         <p className="text-sm text-red-600 mb-2">You do not have rights to edit enrollments.</p>
       )}
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
+        <section className={`${ENROLLMENT_FORM_SECTION_CLASS} border-sky-100 bg-sky-50/40`}>
+          <div className={ENROLLMENT_FORM_SECTION_HEADER_CLASS}>
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-100 text-sky-600">
+              <FaGraduationCap size={14} />
+            </span>
+            <div>
+              <h3 className="text-sm font-bold text-sky-900">Enrollment Details</h3>
+              <p className="text-[11px] text-slate-500">Basic enrollment and academic information</p>
+            </div>
+          </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div>
             <label className={ENROLLMENT_FORM_LABEL_CLASS}>Enrollment Number</label>
             <input
@@ -1545,7 +1592,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4">
           <div>
             <label className={ENROLLMENT_FORM_LABEL_CLASS}>Institute Code *</label>
             <select
@@ -1638,15 +1685,56 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
             )}
           </div>
         </div>
+        </section>
 
         {formState.isEditing && (
-          <fieldset className="rounded-xl border border-slate-200 bg-white p-4">
-            <legend className="px-2 text-sm font-semibold text-slate-800">Student Profile</legend>
+          <section className={`${ENROLLMENT_FORM_SECTION_CLASS} border-emerald-100 bg-emerald-50/30`}>
+            <div className={ENROLLMENT_FORM_SECTION_HEADER_CLASS}>
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+                <FaUser size={13} />
+              </span>
+              <div>
+                <h3 className="text-sm font-bold text-emerald-900">Student Profile</h3>
+                <p className="text-[11px] text-slate-500">Personal and demographic information</p>
+              </div>
+            </div>
             {studentProfileState.isLoading ? (
               <p className="text-sm text-slate-500">Loading student profile...</p>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {['gender', 'category', 'program_medium'].map((field) => (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
+                <div>
+                  <label className={ENROLLMENT_FORM_LABEL_CLASS}>Status</label>
+                  <select
+                    name="cancel_status"
+                    value={formState.data.cancel ? 'CANCELLED' : 'ACTIVE'}
+                    onChange={handleEnrollmentStatusChange}
+                    className={`${ENROLLMENT_FORM_FIELD_CLASS} ${formState.data.cancel ? 'border-rose-200 focus:border-rose-400 focus:ring-rose-100' : 'border-emerald-200 focus:border-emerald-400 focus:ring-emerald-100'}`}
+                  >
+                    <option value="ACTIVE">Active</option>
+                    <option value="CANCELLED">Cancelled</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={ENROLLMENT_FORM_LABEL_CLASS}>Admission Date</label>
+                  <input
+                    type="date"
+                    name="admission_date"
+                    value={normalizeOptionalDate(formState.data.admission_date)}
+                    onChange={handleInputChange}
+                    className={ENROLLMENT_FORM_FIELD_CLASS}
+                  />
+                </div>
+                <div>
+                  <label className={ENROLLMENT_FORM_LABEL_CLASS}>Registration Date</label>
+                  <input
+                    type="date"
+                    name="enrollment_date"
+                    value={normalizeOptionalDate(formState.data.enrollment_date)}
+                    onChange={handleInputChange}
+                    className={ENROLLMENT_FORM_FIELD_CLASS}
+                  />
+                </div>
+                {['gender', 'category'].map((field) => (
                   <div key={field}>
                     <label className={ENROLLMENT_FORM_LABEL_CLASS}>
                       {field === 'program_medium' ? 'Program Medium' : field[0].toUpperCase() + field.slice(1)}
@@ -1655,7 +1743,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
                       name={field}
                       value={studentProfileState.data[field]}
                       onChange={handleStudentProfileChange}
-                      className={ENROLLMENT_FORM_FIELD_CLASS}
+                      className={`${ENROLLMENT_FORM_FIELD_CLASS} max-w-[220px]`}
                     >
                       {STUDENT_PROFILE_SELECT_OPTIONS[field].map((option) => (
                         <option key={option || 'empty'} value={option}>{option || 'Select'}</option>
@@ -1671,8 +1759,19 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
                     name="birth_date"
                     value={studentProfileState.data.birth_date}
                     onChange={handleStudentProfileChange}
-                    className={ENROLLMENT_FORM_FIELD_CLASS}
+                    className={`${ENROLLMENT_FORM_FIELD_CLASS} max-w-[220px]`}
                   />
+                </div>
+                <div className="col-span-full mt-1 border-t border-orange-100 pt-3">
+                  <div className={ENROLLMENT_FORM_SECTION_HEADER_CLASS}>
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-100 text-orange-600">
+                      <FaAddressCard size={13} />
+                    </span>
+                    <div>
+                      <h4 className="text-sm font-bold text-orange-900">Contact &amp; Identity</h4>
+                      <p className="text-[11px] text-slate-500">Contact details and identification information</p>
+                    </div>
+                  </div>
                 </div>
                 {[
                   ['contact_no', 'Contact Number'],
@@ -1683,6 +1782,33 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
                   ['name_adhar', 'Aadhar Name'],
                   ['mother_name', 'Mother Name'],
                   ['father_name', 'Father Name'],
+                ].map(([field, label]) => (
+                  <div key={field}>
+                    <label className={ENROLLMENT_FORM_LABEL_CLASS}>{label}</label>
+                    <input
+                      type={field === 'email' ? 'email' : 'text'}
+                      name={field}
+                      value={studentProfileState.data[field]}
+                      onChange={handleStudentProfileChange}
+                      maxLength={['contact_no', 'aadhar_no', 'abc_id'].includes(field) ? 16 : undefined}
+                      inputMode={['contact_no', 'aadhar_no', 'abc_id'].includes(field) ? 'numeric' : undefined}
+                      className={ENROLLMENT_FORM_FIELD_CLASS}
+                    />
+                  </div>
+                ))}
+                <div className="col-span-full mt-1 border-t border-violet-100 pt-3">
+                  <div className={ENROLLMENT_FORM_SECTION_HEADER_CLASS}>
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
+                      <FaUser size={13} />
+                    </span>
+                    <div>
+                      <h4 className="text-sm font-bold text-violet-900">Additional Student Information</h4>
+                      <p className="text-[11px] text-slate-500">Academic, address, and additional student details</p>
+                    </div>
+                  </div>
+                </div>
+                {[
+                  ['program_medium', 'Program Medium'],
                   ['specialisation', 'Specialisation'],
                   ['city1', 'City'],
                   ['city2', 'Alternate City'],
@@ -1692,13 +1818,26 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
                 ].map(([field, label]) => (
                   <div key={field}>
                     <label className={ENROLLMENT_FORM_LABEL_CLASS}>{label}</label>
-                    <input
-                      type={field === 'email' ? 'email' : field === 'fees' ? 'number' : 'text'}
-                      name={field}
-                      value={studentProfileState.data[field]}
-                      onChange={handleStudentProfileChange}
-                      className={ENROLLMENT_FORM_FIELD_CLASS}
-                    />
+                    {field === 'program_medium' ? (
+                      <select
+                        name={field}
+                        value={studentProfileState.data[field]}
+                        onChange={handleStudentProfileChange}
+                        className={ENROLLMENT_FORM_FIELD_CLASS}
+                      >
+                        {STUDENT_PROFILE_SELECT_OPTIONS.program_medium.map((option) => (
+                          <option key={option || 'empty'} value={option}>{option || 'Select'}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type={field === 'fees' ? 'number' : 'text'}
+                        name={field}
+                        value={studentProfileState.data[field]}
+                        onChange={handleStudentProfileChange}
+                        className={ENROLLMENT_FORM_FIELD_CLASS}
+                      />
+                    )}
                   </div>
                 ))}
                 <label className="flex items-center gap-2 pt-7 text-sm font-medium text-slate-800">
@@ -1719,27 +1858,57 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
                   />
                   Direct to Degree
                 </label>
+                <div className="col-span-full flex items-center justify-end gap-2 pt-3 lg:col-span-4 lg:col-start-3 lg:pt-7">
+                  <button
+                    type="button"
+                    className="reset-button inline-flex items-center gap-2"
+                    onClick={() => setSelectedTopbarMenu && setSelectedTopbarMenu("🔍")}
+                  >
+                    <FaTimes size={12} />
+                    Cancel
+                  </button>
+                  {rights.can_edit && (
+                    <button
+                      type="submit"
+                      className="save-button inline-flex items-center gap-2"
+                    >
+                      <FaSave size={14} />
+                      Update
+                    </button>
+                  )}
+                </div>
               </div>
             )}
-          </fieldset>
+          </section>
         )}
-        <div className="flex justify-end space-x-2">
+        {(!formState.isEditing || studentProfileState.isLoading) && (
+          <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-slate-500">
+            <span className="font-semibold text-rose-500">*</span> Required fields
+            <span className="mx-2 text-slate-300">|</span>
+            Character limits are applied where required
+          </p>
+          <div className="flex justify-end gap-2">
           <button
             type="button"
-            className="reset-button"
+            className="reset-button inline-flex items-center gap-2"
             onClick={() => setSelectedTopbarMenu && setSelectedTopbarMenu("🔍")}
           >
+            <FaTimes size={12} />
             Cancel
           </button>
           {(formState.isEditing ? rights.can_edit : rights.can_create) && (
             <button
               type="submit"
-              className="save-button"
+              className="save-button inline-flex items-center gap-2"
             >
+              <FaSave size={14} />
               {formState.isEditing ? "Update" : "Save"}
             </button>
           )}
+          </div>
         </div>
+        )}
       </form>
     </div>
   );

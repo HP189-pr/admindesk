@@ -49,9 +49,7 @@ const sanitizeEnrollmentPayload = (data = {}) => {
         updated_by,
         created_at,
         updated_at,
-        cancel,
         status,
-        enrollment_date,
         ...payload
     } = data;
     return payload;
