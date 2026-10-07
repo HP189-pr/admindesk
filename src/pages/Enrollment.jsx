@@ -1762,17 +1762,23 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
                     className={`${ENROLLMENT_FORM_FIELD_CLASS} max-w-[220px]`}
                   />
                 </div>
-                <div className="col-span-full mt-1 border-t border-orange-100 pt-3">
-                  <div className={ENROLLMENT_FORM_SECTION_HEADER_CLASS}>
-                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-100 text-orange-600">
-                      <FaAddressCard size={13} />
-                    </span>
-                    <div>
-                      <h4 className="text-sm font-bold text-orange-900">Contact &amp; Identity</h4>
-                      <p className="text-[11px] text-slate-500">Contact details and identification information</p>
-                    </div>
-                  </div>
-                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {formState.isEditing && !studentProfileState.isLoading && (
+          <section className={`${ENROLLMENT_FORM_SECTION_CLASS} border-amber-100 bg-amber-50/30`}>
+            <div className={ENROLLMENT_FORM_SECTION_HEADER_CLASS}>
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
+                <FaAddressCard size={13} />
+              </span>
+              <div>
+                <h3 className="text-sm font-bold text-amber-900">Additional Student Information</h3>
+                <p className="text-[11px] text-slate-500">Contact, identity, academic, address and other details</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
                 {[
                   ['contact_no', 'Contact Number'],
                   ['email', 'Email'],
@@ -1796,17 +1802,6 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
                     />
                   </div>
                 ))}
-                <div className="col-span-full mt-1 border-t border-violet-100 pt-3">
-                  <div className={ENROLLMENT_FORM_SECTION_HEADER_CLASS}>
-                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
-                      <FaUser size={13} />
-                    </span>
-                    <div>
-                      <h4 className="text-sm font-bold text-violet-900">Additional Student Information</h4>
-                      <p className="text-[11px] text-slate-500">Academic, address, and additional student details</p>
-                    </div>
-                  </div>
-                </div>
                 {[
                   ['program_medium', 'Program Medium'],
                   ['specialisation', 'Specialisation'],
@@ -1840,45 +1835,48 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
                     )}
                   </div>
                 ))}
-                <label className="flex items-center gap-2 pt-7 text-sm font-medium text-slate-800">
-                  <input
-                    type="checkbox"
-                    name="hostel_required"
-                    checked={studentProfileState.data.hostel_required}
-                    onChange={handleStudentProfileChange}
-                  />
-                  Hostel Required
-                </label>
-                <label className="flex items-center gap-2 pt-7 text-sm font-medium text-slate-800">
-                  <input
-                    type="checkbox"
-                    name="is_d2d"
-                    checked={studentProfileState.data.is_d2d}
-                    onChange={handleStudentProfileChange}
-                  />
-                  Direct to Degree
-                </label>
-                <div className="col-span-full flex items-center justify-end gap-2 pt-3 lg:col-span-4 lg:col-start-3 lg:pt-7">
-                  <button
-                    type="button"
-                    className="reset-button inline-flex items-center gap-2"
-                    onClick={() => setSelectedTopbarMenu && setSelectedTopbarMenu("🔍")}
-                  >
-                    <FaTimes size={12} />
-                    Cancel
-                  </button>
-                  {rights.can_edit && (
+                <div className="col-span-full flex flex-wrap items-center justify-between gap-3 border-t border-amber-100 pt-3">
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-1.5 text-sm font-medium text-slate-800">
+                      <input
+                        type="checkbox"
+                        name="hostel_required"
+                        checked={studentProfileState.data.hostel_required}
+                        onChange={handleStudentProfileChange}
+                      />
+                      Hostel Required
+                    </label>
+                    <label className="flex items-center gap-1.5 text-sm font-medium text-slate-800">
+                      <input
+                        type="checkbox"
+                        name="is_d2d"
+                        checked={studentProfileState.data.is_d2d}
+                        onChange={handleStudentProfileChange}
+                      />
+                      Direct to Degree
+                    </label>
+                  </div>
+                  <div className="flex items-center justify-end gap-2">
                     <button
-                      type="submit"
-                      className="save-button inline-flex items-center gap-2"
+                      type="button"
+                      className="reset-button inline-flex items-center gap-2"
+                      onClick={() => setSelectedTopbarMenu && setSelectedTopbarMenu("🔍")}
                     >
-                      <FaSave size={14} />
-                      Update
+                      <FaTimes size={12} />
+                      Cancel
                     </button>
-                  )}
+                    {rights.can_edit && (
+                      <button
+                        type="submit"
+                        className="save-button inline-flex items-center gap-2"
+                      >
+                        <FaSave size={14} />
+                        Update
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+            </div>
           </section>
         )}
         {(!formState.isEditing || studentProfileState.isLoading) && (
