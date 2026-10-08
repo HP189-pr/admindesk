@@ -93084,3 +93084,8 @@ Prune skipped (--no-prune). DB rows will not be deleted.
 2026-10-08 14:54:11,017 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
 2026-10-08 14:54:11,035 INFO     InstLetterPDF grouped records: keys=['2026/358']
 2026-10-08 14:54:11,035 INFO     DEBUG rec_inst_pin value: ''
+2026-10-08 14:59:37,478 INFO     Killed 2 pending application instances
+2026-10-08 14:59:40,457 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-08 14:59:40,457 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-08 14:59:40,457 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-08 14:59:40,458 INFO     Listening on TCP address 0.0.0.0:8001
