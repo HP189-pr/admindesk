@@ -91865,3 +91865,1222 @@ Unauthorized: /api/enrollments/
 2026-10-07 15:49:17,878 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001FD352AB350>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
 2026-10-07 15:49:17,878 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001FD35498320>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
 2026-10-07 15:49:17,879 ERROR    sync_bank_sheet_new_to_sheet: cannot open worksheet in sheet 1SCzSewJ9121xX4yvuGBDV14Wn5IcuqnQhv7v5QUfkmw: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001FD350FE570>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+2026-10-07 15:56:37,908 INFO     Killed 1 pending application instances
+2026-10-08 08:25:36,351 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-08 08:25:36,351 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-08 08:25:36,351 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-08 08:25:36,351 INFO     Listening on TCP address 0.0.0.0:8001
+2026-10-08 08:39:01,585 WARNING  Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACD8130E0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:39:01,585 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDA74050>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:39:01,585 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDA75010>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:39:01,585 WARNING  Import command failed: Unable to open sheet '1rlE1AAyL2ACodxFOG1CJz8yROxO3yBCT_p10lfih--o': HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDA755E0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+Bad Request: /api/mail-requests/sync-from-sheet/
+2026-10-08 08:39:01,585 WARNING  Bad Request: /api/mail-requests/sync-from-sheet/
+2026-10-08 08:39:02,351 WARNING  Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDA33A70>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:39:02,351 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDA33BF0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:39:02,351 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDA339B0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:39:02,351 ERROR    Sheet import failed
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\sheets_sync.py", line 295, in _open_sheet
+    return client.open_by_url(sheet_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\client.py", line 189, in open_by_url
+    return self.open_by_key(extract_id_from_url(url))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\utils.py", line 622, in extract_id_from_url
+    raise NoValidUrlKeyFound
+gspread.exceptions.NoValidUrlKeyFound
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\util\connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\socket.py", line 976, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 11001] getaddrinfo failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connection.py", line 753, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x0000015ACDA32480>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\requests\adapters.py", line 644, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 871, in urlopen
+    return self.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 871, in urlopen
+    return self.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 871, in urlopen
+    return self.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\util\retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDA32480>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\transport\requests.py", line 187, in __call__
+    response = self.session.request(
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\requests\sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\requests\sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\requests\adapters.py", line 677, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDA32480>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\view_transcript_generate.py", line 197, in sync_from_sheet
+    summary = import_transcript_requests_from_sheet(no_prune=no_prune, force_overwrite_status=force_status)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\sheets_sync.py", line 608, in import_transcript_requests_from_sheet
+    worksheet = _get_worksheet(sheet_id, gid)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\sheets_sync.py", line 305, in _get_worksheet
+    sheet = _open_sheet(sheet_id)
+            ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\sheets_sync.py", line 300, in _open_sheet
+    return client.open_by_key(sheet_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\client.py", line 168, in open_by_key
+    spreadsheet = Spreadsheet(self.http_client, {"id": key})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\spreadsheet.py", line 29, in __init__
+    metadata = self.fetch_sheet_metadata()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\spreadsheet.py", line 230, in fetch_sheet_metadata
+    return self.client.fetch_sheet_metadata(self.id, params=params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\http_client.py", line 305, in fetch_sheet_metadata
+    r = self.request("get", url, params=params)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\http_client.py", line 114, in request
+    response = self.session.request(
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\transport\requests.py", line 535, in request
+    self.credentials.before_request(auth_request, method, url, request_headers)
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\credentials.py", line 228, in before_request
+    self._blocking_refresh(request)
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\credentials.py", line 191, in _blocking_refresh
+    self.refresh(request)
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\credentials.py", line 365, in refresh
+    self._refresh_token(request)
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\service_account.py", line 459, in _refresh_token
+    access_token, expiry, _ = _client.jwt_grant(
+                              ^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\_client.py", line 299, in jwt_grant
+    response_data = _token_endpoint_request(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\_client.py", line 259, in _token_endpoint_request
+    response_status_ok, response_data, retryable_error = _token_endpoint_request_no_throw(
+                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\_client.py", line 192, in _token_endpoint_request_no_throw
+    response = request(
+               ^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\transport\requests.py", line 194, in __call__
+    raise new_exc from caught_exc
+google.auth.exceptions.TransportError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDA32480>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+Internal Server Error: /api/transcript-requests/sync-from-sheet/
+2026-10-08 08:39:02,404 ERROR    Internal Server Error: /api/transcript-requests/sync-from-sheet/
+2026-10-08 08:39:04,618 WARNING  Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDBF2AB0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:39:04,618 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDBF2E10>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:39:04,618 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDBF3020>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:39:04,618 WARNING  Import command failed: Unable to open sheet '1rlE1AAyL2ACodxFOG1CJz8yROxO3yBCT_p10lfih--o': HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDBF3590>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+Bad Request: /api/mail-requests/sync-from-sheet/
+2026-10-08 08:39:04,618 WARNING  Bad Request: /api/mail-requests/sync-from-sheet/
+2026-10-08 08:39:29,968 WARNING  Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDB8C6E0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:39:29,968 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDB8E090>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:39:29,968 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDB8C290>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:39:29,968 WARNING  Import command failed: Unable to open sheet '1rlE1AAyL2ACodxFOG1CJz8yROxO3yBCT_p10lfih--o': HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDB62A80>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+Bad Request: /api/mail-requests/sync-from-sheet/
+2026-10-08 08:39:29,968 WARNING  Bad Request: /api/mail-requests/sync-from-sheet/
+2026-10-08 08:39:33,171 WARNING  Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDB2E7E0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:39:33,171 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDB1D730>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:39:33,176 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDA75B80>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:39:33,176 WARNING  Import command failed: Unable to open sheet '1rlE1AAyL2ACodxFOG1CJz8yROxO3yBCT_p10lfih--o': HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDA75220>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+Bad Request: /api/mail-requests/sync-from-sheet/
+2026-10-08 08:39:33,176 WARNING  Bad Request: /api/mail-requests/sync-from-sheet/
+2026-10-08 08:39:41,918 WARNING  Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDD48200>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:39:41,920 WARNING  Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDD22BA0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:39:41,920 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDCFA2D0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:39:41,920 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDA77C20>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:39:41,920 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDA75B20>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:39:41,920 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDA750D0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:39:41,920 WARNING  Import command failed: Unable to open sheet '1rlE1AAyL2ACodxFOG1CJz8yROxO3yBCT_p10lfih--o': HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDA74680>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+2026-10-08 08:39:41,920 ERROR    Sheet import failed
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\sheets_sync.py", line 295, in _open_sheet
+    return client.open_by_url(sheet_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\client.py", line 189, in open_by_url
+    return self.open_by_key(extract_id_from_url(url))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\utils.py", line 622, in extract_id_from_url
+    raise NoValidUrlKeyFound
+gspread.exceptions.NoValidUrlKeyFound
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\util\connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\socket.py", line 976, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 11001] getaddrinfo failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connection.py", line 753, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x0000015ACDA75160>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\requests\adapters.py", line 644, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 871, in urlopen
+    return self.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 871, in urlopen
+    return self.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 871, in urlopen
+    return self.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\util\retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDA75160>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\transport\requests.py", line 187, in __call__
+    response = self.session.request(
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\requests\sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\requests\sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\requests\adapters.py", line 677, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDA75160>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\view_transcript_generate.py", line 197, in sync_from_sheet
+    summary = import_transcript_requests_from_sheet(no_prune=no_prune, force_overwrite_status=force_status)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\sheets_sync.py", line 608, in import_transcript_requests_from_sheet
+    worksheet = _get_worksheet(sheet_id, gid)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\sheets_sync.py", line 305, in _get_worksheet
+    sheet = _open_sheet(sheet_id)
+            ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\sheets_sync.py", line 300, in _open_sheet
+    return client.open_by_key(sheet_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\client.py", line 168, in open_by_key
+    spreadsheet = Spreadsheet(self.http_client, {"id": key})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\spreadsheet.py", line 29, in __init__
+    metadata = self.fetch_sheet_metadata()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\spreadsheet.py", line 230, in fetch_sheet_metadata
+    return self.client.fetch_sheet_metadata(self.id, params=params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\http_client.py", line 305, in fetch_sheet_metadata
+    r = self.request("get", url, params=params)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\http_client.py", line 114, in request
+    response = self.session.request(
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\transport\requests.py", line 535, in request
+    self.credentials.before_request(auth_request, method, url, request_headers)
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\credentials.py", line 228, in before_request
+    self._blocking_refresh(request)
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\credentials.py", line 191, in _blocking_refresh
+    self.refresh(request)
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\credentials.py", line 365, in refresh
+    self._refresh_token(request)
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\service_account.py", line 459, in _refresh_token
+    access_token, expiry, _ = _client.jwt_grant(
+                              ^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\_client.py", line 299, in jwt_grant
+    response_data = _token_endpoint_request(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\_client.py", line 259, in _token_endpoint_request
+    response_status_ok, response_data, retryable_error = _token_endpoint_request_no_throw(
+                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\_client.py", line 192, in _token_endpoint_request_no_throw
+    response = request(
+               ^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\transport\requests.py", line 194, in __call__
+    raise new_exc from caught_exc
+google.auth.exceptions.TransportError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000015ACDA75160>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+Bad Request: /api/mail-requests/sync-from-sheet/
+2026-10-08 08:39:41,935 WARNING  Bad Request: /api/mail-requests/sync-from-sheet/
+2026-10-08 08:51:44,856 INFO     Killed 0 pending application instances
+2026-10-08 08:52:11,608 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-08 08:52:11,608 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-08 08:52:11,611 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-08 08:52:11,611 INFO     Listening on TCP address 0.0.0.0:8001
+2026-10-08 08:56:32,309 WARNING  Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD5BD040>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:56:32,310 WARNING  Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD5EDAC0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:56:32,311 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD650FE0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:56:32,312 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD650A40>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:56:32,313 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD650C80>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:56:32,314 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD651AF0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:56:32,316 ERROR    Sheet import failed
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\sheets_sync.py", line 295, in _open_sheet
+    return client.open_by_url(sheet_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\client.py", line 189, in open_by_url
+    return self.open_by_key(extract_id_from_url(url))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\utils.py", line 622, in extract_id_from_url
+    raise NoValidUrlKeyFound
+gspread.exceptions.NoValidUrlKeyFound
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\util\connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\socket.py", line 976, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 11001] getaddrinfo failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connection.py", line 753, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x000001D3DD651E80>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\requests\adapters.py", line 644, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 871, in urlopen
+    return self.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 871, in urlopen
+    return self.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 871, in urlopen
+    return self.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\util\retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD651E80>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\transport\requests.py", line 187, in __call__
+    response = self.session.request(
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\requests\sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\requests\sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\requests\adapters.py", line 677, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD651E80>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\view_transcript_generate.py", line 197, in sync_from_sheet
+    summary = import_transcript_requests_from_sheet(no_prune=no_prune, force_overwrite_status=force_status)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\sheets_sync.py", line 608, in import_transcript_requests_from_sheet
+    worksheet = _get_worksheet(sheet_id, gid)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\sheets_sync.py", line 305, in _get_worksheet
+    sheet = _open_sheet(sheet_id)
+            ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\sheets_sync.py", line 300, in _open_sheet
+    return client.open_by_key(sheet_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\client.py", line 168, in open_by_key
+    spreadsheet = Spreadsheet(self.http_client, {"id": key})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\spreadsheet.py", line 29, in __init__
+    metadata = self.fetch_sheet_metadata()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\spreadsheet.py", line 230, in fetch_sheet_metadata
+    return self.client.fetch_sheet_metadata(self.id, params=params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\http_client.py", line 305, in fetch_sheet_metadata
+    r = self.request("get", url, params=params)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\http_client.py", line 114, in request
+    response = self.session.request(
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\transport\requests.py", line 535, in request
+    self.credentials.before_request(auth_request, method, url, request_headers)
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\credentials.py", line 228, in before_request
+    self._blocking_refresh(request)
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\credentials.py", line 191, in _blocking_refresh
+    self.refresh(request)
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\credentials.py", line 365, in refresh
+    self._refresh_token(request)
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\service_account.py", line 459, in _refresh_token
+    access_token, expiry, _ = _client.jwt_grant(
+                              ^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\_client.py", line 299, in jwt_grant
+    response_data = _token_endpoint_request(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\_client.py", line 259, in _token_endpoint_request
+    response_status_ok, response_data, retryable_error = _token_endpoint_request_no_throw(
+                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\_client.py", line 192, in _token_endpoint_request_no_throw
+    response = request(
+               ^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\transport\requests.py", line 194, in __call__
+    raise new_exc from caught_exc
+google.auth.exceptions.TransportError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD651E80>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+2026-10-08 08:56:32,316 ERROR    Sheet import failed
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\sheets_sync.py", line 295, in _open_sheet
+    return client.open_by_url(sheet_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\client.py", line 189, in open_by_url
+    return self.open_by_key(extract_id_from_url(url))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\utils.py", line 622, in extract_id_from_url
+    raise NoValidUrlKeyFound
+gspread.exceptions.NoValidUrlKeyFound
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\util\connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\socket.py", line 976, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 11001] getaddrinfo failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connection.py", line 753, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x000001D3DD651FA0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\requests\adapters.py", line 644, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 871, in urlopen
+    return self.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 871, in urlopen
+    return self.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 871, in urlopen
+    return self.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\util\retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD651FA0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\transport\requests.py", line 187, in __call__
+    response = self.session.request(
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\requests\sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\requests\sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\requests\adapters.py", line 677, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD651FA0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\view_transcript_generate.py", line 197, in sync_from_sheet
+    summary = import_transcript_requests_from_sheet(no_prune=no_prune, force_overwrite_status=force_status)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\sheets_sync.py", line 608, in import_transcript_requests_from_sheet
+    worksheet = _get_worksheet(sheet_id, gid)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\sheets_sync.py", line 305, in _get_worksheet
+    sheet = _open_sheet(sheet_id)
+            ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\sheets_sync.py", line 300, in _open_sheet
+    return client.open_by_key(sheet_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\client.py", line 168, in open_by_key
+    spreadsheet = Spreadsheet(self.http_client, {"id": key})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\spreadsheet.py", line 29, in __init__
+    metadata = self.fetch_sheet_metadata()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\spreadsheet.py", line 230, in fetch_sheet_metadata
+    return self.client.fetch_sheet_metadata(self.id, params=params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\http_client.py", line 305, in fetch_sheet_metadata
+    r = self.request("get", url, params=params)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\http_client.py", line 114, in request
+    response = self.session.request(
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\transport\requests.py", line 535, in request
+    self.credentials.before_request(auth_request, method, url, request_headers)
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\credentials.py", line 228, in before_request
+    self._blocking_refresh(request)
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\credentials.py", line 191, in _blocking_refresh
+    self.refresh(request)
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\credentials.py", line 365, in refresh
+    self._refresh_token(request)
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\service_account.py", line 459, in _refresh_token
+    access_token, expiry, _ = _client.jwt_grant(
+                              ^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\_client.py", line 299, in jwt_grant
+    response_data = _token_endpoint_request(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\_client.py", line 259, in _token_endpoint_request
+    response_status_ok, response_data, retryable_error = _token_endpoint_request_no_throw(
+                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\_client.py", line 192, in _token_endpoint_request_no_throw
+    response = request(
+               ^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\transport\requests.py", line 194, in __call__
+    raise new_exc from caught_exc
+google.auth.exceptions.TransportError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD651FA0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+2026-10-08 08:56:35,681 WARNING  Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD635EE0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:56:35,681 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD6365D0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:56:35,681 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD634FB0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:56:35,681 ERROR    Sheet import failed
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\sheets_sync.py", line 295, in _open_sheet
+    return client.open_by_url(sheet_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\client.py", line 189, in open_by_url
+    return self.open_by_key(extract_id_from_url(url))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\utils.py", line 622, in extract_id_from_url
+    raise NoValidUrlKeyFound
+gspread.exceptions.NoValidUrlKeyFound
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\util\connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\socket.py", line 976, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 11001] getaddrinfo failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connection.py", line 753, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x000001D3DD635550>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\requests\adapters.py", line 644, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 871, in urlopen
+    return self.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 871, in urlopen
+    return self.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 871, in urlopen
+    return self.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\util\retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD635550>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\transport\requests.py", line 187, in __call__
+    response = self.session.request(
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\requests\sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\requests\sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\requests\adapters.py", line 677, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD635550>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\view_transcript_generate.py", line 197, in sync_from_sheet
+    summary = import_transcript_requests_from_sheet(no_prune=no_prune, force_overwrite_status=force_status)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\sheets_sync.py", line 608, in import_transcript_requests_from_sheet
+    worksheet = _get_worksheet(sheet_id, gid)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\sheets_sync.py", line 305, in _get_worksheet
+    sheet = _open_sheet(sheet_id)
+            ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\sheets_sync.py", line 300, in _open_sheet
+    return client.open_by_key(sheet_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\client.py", line 168, in open_by_key
+    spreadsheet = Spreadsheet(self.http_client, {"id": key})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\spreadsheet.py", line 29, in __init__
+    metadata = self.fetch_sheet_metadata()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\spreadsheet.py", line 230, in fetch_sheet_metadata
+    return self.client.fetch_sheet_metadata(self.id, params=params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\http_client.py", line 305, in fetch_sheet_metadata
+    r = self.request("get", url, params=params)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\http_client.py", line 114, in request
+    response = self.session.request(
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\transport\requests.py", line 535, in request
+    self.credentials.before_request(auth_request, method, url, request_headers)
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\credentials.py", line 228, in before_request
+    self._blocking_refresh(request)
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\credentials.py", line 191, in _blocking_refresh
+    self.refresh(request)
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\credentials.py", line 365, in refresh
+    self._refresh_token(request)
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\service_account.py", line 459, in _refresh_token
+    access_token, expiry, _ = _client.jwt_grant(
+                              ^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\_client.py", line 299, in jwt_grant
+    response_data = _token_endpoint_request(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\_client.py", line 259, in _token_endpoint_request
+    response_status_ok, response_data, retryable_error = _token_endpoint_request_no_throw(
+                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\_client.py", line 192, in _token_endpoint_request_no_throw
+    response = request(
+               ^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\transport\requests.py", line 194, in __call__
+    raise new_exc from caught_exc
+google.auth.exceptions.TransportError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD635550>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+Internal Server Error: /api/transcript-requests/sync-from-sheet/
+2026-10-08 08:56:35,681 ERROR    Internal Server Error: /api/transcript-requests/sync-from-sheet/
+2026-10-08 08:56:49,400 WARNING  Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD592DE0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:56:49,400 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD5923F0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:56:49,400 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD5920C0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:56:49,400 ERROR    Sheet import failed
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\sheets_sync.py", line 295, in _open_sheet
+    return client.open_by_url(sheet_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\client.py", line 189, in open_by_url
+    return self.open_by_key(extract_id_from_url(url))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\utils.py", line 622, in extract_id_from_url
+    raise NoValidUrlKeyFound
+gspread.exceptions.NoValidUrlKeyFound
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\util\connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\socket.py", line 976, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 11001] getaddrinfo failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connection.py", line 753, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x000001D3DD591D90>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\requests\adapters.py", line 644, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 871, in urlopen
+    return self.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 871, in urlopen
+    return self.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 871, in urlopen
+    return self.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\util\retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD591D90>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\transport\requests.py", line 187, in __call__
+    response = self.session.request(
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\requests\sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\requests\sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\requests\adapters.py", line 677, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD591D90>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\view_transcript_generate.py", line 197, in sync_from_sheet
+    summary = import_transcript_requests_from_sheet(no_prune=no_prune, force_overwrite_status=force_status)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\sheets_sync.py", line 608, in import_transcript_requests_from_sheet
+    worksheet = _get_worksheet(sheet_id, gid)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\sheets_sync.py", line 305, in _get_worksheet
+    sheet = _open_sheet(sheet_id)
+            ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\sheets_sync.py", line 300, in _open_sheet
+    return client.open_by_key(sheet_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\client.py", line 168, in open_by_key
+    spreadsheet = Spreadsheet(self.http_client, {"id": key})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\spreadsheet.py", line 29, in __init__
+    metadata = self.fetch_sheet_metadata()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\spreadsheet.py", line 230, in fetch_sheet_metadata
+    return self.client.fetch_sheet_metadata(self.id, params=params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\http_client.py", line 305, in fetch_sheet_metadata
+    r = self.request("get", url, params=params)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\http_client.py", line 114, in request
+    response = self.session.request(
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\transport\requests.py", line 535, in request
+    self.credentials.before_request(auth_request, method, url, request_headers)
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\credentials.py", line 228, in before_request
+    self._blocking_refresh(request)
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\credentials.py", line 191, in _blocking_refresh
+    self.refresh(request)
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\credentials.py", line 365, in refresh
+    self._refresh_token(request)
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\service_account.py", line 459, in _refresh_token
+    access_token, expiry, _ = _client.jwt_grant(
+                              ^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\_client.py", line 299, in jwt_grant
+    response_data = _token_endpoint_request(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\_client.py", line 259, in _token_endpoint_request
+    response_status_ok, response_data, retryable_error = _token_endpoint_request_no_throw(
+                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\_client.py", line 192, in _token_endpoint_request_no_throw
+    response = request(
+               ^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\transport\requests.py", line 194, in __call__
+    raise new_exc from caught_exc
+google.auth.exceptions.TransportError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD591D90>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+Internal Server Error: /api/transcript-requests/sync-from-sheet/
+2026-10-08 08:56:49,400 ERROR    Internal Server Error: /api/transcript-requests/sync-from-sheet/
+2026-10-08 08:57:34,798 WARNING  Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD9A0D70>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:57:34,798 WARNING  Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD9D04D0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:57:34,798 WARNING  Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD9ACEC0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:57:36,046 WARNING  Application instance <Task pending name='Task-578' coro=<ProtocolTypeRouter.__call__() running at E:\admindesk\.venv\Lib\site-packages\channels\routing.py:48> wait_for=<_GatheringFuture pending cb=[Task.task_wakeup()]>> for connection <WebRequest at 0x1d3dd4e3e30 method=POST uri=/api/transcript-requests/sync-from-sheet/ clientproto=HTTP/1.1> took too long to shut down and was killed.
+2026-10-08 08:57:54,348 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD9AD7C0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:57:54,348 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD9ADB80>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:57:54,348 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD9ADD60>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:57:54,350 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD9AF020>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:57:54,350 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD9AEBA0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:57:54,350 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD9D29C0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:57:54,350 ERROR    Sheet import failed
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\sheets_sync.py", line 295, in _open_sheet
+    return client.open_by_url(sheet_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\client.py", line 189, in open_by_url
+    return self.open_by_key(extract_id_from_url(url))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\utils.py", line 622, in extract_id_from_url
+    raise NoValidUrlKeyFound
+gspread.exceptions.NoValidUrlKeyFound
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\util\connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\socket.py", line 976, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 11001] getaddrinfo failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connection.py", line 753, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x000001D3DD9AE6F0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\requests\adapters.py", line 644, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 871, in urlopen
+    return self.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 871, in urlopen
+    return self.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 871, in urlopen
+    return self.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\util\retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD9AE6F0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\transport\requests.py", line 187, in __call__
+    response = self.session.request(
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\requests\sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\requests\sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\requests\adapters.py", line 677, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD9AE6F0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\view_transcript_generate.py", line 197, in sync_from_sheet
+    summary = import_transcript_requests_from_sheet(no_prune=no_prune, force_overwrite_status=force_status)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\sheets_sync.py", line 608, in import_transcript_requests_from_sheet
+    worksheet = _get_worksheet(sheet_id, gid)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\sheets_sync.py", line 305, in _get_worksheet
+    sheet = _open_sheet(sheet_id)
+            ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\sheets_sync.py", line 300, in _open_sheet
+    return client.open_by_key(sheet_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\client.py", line 168, in open_by_key
+    spreadsheet = Spreadsheet(self.http_client, {"id": key})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\spreadsheet.py", line 29, in __init__
+    metadata = self.fetch_sheet_metadata()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\spreadsheet.py", line 230, in fetch_sheet_metadata
+    return self.client.fetch_sheet_metadata(self.id, params=params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\http_client.py", line 305, in fetch_sheet_metadata
+    r = self.request("get", url, params=params)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\http_client.py", line 114, in request
+    response = self.session.request(
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\transport\requests.py", line 535, in request
+    self.credentials.before_request(auth_request, method, url, request_headers)
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\credentials.py", line 228, in before_request
+    self._blocking_refresh(request)
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\credentials.py", line 191, in _blocking_refresh
+    self.refresh(request)
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\credentials.py", line 365, in refresh
+    self._refresh_token(request)
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\service_account.py", line 459, in _refresh_token
+    access_token, expiry, _ = _client.jwt_grant(
+                              ^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\_client.py", line 299, in jwt_grant
+    response_data = _token_endpoint_request(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\_client.py", line 259, in _token_endpoint_request
+    response_status_ok, response_data, retryable_error = _token_endpoint_request_no_throw(
+                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\_client.py", line 192, in _token_endpoint_request_no_throw
+    response = request(
+               ^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\transport\requests.py", line 194, in __call__
+    raise new_exc from caught_exc
+google.auth.exceptions.TransportError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD9AE6F0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+2026-10-08 08:57:54,350 WARNING  Import command failed: Unable to open sheet '1rlE1AAyL2ACodxFOG1CJz8yROxO3yBCT_p10lfih--o': HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD9ADF40>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+2026-10-08 08:57:54,350 ERROR    Sheet import failed
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\sheets_sync.py", line 295, in _open_sheet
+    return client.open_by_url(sheet_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\client.py", line 189, in open_by_url
+    return self.open_by_key(extract_id_from_url(url))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\utils.py", line 622, in extract_id_from_url
+    raise NoValidUrlKeyFound
+gspread.exceptions.NoValidUrlKeyFound
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\util\connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\socket.py", line 976, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 11001] getaddrinfo failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connection.py", line 753, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x000001D3DD9AD880>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\requests\adapters.py", line 644, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 871, in urlopen
+    return self.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 871, in urlopen
+    return self.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 871, in urlopen
+    return self.urlopen(
+           ^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\urllib3\util\retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD9AD880>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\transport\requests.py", line 187, in __call__
+    response = self.session.request(
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\requests\sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\requests\sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\requests\adapters.py", line 677, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD9AD880>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\admindesk\backend\api\view_transcript_generate.py", line 197, in sync_from_sheet
+    summary = import_transcript_requests_from_sheet(no_prune=no_prune, force_overwrite_status=force_status)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\sheets_sync.py", line 608, in import_transcript_requests_from_sheet
+    worksheet = _get_worksheet(sheet_id, gid)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\sheets_sync.py", line 305, in _get_worksheet
+    sheet = _open_sheet(sheet_id)
+            ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\sheets_sync.py", line 300, in _open_sheet
+    return client.open_by_key(sheet_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\client.py", line 168, in open_by_key
+    spreadsheet = Spreadsheet(self.http_client, {"id": key})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\spreadsheet.py", line 29, in __init__
+    metadata = self.fetch_sheet_metadata()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\spreadsheet.py", line 230, in fetch_sheet_metadata
+    return self.client.fetch_sheet_metadata(self.id, params=params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\http_client.py", line 305, in fetch_sheet_metadata
+    r = self.request("get", url, params=params)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\gspread\http_client.py", line 114, in request
+    response = self.session.request(
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\transport\requests.py", line 535, in request
+    self.credentials.before_request(auth_request, method, url, request_headers)
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\credentials.py", line 228, in before_request
+    self._blocking_refresh(request)
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\credentials.py", line 191, in _blocking_refresh
+    self.refresh(request)
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\credentials.py", line 365, in refresh
+    self._refresh_token(request)
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\service_account.py", line 459, in _refresh_token
+    access_token, expiry, _ = _client.jwt_grant(
+                              ^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\_client.py", line 299, in jwt_grant
+    response_data = _token_endpoint_request(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\_client.py", line 259, in _token_endpoint_request
+    response_status_ok, response_data, retryable_error = _token_endpoint_request_no_throw(
+                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\oauth2\_client.py", line 192, in _token_endpoint_request_no_throw
+    response = request(
+               ^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\google\auth\transport\requests.py", line 194, in __call__
+    raise new_exc from caught_exc
+google.auth.exceptions.TransportError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD9AD880>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+2026-10-08 08:57:54,361 WARNING  Application instance <Task pending name='Task-591' coro=<ProtocolTypeRouter.__call__() running at E:\admindesk\.venv\Lib\site-packages\channels\routing.py:48> wait_for=<_GatheringFuture pending cb=[Task.task_wakeup()]>> for connection <WebRequest at 0x1d3dd393ef0 method=POST uri=/api/transcript-requests/sync-from-sheet/ clientproto=HTTP/1.1> took too long to shut down and was killed.
+2026-10-08 08:58:08,064 WARNING  Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD4052B0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:58:08,064 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD76D190>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:58:08,064 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD76D700>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 08:58:08,064 WARNING  Import command failed: Unable to open sheet '1rlE1AAyL2ACodxFOG1CJz8yROxO3yBCT_p10lfih--o': HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD76F0E0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+Bad Request: /api/mail-requests/sync-from-sheet/
+2026-10-08 08:58:08,064 WARNING  Bad Request: /api/mail-requests/sync-from-sheet/
+2026-10-08 09:00:08,330 WARNING  Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD8B0E00>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 09:00:27,899 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD8B0F80>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 09:00:27,900 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD93BA40>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 09:00:27,901 WARNING  Import command failed: Unable to open sheet '1rlE1AAyL2ACodxFOG1CJz8yROxO3yBCT_p10lfih--o': HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD93BE90>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+Bad Request: /api/mail-requests/sync-from-sheet/
+2026-10-08 09:00:27,916 WARNING  Bad Request: /api/mail-requests/sync-from-sheet/
+2026-10-08 09:03:29,801 WARNING  Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD779490>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 09:03:29,801 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD779DC0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 09:03:29,801 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD8F8EC0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 09:03:29,801 WARNING  Import command failed: Unable to open sheet '1rlE1AAyL2ACodxFOG1CJz8yROxO3yBCT_p10lfih--o': HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD939880>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+Bad Request: /api/mail-requests/sync-from-sheet/
+2026-10-08 09:03:29,817 WARNING  Bad Request: /api/mail-requests/sync-from-sheet/
+2026-10-08 09:03:31,798 WARNING  Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD4D7380>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 09:03:31,800 WARNING  Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD4D6D80>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 09:03:31,800 WARNING  Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD8474D0>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)")': /token
+2026-10-08 09:03:31,800 WARNING  Import command failed: Unable to open sheet '1rlE1AAyL2ACodxFOG1CJz8yROxO3yBCT_p10lfih--o': HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D3DD845D30>: Failed to resolve 'oauth2.googleapis.com' ([Errno 11001] getaddrinfo failed)"))
+Bad Request: /api/mail-requests/sync-from-sheet/
+2026-10-08 09:03:31,800 WARNING  Bad Request: /api/mail-requests/sync-from-sheet/
+2026-10-08 09:13:54,621 INFO     Import mail requests completed via API: Found 455 rows; starting import
+Processed 200/455 rows
+Processed 400/455 rows
+Processed 455/455 rows
+Import complete. Created: 0, Updated: 455
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-10-08 09:56:17,566 INFO     Updated tr_request_no for record 1158 from 26168 to 26168
+2026-10-08 09:56:17,580 INFO     Updated tr_request_no for record 1158 from 26179 to 26179
+2026-10-08 09:56:18,122 INFO     Updated tr_request_no for record 1158 from 26168 to 26168
+2026-10-08 09:56:18,138 INFO     Updated tr_request_no for record 1158 from 26179 to 26179
+2026-10-08 09:56:49,725 INFO     Updated tr_request_no for record 1158 from 26168 to 26168
+2026-10-08 09:56:49,725 INFO     Updated tr_request_no for record 1158 from 26179 to 26179
+2026-10-08 09:58:36,645 INFO     Updated tr_request_no for record 1158 from 26168 to 26168
+2026-10-08 09:58:36,662 INFO     Updated tr_request_no for record 1158 from 26179 to 26179
+2026-10-08 14:46:58,515 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26357'}
+2026-10-08 14:46:58,515 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-08 14:46:58,528 INFO     InstLetterPDF grouped records: keys=['2026/357']
+2026-10-08 14:46:58,534 INFO     DEBUG rec_inst_pin value: ''
+2026-10-08 14:54:11,017 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26358'}
+2026-10-08 14:54:11,017 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-08 14:54:11,035 INFO     InstLetterPDF grouped records: keys=['2026/358']
+2026-10-08 14:54:11,035 INFO     DEBUG rec_inst_pin value: ''

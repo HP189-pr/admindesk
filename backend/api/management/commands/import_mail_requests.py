@@ -17,6 +17,7 @@ from django.utils import timezone
 from django.db.models import Max
 
 from api.domain_mail_request import GoogleFormSubmission
+from api.sheets_sync import _format_google_sheets_connection_error
 
 logger = logging.getLogger(__name__)
 
@@ -343,6 +344,9 @@ class Command(BaseCommand):
         try:
             return gspread.service_account(filename=str(sa_path))
         except Exception as exc:  # pragma: no cover
+            hint = _format_google_sheets_connection_error(exc)
+            if hint:
+                raise CommandError(hint) from exc
             raise CommandError(f"Failed to authenticate with Google Sheets: {exc}") from exc
 
     def _open_worksheet(

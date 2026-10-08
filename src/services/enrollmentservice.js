@@ -49,7 +49,6 @@ const sanitizeEnrollmentPayload = (data = {}) => {
         updated_by,
         created_at,
         updated_at,
-        status,
         ...payload
     } = data;
     return payload;
@@ -147,6 +146,8 @@ export const getDatabaseFields = () => [
     { field: 'institute_id', label: 'Institute ID', required: true },
     { field: 'batch', label: 'Batch', required: true },
     { field: 'admission_date', label: 'Admission Date', required: false },
+    { field: 'status', label: 'Enrollment Status', required: false },
+    { field: 'cancel', label: 'Cancelled (Yes/No)', required: false },
     { field: 'subcourse_id', label: 'Subcourse ID', required: true },
     { field: 'maincourse_id', label: 'Main Course ID', required: true },
     { field: 'temp_enroll_no', label: 'Temporary Number', required: false }

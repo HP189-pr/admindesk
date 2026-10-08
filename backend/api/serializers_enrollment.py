@@ -6,9 +6,6 @@ from .models import Institute, MainBranch, SubBranch, Enrollment, AdmissionCance
 
 
 class EnrollmentSerializer(serializers.ModelSerializer):
-    # Explicitly declare status as a read-only field since it's a @property, not a model field
-    status = serializers.ReadOnlyField()
-    
     # Accept either numeric PKs or code-based identifiers from clients.
     institute_id = serializers.CharField(write_only=True)
     maincourse_id = serializers.CharField(write_only=True)
@@ -34,7 +31,7 @@ class EnrollmentSerializer(serializers.ModelSerializer):
             'updated_at',
             'temp_enroll_no',
             'cancel',
-            'status',   # ← model @property
+            'status',
         ]
         read_only_fields = [
             'id',
@@ -44,7 +41,6 @@ class EnrollmentSerializer(serializers.ModelSerializer):
             'subcourse',
             'maincourse',
             'updated_by',
-            'status'
         ]
         extra_kwargs = {
             'enrollment_no': {'required': False, 'allow_blank': True, 'allow_null': True},
@@ -52,6 +48,23 @@ class EnrollmentSerializer(serializers.ModelSerializer):
             'student_name': {'required': True},
             'batch': {'required': True},
         }
+
+    def to_internal_value(self, data):
+        if not hasattr(data, 'get'):
+            return super().to_internal_value(data)
+
+        data = data.copy()
+        value = data.get('status')
+        normalized = str(value or '').strip().upper().replace('&', 'AND').replace(' ', '_')
+        normalized = normalized.replace('ACTIVE_AND_PASS_OUT', 'ACTIVE_PASS_OUT')
+        valid_statuses = {status for status, _ in Enrollment.STATUS_CHOICES}
+        if normalized in {'CANCELLED', 'ADMISSION_CANCELLED'}:
+            data = data.copy()
+            data['cancel'] = True
+            data['status'] = 'ACTIVE'
+        elif value is not None:
+            data['status'] = normalized if normalized in valid_statuses else 'ACTIVE'
+        return super().to_internal_value(data)
 
     def validate(self, attrs):
         def _clean_token(value):
@@ -141,6 +154,7 @@ class EnrollmentSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
+        data['status'] = 'Cancelled' if instance.cancel else instance.status
 
         # Institute: include institute_code
         if instance.institute:

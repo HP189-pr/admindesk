@@ -433,9 +433,9 @@ class InstituteAdmin(CommonAdminMixin):
 
 @admin.register(Enrollment)
 class EnrollmentAdmin(CommonAdminMixin):
-    list_display = ("student_name", "institute", "batch", "subcourse", "maincourse", "enrollment_no", "temp_enroll_no", "enrollment_date", "admission_date", "created_at", "updated_at", "updated_by")
+    list_display = ("student_name", "institute", "batch", "subcourse", "maincourse", "enrollment_no", "temp_enroll_no", "status", "cancel", "enrollment_date", "admission_date", "created_at", "updated_at", "updated_by")
     search_fields = ("student_name", "enrollment_no", "temp_enroll_no")
-    list_filter = ("institute", "batch", "maincourse", "subcourse", "enrollment_date", "admission_date")
+    list_filter = ("institute", "batch", "maincourse", "subcourse", "status", "cancel", "enrollment_date", "admission_date")
     readonly_fields = ("created_at", "updated_at")
 
 @admin.register(AdmissionCancel)
@@ -676,4 +676,3 @@ class StudentFeesLedgerAdmin(CommonAdminMixin):
         if not change and not getattr(obj, "created_by", None):
             _assign_user_field(obj, request.user, 'created_by')
         super().save_model(request, obj, form, change)
-

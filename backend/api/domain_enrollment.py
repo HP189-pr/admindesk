@@ -12,10 +12,20 @@ __all__ = [
 ]
 
 class Enrollment(models.Model):
+    STATUS_CHOICES = [
+        ('ACTIVE', 'Active'),
+        ('ACTIVE_PASS_OUT', 'Active & Pass Out'),
+        ('LEFT', 'Left'),
+        ('PASS_OUT', 'Pass Out'),
+        ('RESHUFFLE_OUT', 'Reshuffle Out'),
+        ('NOT_IN_COLLEGE', 'Not In College'),
+        ('DROP_OUT', 'Drop Out'),
+    ]
     id = models.AutoField(primary_key=True, db_column='id')
     student_name = models.CharField(max_length=100, db_index=True)
     enrollment_date = models.DateField(null=True, blank=True)
     admission_date = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='ACTIVE', db_column='status')
     institute = models.ForeignKey(Institute, on_delete=models.CASCADE, db_column='institute_id', related_name='enrollments')
     batch = models.IntegerField()
     subcourse = models.ForeignKey(SubBranch, to_field='subcourse_id', on_delete=models.CASCADE, db_column='subcourse_id', related_name='enrollments')
@@ -32,15 +42,16 @@ class Enrollment(models.Model):
         indexes = [
             models.Index(fields=['institute', 'subcourse', 'maincourse'])
         ]
+
+    def save(self, *args, **kwargs):
+        valid_statuses = {value for value, _ in self.STATUS_CHOICES}
+        normalized_status = str(self.status or '').strip().upper().replace('&', 'AND').replace(' ', '_')
+        normalized_status = normalized_status.replace('ACTIVE_AND_PASS_OUT', 'ACTIVE_PASS_OUT')
+        self.status = normalized_status if normalized_status in valid_statuses else 'ACTIVE'
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.student_name or 'Unknown'} - {self.enrollment_no or self.temp_enroll_no or 'No Number'}"
-
-    @property
-    def status(self):
-        """Return 'Active' if not cancelled, else 'Cancelled'"""
-        if self.cancel:
-            return 'Cancelled'
-        return 'Active'
 
 class StudentProfile(models.Model):
     id = models.BigAutoField(primary_key=True)
@@ -113,5 +124,3 @@ class AdmissionCancel(models.Model):
 
     def __str__(self):
         return f"{getattr(self.enrollment, 'enrollment_no', '-') } - {self.status.title()}"
-
-

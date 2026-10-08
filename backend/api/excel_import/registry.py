@@ -58,7 +58,7 @@ BULK_SERVICE_TEMPLATE_COLUMNS = {
         "sr_no", "student_name", "iv_degree_name", "type_of_credential", "month_year", "verification_status", "enrollment_no", "maincourse_id", "subcourse_id",
     ],
     "ENROLLMENT": [
-        "student_name", "institute_id", "batch", "enrollment_date", "subcourse_id", "maincourse_id", "enrollment_no", "temp_enroll_no", "admission_date",
+        "student_name", "institute_id", "batch", "enrollment_date", "subcourse_id", "maincourse_id", "enrollment_no", "temp_enroll_no", "admission_date", "status", "cancel",
         "gender", "birth_date", "address1", "address2", "city1", "city2", "contact_no", "email", "fees", "hostel_required",
         "aadhar_no", "abc_id", "mobile_adhar", "name_adhar", "mother_name", "father_name", "category", "photo_uploaded", "is_d2d", "program_medium", "specialisation",
     ],

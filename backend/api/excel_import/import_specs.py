@@ -44,7 +44,7 @@ IMPORT_SPECS: Dict[type, Dict[str, Any]] = {
         "allowed_columns": [
             "enrollment_no", "student_name", "batch", "institute_id",
             "subcourse_id", "maincourse_id", "temp_enroll_no",
-            "enrollment_date", "admission_date", "gender", "birth_date",
+            "enrollment_date", "admission_date", "status", "cancel", "gender", "birth_date",
             "address1", "address2", "city1", "city2", "contact_no", "email",
             "fees", "hostel_required", "aadhar_no", "abc_id", "mobile_adhar",
             "name_adhar", "mother_name", "father_name", "category",

@@ -71,6 +71,17 @@ Typical behavior:
 - retry with backoff on quota or temporary API failures
 - log warnings instead of crashing the user request when a sync call ultimately fails
 
+## Network Requirements
+
+Google Sheets sync requires outbound access to Google's authentication and Sheets endpoints.
+
+If a command fails with a message about `oauth2.googleapis.com` or DNS resolution, the machine running AdminDesk cannot reach Google's auth service. Check:
+
+- DNS resolution on the host
+- proxy configuration
+- firewall or outbound network restrictions
+- whether the runtime environment is offline or isolated
+
 ## Validation Checklist
 
 After changing a sync-related view:

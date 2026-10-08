@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import PanelToggleButton from "../components/PanelToggleButton";
 import PageTopbar from "../components/PageTopbar";
 import SearchField from '../components/SearchField';
+import StudentStatusIndicator from '../components/StudentStatusIndicator';
 import { 
   createEnrollment, 
   updateEnrollment, 
@@ -43,6 +44,18 @@ const CANCEL_STATUS_OPTIONS = [
   { value: "CANCELLED", label: "Cancelled" },
   { value: "ACTIVE", label: "Active" },
 ];
+const ENROLLMENT_STATUS_OPTIONS = [
+  { value: "ACTIVE", label: "Active" },
+  { value: "ACTIVE_PASS_OUT", label: "Active & Pass Out" },
+  { value: "LEFT", label: "Left" },
+  { value: "PASS_OUT", label: "Pass Out" },
+  { value: "RESHUFFLE_OUT", label: "Reshuffle Out" },
+  { value: "NOT_IN_COLLEGE", label: "Not In College" },
+  { value: "DROP_OUT", label: "Drop Out" },
+];
+const ENROLLMENT_STATUS_LABELS = Object.fromEntries(
+  ENROLLMENT_STATUS_OPTIONS.map(({ value, label }) => [value, label])
+);
 
 const CANCEL_ENTRY_MODE_OPTIONS = [
   { value: 'single', label: 'Single' },
@@ -115,6 +128,9 @@ const pickEnrollmentCurrentStatus = (record = {}) => {
   return "";
 };
 
+const getEnrollmentStatusLabel = (record = {}) =>
+  record.cancel ? 'Cancelled' : (ENROLLMENT_STATUS_LABELS[record.status] || record.status || 'Active');
+
 const hydrateCancelRowFromEnrollment = (row, record) => ({
   ...row,
   enrollmentId: record.id,
@@ -133,6 +149,7 @@ const createEmptyEnrollmentFormData = () => ({
   admission_date: '',
   enrollment_date: '',
   cancel: false,
+  status: 'ACTIVE',
   subcourse_id: '',
   maincourse_id: '',
   temp_enroll_no: ''
@@ -197,6 +214,7 @@ const buildEnrollmentPayload = (data = {}) => {
   payload.enrollment_date = enrollmentDate || null;
 
   payload.cancel = Boolean(data.cancel);
+  payload.status = normalizeTextField(data.status) || 'ACTIVE';
 
   return payload;
 };
@@ -494,11 +512,14 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
     const loadEnrollments = useCallback(async (search = '', page = 1, overrideFilter) => {
     setState(prev => ({ ...prev, isLoading: true }));
     const filterToUse = overrideFilter ?? statusFilter;
-    const cancelParam = filterToUse === 'active' ? 'no' : filterToUse === 'cancelled' ? 'yes' : undefined;
+    const cancelParam = filterToUse === 'cancelled' ? 'yes' : filterToUse === 'all' ? undefined : 'no';
     try {
       const params = { page, limit: state.pagination.pageSize };
       if (search && search.trim()) params.search = search.trim();
       if (cancelParam) params.cancel = cancelParam;
+      if (filterToUse !== 'all' && filterToUse !== 'cancelled') {
+        params.status = filterToUse;
+      }
 
       const { data } = await API.get('/api/enrollments/', { params });
 
@@ -808,6 +829,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
       data: {
         ...prev.data,
         cancel: value === 'CANCELLED',
+        status: value === 'CANCELLED' ? (prev.data.status || 'ACTIVE') : value,
       },
     }));
   };
@@ -1211,6 +1233,7 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
     admission_date: isoToDMY(enr.admission_date) || '',
     enrollment_date: isoToDMY(enr.enrollment_date) || '',
     cancel: Boolean(enr.cancel),
+    status: enr.status && enr.status !== 'Cancelled' ? enr.status : 'ACTIVE',
     institute_id: enr.institute?.institute_id || enr.institute_id || enr.institute?.id || '',
     maincourse_id: enr.maincourse?.maincourse_id || enr.maincourse_id || '',
     subcourse_id: enr.subcourse?.subcourse_id || enr.subcourse_id || '',
@@ -1305,16 +1328,19 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
                       openEnrollmentEditor(enr);
                     }}
                   >
-                    <td className="border px-2 py-0.5">{enr.enrollment_no}</td>
+                    <td className="border px-2 py-0.5">
+                      <span className="inline-flex items-center gap-2">
+                        <span>{enr.enrollment_no}</span>
+                        <StudentStatusIndicator status={enr.status} cancel={enr.cancel} />
+                      </span>
+                    </td>
                     <td className="border px-2 py-0.5">{enr.student_name}</td>
                     <td className="border px-2 py-0.5 text-sm">{enr.institute?.institute_code || enr.institute_id}</td>
                     <td className="border px-2 py-0.5 text-sm">{enr.subcourse?.name || enr.subcourse_id}</td>
                     <td className="border px-2 py-0.5">{enr.batch}</td>
                     
-                    <td className="border px-2 py-0.5">
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${enr.cancel ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700'}`}>
-                        {enr.cancel ? 'Cancelled' : 'Active'}
-                      </span>
+                    <td className="border px-2 py-0.5 text-center">
+                      <StudentStatusIndicator status={enr.status} cancel={enr.cancel} />
                     </td>
                     {(rights.can_edit || rights.can_delete) && (
                       <td className="border px-2 py-0.5">
@@ -1684,6 +1710,20 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
               <p className="text-red-500 text-sm">{state.validationErrors.batch}</p>
             )}
           </div>
+          <div>
+            <label className={ENROLLMENT_FORM_LABEL_CLASS}>Enrollment Status</label>
+            <select
+              name="enrollment_status"
+              value={formState.data.cancel ? 'CANCELLED' : formState.data.status}
+              onChange={handleEnrollmentStatusChange}
+              className={ENROLLMENT_FORM_FIELD_CLASS}
+            >
+              <option value="CANCELLED">Cancelled</option>
+              {ENROLLMENT_STATUS_OPTIONS.map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
         </section>
 
@@ -1702,18 +1742,6 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
               <p className="text-sm text-slate-500">Loading student profile...</p>
             ) : (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
-                <div>
-                  <label className={ENROLLMENT_FORM_LABEL_CLASS}>Status</label>
-                  <select
-                    name="cancel_status"
-                    value={formState.data.cancel ? 'CANCELLED' : 'ACTIVE'}
-                    onChange={handleEnrollmentStatusChange}
-                    className={`${ENROLLMENT_FORM_FIELD_CLASS} ${formState.data.cancel ? 'border-rose-200 focus:border-rose-400 focus:ring-rose-100' : 'border-emerald-200 focus:border-emerald-400 focus:ring-emerald-100'}`}
-                  >
-                    <option value="ACTIVE">Active</option>
-                    <option value="CANCELLED">Cancelled</option>
-                  </select>
-                </div>
                 <div>
                   <label className={ENROLLMENT_FORM_LABEL_CLASS}>Admission Date</label>
                   <input
@@ -2403,6 +2431,9 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
                   className="border rounded px-4 py-2 min-w-[180px]"
                 >
                   <option value="active">Active Only</option>
+                  {ENROLLMENT_STATUS_OPTIONS.filter(({ value }) => value !== 'ACTIVE').map(option => (
+                    <option key={option.value} value={option.value}>{option.label} Only</option>
+                  ))}
                   <option value="cancelled">Cancelled Only</option>
                   <option value="all">All Records</option>
                 </select>

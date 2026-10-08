@@ -95,6 +95,7 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         search = self.request.query_params.get("search", "").strip()
         cancel_filter = (self.request.query_params.get("cancel") or "").lower()
+        status_filter = (self.request.query_params.get("status") or "").strip().upper()
 
         if search:
             norm_q = ''.join(search.split()).lower()
@@ -131,6 +132,15 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
             qs = qs.filter(cancel=True)
         elif cancel_filter == 'no':
             qs = qs.filter(Q(cancel=False) | Q(cancel__isnull=True))
+
+        if status_filter and status_filter != 'ALL':
+            if status_filter in {'CANCELLED', 'ADMISSION_CANCELLED'}:
+                qs = qs.filter(cancel=True)
+            elif status_filter in {value for value, _ in Enrollment.STATUS_CHOICES}:
+                qs = qs.filter(
+                    Q(cancel=False) | Q(cancel__isnull=True),
+                    status=status_filter,
+                )
 
         return qs
 
@@ -256,7 +266,7 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
                 qs.annotate(
                     status_group=Case(
                         When(cancel=True, then=Value('Cancelled')),
-                        default=Value('Active'),
+                        default=models.F('status'),
                         output_field=CharField(),
                     ),
                     status_order=Case(

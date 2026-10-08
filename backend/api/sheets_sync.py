@@ -275,6 +275,30 @@ def _service_account_path() -> str:
     return sa_file
 
 
+def _format_google_sheets_connection_error(exc: Exception) -> Optional[str]:
+    """Return a friendlier message for Google auth/DNS failures."""
+    parts = []
+    current: Optional[BaseException] = exc
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        parts.append(f"{type(current).__name__}: {current}")
+        current = getattr(current, "__cause__", None) or getattr(current, "__context__", None)
+
+    combined = "\n".join(parts)
+    if "oauth2.googleapis.com" in combined and (
+        "NameResolutionError" in combined
+        or "Failed to resolve" in combined
+        or "getaddrinfo failed" in combined
+        or "Name or service not known" in combined
+    ):
+        return (
+            "Unable to reach Google authentication endpoint oauth2.googleapis.com while opening the sheet. "
+            "Check DNS resolution, proxy settings, firewall rules, and outbound internet access for this machine."
+        )
+    return None
+
+
 def _sheet_number_text(value: object) -> str:
     if value is None or value == "":
         return "0"
@@ -286,7 +310,13 @@ def _sheet_number_text(value: object) -> str:
 
 @lru_cache(maxsize=None)
 def _get_client(sa_path: str) -> gspread.Client:
-    return gspread.service_account(filename=sa_path)
+    try:
+        return gspread.service_account(filename=sa_path)
+    except Exception as exc:
+        hint = _format_google_sheets_connection_error(exc)
+        if hint:
+            raise RuntimeError(hint) from exc
+        raise
 
 
 def _open_sheet(sheet_id: str) -> gspread.Spreadsheet:

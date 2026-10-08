@@ -21,7 +21,7 @@ PROFILE_UPLOAD_COLS = {
 
 ENROLLMENT_CORE_COLS = {
     "student_name", "batch", "institute_id", "subcourse_id", "maincourse_id",
-    "temp_enroll_no", "enrollment_date", "admission_date",
+    "temp_enroll_no", "enrollment_date", "admission_date", "status", "cancel",
 }
 
 
@@ -311,7 +311,17 @@ def upsert_enrollment_from_row(row, user, enrollment_key=None, active_fields: Op
     temp_enroll_no = clean_cell(row.get("temp_enroll_no")) if "temp_enroll_no" in scope else None
     enrollment_date = parse_excel_date(row.get("enrollment_date")) if "enrollment_date" in scope else None
     admission_date = parse_excel_date(row.get("admission_date")) if "admission_date" in scope else None
-
+    cancel_value = to_bool(row.get("cancel")) if "cancel" in scope else None
+    enrollment_status = clean_cell(row.get("status")) if "status" in scope else None
+    if "status" in scope:
+        enrollment_status = str(enrollment_status or "").strip().upper().replace("&", "AND").replace(" ", "_")
+        enrollment_status = enrollment_status.replace("ACTIVE_AND_PASS_OUT", "ACTIVE_PASS_OUT")
+        valid_statuses = {choice[0] for choice in Enrollment.STATUS_CHOICES}
+        if enrollment_status in {"CANCELLED", "ADMISSION_CANCELLED"}:
+            enrollment_status = "ACTIVE"
+            cancel_value = True
+        elif enrollment_status not in valid_statuses:
+            enrollment_status = "ACTIVE"
     if enr_existing is None and batch_val is None:
         batch_val = _infer_batch_from_key(resolved_enr_key) or _infer_batch_from_key(temp_enroll_no)
         if batch_val is None and institute is not None:
@@ -344,6 +354,10 @@ def upsert_enrollment_from_row(row, user, enrollment_key=None, active_fields: Op
         defaults["enrollment_date"] = enrollment_date
     if admission_date is not None:
         defaults["admission_date"] = admission_date
+    if enrollment_status in {choice[0] for choice in Enrollment.STATUS_CHOICES}:
+        defaults["status"] = enrollment_status
+    if "cancel" in scope:
+        defaults["cancel"] = cancel_value
 
     if enr_existing is None:
         missing = []

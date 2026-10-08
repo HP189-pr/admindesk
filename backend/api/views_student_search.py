@@ -105,6 +105,8 @@ class StudentSearchViewSet(viewsets.ViewSet):
             'batch': enrollment.batch or '',
             'admission_date': enrollment.admission_date.strftime('%Y-%m-%d') if enrollment.admission_date else '',
             'enrollment_date': enrollment.enrollment_date.strftime('%Y-%m-%d') if enrollment.enrollment_date else '',
+            'status': 'Cancelled' if enrollment.cancel else (enrollment.status or 'ACTIVE'),
+            'cancel': bool(enrollment.cancel),
             
             # Profile information
             'contact_no': profile.contact_no if profile else '',

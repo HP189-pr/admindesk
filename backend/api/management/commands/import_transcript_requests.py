@@ -15,6 +15,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
 
+from api.sheets_sync import _format_google_sheets_connection_error
 from api.domain_transcript_generate import TranscriptRequest
 
 logger = logging.getLogger(__name__)
@@ -219,6 +220,9 @@ class Command(BaseCommand):
         try:
             return gspread.service_account(filename=str(sa_path))
         except Exception as exc:  # pragma: no cover
+            hint = _format_google_sheets_connection_error(exc)
+            if hint:
+                raise CommandError(hint) from exc
             raise CommandError(f"Failed to authenticate with Google Sheets: {exc}") from exc
 
     def _open_worksheet(
