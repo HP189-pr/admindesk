@@ -3,7 +3,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('api', '0128_add_student_register_type_choices'),
+        ('api', '0131_studentprofile_specialisation'),
     ]
 
     operations = [

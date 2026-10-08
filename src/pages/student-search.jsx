@@ -3,7 +3,6 @@ import React, { useEffect, useState } from "react";
 import { searchStudent, formatDate, getStatusColor } from "../services/studentSearchService";
 import { FaSearch, FaUser, FaUniversity, FaPhone, FaEnvelope, FaFileAlt, FaMoneyBillWave } from "react-icons/fa";
 import SearchField from '../components/SearchField';
-import StudentStatusIndicator from '../components/StudentStatusIndicator';
 
 export default function StudentSearch() {
   const [enrollmentNo, setEnrollmentNo] = useState("");
@@ -272,13 +271,7 @@ export default function StudentSearch() {
                 <div className="space-y-6">
                   <DetailStat label="Student Name" value={generalInfo.student_name} large />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-1">
-                      <p className="text-xs uppercase tracking-wide text-gray-500">Enrollment No</p>
-                      <p className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                        <span>{generalInfo.enrollment_no || '—'}</span>
-                        <StudentStatusIndicator status={generalInfo.status} cancel={generalInfo.cancel} />
-                      </p>
-                    </div>
+                    <DetailStat label="Enrollment No" value={generalInfo.enrollment_no} />
                     <DetailStat label="Temp Enrollment No" value={generalInfo.temp_enroll_no || generalInfo.temp_enrollment_no} />
                     <DetailStat label="Batch" value={generalInfo.batch} />
                     <DetailStat label="Category" value={generalInfo.category} />

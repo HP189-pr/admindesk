@@ -12,7 +12,13 @@ const STATUS_PRESENTATION = {
 };
 
 export default function StudentStatusIndicator({ status, cancel = false }) {
-  const key = cancel ? 'CANCELLED' : String(status || 'ACTIVE').trim().toUpperCase();
+  const normalizedStatus = String(status || 'ACTIVE')
+    .trim()
+    .toUpperCase()
+    .replace(/&/g, 'AND')
+    .replace(/[\s-]+/g, '_')
+    .replace('ACTIVE_AND_PASS_OUT', 'ACTIVE_PASS_OUT');
+  const key = cancel ? 'CANCELLED' : normalizedStatus;
   const presentation = STATUS_PRESENTATION[key] || STATUS_PRESENTATION.ACTIVE;
 
   return (

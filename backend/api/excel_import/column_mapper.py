@@ -47,6 +47,9 @@ COLUMN_ALIAS_MAP: Dict[type, Dict[str, str]] = {
         "admission date": "admission_date",
         "status": "status",
         "enrollment status": "status",
+        "enrollment_status": "status",
+        "pass out": "status",
+        "passout": "status",
         "cancel": "cancel",
         "cancelled": "cancel",
         "institute": "institute_id",
@@ -321,18 +324,18 @@ def resolve_generic_bulk_column_name(raw: Any):
 
 def resolve_bulk_service_column_name(raw: Any, service: Any):
     service_name = str(service or "").strip().upper()
+    service_model = get_bulk_service_model(service_name)
+    if service_model is not None:
+        _, _, allowed_map, alias_map, allowed_norm_map, alias_norm_map = _build_allowed_maps(service_model)
+        resolved = _resolve_column_name(raw, allowed_map, alias_map, allowed_norm_map, alias_norm_map)
+        if resolved:
+            return resolved
+
     service_columns = get_bulk_service_template_columns(service_name)
     if service_columns:
         service_allowed_map = {str(col).lower(): col for col in service_columns}
         service_allowed_norm_map = {_normalize_name_key(col): col for col in service_columns}
         resolved = _resolve_column_name(raw, service_allowed_map, {}, service_allowed_norm_map, None)
-        if resolved:
-            return resolved
-
-    service_model = get_bulk_service_model(service_name)
-    if service_model is not None:
-        _, _, allowed_map, alias_map, allowed_norm_map, alias_norm_map = _build_allowed_maps(service_model)
-        resolved = _resolve_column_name(raw, allowed_map, alias_map, allowed_norm_map, alias_norm_map)
         if resolved:
             return resolved
 

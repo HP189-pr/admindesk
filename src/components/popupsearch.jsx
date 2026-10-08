@@ -8,6 +8,7 @@ import {
   FaTimes
 } from 'react-icons/fa';
 import SearchField from './SearchField';
+import StudentStatusIndicator from './StudentStatusIndicator';
 import { searchStudent, formatDate } from '../services/studentSearchService';
 
 const PopupSearch = () => {
@@ -268,6 +269,7 @@ const PopupSearch = () => {
                       <span className="rounded-full border border-slate-300 bg-white px-2 py-0.5 text-[11px]">
                         {general.enrollment_no || general.temp_enrollment_no}
                       </span>
+                      <StudentStatusIndicator status={general.status} cancel={general.cancel} />
                       <button
                         type="button"
                         onClick={() => setDetailsExpanded((expanded) => !expanded)}

@@ -57,13 +57,18 @@ class StudentSearchViewSet(viewsets.ViewSet):
                 'student_profile'
             )
             
-            # Apply FTS search on enrollment_no, temp_enroll_no, student_name
-            enrollment = apply_fts_search(
-                queryset=queryset,
-                search_query=enrollment_no,
-                search_fields=['search_vector'],  # FTS field
-                fallback_fields=['enrollment_no', 'temp_enroll_no']  # Fallback to icontains
-            ).first()
+            # Prefer an exact enrollment/temp number match. Broad FTS matching can
+            # otherwise return a neighboring enrollment when the query is numeric.
+            enrollment = queryset.filter(enrollment_no__iexact=enrollment_no).first()
+            if not enrollment:
+                enrollment = queryset.filter(temp_enroll_no__iexact=enrollment_no).first()
+            if not enrollment:
+                enrollment = apply_fts_search(
+                    queryset=queryset,
+                    search_query=enrollment_no,
+                    search_fields=['search_vector'],
+                    fallback_fields=['enrollment_no', 'temp_enroll_no']
+                ).first()
 
             if not enrollment:
                 return Response(

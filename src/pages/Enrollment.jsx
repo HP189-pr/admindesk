@@ -10,7 +10,6 @@ import { useNavigate } from 'react-router-dom';
 import PanelToggleButton from "../components/PanelToggleButton";
 import PageTopbar from "../components/PageTopbar";
 import SearchField from '../components/SearchField';
-import StudentStatusIndicator from '../components/StudentStatusIndicator';
 import { 
   createEnrollment, 
   updateEnrollment, 
@@ -56,6 +55,29 @@ const ENROLLMENT_STATUS_OPTIONS = [
 const ENROLLMENT_STATUS_LABELS = Object.fromEntries(
   ENROLLMENT_STATUS_OPTIONS.map(({ value, label }) => [value, label])
 );
+const ENROLLMENT_STATUS_CELL_CLASSES = {
+  ACTIVE: 'bg-emerald-100 text-emerald-800',
+  ACTIVE_PASS_OUT: 'bg-indigo-100 text-indigo-800',
+  LEFT: 'bg-red-100 text-red-800',
+  PASS_OUT: 'bg-blue-100 text-blue-800',
+  RESHUFFLE_OUT: 'bg-gray-200 text-gray-800',
+  NOT_IN_COLLEGE: 'bg-orange-100 text-orange-800',
+  DROP_OUT: 'bg-gray-200 text-gray-800',
+  CANCELLED: 'bg-red-200 text-red-900',
+};
+
+const getEnrollmentStatusCellClass = (record = {}) => {
+  if (record.cancel || String(record.status || '').trim().toUpperCase() === 'CANCELLED') {
+    return ENROLLMENT_STATUS_CELL_CLASSES.CANCELLED;
+  }
+  const normalizedStatus = String(record.status || 'ACTIVE')
+    .trim()
+    .toUpperCase()
+    .replace(/&/g, 'AND')
+    .replace(/[\s-]+/g, '_')
+    .replace('ACTIVE_AND_PASS_OUT', 'ACTIVE_PASS_OUT');
+  return ENROLLMENT_STATUS_CELL_CLASSES[normalizedStatus] || ENROLLMENT_STATUS_CELL_CLASSES.ACTIVE;
+};
 
 const CANCEL_ENTRY_MODE_OPTIONS = [
   { value: 'single', label: 'Single' },
@@ -1329,18 +1351,15 @@ const Enrollment = ({ selectedTopbarMenu, setSelectedTopbarMenu, onToggleSidebar
                     }}
                   >
                     <td className="border px-2 py-0.5">
-                      <span className="inline-flex items-center gap-2">
-                        <span>{enr.enrollment_no}</span>
-                        <StudentStatusIndicator status={enr.status} cancel={enr.cancel} />
-                      </span>
+                      {enr.enrollment_no}
                     </td>
                     <td className="border px-2 py-0.5">{enr.student_name}</td>
                     <td className="border px-2 py-0.5 text-sm">{enr.institute?.institute_code || enr.institute_id}</td>
                     <td className="border px-2 py-0.5 text-sm">{enr.subcourse?.name || enr.subcourse_id}</td>
                     <td className="border px-2 py-0.5">{enr.batch}</td>
                     
-                    <td className="border px-2 py-0.5 text-center">
-                      <StudentStatusIndicator status={enr.status} cancel={enr.cancel} />
+                    <td className={`border px-2 py-0.5 font-semibold ${getEnrollmentStatusCellClass(enr)}`}>
+                      {getEnrollmentStatusLabel(enr)}
                     </td>
                     {(rights.can_edit || rights.can_delete) && (
                       <td className="border px-2 py-0.5">
