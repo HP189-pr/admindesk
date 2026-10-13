@@ -17,7 +17,13 @@ const GROUP_OPTIONS = [
 
 const STATUS_OPTIONS = [
   { value: "all", label: "All" },
-  { value: "active", label: "Active" },
+  { value: "ACTIVE", label: "Active" },
+  { value: "ACTIVE_PASS_OUT", label: "Active & Pass Out" },
+  { value: "LEFT", label: "Left" },
+  { value: "PASS_OUT", label: "Pass Out" },
+  { value: "RESHUFFLE_OUT", label: "Reshuffle Out" },
+  { value: "NOT_IN_COLLEGE", label: "Not In College" },
+  { value: "DROP_OUT", label: "Drop Out" },
   { value: "cancelled", label: "Cancelled" },
 ];
 
@@ -54,6 +60,8 @@ const normalizeSummaryRow = (item) => ({
   group: String(item?.group ?? "-"),
   total: Number(item?.total || 0),
   active: Number(item?.active || 0),
+  passOut: Number(item?.pass_out || 0),
+  notInCollege: Number(item?.not_in_college || 0),
   cancelled: Number(item?.cancelled || 0),
 });
 
@@ -115,7 +123,13 @@ const EnrollmentReport = ({ onBack }) => {
   const [courseOptions, setCourseOptions] = useState([]);
 
   const [summaryRows, setSummaryRows] = useState([]);
-  const [totals, setTotals] = useState({ total: 0, active: 0, cancelled: 0 });
+  const [totals, setTotals] = useState({
+    total: 0,
+    active: 0,
+    passOut: 0,
+    notInCollege: 0,
+    cancelled: 0,
+  });
 
   const activeControllerRef = useRef(null);
   const runIdRef = useRef(0);
@@ -161,6 +175,8 @@ const EnrollmentReport = ({ onBack }) => {
       const nextTotals = {
         total: Number(data?.totals?.total || 0),
         active: Number(data?.totals?.active || 0),
+        passOut: Number(data?.totals?.pass_out || 0),
+        notInCollege: Number(data?.totals?.not_in_college || 0),
         cancelled: Number(data?.totals?.cancelled || 0),
       };
 
@@ -187,7 +203,7 @@ const EnrollmentReport = ({ onBack }) => {
       }
       console.error("Failed to load enrollment report summary:", err);
       setSummaryRows([]);
-      setTotals({ total: 0, active: 0, cancelled: 0 });
+      setTotals({ total: 0, active: 0, passOut: 0, notInCollege: 0, cancelled: 0 });
       setError("Failed to load enrollment report data.");
     } finally {
       if (!signal?.aborted && !isRunStale()) {
@@ -235,9 +251,9 @@ const EnrollmentReport = ({ onBack }) => {
         ["Institute Filter", instituteFilter || "All"],
         ["Course Filter", courseFilter || "All"],
         [],
-        [groupLabel, "Total", "Active", "Cancelled"],
-        ...summaryRows.map((row) => [row.group, row.total, row.active, row.cancelled]),
-        ["GRAND TOTAL", totals.total, totals.active, totals.cancelled],
+        [groupLabel, "Total", "Active", "Pass Out", "Not In College", "Cancelled"],
+        ...summaryRows.map((row) => [row.group, row.total, row.active, row.passOut, row.notInCollege, row.cancelled]),
+        ["GRAND TOTAL", totals.total, totals.active, totals.passOut, totals.notInCollege, totals.cancelled],
       ];
 
       const summaryWs = XLSX.utils.aoa_to_sheet(aoa);
@@ -265,7 +281,7 @@ const EnrollmentReport = ({ onBack }) => {
               pickEnrollmentInstituteName(enrollment),
               pickEnrollmentCourseName(enrollment),
               pickEnrollmentSubcourseName(enrollment),
-              enrollment.cancel ? "Cancelled" : "Active",
+              enrollment.cancel ? "Cancelled" : (enrollment.status || "N/A"),
             ]),
           ];
 
@@ -304,10 +320,10 @@ const EnrollmentReport = ({ onBack }) => {
       // Summary Table
       autoTable(doc, {
         startY: 28,
-        head: [[groupLabel, "Total", "Active", "Cancelled"]],
+        head: [[groupLabel, "Total", "Active", "Pass Out", "Not In College", "Cancelled"]],
         body: [
-          ...summaryRows.map((row) => [row.group, row.total, row.active, row.cancelled]),
-          ["GRAND TOTAL", totals.total, totals.active, totals.cancelled],
+          ...summaryRows.map((row) => [row.group, row.total, row.active, row.passOut, row.notInCollege, row.cancelled]),
+          ["GRAND TOTAL", totals.total, totals.active, totals.passOut, totals.notInCollege, totals.cancelled],
         ],
         styles: { fontSize: 9 },
         headStyles: { fillColor: [79, 70, 229] },
@@ -315,6 +331,8 @@ const EnrollmentReport = ({ onBack }) => {
           1: { halign: "right" },
           2: { halign: "right" },
           3: { halign: "right" },
+          4: { halign: "right" },
+          5: { halign: "right" },
         },
       });
 
@@ -347,7 +365,7 @@ const EnrollmentReport = ({ onBack }) => {
               enrollment.batch || "N/A",
               enrollment.institute?.institute_code ? `${enrollment.institute.institute_code}` : "N/A",
               enrollment.maincourse?.course_code ? `${enrollment.maincourse.course_code}` : "N/A",
-              enrollment.cancel ? "Cancelled" : "Active",
+              enrollment.cancel ? "Cancelled" : (enrollment.status || "N/A"),
             ]),
             styles: { fontSize: 8 },
             headStyles: { fillColor: [79, 70, 229] },
@@ -564,6 +582,8 @@ const EnrollmentReport = ({ onBack }) => {
               <th className="px-3 py-2 text-left">{GROUP_LABELS[groupBy]}</th>
               <th className="px-3 py-2 text-right">Total</th>
               <th className="px-3 py-2 text-right">Active</th>
+              <th className="px-3 py-2 text-right">Pass Out</th>
+              <th className="px-3 py-2 text-right">Not In College</th>
               <th className="px-3 py-2 text-right">Cancelled</th>
             </tr>
           </thead>
@@ -573,13 +593,15 @@ const EnrollmentReport = ({ onBack }) => {
                 <td className="px-3 py-2">{row.group}</td>
                 <td className="px-3 py-2 text-right">{row.total}</td>
                 <td className="px-3 py-2 text-right text-emerald-700">{row.active}</td>
+                <td className="px-3 py-2 text-right">{row.passOut}</td>
+                <td className="px-3 py-2 text-right">{row.notInCollege}</td>
                 <td className="px-3 py-2 text-right text-red-700">{row.cancelled}</td>
               </tr>
             ))}
 
             {!loading && summaryRows.length === 0 && (
               <tr>
-                <td className="px-3 py-5 text-center text-gray-500" colSpan={4}>
+                <td className="px-3 py-5 text-center text-gray-500" colSpan={6}>
                   No data available for the selected filters.
                 </td>
               </tr>
@@ -587,7 +609,7 @@ const EnrollmentReport = ({ onBack }) => {
 
             {loading && (
               <tr>
-                <td className="px-3 py-5 text-center text-gray-500" colSpan={4}>
+                <td className="px-3 py-5 text-center text-gray-500" colSpan={6}>
                   Loading report data...
                 </td>
               </tr>
@@ -598,6 +620,8 @@ const EnrollmentReport = ({ onBack }) => {
               <td className="px-3 py-2">GRAND TOTAL</td>
               <td className="px-3 py-2 text-right">{totals.total}</td>
               <td className="px-3 py-2 text-right">{totals.active}</td>
+              <td className="px-3 py-2 text-right">{totals.passOut}</td>
+              <td className="px-3 py-2 text-right">{totals.notInCollege}</td>
               <td className="px-3 py-2 text-right">{totals.cancelled}</td>
             </tr>
           </tfoot>

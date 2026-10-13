@@ -76,6 +76,43 @@ def _zero_frame(batches, subcourses):
     return pd.DataFrame(rows)
 
 
+REPORT_STATUS_VALUES = {
+    "ACTIVE": ("ACTIVE", "Active"),
+    "ACTIVE_PASS_OUT": ("ACTIVE_PASS_OUT", "ACTIVE AND PASS OUT", "Active & Pass Out"),
+    "LEFT": ("LEFT", "Left"),
+    "PASS_OUT": ("PASS_OUT", "PASS OUT", "Pass Out"),
+    "RESHUFFLE_OUT": ("RESHUFFLE_OUT", "RESHUFFLE OUT", "Reshuffle Out"),
+    "NOT_IN_COLLEGE": ("NOT_IN_COLLEGE", "NOT IN COLLEGE", "Not In College"),
+    "DROP_OUT": ("DROP_OUT", "DROP OUT", "Drop Out"),
+}
+
+
+def _status_query(status):
+    query = Q()
+    for value in REPORT_STATUS_VALUES[status]:
+        query |= Q(status__iexact=value)
+    return query
+
+
+def _apply_report_status_filter(queryset, status_filter):
+    """Apply the report's cancellation or enrollment-status filter."""
+    raw_status = (status_filter or "all").strip()
+    normalized = raw_status.upper()
+    active_queryset = Q(cancel=False) | Q(cancel__isnull=True)
+
+    # Keep the legacy lowercase "active" API value as the broad
+    # non-cancelled filter; the report UI uses "ACTIVE" for the model status.
+    if raw_status == "active" or normalized == "ALL_ACTIVE":
+        return queryset.filter(active_queryset)
+    if normalized == "ACTIVE":
+        return queryset.filter(active_queryset & _status_query("ACTIVE"))
+    if normalized in {"CANCELLED", "ADMISSION_CANCELLED"}:
+        return queryset.filter(cancel=True)
+    if normalized in {value for value, _ in Enrollment.STATUS_CHOICES}:
+        return queryset.filter(active_queryset & _status_query(normalized))
+    return queryset
+
+
 class EnrollmentPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = "limit"
@@ -184,10 +221,7 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
 
         qs = Enrollment.objects.select_related('institute', 'maincourse')
 
-        if status_filter == 'active':
-            qs = qs.filter(Q(cancel=False) | Q(cancel__isnull=True))
-        elif status_filter == 'cancelled':
-            qs = qs.filter(cancel=True)
+        qs = _apply_report_status_filter(qs, status_filter)
 
         if batch_filter and batch_filter.lower() != 'all':
             try:
@@ -207,12 +241,16 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
         totals_raw = qs.aggregate(
             total=Count('id'),
             active=Count('id', filter=Q(cancel=False) | Q(cancel__isnull=True)),
+            pass_out=Count('id', filter=(Q(cancel=False) | Q(cancel__isnull=True)) & _status_query('PASS_OUT')),
+            not_in_college=Count('id', filter=(Q(cancel=False) | Q(cancel__isnull=True)) & _status_query('NOT_IN_COLLEGE')),
             cancelled=Count('id', filter=Q(cancel=True)),
         )
 
         count_annotations = {
             'total': Count('id'),
             'active': Count('id', filter=Q(cancel=False) | Q(cancel__isnull=True)),
+            'pass_out': Count('id', filter=(Q(cancel=False) | Q(cancel__isnull=True)) & _status_query('PASS_OUT')),
+            'not_in_college': Count('id', filter=(Q(cancel=False) | Q(cancel__isnull=True)) & _status_query('NOT_IN_COLLEGE')),
             'cancelled': Count('id', filter=Q(cancel=True)),
         }
 
@@ -224,6 +262,8 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
                     'group': str(item.get('batch')) if item.get('batch') is not None else '-',
                     'total': int(item.get('total') or 0),
                     'active': int(item.get('active') or 0),
+                    'pass_out': int(item.get('pass_out') or 0),
+                    'not_in_college': int(item.get('not_in_college') or 0),
                     'cancelled': int(item.get('cancelled') or 0),
                 }
                 for item in grouped
@@ -242,6 +282,8 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
                     'group': label,
                     'total': int(item.get('total') or 0),
                     'active': int(item.get('active') or 0),
+                    'pass_out': int(item.get('pass_out') or 0),
+                    'not_in_college': int(item.get('not_in_college') or 0),
                     'cancelled': int(item.get('cancelled') or 0),
                 })
         elif group_by == 'course':
@@ -259,6 +301,8 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
                     'group': label,
                     'total': int(item.get('total') or 0),
                     'active': int(item.get('active') or 0),
+                    'pass_out': int(item.get('pass_out') or 0),
+                    'not_in_college': int(item.get('not_in_college') or 0),
                     'cancelled': int(item.get('cancelled') or 0),
                 })
         else:
@@ -284,6 +328,8 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
                     'group': item.get('status_group') or '-',
                     'total': int(item.get('total') or 0),
                     'active': int(item.get('active') or 0),
+                    'pass_out': int(item.get('pass_out') or 0),
+                    'not_in_college': int(item.get('not_in_college') or 0),
                     'cancelled': int(item.get('cancelled') or 0),
                 }
                 for item in grouped
@@ -330,6 +376,8 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
             'totals': {
                 'total': int(totals_raw.get('total') or 0),
                 'active': int(totals_raw.get('active') or 0),
+                'pass_out': int(totals_raw.get('pass_out') or 0),
+                'not_in_college': int(totals_raw.get('not_in_college') or 0),
                 'cancelled': int(totals_raw.get('cancelled') or 0),
             },
             'options': {
@@ -350,10 +398,7 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
         qs = Enrollment.objects.select_related(
             'institute', 'subcourse', 'maincourse', 'student_profile'
         ).order_by('-created_at')
-        if status_filter == 'active':
-            qs = qs.filter(Q(cancel=False) | Q(cancel__isnull=True))
-        elif status_filter == 'cancelled':
-            qs = qs.filter(cancel=True)
+        qs = _apply_report_status_filter(qs, status_filter)
         if batch_filter and batch_filter.lower() != 'all':
             qs = qs.filter(batch=int(batch_filter))
         if institute_filter and institute_filter.lower() != 'all':
