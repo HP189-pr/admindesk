@@ -95020,3 +95020,819 @@ Unauthorized: /api/users/
 2026-10-13 08:21:58,097 INFO     Listening on TCP address 0.0.0.0:8001
 Unauthorized: /api/token/verify/
 2026-10-13 08:48:49,608 WARNING  Unauthorized: /api/token/verify/
+Unauthorized: /api/users/
+2026-10-13 11:58:40,390 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/token/verify/
+2026-10-13 13:40:26,746 WARNING  Unauthorized: /api/token/verify/
+Unauthorized: /api/users/
+2026-10-13 13:58:55,360 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-10-13 14:07:55,606 WARNING  Unauthorized: /api/users/
+2026-10-13 14:31:44,930 INFO     Killed 1 pending application instances
+2026-10-13 14:31:47,889 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-13 14:31:47,889 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-13 14:31:47,889 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-13 14:31:47,889 INFO     Listening on TCP address 0.0.0.0:8001
+2026-10-13 15:46:09,618 INFO     sync_cash_deposite_to_sheet: 2026-10-13\u21922026-10-13 appended=1 updated=0 deleted=0 total=1
+2026-10-13 15:46:11,215 INFO     sync_cash_sheet_to_sheet: 2026-10-13\u21922026-10-13 appended=1 updated=0 deleted=0 total=1
+2026-10-13 15:46:11,216 INFO     sync_cash_register_to_sheet: 2026-10-13\u21922026-10-13 appended=26 updated=0 deleted=0 skipped=2 total=15
+2026-10-13 15:46:12,789 INFO     sync_cash_deposite_to_sheet: 2026-10-13\u21922026-10-13 appended=0 updated=0 deleted=0 total=1
+2026-10-13 15:46:13,951 INFO     sync_cash_sheet_to_sheet: 2026-10-13\u21922026-10-13 appended=0 updated=0 deleted=0 total=1
+2026-10-13 15:46:15,521 INFO     sync_upi_sheet_to_sheet: 2026-10-13\u21922026-10-13 appended=1 updated=0 deleted=0 total=1
+2026-10-13 15:46:17,077 INFO     sync_bank_sheet_to_sheet: 2026-10-13\u21922026-10-13 appended=1 updated=0 deleted=0 total=1
+2026-10-13 15:46:18,679 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=153
+2026-10-13 15:46:44,120 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-06-30: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:45,621 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-07-04: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:45,944 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-07-06: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:46,249 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-07-07: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:46,614 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-07-08: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:46,932 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-07-09: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:47,238 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-07-10: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:47,582 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-07-11: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:47,926 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-07-13: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:48,248 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-07-14: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:48,572 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-07-17: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:48,916 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-07-20: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:49,218 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-07-21: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:49,537 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-07-22: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:49,885 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-07-23: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:50,219 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-07-27: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:50,545 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-07-28: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:50,853 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-07-29: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:51,174 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-07-30: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:51,504 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-07-31: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:51,812 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-08-03: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:52,144 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-08-04: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:52,449 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-08-05: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:52,769 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-08-06: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:53,111 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-08-07: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:53,427 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-08-08: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:53,762 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-08-10: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:54,072 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-08-11: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:54,464 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-08-12: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:54,803 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-08-13: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:55,128 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-08-14: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:55,439 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-08-17: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:55,755 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-08-18: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:56,074 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-08-19: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:56,394 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-08-20: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:56,715 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-08-21: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:57,004 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-08-22: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:57,354 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-08-24: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:57,661 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-08-25: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:58,010 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-08-26: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:58,331 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-08-27: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:58,661 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-08-29: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:58,965 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-08-31: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:59,296 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-09-01: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:59,622 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-09-07: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:46:59,951 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-09-08: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:00,272 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-09-09: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:00,585 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-09-10: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:00,934 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-09-11: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:01,235 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-09-12: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:01,560 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-09-14: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:01,877 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-09-16: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:02,210 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-09-18: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:02,537 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-09-21: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:02,853 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-09-22: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:03,179 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-09-23: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:03,514 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-09-24: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:03,832 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-09-25: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:04,138 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-09-26: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:04,450 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-09-28: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:04,783 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-09-29: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:05,105 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-09-30: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:05,434 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-10-01: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:05,771 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-10-05: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:06,120 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-10-06: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:06,426 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-10-07: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:06,752 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-10-08: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:07,064 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-10-09: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:07,367 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-10-10: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:07,698 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-10-12: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-13 15:47:08,128 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=62 deleted=0 total=133
+2026-10-13 15:47:09,718 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=85
+Unauthorized: /api/users/
+2026-10-13 16:31:57,369 WARNING  Unauthorized: /api/users/
+Bad Request: /api/verify-admin-panel-password/
+2026-10-13 16:39:20,552 WARNING  Bad Request: /api/verify-admin-panel-password/
+2026-10-13 17:55:52,946 INFO     Killed 0 pending application instances
+2026-10-14 08:26:43,072 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-14 08:26:43,074 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-14 08:26:43,074 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-14 08:26:43,074 INFO     Listening on TCP address 0.0.0.0:8001
+2026-10-14 09:19:30,001 INFO     Killed 1 pending application instances
+2026-10-14 09:19:32,140 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-14 09:19:32,140 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-14 09:19:32,140 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-14 09:19:32,140 INFO     Listening on TCP address 0.0.0.0:8001
+2026-10-14 13:45:56,376 INFO     Updated tr_request_no for record 1158 from 26168 to 26168
+2026-10-14 13:45:56,396 INFO     Updated tr_request_no for record 1158 from 26179 to 26179
+2026-10-14 13:45:56,460 INFO     Updated tr_request_no for record 1219 from 26231 to 26231
+2026-10-14 13:45:56,460 INFO     Updated tr_request_no for record 1219 from 26233 to 26233
+2026-10-14 13:45:56,479 INFO     Updated tr_request_no for record 372 from 26238 to 26238
+2026-10-14 13:45:56,493 INFO     Updated tr_request_no for record 1026 from 26240 to 26240
+2026-10-14 13:45:59,216 INFO     Import mail requests completed via API: Found 458 rows; starting import
+Processed 200/458 rows
+Processed 400/458 rows
+Processed 458/458 rows
+Import complete. Created: 2, Updated: 456
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-10-14 14:32:54,828 INFO     Updated tr_request_no for record 1026 from 26036 to 26036
+2026-10-14 14:32:54,959 INFO     Updated tr_request_no for record 1158 from 26168 to 26168
+2026-10-14 14:32:54,971 INFO     Updated tr_request_no for record 1158 from 26179 to 26179
+2026-10-14 14:32:55,021 INFO     Updated tr_request_no for record 1219 from 26231 to 26231
+2026-10-14 14:32:55,025 INFO     Updated tr_request_no for record 1219 from 26233 to 26233
+2026-10-14 14:32:55,033 INFO     Updated tr_request_no for record 1026 from 26240 to 26240
+2026-10-14 14:32:56,545 INFO     Import mail requests completed via API: Found 458 rows; starting import
+Processed 200/458 rows
+Processed 400/458 rows
+Processed 458/458 rows
+Import complete. Created: 0, Updated: 458
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+Unauthorized: /api/users/
+2026-10-14 15:22:38,374 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-10-14 15:34:38,686 WARNING  Unauthorized: /api/users/
+2026-10-14 15:37:59,084 INFO     sync_cash_deposite_to_sheet: 2026-10-14\u21922026-10-14 appended=1 updated=0 deleted=0 total=1
+2026-10-14 15:38:00,714 INFO     sync_cash_sheet_to_sheet: 2026-10-14\u21922026-10-14 appended=1 updated=0 deleted=0 total=1
+2026-10-14 15:38:00,714 INFO     sync_cash_register_to_sheet: 2026-10-14\u21922026-10-14 appended=14 updated=0 deleted=0 skipped=0 total=9
+2026-10-14 15:38:02,306 INFO     sync_cash_deposite_to_sheet: 2026-10-14\u21922026-10-14 appended=0 updated=0 deleted=0 total=1
+2026-10-14 15:38:03,495 INFO     sync_cash_sheet_to_sheet: 2026-10-14\u21922026-10-14 appended=0 updated=0 deleted=0 total=1
+2026-10-14 15:38:05,111 INFO     sync_upi_sheet_to_sheet: 2026-10-14\u21922026-10-14 appended=1 updated=0 deleted=0 total=1
+2026-10-14 15:38:06,711 INFO     sync_bank_sheet_to_sheet: 2026-10-14\u21922026-10-14 appended=1 updated=0 deleted=0 total=1
+2026-10-14 15:38:08,719 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=154
+2026-10-14 15:38:34,025 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-09-26: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-14 15:38:34,748 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-09-29: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-14 15:38:35,085 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-09-30: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-14 15:38:35,393 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-10-01: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-14 15:38:35,693 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-10-05: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-14 15:38:36,014 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-10-06: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-14 15:38:36,317 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-10-07: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-14 15:38:36,623 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-10-08: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-14 15:38:36,927 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-10-09: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-14 15:38:37,233 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-10-10: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-14 15:38:37,534 ERROR    sync_upi_sheet_new_to_sheet: failed to upsert row for 2026-10-12: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-14 15:38:37,942 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=59 deleted=0 total=134
+2026-10-14 15:38:39,499 ERROR    sync_bank_sheet_new_to_sheet: failed to upsert row for 2026-10-14: APIError: [429]: Quota exceeded for quota metric 'Write requests' and limit 'Write requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:117276806945'.
+2026-10-14 15:38:39,499 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=0 deleted=0 total=86
+2026-10-14 16:00:29,458 INFO     Killed 0 pending application instances
+2026-10-14 16:00:57,355 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-14 16:00:57,355 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-14 16:00:57,355 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-14 16:00:57,355 INFO     Listening on TCP address 0.0.0.0:8001
+2026-10-14 16:04:03,074 INFO     Killed 0 pending application instances
+2026-10-15 08:25:25,058 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-15 08:25:25,058 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-15 08:25:25,058 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-15 08:25:25,058 INFO     Listening on TCP address 0.0.0.0:8001
+2026-10-15 08:25:36,180 INFO     Killed 0 pending application instances
+2026-10-15 08:35:12,523 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-15 08:35:12,523 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-15 08:35:12,523 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-15 08:35:12,527 INFO     Listening on TCP address 0.0.0.0:8001
+2026-10-15 09:14:26,043 INFO     Import mail requests completed via API: Found 459 rows; starting import
+Processed 200/459 rows
+Processed 400/459 rows
+Processed 459/459 rows
+Import complete. Created: 1, Updated: 458
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-10-15 09:27:48,630 INFO     Updated tr_request_no for record 1026 from 26036 to 26036
+2026-10-15 09:27:48,770 INFO     Updated tr_request_no for record 1158 from 26168 to 26168
+2026-10-15 09:27:48,780 INFO     Updated tr_request_no for record 1158 from 26179 to 26179
+2026-10-15 09:27:48,840 INFO     Updated tr_request_no for record 1219 from 26231 to 26231
+2026-10-15 09:27:48,840 INFO     Updated tr_request_no for record 1219 from 26233 to 26233
+2026-10-15 09:27:48,850 INFO     Updated tr_request_no for record 1026 from 26240 to 26240
+2026-10-15 09:42:56,171 INFO     Updated tr_request_no for record 1026 from 26036 to 26036
+2026-10-15 09:42:56,313 INFO     Updated tr_request_no for record 1158 from 26168 to 26168
+2026-10-15 09:42:56,324 INFO     Updated tr_request_no for record 1158 from 26179 to 26179
+2026-10-15 09:42:56,401 INFO     Updated tr_request_no for record 1219 from 26231 to 26231
+2026-10-15 09:42:56,403 INFO     Updated tr_request_no for record 1219 from 26233 to 26233
+2026-10-15 09:42:56,411 INFO     Updated tr_request_no for record 1026 from 26240 to 26240
+2026-10-15 09:57:57,214 INFO     Updated tr_request_no for record 1026 from 26036 to 26036
+2026-10-15 09:57:57,343 INFO     Updated tr_request_no for record 1158 from 26168 to 26168
+2026-10-15 09:57:57,354 INFO     Updated tr_request_no for record 1158 from 26179 to 26179
+2026-10-15 09:57:57,412 INFO     Updated tr_request_no for record 1219 from 26231 to 26231
+2026-10-15 09:57:57,414 INFO     Updated tr_request_no for record 1219 from 26233 to 26233
+2026-10-15 09:57:57,424 INFO     Updated tr_request_no for record 1026 from 26240 to 26240
+2026-10-15 10:08:31,238 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26362'}
+2026-10-15 10:08:31,245 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-15 10:08:31,250 INFO     InstLetterPDF grouped records: keys=['2026/362']
+2026-10-15 10:08:31,289 INFO     DEBUG rec_inst_pin value: '400052'
+2026-10-15 10:12:56,775 INFO     Updated tr_request_no for record 1026 from 26036 to 26036
+2026-10-15 10:12:56,914 INFO     Updated tr_request_no for record 1158 from 26168 to 26168
+2026-10-15 10:12:56,925 INFO     Updated tr_request_no for record 1158 from 26179 to 26179
+2026-10-15 10:12:56,984 INFO     Updated tr_request_no for record 1219 from 26231 to 26231
+2026-10-15 10:12:56,991 INFO     Updated tr_request_no for record 1219 from 26233 to 26233
+2026-10-15 10:12:56,994 INFO     Updated tr_request_no for record 1026 from 26240 to 26240
+2026-10-15 10:19:20,116 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26363'}
+2026-10-15 10:19:20,122 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-15 10:19:20,131 INFO     InstLetterPDF grouped records: keys=['2026/363']
+2026-10-15 10:19:20,143 INFO     DEBUG rec_inst_pin value: ''
+2026-10-15 10:28:06,405 INFO     Updated tr_request_no for record 1026 from 26036 to 26036
+2026-10-15 10:28:06,546 INFO     Updated tr_request_no for record 1158 from 26168 to 26168
+2026-10-15 10:28:06,558 INFO     Updated tr_request_no for record 1158 from 26179 to 26179
+2026-10-15 10:28:06,610 INFO     Updated tr_request_no for record 1219 from 26231 to 26231
+2026-10-15 10:28:06,611 INFO     Updated tr_request_no for record 1219 from 26233 to 26233
+2026-10-15 10:28:06,620 INFO     Updated tr_request_no for record 1026 from 26240 to 26240
+2026-10-15 10:34:35,851 INFO     InstLetterStudent update payload_keys=['doc_rec_key', 'enrollment', 'enrollment_no_text', 'iv_degree_name', 'month_year', 'sr_no', 'student_name', 'study_mode', 'type_of_credential', 'verification_status']
+2026-10-15 10:34:43,895 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26363'}
+2026-10-15 10:34:43,897 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-15 10:34:43,904 INFO     InstLetterPDF grouped records: keys=['2026/363']
+2026-10-15 10:34:43,905 INFO     DEBUG rec_inst_pin value: ''
+Unauthorized: /api/users/
+2026-10-15 10:59:06,913 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-10-15 12:06:19,849 WARNING  Unauthorized: /api/users/
+2026-10-15 16:15:07,238 INFO     Killed 0 pending application instances
+2026-10-16 08:24:04,099 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-16 08:24:04,099 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-16 08:24:04,099 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-16 08:24:04,102 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/users/
+2026-10-16 12:22:28,460 WARNING  Unauthorized: /api/users/
+2026-10-16 13:14:11,926 INFO     Killed 1 pending application instances
+2026-10-16 13:14:15,552 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-16 13:14:15,552 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-16 13:14:15,552 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-16 13:14:15,552 INFO     Listening on TCP address 0.0.0.0:8001
+2026-10-16 13:16:18,051 INFO     Updated tr_request_no for record 1026 from 26036 to 26036
+2026-10-16 13:16:18,186 INFO     Updated tr_request_no for record 1158 from 26168 to 26168
+2026-10-16 13:16:18,197 INFO     Updated tr_request_no for record 1158 from 26179 to 26179
+2026-10-16 13:16:18,246 INFO     Updated tr_request_no for record 1219 from 26231 to 26231
+2026-10-16 13:16:18,251 INFO     Updated tr_request_no for record 1219 from 26233 to 26233
+2026-10-16 13:16:18,259 INFO     Updated tr_request_no for record 1026 from 26240 to 26240
+2026-10-16 13:16:18,261 INFO     Updated tr_request_no for record 614 from 26241 to 26241
+2026-10-16 13:16:19,288 INFO     Import mail requests completed via API: Found 459 rows; starting import
+Processed 200/459 rows
+Processed 400/459 rows
+Processed 459/459 rows
+Import complete. Created: 0, Updated: 459
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-10-16 13:17:04,708 INFO     Import mail requests completed via API: Found 459 rows; starting import
+Processed 200/459 rows
+Processed 400/459 rows
+Processed 459/459 rows
+Import complete. Created: 0, Updated: 459
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-10-16 13:31:52,627 INFO     sync_cash_deposite_to_sheet: 2026-09-26\u21922026-09-26 appended=0 updated=0 deleted=0 total=0
+2026-10-16 13:31:54,254 INFO     sync_cash_sheet_to_sheet: 2026-09-26\u21922026-09-26 appended=1 updated=0 deleted=0 total=1
+2026-10-16 13:31:54,254 INFO     sync_cash_register_to_sheet: 2026-09-26\u21922026-09-26 appended=21 updated=0 deleted=0 skipped=0 total=14
+2026-10-16 13:31:55,803 INFO     sync_cash_deposite_to_sheet: 2026-09-26\u21922026-09-26 appended=0 updated=0 deleted=0 total=0
+2026-10-16 13:31:57,020 INFO     sync_cash_sheet_to_sheet: 2026-09-26\u21922026-09-26 appended=0 updated=0 deleted=0 total=1
+2026-10-16 13:31:58,581 INFO     sync_upi_sheet_to_sheet: 2026-09-26\u21922026-09-26 appended=1 updated=0 deleted=0 total=1
+2026-10-16 13:32:00,155 INFO     sync_bank_sheet_to_sheet: 2026-09-26\u21922026-09-26 appended=1 updated=0 deleted=0 total=1
+2026-10-16 13:32:01,989 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=155
+2026-10-16 13:32:08,401 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=12 deleted=0 total=135
+2026-10-16 13:32:10,402 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=2 updated=0 deleted=0 total=87
+2026-10-16 13:33:20,132 INFO     Killed 2 pending application instances
+2026-10-16 13:33:22,434 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-16 13:33:22,435 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-16 13:33:22,435 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-16 13:33:22,435 INFO     Listening on TCP address 0.0.0.0:8001
+Internal Server Error: /api/enrollments/report-summary/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_enrollment.py", line 232, in report_summary
+  File "E:\admindesk\backend\api\views_enrollment.py", line 120, in _apply_report_status_filter
+    if normalized in {value for value, _ in Enrollment.STATUS_CHOICES}:
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_enrollment.py", line 100, in _status_query
+    query = Q()
+                
+KeyError: 'PENDING_CLOSURE'
+2026-10-16 13:57:25,167 ERROR    Internal Server Error: /api/enrollments/report-summary/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_enrollment.py", line 232, in report_summary
+  File "E:\admindesk\backend\api\views_enrollment.py", line 120, in _apply_report_status_filter
+    if normalized in {value for value, _ in Enrollment.STATUS_CHOICES}:
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_enrollment.py", line 100, in _status_query
+    query = Q()
+                
+KeyError: 'PENDING_CLOSURE'
+Internal Server Error: /api/enrollments/report-summary/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_enrollment.py", line 232, in report_summary
+  File "E:\admindesk\backend\api\views_enrollment.py", line 120, in _apply_report_status_filter
+    if normalized in {value for value, _ in Enrollment.STATUS_CHOICES}:
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_enrollment.py", line 100, in _status_query
+    query = Q()
+                
+KeyError: 'PENDING_CLOSURE'
+2026-10-16 13:57:28,400 ERROR    Internal Server Error: /api/enrollments/report-summary/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_enrollment.py", line 232, in report_summary
+  File "E:\admindesk\backend\api\views_enrollment.py", line 120, in _apply_report_status_filter
+    if normalized in {value for value, _ in Enrollment.STATUS_CHOICES}:
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_enrollment.py", line 100, in _status_query
+    query = Q()
+                
+KeyError: 'PENDING_CLOSURE'
+Internal Server Error: /api/enrollments/report-summary/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_enrollment.py", line 232, in report_summary
+  File "E:\admindesk\backend\api\views_enrollment.py", line 120, in _apply_report_status_filter
+    if normalized in {value for value, _ in Enrollment.STATUS_CHOICES}:
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_enrollment.py", line 100, in _status_query
+    query = Q()
+                
+KeyError: 'PENDING_CLOSURE'
+2026-10-16 13:57:30,379 ERROR    Internal Server Error: /api/enrollments/report-summary/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_enrollment.py", line 232, in report_summary
+  File "E:\admindesk\backend\api\views_enrollment.py", line 120, in _apply_report_status_filter
+    if normalized in {value for value, _ in Enrollment.STATUS_CHOICES}:
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_enrollment.py", line 100, in _status_query
+    query = Q()
+                
+KeyError: 'PENDING_CLOSURE'
+Internal Server Error: /api/enrollments/report-summary/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_enrollment.py", line 232, in report_summary
+  File "E:\admindesk\backend\api\views_enrollment.py", line 120, in _apply_report_status_filter
+    if normalized in {value for value, _ in Enrollment.STATUS_CHOICES}:
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_enrollment.py", line 100, in _status_query
+    query = Q()
+                
+KeyError: 'PENDING_CLOSURE'
+2026-10-16 13:57:31,333 ERROR    Internal Server Error: /api/enrollments/report-summary/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_enrollment.py", line 232, in report_summary
+  File "E:\admindesk\backend\api\views_enrollment.py", line 120, in _apply_report_status_filter
+    if normalized in {value for value, _ in Enrollment.STATUS_CHOICES}:
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_enrollment.py", line 100, in _status_query
+    query = Q()
+                
+KeyError: 'PENDING_CLOSURE'
+Internal Server Error: /api/enrollments/report-summary/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_enrollment.py", line 232, in report_summary
+  File "E:\admindesk\backend\api\views_enrollment.py", line 120, in _apply_report_status_filter
+    if normalized in {value for value, _ in Enrollment.STATUS_CHOICES}:
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_enrollment.py", line 100, in _status_query
+    query = Q()
+                
+KeyError: 'PENDING_CLOSURE'
+2026-10-16 13:57:32,087 ERROR    Internal Server Error: /api/enrollments/report-summary/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_enrollment.py", line 232, in report_summary
+  File "E:\admindesk\backend\api\views_enrollment.py", line 120, in _apply_report_status_filter
+    if normalized in {value for value, _ in Enrollment.STATUS_CHOICES}:
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_enrollment.py", line 100, in _status_query
+    query = Q()
+                
+KeyError: 'PENDING_CLOSURE'
+Internal Server Error: /api/enrollments/report-summary/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_enrollment.py", line 232, in report_summary
+  File "E:\admindesk\backend\api\views_enrollment.py", line 120, in _apply_report_status_filter
+    if normalized in {value for value, _ in Enrollment.STATUS_CHOICES}:
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_enrollment.py", line 100, in _status_query
+    query = Q()
+                
+KeyError: 'PENDING_CLOSURE'
+2026-10-16 13:57:40,247 ERROR    Internal Server Error: /api/enrollments/report-summary/
+Traceback (most recent call last):
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "E:\admindesk\.venv\Lib\site-packages\django\core\handlers\base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\viewsets.py", line 124, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 509, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 480, in raise_uncaught_exception
+    raise exc
+  File "E:\admindesk\.venv\Lib\site-packages\rest_framework\views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_enrollment.py", line 232, in report_summary
+  File "E:\admindesk\backend\api\views_enrollment.py", line 120, in _apply_report_status_filter
+    if normalized in {value for value, _ in Enrollment.STATUS_CHOICES}:
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\admindesk\backend\api\views_enrollment.py", line 100, in _status_query
+    query = Q()
+                
+KeyError: 'PENDING_CLOSURE'

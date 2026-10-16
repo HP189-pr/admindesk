@@ -1,5 +1,5 @@
 ﻿// src/services/enrollmentservice.js
-import API from '../api/axiosInstance';
+import API, { LONG_API } from '../api/axiosInstance';
 
 // Base path for enrollments API (keep trailing slash to match backend router)
 const ENROLLMENT_API = '/api/enrollments/';
@@ -24,7 +24,7 @@ export const getEnrollmentReportSummary = async (params = {}, requestConfig = {}
 };
 
 export const getEnrollmentReportStudents = async (params = {}, requestConfig = {}) => {
-    const res = await API.get(`${ENROLLMENT_API}report-students/`, {
+    const res = await LONG_API.get(`${ENROLLMENT_API}report-students/`, {
         params,
         ...requestConfig,
     });

@@ -61,6 +61,18 @@ The API surface is large, but the current app groups it into a few stable famili
 - Institutional verification / letter endpoints, including legacy aliases retained for compatibility
 - Transcript and mail request endpoints
 
+### Enrollment reporting
+
+The enrollment report is available through the authenticated enrollment viewset:
+
+- `GET /api/enrollments/report-summary/` returns grouped totals and filter options.
+- `GET /api/enrollments/report-students/` returns the students matching the report filters.
+- Both endpoints accept `group_by`, `status`, repeated `batch` values, `institute`, and `course`.
+- Supported enrollment status filters include `ACTIVE`, `ACTIVE_PASS_OUT`, `LEFT`, `PASS_OUT`,
+  `PENDING_CLOSURE`, `RESHUFFLE_OUT`, `NOT_IN_COLLEGE`, `DROP_OUT`, and `CANCELLED`.
+- `CANCELLED` is based on the admission-cancellation flag; the other statuses select
+  non-cancelled enrollments by their enrollment status.
+
 ### Office, finance, and operations
 
 - Doc receive and related unified workflows

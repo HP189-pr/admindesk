@@ -21,6 +21,7 @@ const STATUS_OPTIONS = [
   { value: "ACTIVE_PASS_OUT", label: "Active & Pass Out" },
   { value: "LEFT", label: "Left" },
   { value: "PASS_OUT", label: "Pass Out" },
+  { value: "PENDING_CLOSURE", label: "Pending Closure" },
   { value: "RESHUFFLE_OUT", label: "Reshuffle Out" },
   { value: "NOT_IN_COLLEGE", label: "Not In College" },
   { value: "DROP_OUT", label: "Drop Out" },
@@ -114,7 +115,7 @@ const EnrollmentReport = ({ onBack }) => {
 
   const [groupBy, setGroupBy] = useState("batch");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [batchFilter, setBatchFilter] = useState("");
+  const [batchFilter, setBatchFilter] = useState([]);
   const [instituteFilter, setInstituteFilter] = useState("");
   const [courseFilter, setCourseFilter] = useState("");
 
@@ -164,7 +165,7 @@ const EnrollmentReport = ({ onBack }) => {
         status: statusFilter,
       };
 
-      if (batchFilter) params.batch = batchFilter;
+      if (batchFilter.length) params.batch = batchFilter;
       if (instituteFilter) params.institute = instituteFilter;
       if (courseFilter) params.course = courseFilter;
 
@@ -227,7 +228,7 @@ const EnrollmentReport = ({ onBack }) => {
   const fetchStudentListData = useCallback(async () => {
     const data = await getEnrollmentReportStudents({
       status: statusFilter,
-      batch: batchFilter,
+      batch: batchFilter.length ? batchFilter : undefined,
       institute: instituteFilter,
       course: courseFilter,
     });
@@ -247,7 +248,7 @@ const EnrollmentReport = ({ onBack }) => {
         ["Enrollment Report"],
         ["Grouped By", GROUP_OPTIONS.find((o) => o.value === groupBy)?.label || groupBy],
         ["Status Filter", STATUS_OPTIONS.find((o) => o.value === statusFilter)?.label || statusFilter],
-        ["Batch Filter", batchFilter || "All"],
+        ["Batch Filter", batchFilter.length ? batchFilter.join(", ") : "All"],
         ["Institute Filter", instituteFilter || "All"],
         ["Course Filter", courseFilter || "All"],
         [],
@@ -389,7 +390,7 @@ const EnrollmentReport = ({ onBack }) => {
   const handleResetFilters = () => {
     setGroupBy("batch");
     setStatusFilter("all");
-    setBatchFilter("");
+    setBatchFilter([]);
     setInstituteFilter("");
     setCourseFilter("");
   };
@@ -508,14 +509,19 @@ const EnrollmentReport = ({ onBack }) => {
           <span className={CONTROL_LABEL_CLASS}>Batch</span>
           <select
             value={batchFilter}
-            onChange={(e) => setBatchFilter(e.target.value)}
-            className={SELECT_CLASS}
+            onChange={(e) => setBatchFilter(Array.from(e.target.selectedOptions, (option) => option.value))}
+            className={`${SELECT_CLASS} h-auto min-h-11`}
+            multiple
+            size={Math.min(Math.max(batchOptions.length, 3), 6)}
+            aria-label="Select one or more batches"
           >
-            <option value="">All</option>
             {batchOptions.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
+          <span className="mt-1 block text-xs text-slate-500">
+            {batchFilter.length ? `${batchFilter.length} batch${batchFilter.length === 1 ? "" : "es"} selected` : "All batches"}
+          </span>
         </label>
 
         <label className="text-sm">

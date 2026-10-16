@@ -17,6 +17,7 @@ class Enrollment(models.Model):
         ('ACTIVE_PASS_OUT', 'Active & Pass Out'),
         ('LEFT', 'Left'),
         ('PASS_OUT', 'Pass Out'),
+        ('PENDING_CLOSURE', 'Pending Closure'),
         ('RESHUFFLE_OUT', 'Reshuffle Out'),
         ('NOT_IN_COLLEGE', 'Not In College'),
         ('DROP_OUT', 'Drop Out'),

@@ -19,6 +19,7 @@ from .analytics_documents import DOCUMENTS, display_value, document_options, sco
 from .models import Enrollment, AdmissionCancel
 from .domain_degree import StudentDegree
 from .domain_verification import MigrationRecord, ProvisionalRecord, Verification, VerificationStatus
+from .domain_letter import InstLetterStudent
 from .serializers_enrollment import EnrollmentSerializer, AdmissionCancelSerializer
 
 BATCH_DEFAULTS = [2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028]
@@ -40,6 +41,13 @@ def _resolve_batches(raw_values):
             continue
     unique_batches = sorted(set(parsed))
     return unique_batches if unique_batches else BATCH_DEFAULTS.copy()
+
+
+def _report_batch_values(request):
+    """Read repeated batch query parameters from report requests."""
+    values = request.query_params.getlist('batch')
+    values.extend(request.query_params.getlist('batch[]'))
+    return [value.strip() for value in values if value and value.strip()]
 
 
 def _ordered_subcourses(extra_names=None):
@@ -81,6 +89,7 @@ REPORT_STATUS_VALUES = {
     "ACTIVE_PASS_OUT": ("ACTIVE_PASS_OUT", "ACTIVE AND PASS OUT", "Active & Pass Out"),
     "LEFT": ("LEFT", "Left"),
     "PASS_OUT": ("PASS_OUT", "PASS OUT", "Pass Out"),
+    "PENDING_CLOSURE": ("PENDING_CLOSURE", "PENDING CLOSURE", "Pending Closure"),
     "RESHUFFLE_OUT": ("RESHUFFLE_OUT", "RESHUFFLE OUT", "Reshuffle Out"),
     "NOT_IN_COLLEGE": ("NOT_IN_COLLEGE", "NOT IN COLLEGE", "Not In College"),
     "DROP_OUT": ("DROP_OUT", "DROP OUT", "Drop Out"),
@@ -215,7 +224,7 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
             group_by = 'batch'
 
         status_filter = (request.query_params.get('status') or 'all').strip().lower()
-        batch_filter = (request.query_params.get('batch') or '').strip()
+        batch_filters = _report_batch_values(request)
         institute_filter = (request.query_params.get('institute') or '').strip()
         course_filter = (request.query_params.get('course') or '').strip()
 
@@ -223,9 +232,9 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
 
         qs = _apply_report_status_filter(qs, status_filter)
 
-        if batch_filter and batch_filter.lower() != 'all':
+        if batch_filters and not (len(batch_filters) == 1 and batch_filters[0].lower() == 'all'):
             try:
-                qs = qs.filter(batch=int(batch_filter))
+                qs = qs.filter(batch__in=[int(value) for value in batch_filters])
             except (TypeError, ValueError):
                 return Response({'detail': 'Invalid batch filter.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -240,7 +249,7 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
 
         totals_raw = qs.aggregate(
             total=Count('id'),
-            active=Count('id', filter=Q(cancel=False) | Q(cancel__isnull=True)),
+            active=Count('id', filter=(Q(cancel=False) | Q(cancel__isnull=True)) & _status_query('ACTIVE')),
             pass_out=Count('id', filter=(Q(cancel=False) | Q(cancel__isnull=True)) & _status_query('PASS_OUT')),
             not_in_college=Count('id', filter=(Q(cancel=False) | Q(cancel__isnull=True)) & _status_query('NOT_IN_COLLEGE')),
             cancelled=Count('id', filter=Q(cancel=True)),
@@ -248,7 +257,7 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
 
         count_annotations = {
             'total': Count('id'),
-            'active': Count('id', filter=Q(cancel=False) | Q(cancel__isnull=True)),
+            'active': Count('id', filter=(Q(cancel=False) | Q(cancel__isnull=True)) & _status_query('ACTIVE')),
             'pass_out': Count('id', filter=(Q(cancel=False) | Q(cancel__isnull=True)) & _status_query('PASS_OUT')),
             'not_in_college': Count('id', filter=(Q(cancel=False) | Q(cancel__isnull=True)) & _status_query('NOT_IN_COLLEGE')),
             'cancelled': Count('id', filter=Q(cancel=True)),
@@ -391,7 +400,7 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
     def report_students(self, request):
         """Return all students matching the enrollment report filters."""
         status_filter = (request.query_params.get('status') or 'all').strip().lower()
-        batch_filter = (request.query_params.get('batch') or '').strip()
+        batch_filters = _report_batch_values(request)
         institute_filter = (request.query_params.get('institute') or '').strip()
         course_filter = (request.query_params.get('course') or '').strip()
 
@@ -399,8 +408,11 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
             'institute', 'subcourse', 'maincourse', 'student_profile'
         ).order_by('-created_at')
         qs = _apply_report_status_filter(qs, status_filter)
-        if batch_filter and batch_filter.lower() != 'all':
-            qs = qs.filter(batch=int(batch_filter))
+        if batch_filters and not (len(batch_filters) == 1 and batch_filters[0].lower() == 'all'):
+            try:
+                qs = qs.filter(batch__in=[int(value) for value in batch_filters])
+            except (TypeError, ValueError):
+                return Response({'detail': 'Invalid batch filter.'}, status=status.HTTP_400_BAD_REQUEST)
         if institute_filter and institute_filter.lower() != 'all':
             qs = qs.filter(institute_id=int(institute_filter))
         if course_filter and course_filter.lower() != 'all':
@@ -810,7 +822,86 @@ class EnrollmentAnalyticsView(APIView):
             verification_source = verification_source.filter(vr_done_date__lte=issue_to)
         verification_source = scoped_documents({'verification': (verification_source, 'enrollment_no')}, qs)
         verification_records = document_page(verification_source, page, page_size, export_all)
+
+        # Verification in the record view includes both the VR register and
+        # institutional-verification student rows. Both are joined by the
+        # enrollment number so the count follows the filtered enrollment set.
+        enrollment_numbers = qs.exclude(enrollment_no__isnull=True).exclude(
+            enrollment_no=''
+        ).order_by().values('enrollment_no')
+        institutional_source = InstLetterStudent.objects.filter(
+            Q(enrollment_no_text__in=Subquery(enrollment_numbers))
+            | Q(enrollment_id__in=Subquery(enrollment_numbers))
+        )
+        if issue_from:
+            institutional_source = institutional_source.filter(doc_rec__doc_rec_date__gte=issue_from)
+        if issue_to:
+            institutional_source = institutional_source.filter(doc_rec__doc_rec_date__lte=issue_to)
+        institutional_rows = [
+            {
+                'record_id': f"iv-{row['id']}",
+                'document_type': 'verification',
+                'document_number': display_value(row['doc_rec_id']),
+                'student': display_value(row['student_name']),
+                'enrollment_number': display_value(row['enrollment_no_text'] or row['enrollment_id']),
+                'event_date': display_value(row['doc_rec__doc_rec_date']),
+                'record_status': display_value(row['verification_status']),
+            }
+            for row in institutional_source.order_by('id').values(
+                'id', 'doc_rec_id', 'student_name', 'enrollment_no_text', 'enrollment_id',
+                'doc_rec__doc_rec_date', 'verification_status',
+            )
+        ]
+        if institutional_rows:
+            combined_verification_rows = verification_records['results'] if export_all else document_page(
+                verification_source, 1, verification_source['verification'][0].count() or 1, True
+            )['results']
+            combined_verification_rows = combined_verification_rows + institutional_rows
+            combined_verification_rows.sort(key=lambda row: (str(row.get('enrollment_number', '')), str(row.get('record_id', ''))))
+            verification_count = len(combined_verification_rows)
+            verification_pages = (verification_count + page_size - 1) // page_size
+            verification_records = {
+                'results': combined_verification_rows if export_all else combined_verification_rows[(page - 1) * page_size:page * page_size],
+                'count': verification_count,
+                'page': page,
+                'pages': verification_pages,
+                'page_size': page_size,
+            }
         verification_summary = [{ 'status': display_value(row['status']), 'total': row['total']} for row in verification_source['verification'][0].order_by().values('status').annotate(total=Count('pk'))]
+        verification_summary.extend([
+            {'status': 'Institutional Verification', 'total': len(institutional_rows)}
+        ] if institutional_rows else [])
+
+        degree_numbers = StudentDegree.objects.exclude(enrollment_no__isnull=True).exclude(
+            enrollment_no=''
+        ).order_by().values('enrollment_no')
+        missing_degree_queryset = qs.exclude(
+            enrollment_no__isnull=True
+        ).exclude(
+            enrollment_no=''
+        ).exclude(enrollment_no__in=Subquery(degree_numbers))
+        missing_degree_count = missing_degree_queryset.count()
+        missing_degree_rows = [
+            {
+                'record_id': row['id'],
+                'document_type': 'missing_degree',
+                'document_number': 'Not received',
+                'student': display_value(row['student_name']),
+                'enrollment_number': display_value(row['enrollment_no']),
+                'event_date': None,
+                'record_status': 'No degree record',
+            }
+            for row in missing_degree_queryset.order_by('enrollment_no').values('id', 'student_name', 'enrollment_no')[
+                (page - 1) * page_size:page * page_size
+            ]
+        ]
+        missing_degree_records = {
+            'results': missing_degree_rows,
+            'count': missing_degree_count,
+            'page': page,
+            'pages': (missing_degree_count + page_size - 1) // page_size,
+            'page_size': page_size,
+        }
         ordered_records = qs.order_by('-batch', 'maincourse__course_name', 'subcourse__subcourse_name', 'student_name', 'id')
         total_records = ordered_records.count()
         start = (page - 1) * page_size
@@ -902,6 +993,8 @@ class EnrollmentAnalyticsView(APIView):
             'document_trend': documents_trend,
             'certificate_records': certificate_records,
             'verification_records': verification_records,
+            'missing_degree_records': missing_degree_records,
+            'missing_degree_count': missing_degree_count,
             'verification_summary': verification_summary,
             'breakdowns': breakdowns,
             'options': {

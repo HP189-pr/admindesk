@@ -10,6 +10,7 @@ const numberFormat = new Intl.NumberFormat();
 const DEFAULT_FILTERS = { mainCourse: '', subCourse: '', department: '', yearFrom: '', yearTo: '', batches: [], search: '', gender: '', category: '', certificate: '', status: '', issueDateFrom: '', issueDateTo: '' };
 const EMPTY = {
   breakdowns: {}, cross_analysis: {}, data_quality: {}, document_trend: { rows: [], undated: {} }, verification_summary: [],
+  missing_degree_records: { results: [], count: 0, page: 1, page_size: 25, pages: 0 }, missing_degree_count: 0,
   summary: { total: 0, main_courses: 0, sub_courses: 0, departments: 0, active_batches: 0, year_from: null, year_to: null },
   issuance: { degree: 0, provisional: 0, migration: 0, verification: 0 },
   options: { batches: [], courses: [], subcourses: [], departments: [], genders: [], categories: [], document_types: [] },
@@ -260,7 +261,17 @@ const EnrollmentState = () => {
           <span className="ea-stat-foot">{chips.length ? 'Matching your filters' : `Across ${analytics.summary.departments} institutes`}<ArrowUpRight size={17} /></span>
         </button>
         {!updatedAt && loading && Array.from({ length: 4 }, (_, index) => <div key={index} className="ea-stat-placeholder" aria-hidden="true"><Skeleton /></div>)}
-        {CERTIFICATES.map(({ key, label, icon: Icon, tone }) => <button key={key} className={`ea-stat ea-stat-${tone} ${filters.certificate === key ? 'is-selected' : ''}`} disabled={!updatedAt || busy || !!error} aria-pressed={filters.certificate === key} onClick={() => setFilter('certificate', filters.certificate === key ? '' : key)}>
+        {CERTIFICATES.map(({ key, label, icon: Icon, tone }) => <button key={key} className={`ea-stat ea-stat-${tone} ${filters.certificate === key ? 'is-selected' : ''}`} disabled={!updatedAt || busy || !!error} aria-pressed={filters.certificate === key} onClick={() => {
+          if (key === 'verification') {
+            selectView('records');
+            setRecordsView('records');
+            setRecordKind('verification');
+            setPage(1);
+            if (filters.certificate) setFilter('certificate', '');
+          } else {
+            setFilter('certificate', filters.certificate === key ? '' : key);
+          }
+        }}>
           <span className="ea-stat-top"><span>{label}</span><Icon size={19} /></span><strong>{error ? '--' : updatedAt ? formatTotal(analytics.issuance[key]) : '...'}</strong><span className="ea-stat-foot">{filters.certificate === key ? 'Selected - click to clear' : key === 'verification' ? 'Completed processes' : 'Filter students'}{filters.certificate === key ? <Check size={15} /> : <ArrowUpRight size={15} />}</span>
         </button>)}
       </div>
@@ -288,6 +299,9 @@ const EnrollmentState = () => {
           <div className="ea-comparison-controls"><FilterSelect label="Group by" value={groupBy} allowAll={false} onChange={value => { setGroupBy(value); setGroupSearch(''); }} options={Object.keys(analytics.breakdowns).map(value => ({ value, label: value }))} /><FilterSelect label="Rank by" value={groupMetric} allowAll={false} onChange={setGroupMetric} options={[{ value: 'students', label: 'Students' }, ...CERTIFICATES.map(({ key, label }) => ({ value: key, label }))]} /><label className="ea-search"><Search size={16} /><input className="search-field-input" aria-label="Search comparison groups" placeholder={`Find ${groupBy.toLowerCase()}...`} value={groupSearch} onChange={event => setGroupSearch(event.target.value)} /></label></div>
           <div className="ea-table-scroll" tabIndex={0} role="region" aria-label="Scrollable analytics table"><table className="ea-table"><thead><tr><th>{groupBy}</th><th className="ea-numeric">Students</th>{CERTIFICATES.map(({ key, label }) => <th key={key} className="ea-numeric">{label}</th>)}</tr></thead><tbody>{groupedRows.map(row => <tr key={row.group}><th><span className="ea-group-label">{row.group}</span><span className="ea-track"><span style={{ width: `${Math.max(1, row[groupMetric] / groupMaximum * 100)}%` }} /></span></th>{['students', ...CERTIFICATES.map(item => item.key)].map(key => <td key={key} className={`ea-numeric ${groupMetric === key ? 'ea-emphasis' : ''}`}>{formatTotal(row[key])}</td>)}</tr>)}</tbody><tfoot><tr><th>{groupSearch ? 'Matching groups total' : 'Total'}</th>{['students', ...CERTIFICATES.map(item => item.key)].map(key => <td key={key} className="ea-numeric">{formatTotal(groupedRows.reduce((sum, row) => sum + Number(row[key] || 0), 0))}</td>)}</tr></tfoot></table>{!groupedRows.length && <EmptyState message="No groups match your search." />}</div>
           <p className="ea-footnote">One student can have multiple certificates or verification requests. Verification is a separate process. Degree totals count registered degree records; issuance status is not available in the degree register.</p>
+        </Panel>}
+        {view === 'certificates' && <Panel title="Degree not received" subtitle="Enrollment records that do not have a matching degree record." icon={AlertCircle} action={<span className="ea-total-badge">{formatTotal(analytics.missing_degree_count)} students</span>}>
+          <DocumentRecords data={analytics.missing_degree_records} types={[]} pageSize={pageSize} setPageSize={setPageSize} setPage={setPage} loading={busy} kind="certificate" onClear={resetFilters} />
         </Panel>}
 
         {view === 'records' && <Panel title={recordKind === 'students' ? 'Student records' : recordKind === 'certificates' ? 'Certificate records' : 'Verification records'} subtitle="All records follow the global search and filters." icon={Table2} action={<span className="ea-total-badge">{formatTotal(recordKind === 'students' ? analytics.records.count : recordKind === 'certificates' ? analytics.certificate_records?.count : analytics.verification_records?.count)} {recordKind === 'students' ? 'students' : 'records'}</span>}>
