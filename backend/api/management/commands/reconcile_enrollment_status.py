@@ -3,7 +3,6 @@
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.db.models import Exists, OuterRef
-from django.db.models.functions import Lower, Trim
 
 from api.domain_degree import StudentDegree
 from api.domain_enrollment import Enrollment
@@ -26,27 +25,20 @@ class Command(BaseCommand):
         apply_changes = options["apply"]
 
         with transaction.atomic():
-            degrees = (
-                StudentDegree.objects
-                .annotate(enrollment_no_normalized=Lower(Trim("enrollment_no")))
-                .exclude(enrollment_no_normalized__isnull=True)
-                .exclude(enrollment_no_normalized="")
-            )
+            degrees = StudentDegree.objects.all()
             enrollments = (
                 Enrollment.objects
-                .annotate(enrollment_no_normalized=Lower(Trim("enrollment_no")))
-                .exclude(enrollment_no_normalized__isnull=True)
-                .exclude(enrollment_no_normalized="")
                 .exclude(cancel=True)
+                .filter(status="ACTIVE")
                 .annotate(
                     has_degree=Exists(
                         degrees.filter(
-                            enrollment_no_normalized=OuterRef("enrollment_no_normalized")
+                            enrollment_no=OuterRef("enrollment_no")
                         )
                     )
                 )
             )
-            to_pass_out = enrollments.filter(has_degree=True).exclude(status="PASS_OUT")
+            to_pass_out = enrollments.filter(has_degree=True)
             to_pending_closure = enrollments.filter(
                 batch__gte=2007,
                 batch__lte=2020,
