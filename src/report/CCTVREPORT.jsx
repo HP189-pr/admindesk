@@ -29,7 +29,10 @@ const toResultsArray = (payload) =>
 const EXPORT_PDF_BUTTON_CLASS =
   "inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 shadow-sm shadow-rose-100 transition duration-200 hover:-translate-y-0.5 hover:bg-rose-100 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50";
 
-export default function CCTVREPORT({ rights = { can_view: true, can_create: true, can_edit: true, can_delete: true } }) {
+export default function CCTVREPORT({
+  rights = { can_view: true, can_create: true, can_edit: true, can_delete: true },
+  selectedSession = "",
+}) {
   const [outwards, setOutwards] = useState([]);
   const [selectedOutwardId, setSelectedOutwardId] = useState("");
   const [copyCases, setCopyCases] = useState([]);
@@ -78,11 +81,12 @@ export default function CCTVREPORT({ rights = { can_view: true, can_create: true
     });
   };
 
-  const loadOutwards = async () => {
+  const loadOutwards = async (session = selectedSession) => {
     setLoadingOutwards(true);
     setStatus("");
     try {
-      const res = await getOutward();
+      const params = session ? { exam_year_session: session } : undefined;
+      const res = await getOutward(params);
       const rows = toResultsArray(res?.data);
       const caseFoundRows = rows.filter((row) => !!row.case_found);
       setOutwards(caseFoundRows);
@@ -102,10 +106,11 @@ export default function CCTVREPORT({ rights = { can_view: true, can_create: true
     }
   };
 
-  const loadCopyCases = async () => {
+  const loadCopyCases = async (session = selectedSession) => {
     setLoadingCases(true);
     try {
-      const res = await getCctvCopyCases();
+      const params = session ? { exam_year_session: session } : undefined;
+      const res = await getCctvCopyCases(params);
       setCopyCases(toResultsArray(res?.data));
     } catch (err) {
       setCopyCases([]);
@@ -117,9 +122,9 @@ export default function CCTVREPORT({ rights = { can_view: true, can_create: true
 
   useEffect(() => {
     if (!rights.can_view) return;
-    loadOutwards();
-    loadCopyCases();
-  }, [rights.can_view]);
+    loadOutwards(selectedSession);
+    loadCopyCases(selectedSession);
+  }, [rights.can_view, selectedSession]);
 
   useEffect(() => {
     if (!editingId) {

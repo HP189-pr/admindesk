@@ -50,8 +50,8 @@ export const assignCcNumbers = (data) =>
 // OUTWARD
 // =========================
 
-export const getOutward = () =>
-  API.get(`${API_BASE}/cctv-outward/`);
+export const getOutward = (params) =>
+  API.get(`${API_BASE}/cctv-outward/`, { params });
 
 export const createOutward = (data) =>
   API.post(`${API_BASE}/cctv-outward/`, data);

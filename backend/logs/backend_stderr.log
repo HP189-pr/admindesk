@@ -96107,3 +96107,262 @@ Traceback (most recent call last):
                 
 KeyError: 'PENDING_CLOSURE'
 2026-10-16 14:22:37,187 INFO     Killed 1 pending application instances
+2026-10-16 14:22:39,354 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-16 14:22:39,354 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-16 14:22:39,354 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-16 14:22:39,355 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/verification/
+2026-10-16 14:22:42,237 WARNING  Unauthorized: /api/verification/
+Unauthorized: /api/verification/
+2026-10-16 14:22:42,241 WARNING  Unauthorized: /api/verification/
+Unauthorized: /api/institutes/
+2026-10-16 14:22:46,024 WARNING  Unauthorized: /api/institutes/
+Unauthorized: /api/my-navigation/
+2026-10-16 14:22:46,025 WARNING  Unauthorized: /api/my-navigation/
+Unauthorized: /api/mainbranch/
+2026-10-16 14:22:46,025 WARNING  Unauthorized: /api/mainbranch/
+Not Found: /api/student-search/search/
+2026-10-16 14:26:33,785 WARNING  Not Found: /api/student-search/search/
+2026-10-16 14:32:26,481 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26364'}
+2026-10-16 14:32:26,487 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-16 14:32:26,492 INFO     InstLetterPDF grouped records: keys=['2026/364']
+2026-10-16 14:32:26,510 INFO     DEBUG rec_inst_pin value: '400059'
+2026-10-16 14:38:34,620 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26365'}
+2026-10-16 14:38:34,624 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-16 14:38:34,629 INFO     InstLetterPDF grouped records: keys=['2026/365']
+2026-10-16 14:38:34,633 INFO     DEBUG rec_inst_pin value: '411040'
+2026-10-16 15:56:26,993 INFO     Killed 0 pending application instances
+2026-10-19 08:22:28,433 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-19 08:22:28,433 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-19 08:22:28,433 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-19 08:22:28,433 INFO     Listening on TCP address 0.0.0.0:8001
+2026-10-19 11:17:54,216 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26366'}
+2026-10-19 11:17:54,224 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-19 11:17:54,229 INFO     InstLetterPDF grouped records: keys=['2026/366']
+2026-10-19 11:17:54,238 INFO     DEBUG rec_inst_pin value: '382150'
+Unauthorized: /api/users/
+2026-10-19 13:20:20,019 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-10-19 13:38:57,033 WARNING  Unauthorized: /api/users/
+2026-10-19 14:25:48,938 INFO     sync_cash_deposite_to_sheet: 2026-10-19\u21922026-10-19 appended=0 updated=0 deleted=0 total=0
+2026-10-19 14:25:50,734 INFO     sync_cash_sheet_to_sheet: 2026-10-19\u21922026-10-19 appended=1 updated=0 deleted=0 total=1
+2026-10-19 14:25:50,734 INFO     sync_cash_register_to_sheet: 2026-10-19\u21922026-10-19 appended=14 updated=0 deleted=0 skipped=0 total=9
+2026-10-19 14:25:52,393 INFO     sync_cash_deposite_to_sheet: 2026-10-19\u21922026-10-19 appended=0 updated=0 deleted=0 total=0
+2026-10-19 14:25:53,711 INFO     sync_cash_sheet_to_sheet: 2026-10-19\u21922026-10-19 appended=0 updated=0 deleted=0 total=1
+2026-10-19 14:25:55,565 INFO     sync_upi_sheet_to_sheet: 2026-10-19\u21922026-10-19 appended=1 updated=0 deleted=0 total=1
+2026-10-19 14:25:57,234 INFO     sync_bank_sheet_to_sheet: 2026-10-19\u21922026-10-19 appended=1 updated=0 deleted=0 total=1
+2026-10-19 14:25:59,782 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=2 updated=0 deleted=0 total=157
+2026-10-19 14:26:02,292 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=2 updated=1 deleted=0 total=137
+2026-10-19 14:26:04,471 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=2 updated=0 deleted=0 total=89
+Unauthorized: /api/users/
+2026-10-19 14:46:15,391 WARNING  Unauthorized: /api/users/
+2026-10-19 15:43:56,280 INFO     sync_cash_deposite_to_sheet: 2026-10-19\u21922026-10-19 appended=1 updated=0 deleted=0 total=1
+2026-10-19 15:43:57,892 INFO     sync_cash_sheet_to_sheet: 2026-10-19\u21922026-10-19 appended=0 updated=1 deleted=0 total=1
+2026-10-19 15:43:57,892 INFO     sync_cash_register_to_sheet: 2026-10-19\u21922026-10-19 appended=15 updated=0 deleted=2 skipped=12 total=15
+2026-10-19 15:43:59,473 INFO     sync_cash_deposite_to_sheet: 2026-10-19\u21922026-10-19 appended=0 updated=0 deleted=0 total=1
+2026-10-19 15:44:00,775 INFO     sync_cash_sheet_to_sheet: 2026-10-19\u21922026-10-19 appended=0 updated=0 deleted=0 total=1
+2026-10-19 15:44:01,959 INFO     sync_upi_sheet_to_sheet: 2026-10-19\u21922026-10-19 appended=0 updated=0 deleted=0 total=1
+2026-10-19 15:44:03,561 INFO     sync_bank_sheet_to_sheet: 2026-10-19\u21922026-10-19 appended=0 updated=1 deleted=0 total=1
+2026-10-19 15:44:05,254 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=1 deleted=0 total=157
+2026-10-19 15:44:06,501 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=0 deleted=0 total=137
+2026-10-19 15:44:08,163 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=1 deleted=0 total=89
+2026-10-21 08:33:05,736 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-21 08:33:05,736 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-21 08:33:05,736 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-21 08:33:05,736 INFO     Listening on TCP address 0.0.0.0:8001
+2026-10-21 08:50:29,896 INFO     sync_cash_deposite_to_sheet: 2026-10-19\u21922026-10-19 appended=0 updated=1 deleted=0 total=1
+2026-10-21 08:50:31,454 INFO     sync_cash_sheet_to_sheet: 2026-10-19\u21922026-10-19 appended=0 updated=1 deleted=0 total=1
+2026-10-21 08:50:31,454 INFO     sync_cash_register_to_sheet: 2026-10-19\u21922026-10-19 appended=3 updated=0 deleted=0 skipped=27 total=16
+2026-10-21 08:50:33,135 INFO     sync_cash_deposite_to_sheet: 2026-10-19\u21922026-10-19 appended=0 updated=0 deleted=0 total=1
+2026-10-21 08:50:34,301 INFO     sync_cash_sheet_to_sheet: 2026-10-19\u21922026-10-19 appended=0 updated=0 deleted=0 total=1
+2026-10-21 08:50:35,515 INFO     sync_upi_sheet_to_sheet: 2026-10-19\u21922026-10-19 appended=0 updated=0 deleted=0 total=1
+2026-10-21 08:50:36,676 INFO     sync_bank_sheet_to_sheet: 2026-10-19\u21922026-10-19 appended=0 updated=0 deleted=0 total=1
+2026-10-21 08:50:38,330 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=1 deleted=0 total=157
+2026-10-21 08:50:39,960 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=0 deleted=0 total=137
+2026-10-21 08:50:41,141 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=0 updated=0 deleted=0 total=89
+Unauthorized: /api/users/
+2026-10-21 10:51:09,381 WARNING  Unauthorized: /api/users/
+Not Found: /api/student-search/search/
+2026-10-21 10:58:30,374 WARNING  Not Found: /api/student-search/search/
+2026-10-21 15:41:29,993 INFO     Updated tr_request_no for record 1026 from 26036 to 26036
+2026-10-21 15:41:30,132 INFO     Updated tr_request_no for record 1158 from 26168 to 26168
+2026-10-21 15:41:30,149 INFO     Updated tr_request_no for record 1158 from 26179 to 26179
+2026-10-21 15:41:30,205 INFO     Updated tr_request_no for record 1219 from 26231 to 26231
+2026-10-21 15:41:30,210 INFO     Updated tr_request_no for record 1219 from 26233 to 26233
+2026-10-21 15:41:30,233 INFO     Updated tr_request_no for record 1026 from 26240 to 26240
+2026-10-21 15:41:30,803 INFO     Updated tr_request_no for record 1026 from 26036 to 26036
+2026-10-21 15:41:30,933 INFO     Updated tr_request_no for record 1158 from 26168 to 26168
+2026-10-21 15:41:30,945 INFO     Updated tr_request_no for record 1158 from 26179 to 26179
+2026-10-21 15:41:30,998 INFO     Updated tr_request_no for record 1219 from 26231 to 26231
+2026-10-21 15:41:31,001 INFO     Updated tr_request_no for record 1219 from 26233 to 26233
+2026-10-21 15:41:31,010 INFO     Updated tr_request_no for record 1026 from 26240 to 26240
+2026-10-21 15:41:32,060 INFO     Import mail requests completed via API: Found 460 rows; starting import
+Processed 200/460 rows
+Processed 400/460 rows
+Processed 460/460 rows
+Import complete. Created: 1, Updated: 459
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-10-21 15:42:44,949 INFO     Import mail requests completed via API: Found 460 rows; starting import
+Processed 200/460 rows
+Processed 400/460 rows
+Processed 460/460 rows
+Import complete. Created: 0, Updated: 460
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-10-21 15:57:49,141 INFO     Killed 1 pending application instances
+2026-10-22 10:15:10,639 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-22 10:15:10,639 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-22 10:15:10,639 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-22 10:15:10,641 INFO     Listening on TCP address 0.0.0.0:8001
+2026-10-22 10:53:41,252 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26367'}
+2026-10-22 10:53:41,254 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-22 10:53:41,260 INFO     InstLetterPDF grouped records: keys=['2026/367']
+2026-10-22 10:53:41,261 INFO     DEBUG rec_inst_pin value: '360005'
+2026-10-22 11:11:19,017 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26368'}
+2026-10-22 11:11:19,019 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-22 11:11:19,024 INFO     InstLetterPDF grouped records: keys=['2026/368']
+2026-10-22 11:11:19,024 INFO     DEBUG rec_inst_pin value: '363002'
+2026-10-22 11:27:49,635 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26369'}
+2026-10-22 11:27:49,637 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-22 11:27:49,641 INFO     InstLetterPDF grouped records: keys=['2026/369']
+2026-10-22 11:27:49,641 INFO     DEBUG rec_inst_pin value: ''
+2026-10-22 11:40:49,732 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26370'}
+2026-10-22 11:40:49,734 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-22 11:40:49,737 INFO     InstLetterPDF grouped records: keys=['2026/370']
+2026-10-22 11:40:49,738 INFO     DEBUG rec_inst_pin value: '700163'
+Unauthorized: /api/token/verify/
+2026-10-22 12:32:07,650 WARNING  Unauthorized: /api/token/verify/
+2026-10-22 13:32:13,784 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26371'}
+2026-10-22 13:32:13,786 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-22 13:32:13,793 INFO     InstLetterPDF grouped records: keys=['2026/371']
+2026-10-22 13:32:13,795 INFO     DEBUG rec_inst_pin value: '201304'
+2026-10-22 13:46:13,055 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26372'}
+2026-10-22 13:46:13,057 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-22 13:46:13,061 INFO     InstLetterPDF grouped records: keys=['2026/372']
+2026-10-22 13:46:13,061 INFO     DEBUG rec_inst_pin value: ''
+2026-10-22 13:47:19,260 INFO     InstLetterStudent update payload_keys=['doc_rec_key', 'enrollment', 'enrollment_no_text', 'iv_degree_name', 'month_year', 'sr_no', 'student_name', 'study_mode', 'type_of_credential', 'verification_status']
+2026-10-22 13:47:24,724 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26372'}
+2026-10-22 13:47:24,726 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-22 13:47:24,730 INFO     InstLetterPDF grouped records: keys=['2026/372']
+2026-10-22 13:47:24,730 INFO     DEBUG rec_inst_pin value: ''
+2026-10-22 13:50:06,256 INFO     InstLetterStudent update payload_keys=['doc_rec_key', 'enrollment', 'enrollment_no_text', 'iv_degree_name', 'month_year', 'sr_no', 'student_name', 'study_mode', 'type_of_credential', 'verification_status']
+2026-10-22 13:50:25,172 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26372'}
+2026-10-22 13:50:25,175 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-22 13:50:25,181 INFO     InstLetterPDF grouped records: keys=['2026/372']
+2026-10-22 13:50:25,181 INFO     DEBUG rec_inst_pin value: ''
+2026-10-22 13:50:44,471 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26372'}
+2026-10-22 13:50:44,473 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-22 13:50:44,478 INFO     InstLetterPDF grouped records: keys=['2026/372']
+2026-10-22 13:50:44,478 INFO     DEBUG rec_inst_pin value: ''
+2026-10-22 13:51:32,702 INFO     InstLetterStudent update payload_keys=['doc_rec_key', 'enrollment', 'enrollment_no_text', 'iv_degree_name', 'month_year', 'sr_no', 'student_name', 'study_mode', 'type_of_credential', 'verification_status']
+2026-10-22 13:51:39,171 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26372'}
+2026-10-22 13:51:39,173 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-22 13:51:39,182 INFO     InstLetterPDF grouped records: keys=['2026/372']
+2026-10-22 13:51:39,182 INFO     DEBUG rec_inst_pin value: ''
+2026-10-22 14:05:43,903 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26373'}
+2026-10-22 14:05:43,905 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-22 14:05:43,913 INFO     InstLetterPDF grouped records: keys=['2026/373']
+2026-10-22 14:05:43,913 INFO     DEBUG rec_inst_pin value: ''
+Unauthorized: /api/users/
+2026-10-22 14:33:08,925 WARNING  Unauthorized: /api/users/
+2026-10-22 15:42:00,572 INFO     sync_cash_deposite_to_sheet: 2026-10-22\u21922026-10-22 appended=1 updated=0 deleted=0 total=1
+2026-10-22 15:42:02,241 INFO     sync_cash_sheet_to_sheet: 2026-10-22\u21922026-10-22 appended=1 updated=0 deleted=0 total=1
+2026-10-22 15:42:02,241 INFO     sync_cash_register_to_sheet: 2026-10-22\u21922026-10-22 appended=11 updated=0 deleted=0 skipped=0 total=9
+2026-10-22 15:42:03,913 INFO     sync_cash_deposite_to_sheet: 2026-10-22\u21922026-10-22 appended=0 updated=0 deleted=0 total=1
+2026-10-22 15:42:05,591 INFO     sync_cash_sheet_to_sheet: 2026-10-22\u21922026-10-22 appended=0 updated=0 deleted=0 total=1
+2026-10-22 15:42:07,344 INFO     sync_upi_sheet_to_sheet: 2026-10-22\u21922026-10-22 appended=1 updated=0 deleted=0 total=1
+2026-10-22 15:42:09,079 INFO     sync_bank_sheet_to_sheet: 2026-10-22\u21922026-10-22 appended=1 updated=0 deleted=0 total=1
+2026-10-22 15:42:11,379 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=2 updated=0 deleted=0 total=159
+2026-10-22 15:42:13,981 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=2 updated=0 deleted=0 total=139
+2026-10-22 15:42:15,644 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=90
+2026-10-22 15:54:40,376 INFO     Killed 0 pending application instances
+2026-10-23 08:26:01,402 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-23 08:26:01,404 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-23 08:26:01,404 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-23 08:26:01,404 INFO     Listening on TCP address 0.0.0.0:8001
+Unauthorized: /api/users/
+2026-10-23 10:45:05,364 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-10-23 12:45:54,611 WARNING  Unauthorized: /api/users/
+Bad Request: /api/exam/sync-from-sheet/
+2026-10-23 13:38:25,209 WARNING  Bad Request: /api/exam/sync-from-sheet/
+2026-10-23 14:43:23,101 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26374'}
+2026-10-23 14:43:23,103 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-23 14:43:23,107 INFO     InstLetterPDF grouped records: keys=['2026/374']
+2026-10-23 14:43:23,108 INFO     DEBUG rec_inst_pin value: '383001'
+Unauthorized: /api/users/
+2026-10-23 14:48:33,356 WARNING  Unauthorized: /api/users/
+2026-10-23 15:20:30,835 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26375'}
+2026-10-23 15:20:30,838 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-23 15:20:30,843 INFO     InstLetterPDF grouped records: keys=['2026/375']
+2026-10-23 15:20:30,844 INFO     DEBUG rec_inst_pin value: '360005'
+2026-10-23 15:41:46,534 INFO     Import mail requests completed via API: Found 460 rows; starting import
+Processed 200/460 rows
+Processed 400/460 rows
+Processed 460/460 rows
+Import complete. Created: 0, Updated: 460
+Prune skipped (--no-prune). DB rows will not be deleted.
+
+2026-10-23 15:46:56,690 INFO     sync_cash_deposite_to_sheet: 2026-10-23\u21922026-10-23 appended=1 updated=0 deleted=0 total=1
+2026-10-23 15:46:58,664 INFO     sync_cash_sheet_to_sheet: 2026-10-23\u21922026-10-23 appended=1 updated=0 deleted=0 total=1
+2026-10-23 15:46:58,665 INFO     sync_cash_register_to_sheet: 2026-10-23\u21922026-10-23 appended=31 updated=0 deleted=0 skipped=0 total=23
+2026-10-23 15:47:00,384 INFO     sync_cash_deposite_to_sheet: 2026-10-23\u21922026-10-23 appended=0 updated=0 deleted=0 total=1
+2026-10-23 15:47:01,731 INFO     sync_cash_sheet_to_sheet: 2026-10-23\u21922026-10-23 appended=0 updated=0 deleted=0 total=1
+2026-10-23 15:47:03,449 INFO     sync_upi_sheet_to_sheet: 2026-10-23\u21922026-10-23 appended=1 updated=0 deleted=0 total=1
+2026-10-23 15:47:05,140 INFO     sync_bank_sheet_to_sheet: 2026-10-23\u21922026-10-23 appended=1 updated=0 deleted=0 total=1
+2026-10-23 15:47:07,142 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=160
+2026-10-23 15:47:08,897 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=140
+2026-10-23 15:47:10,705 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=91
+2026-10-23 15:54:31,447 INFO     Killed 0 pending application instances
+2026-10-24 08:24:57,331 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-24 08:24:57,331 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-24 08:24:57,331 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-24 08:24:57,331 INFO     Listening on TCP address 0.0.0.0:8001
+2026-10-24 08:42:52,351 INFO     Updated tr_request_no for record 1026 from 26036 to 26036
+2026-10-24 08:42:52,565 INFO     Updated tr_request_no for record 1158 from 26168 to 26168
+2026-10-24 08:42:52,584 INFO     Updated tr_request_no for record 1158 from 26179 to 26179
+2026-10-24 08:42:52,590 INFO     Updated tr_request_no for record 1158 from 26168 to 26168
+2026-10-24 08:42:52,610 INFO     Updated tr_request_no for record 1158 from 26179 to 26179
+2026-10-24 08:42:52,665 INFO     Updated tr_request_no for record 1219 from 26231 to 26231
+2026-10-24 08:42:52,670 INFO     Updated tr_request_no for record 1219 from 26233 to 26233
+2026-10-24 08:42:52,688 INFO     Updated tr_request_no for record 1026 from 26240 to 26240
+2026-10-24 08:42:52,691 INFO     Updated tr_request_no for record 1219 from 26231 to 26231
+2026-10-24 08:42:52,697 INFO     Updated tr_request_no for record 1219 from 26233 to 26233
+2026-10-24 08:42:52,709 INFO     Updated tr_request_no for record 1227 from 26246 to 26246
+2026-10-24 08:42:52,714 INFO     Updated tr_request_no for record 654 from 26247 to 26247
+2026-10-24 08:42:52,714 INFO     Updated tr_request_no for record 1227 from 26243 to 26243
+2026-10-24 08:42:52,720 INFO     Updated tr_request_no for record 1227 from 26246 to 26246
+2026-10-24 08:42:53,118 INFO     Updated tr_request_no for record 1026 from 26036 to 26036
+2026-10-24 08:42:53,270 INFO     Updated tr_request_no for record 1158 from 26168 to 26168
+2026-10-24 08:42:53,284 INFO     Updated tr_request_no for record 1158 from 26179 to 26179
+2026-10-24 08:42:53,339 INFO     Updated tr_request_no for record 1219 from 26231 to 26231
+2026-10-24 08:42:53,343 INFO     Updated tr_request_no for record 1219 from 26233 to 26233
+2026-10-24 08:42:53,352 INFO     Updated tr_request_no for record 1026 from 26240 to 26240
+2026-10-24 08:42:53,357 INFO     Updated tr_request_no for record 1227 from 26243 to 26243
+2026-10-24 08:42:53,362 INFO     Updated tr_request_no for record 1227 from 26246 to 26246
+2026-10-24 10:33:05,231 INFO     InstLetterPDF called by=13 payload={'iv_record_no': '26376'}
+2026-10-24 10:33:05,234 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-24 10:33:05,239 INFO     InstLetterPDF grouped records: keys=['2026/376']
+2026-10-24 10:33:05,240 INFO     DEBUG rec_inst_pin value: '400059'
+Unauthorized: /api/users/
+2026-10-24 10:43:36,601 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-10-24 11:31:36,630 WARNING  Unauthorized: /api/users/
+2026-10-24 15:39:30,010 INFO     sync_cash_deposite_to_sheet: 2026-10-24\u21922026-10-24 appended=1 updated=0 deleted=0 total=1
+2026-10-24 15:39:31,655 INFO     sync_cash_sheet_to_sheet: 2026-10-24\u21922026-10-24 appended=1 updated=0 deleted=0 total=1
+2026-10-24 15:39:31,655 INFO     sync_cash_register_to_sheet: 2026-10-24\u21922026-10-24 appended=9 updated=0 deleted=0 skipped=0 total=7
+2026-10-24 15:39:33,311 INFO     sync_cash_deposite_to_sheet: 2026-10-24\u21922026-10-24 appended=0 updated=0 deleted=0 total=1
+2026-10-24 15:39:34,725 INFO     sync_cash_sheet_to_sheet: 2026-10-24\u21922026-10-24 appended=0 updated=0 deleted=0 total=1
+2026-10-24 15:39:36,297 INFO     sync_upi_sheet_to_sheet: 2026-10-24\u21922026-10-24 appended=1 updated=0 deleted=0 total=1
+2026-10-24 15:39:38,346 INFO     sync_bank_sheet_to_sheet: 2026-10-24\u21922026-10-24 appended=1 updated=0 deleted=0 total=1
+2026-10-24 15:39:40,253 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=161
+2026-10-24 15:39:41,841 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=141
+2026-10-24 15:39:43,457 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=92
+2026-10-24 15:55:49,554 INFO     Killed 0 pending application instances
+2026-10-26 08:20:00,446 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-26 08:20:00,446 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-26 08:20:00,446 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-26 08:20:00,448 INFO     Listening on TCP address 0.0.0.0:8001
+Not Found: /api/student-search/search/
+2026-10-26 09:20:32,489 WARNING  Not Found: /api/student-search/search/

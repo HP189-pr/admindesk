@@ -129,6 +129,7 @@ class CCTVOutward(models.Model):
     cctv_record_no = models.CharField(max_length=50, unique=True, null=True, blank=True)
 
     outward_no = models.CharField(max_length=50, unique=True, null=True, blank=True)
+    exam_year_session = models.CharField(max_length=10, blank=True, default="")
     outward_date = models.DateField(null=True, blank=True)
 
     college_name = models.CharField(max_length=200,default="",blank=True)
@@ -195,4 +196,3 @@ class CCTVCopyCase(models.Model):
 
     def __str__(self):
         return f"{self.outward.cctv_record_no or self.outward_id} / {self.college_name or '-'}"
-

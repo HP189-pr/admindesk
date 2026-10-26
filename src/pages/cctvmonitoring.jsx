@@ -27,6 +27,7 @@ const DEFAULT_PLACES = ["Kadi", "15-LDRP", "15VSITR", "23", "12"];
 const SESSION_OPTIONS = ["A", "B", "C", "D", "E", "F", "G", "H","I", "J", "K", "L", "M", "N", "O", "P"];
 const EMPTY_OUTWARD_FORM = {
   outward_date: "",
+  exam_year_session: "",
   cctv_record_no: "",
   college_name: "",
   exam_on: "",
@@ -143,9 +144,9 @@ const CCTVMonitoring = ({
 
   useEffect(() => {
     if (!rights.can_view || selectedAction !== ACTIONS[1]) return;
-    fetchOutwards();
+    fetchOutwards(selectedSession);
     fetchInstitutes();
-  }, [rights.can_view, selectedAction]);
+  }, [rights.can_view, selectedAction, selectedSession]);
 
   useEffect(() => {
     setSessionByExam((prev) => {
@@ -233,9 +234,10 @@ const CCTVMonitoring = ({
     }
   };
 
-  const fetchOutwards = async () => {
+  const fetchOutwards = async (session = selectedSession) => {
     try {
-      const res = await getOutward();
+      const params = session ? { exam_year_session: session } : undefined;
+      const res = await getOutward(params);
       const data = toResultsArray(res?.data);
       setOutwards(
         sortRowsByDateDesc(
@@ -483,6 +485,7 @@ const CCTVMonitoring = ({
 
     const payload = {
       outward_date: outwardForm.outward_date || null,
+      exam_year_session: outwardForm.exam_year_session || selectedSession,
       college_name: outwardForm.college_name || "",
       exam_on: outwardForm.exam_on,
       last_date: outwardForm.last_date || null,
@@ -523,6 +526,7 @@ const CCTVMonitoring = ({
     setOutwardForm({
       id: row.id,
       outward_date: row.outward_date || "",
+      exam_year_session: row.exam_year_session || selectedSession,
       cctv_record_no: row.cctv_record_no || "",
       college_name: row.college_name || "",
       exam_on: row.exam_on || "",
@@ -1283,7 +1287,7 @@ const CCTVMonitoring = ({
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={fetchOutwards}
+                  onClick={() => fetchOutwards(selectedSession)}
                   className="refresh-icon-button"
                   title="Reload"
                   aria-label="Reload"
@@ -1448,7 +1452,7 @@ const CCTVMonitoring = ({
 
       {selectedAction === ACTIONS[2] && (
         <div className="border p-4 rounded">
-          <CCTVREPORT rights={rights} />
+          <CCTVREPORT rights={rights} selectedSession={selectedSession} />
         </div>
       )}
     </div>

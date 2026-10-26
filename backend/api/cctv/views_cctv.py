@@ -13,6 +13,7 @@ from django.db.models import Max
 from django.http import HttpResponse
 
 import io
+from datetime import date
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm, inch
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -375,6 +376,15 @@ class CCTVOutwardViewSet(CctvPermissionMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     pagination_class = None
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        exam_year_session = (
+            self.request.query_params.get("exam_year_session") or ""
+        ).strip()
+        if exam_year_session:
+            queryset = queryset.filter(exam_year_session=exam_year_session)
+        return queryset
+
     @action(detail=True, methods=["get"], url_path="generate-pdf")
     def generate_pdf(self, request, pk=None):
         outward = self.get_object()
@@ -551,23 +561,47 @@ class CCTVOutwardViewSet(CctvPermissionMixin, viewsets.ModelViewSet):
         return response
 
     def perform_create(self, serializer):
-        last_outward = CCTVOutward.objects.order_by("-id").first()
-        next_outward = (
-            int(last_outward.outward_no.split("-")[-1]) + 1
-            if last_outward
-            else 1
-        )
-        outward_no = f"KSV-SE-CCTV-{str(next_outward).zfill(3)}"
+        with transaction.atomic():
+            outward_date = serializer.validated_data.get("outward_date") or date.today()
+            season = "SE" if 3 <= outward_date.month <= 8 else "W"
+            exam_year_session = (
+                serializer.validated_data.get("exam_year_session") or ""
+            ).strip()
+            outward_prefix = f"KSV-{season}-CCTV-"
 
-        last_record = CCTVOutward.objects.order_by("-id").first()
-        next_record = (
-            int(last_record.cctv_record_no.split("-")[-1]) + 1
-            if last_record
-            else 1
-        )
-        cctv_record_no = f"CCTV-REC-{str(next_record).zfill(4)}"
+            last_outward = (
+                CCTVOutward.objects.select_for_update()
+                .filter(
+                    exam_year_session=exam_year_session,
+                    outward_no__startswith=outward_prefix,
+                )
+                .order_by("-id")
+                .first()
+            )
+            next_outward = 1
+            if last_outward and last_outward.outward_no:
+                try:
+                    next_outward = int(last_outward.outward_no.rsplit("-", 1)[-1]) + 1
+                except ValueError:
+                    next_outward = 1
+            outward_no = f"{outward_prefix}{next_outward:03d}"
 
-        serializer.save(outward_no=outward_no, cctv_record_no=cctv_record_no)
+            last_record = (
+                CCTVOutward.objects.select_for_update().order_by("-id").first()
+            )
+            next_record = 1
+            if last_record and last_record.cctv_record_no:
+                try:
+                    next_record = int(last_record.cctv_record_no.rsplit("-", 1)[-1]) + 1
+                except ValueError:
+                    next_record = 1
+            cctv_record_no = f"CCTV-REC-{next_record:04d}"
+
+            serializer.save(
+                outward_no=outward_no,
+                cctv_record_no=cctv_record_no,
+                exam_year_session=exam_year_session,
+            )
 
 
 class CCTVCopyCaseViewSet(CctvPermissionMixin, viewsets.ModelViewSet):
@@ -579,6 +613,11 @@ class CCTVCopyCaseViewSet(CctvPermissionMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset().filter(outward__case_found=True)
         outward_id = (self.request.query_params.get("outward") or "").strip()
+        exam_year_session = (
+            self.request.query_params.get("exam_year_session") or ""
+        ).strip()
         if outward_id:
             queryset = queryset.filter(outward_id=outward_id)
+        if exam_year_session:
+            queryset = queryset.filter(outward__exam_year_session=exam_year_session)
         return queryset
