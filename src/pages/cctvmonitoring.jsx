@@ -73,6 +73,13 @@ const sortRowsByDateDesc = (rows = []) =>
       return bDate.localeCompare(aDate);
     });
 
+const formatCompactDate = (value) => {
+  const normalized = toDateInput(value || "");
+  if (!normalized) return "—";
+  const [year, month, day] = normalized.split("-");
+  return `${day}-${month}-${year.slice(-2)}`;
+};
+
 const findInstituteMatch = (value, institutes) => {
   const needle = String(value || "").trim().toLowerCase();
   if (!needle) return null;
@@ -1342,10 +1349,9 @@ const CCTVMonitoring = ({
               <table className="min-w-full text-sm">
                 <thead className="bg-gray-100 text-gray-700 uppercase text-xs">
                   <tr>
-                    <th className="px-3 py-2 text-left">Date</th>
-                    <th className="px-3 py-2 text-left">Record No.</th>
-                    <th className="px-3 py-2 text-left">Outward No.</th>
-                    <th className="px-3 py-2 text-left">Last Date</th>
+                    <th className="w-20 whitespace-nowrap px-2 py-2 text-left">Date</th>
+                    <th className="w-20 whitespace-nowrap px-2 py-2 text-left">Outward No.</th>
+                    <th className="w-20 whitespace-nowrap px-2 py-2 text-left">Last Date</th>
                     <th className="px-3 py-2 text-left">College</th>
                     <th className="px-3 py-2 text-left">DVD No</th>
                     <th className="px-3 py-2 text-left">Rep No</th>
@@ -1361,7 +1367,7 @@ const CCTVMonitoring = ({
                 <tbody>
                   {outwards.length === 0 && (
                     <tr>
-                      <td colSpan={14} className="px-4 py-6 text-center text-gray-500">
+                      <td colSpan={13} className="px-4 py-6 text-center text-gray-500">
                         No outward entries found.
                       </td>
                     </tr>
@@ -1381,17 +1387,17 @@ const CCTVMonitoring = ({
                         key={row.id}
                         className={`border-b last:border-b-0 ${rowHighlightClass}`}
                       >
-                        <td className="px-3 py-2 align-top">{row.outward_date || "—"}</td>
-                        <td className="px-3 py-2 align-top">{row.cctv_record_no || "—"}</td>
-                        <td className="px-3 py-2 align-top">{row.outward_no || "—"}</td>
-                        <td className="px-3 py-2 align-top">{row.last_date || "—"}</td>
+                        <td className="whitespace-nowrap px-2 py-2 align-top">
+                          {formatCompactDate(row.outward_date)}
+                        </td>
+                        <td className="whitespace-nowrap px-2 py-2 align-top">{row.outward_no || "—"}</td>
+                        <td className="whitespace-nowrap px-2 py-2 align-top">
+                          {formatCompactDate(row.last_date)}
+                        </td>
                         <td className="px-3 py-2 align-top">
                           <div className="font-medium text-slate-800">
                             {institute?.institute_code || row.college_name || "—"}
                           </div>
-                          {institute?.institute_name && (
-                            <div className="text-xs text-slate-500">{institute.institute_name}</div>
-                          )}
                         </td>
                         <td className="px-3 py-2 align-top">{cdLabel || "—"}</td>
                         <td className="px-3 py-2 align-top">{row.rep_nos || "—"}</td>
