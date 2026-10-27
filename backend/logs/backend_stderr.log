@@ -96717,3 +96717,43 @@ django.db.utils.ProgrammingError: column api_cctvoutward.exam_year_session does 
 LINE 1: ..."cctv_record_no", "api_cctvoutward"."outward_no", "api_cctvo...
                                                              ^
 
+Unauthorized: /api/users/
+2026-10-26 11:15:59,521 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-10-26 12:04:56,024 WARNING  Unauthorized: /api/users/
+Unauthorized: /api/users/
+2026-10-26 13:16:29,503 WARNING  Unauthorized: /api/users/
+Forbidden: /api/leave-report/all-employees-balance/
+2026-10-26 15:31:18,186 WARNING  Forbidden: /api/leave-report/all-employees-balance/
+Not Found: /api/my-leave-balance/
+2026-10-26 15:31:21,295 WARNING  Not Found: /api/my-leave-balance/
+Forbidden: /api/leave-report/all-employees-balance/
+2026-10-26 15:32:20,941 WARNING  Forbidden: /api/leave-report/all-employees-balance/
+Not Found: /api/my-leave-balance/
+2026-10-26 15:32:26,859 WARNING  Not Found: /api/my-leave-balance/
+Forbidden: /api/transcript-requests/sync-from-sheet/
+2026-10-26 15:32:31,812 WARNING  Forbidden: /api/transcript-requests/sync-from-sheet/
+2026-10-26 15:49:49,712 INFO     sync_cash_deposite_to_sheet: 2026-10-26\u21922026-10-26 appended=1 updated=0 deleted=0 total=1
+2026-10-26 15:49:51,498 INFO     sync_cash_sheet_to_sheet: 2026-10-26\u21922026-10-26 appended=1 updated=0 deleted=0 total=1
+2026-10-26 15:49:51,498 INFO     sync_cash_register_to_sheet: 2026-10-26\u21922026-10-26 appended=11 updated=0 deleted=0 skipped=0 total=8
+2026-10-26 15:49:53,077 INFO     sync_cash_deposite_to_sheet: 2026-10-26\u21922026-10-26 appended=0 updated=0 deleted=0 total=1
+2026-10-26 15:49:54,285 INFO     sync_cash_sheet_to_sheet: 2026-10-26\u21922026-10-26 appended=0 updated=0 deleted=0 total=1
+2026-10-26 15:49:55,985 INFO     sync_upi_sheet_to_sheet: 2026-10-26\u21922026-10-26 appended=1 updated=0 deleted=0 total=1
+2026-10-26 15:49:57,617 INFO     sync_bank_sheet_to_sheet: 2026-10-26\u21922026-10-26 appended=1 updated=0 deleted=0 total=1
+2026-10-26 15:49:59,626 INFO     sync_cash_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=162
+2026-10-26 15:50:01,314 INFO     sync_upi_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=142
+2026-10-26 15:50:03,042 INFO     sync_bank_sheet_new_to_sheet: 2026-04-01\u21922027-03-31 appended=1 updated=0 deleted=0 total=93
+2026-10-26 15:57:24,377 INFO     Killed 0 pending application instances
+2026-10-27 08:30:07,447 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-27 08:30:07,447 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-27 08:30:07,447 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-27 08:30:07,447 INFO     Listening on TCP address 0.0.0.0:8001
+2026-10-27 09:41:18,285 INFO     Killed 1 pending application instances
+2026-10-27 09:41:20,363 INFO     Starting server at tcp:port=8001:interface=0.0.0.0
+2026-10-27 09:41:20,363 INFO     HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+2026-10-27 09:41:20,363 INFO     Configuring endpoint tcp:port=8001:interface=0.0.0.0
+2026-10-27 09:41:20,363 INFO     Listening on TCP address 0.0.0.0:8001
+2026-10-27 09:47:18,109 INFO     InstLetterPDF called by=hpadmin payload={'iv_record_no': '26377'}
+2026-10-27 09:47:18,111 INFO     InstLetterPDF resolved 1 doc_rec_ids (iv_requested=True)
+2026-10-27 09:47:18,116 INFO     InstLetterPDF grouped records: keys=['2026/377']
+2026-10-27 09:47:18,116 INFO     DEBUG rec_inst_pin value: '360005'

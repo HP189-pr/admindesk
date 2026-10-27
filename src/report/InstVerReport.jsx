@@ -309,6 +309,12 @@ const InstVerReport = ({
             const docTypes = rec?.doc_types || "Certificate";
             const docLabel = docTypes.toLowerCase().includes("certificate") ? docTypes : `${docTypes} Certificate`;
             const students = rec?.students || [];
+            const studyModes = [...new Set(
+              students
+                .map((student) => String(student?.study_mode || "").trim())
+                .filter(Boolean)
+            )];
+            const studyModeLabel = studyModes.join(" / ") || "N/A";
             const credentialHeader = (() => {
               let header = "";
               for (const s of students) {
@@ -377,7 +383,7 @@ const InstVerReport = ({
                 <div style={{ height: "8px" }} />
 
                 <div className="text" style={{ lineHeight: 1.5 }}>
-                  Regarding the subject and reference mentioned above, I am delighted to confirm that upon thorough verification, the documents pertaining to the candidate in question have been meticulously examined and found to be in accordance with our office records. Below are the details of the provided <strong>{docLabel}</strong>:
+                  With reference to the subject and correspondence mentioned above, this is to confirm that, upon thorough verification, the educational documents pertaining to the candidate mentioned below have been duly examined and found to be genuine and valid as per the official records of the University. It is further confirmed that the candidate pursued the course of study in <strong>{studyModeLabel}</strong> mode.
                 </div>
 
                 <table>

@@ -585,7 +585,22 @@ class InstLetterPDF(APIView):
                     story.append(Spacer(1, 3 * mm))
 
                     # Intro/body
-                    story.append(Paragraph("Regarding the subject and reference mentioned above, I am delighted to confirm that upon thorough verification, the documents pertaining to the candidate in question have been meticulously examined and found to be valid as per our records.", normal))
+                    study_modes = []
+                    for student in merged:
+                        if not isinstance(student, dict):
+                            continue
+                        study_mode = str(student.get('study_mode') or '').strip()
+                        if study_mode and study_mode not in study_modes:
+                            study_modes.append(study_mode)
+                    study_mode_label = " / ".join(study_modes) or "N/A"
+                    intro_text = (
+                        "With reference to the subject and correspondence mentioned above, this is to confirm "
+                        "that, upon thorough verification, the educational documents pertaining to the candidate "
+                        "mentioned below have been duly examined and found to be genuine and valid as per the "
+                        "official records of the University. It is further confirmed that the candidate pursued "
+                        f"the course of study in <strong>{escape(study_mode_label)}</strong> mode."
+                    )
+                    story.append(Paragraph(intro_text, normal))
                     story.append(Spacer(1, 2 * mm))
 
                     # Student table
